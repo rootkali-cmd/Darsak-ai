@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import Lenis from 'lenis'
 
 const CONFIG = {
-  itemCount: 20,
-  starCount: 150,
-  zGap: 800,
+  itemCount: 10,
+  starCount: 60,
+  zGap: 1000,
   loopSize: 0,
   camSpeed: 2.5,
 }
@@ -225,6 +225,18 @@ export default function LandingPage() {
         <button className="ds-btn-secondary" onClick={() => router.push('/register')}>
           {isAr ? 'ابدأ مجاناً' : 'START FREE'}
         </button>
+        <a
+          href="/DarsakAI.apk"
+          download
+          className="ds-btn-download"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          {isAr ? 'تحميل التطبيق' : 'GET APP'}
+        </a>
       </div>
 
       <div ref={viewportRef} className="ds-viewport">
@@ -365,6 +377,22 @@ export default function LandingPage() {
   font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
 }
 .ds-btn-secondary:hover { border-color: #00f3ff; color: #00f3ff; }
+.ds-btn-download {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1.5rem; border: 1px solid rgba(255,255,255,0.3);
+  color: #00f3ff; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em;
+  background: rgba(0,243,255,0.08); backdrop-filter: blur(8px);
+  cursor: pointer; transition: all 0.2s; text-decoration: none;
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
+}
+.ds-btn-download:hover {
+  border-color: #00f3ff; background: rgba(0,243,255,0.15);
+  box-shadow: 0 0 20px rgba(0,243,255,0.2);
+}
+@media (max-width: 640px) {
+  .ds-cta { flex-direction: column; gap: 0.5rem; }
+  .ds-cta button, .ds-cta a { width: 100%; justify-content: center; }
+}
       `}}></style>
     </>
   )

@@ -11,6 +11,8 @@ export default function CustomCursor() {
   const rafRef = useRef<number>(0)
 
   useEffect(() => {
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) return
+
     const onMouseMove = (e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY }
     }

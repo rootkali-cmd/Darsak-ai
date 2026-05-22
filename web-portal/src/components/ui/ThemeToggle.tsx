@@ -11,6 +11,8 @@ export function ThemeToggle() {
     if (saved) {
       setTheme(saved)
       document.documentElement.setAttribute('data-theme', saved)
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark')
     }
   }, [])
 
@@ -38,6 +40,8 @@ export function ThemeInitializer() {
     const saved = localStorage.getItem('theme')
     if (saved === 'light' || saved === 'dark') {
       document.documentElement.setAttribute('data-theme', saved)
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark')
     }
   }, [])
   return null
