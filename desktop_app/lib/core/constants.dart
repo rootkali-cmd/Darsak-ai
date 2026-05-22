@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String apiBaseUrl = 'http://localhost:8000/api';
+  static const String apiBaseUrl = 'https://darsak-ai-o8cs.vercel.app/api';
   static const String appName = 'DarsakAI Desktop';
   static const String appVersion = '1.0.0';
 }
