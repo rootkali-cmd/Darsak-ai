@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
+import '../core/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -120,6 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final oldPinController = TextEditingController();
     final newPinController = TextEditingController();
     final confirmPinController = TextEditingController();
+    final api = ApiService();
 
     showDialog(
       context: context,
@@ -136,8 +139,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: oldPinController,
               obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
               style: const TextStyle(color: Color(0xFFF5F5F5)),
               decoration: InputDecoration(
                 labelText: 'PIN الحالي',
@@ -152,11 +153,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: newPinController,
               obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
               style: const TextStyle(color: Color(0xFFF5F5F5)),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                _UpperCaseTextFormatter(),
+              ],
               decoration: InputDecoration(
-                labelText: 'PIN الجديد',
+                labelText: 'PIN الجديد (6-8 أحرف وأرقام)',
                 labelStyle: TextStyle(color: Colors.grey[500]),
                 filled: true,
                 fillColor: const Color(0xFF0A0A0A),
@@ -168,9 +171,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: confirmPinController,
               obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
               style: const TextStyle(color: Color(0xFFF5F5F5)),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                _UpperCaseTextFormatter(),
+              ],
               decoration: InputDecoration(
                 labelText: 'تأكيد PIN الجديد',
                 labelStyle: TextStyle(color: Colors.grey[500]),
@@ -189,15 +194,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (newPinController.text != confirmPinController.text) {
+              final newPin = newPinController.text.trim();
+              final confirmPin = confirmPinController.text.trim();
+              if (newPin != confirmPin) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN غير متطابق'), backgroundColor: Color(0xFFEF4444)));
                 return;
               }
+              if (newPin.length < 6 || newPin.length > 8) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN يجب أن يكون 6-8 أحرف وأرقام'), backgroundColor: Color(0xFFEF4444)));
+                return;
+              }
               try {
+                await api.changePin(oldPinController.text.trim(), newPin);
+                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير PIN بنجاح'), backgroundColor: Color(0xFF10B981)));
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تغيير PIN'), backgroundColor: Color(0xFFEF4444)));
+                if (!ctx.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(e.toString().contains('401') ? 'PIN الحالي غير صحيح' : 'فشل تغيير PIN'),
+                  backgroundColor: const Color(0xFFEF4444),
+                ));
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
@@ -247,6 +265,16 @@ class _InfoRow extends StatelessWidget {
         Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
         Text(value, style: TextStyle(color: valueColor ?? const Color(0xFFF5F5F5), fontWeight: FontWeight.w600, fontSize: 13)),
       ],
+    );
+  }
+}
+
+class _UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
     );
   }
 }

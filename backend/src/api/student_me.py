@@ -14,8 +14,8 @@ router = APIRouter(prefix="/students/me", tags=["Student - Self Service"])
 
 
 class StudentPinUpdate(BaseModel):
-    old_pin: str = Field(..., min_length=4, max_length=4)
-    new_pin: str = Field(..., min_length=4, max_length=4)
+    old_pin: str = Field(..., min_length=4, max_length=8)
+    new_pin: str = Field(..., min_length=6, max_length=8)
 
 
 def get_client_ip(request: Request) -> str:

@@ -25,10 +25,18 @@ class ApiService {
     ));
   }
 
-  Future<Map<String, dynamic>> login(String code, String pin) async {
+  Future<Map<String, dynamic>> verifyTeacher(String teacherCode) async {
+    final response = await _dio.post('/students/verify-teacher', data: {
+      'teacher_code': teacherCode,
+    });
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> login(String code, String pin, {String? teacherCode}) async {
     final response = await _dio.post('/students/login', data: {
       'code': code,
       'pin': pin,
+      if (teacherCode != null) 'teacher_code': teacherCode,
     });
     return response.data;
   }

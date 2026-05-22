@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'teacher_connect_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? teacherCode;
+  const LoginScreen({super.key, this.teacherCode});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _codeController = TextEditingController();
   final _pinController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -25,7 +29,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _fadeAnimation =
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
@@ -49,6 +54,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     final success = await auth.login(
       _codeController.text.trim(),
       _pinController.text.trim(),
+      teacherCode: widget.teacherCode,
     );
 
     if (!mounted) return;
@@ -91,7 +97,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(Icons.school, color: Colors.white, size: 40),
+                        child:
+                            const Icon(Icons.school, color: Colors.white, size: 40),
                       ),
                       const SizedBox(height: 24),
                       const Text(
@@ -104,7 +111,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'أدخل كود الطالب ورقم PIN السري',
+                        widget.teacherCode != null
+                            ? 'مرحباً بك في DarsakAI'
+                            : 'أدخل كود الطالب ورقم PIN السري',
                         style: TextStyle(color: Colors.grey[500], fontSize: 14),
                       ),
                       const SizedBox(height: 40),
@@ -121,7 +130,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           labelText: 'كود الطالب',
                           hintText: 'STU-001',
                           hintStyle: TextStyle(color: Colors.grey[600]),
-                          prefixIcon: const Icon(Icons.badge, color: Color(0xFF2563EB)),
+                          prefixIcon:
+                              const Icon(Icons.badge, color: Color(0xFF2563EB)),
                           filled: true,
                           fillColor: const Color(0xFF141414),
                           border: OutlineInputBorder(
@@ -130,11 +140,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                            borderSide:
+                                const BorderSide(color: Color(0xFF2563EB)),
                           ),
                         ),
                         textInputAction: TextInputAction.next,
-                        validator: (v) => v == null || v.trim().isEmpty ? 'أدخل كود الطالب' : null,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'أدخل كود الطالب' : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -142,8 +154,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.center,
                         obscureText: true,
-                        keyboardType: TextInputType.number,
-                        maxLength: 4,
                         style: const TextStyle(
                           color: Color(0xFFF5F5F5),
                           fontSize: 24,
@@ -151,9 +161,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         ),
                         decoration: InputDecoration(
                           labelText: 'PIN',
-                          hintText: '****',
+                          hintText: '••••••',
                           hintStyle: TextStyle(color: Colors.grey[600]),
-                          prefixIcon: const Icon(Icons.lock, color: Color(0xFF2563EB)),
+                          prefixIcon:
+                              const Icon(Icons.lock, color: Color(0xFF2563EB)),
                           filled: true,
                           fillColor: const Color(0xFF141414),
                           border: OutlineInputBorder(
@@ -162,15 +173,26 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                            borderSide:
+                                const BorderSide(color: Color(0xFF2563EB)),
                           ),
                           counterText: '',
                         ),
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _login(),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                          UpperCaseTextFormatter(),
+                        ],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'أدخل PIN';
-                          if (v.trim().length != 4) return 'PIN يجب أن يكون 4 أرقام';
+                          final pin = v.trim();
+                          if (pin.length < 6 || pin.length > 8) {
+                            return 'PIN يجب أن يكون 6-8 أحرف وأرقام';
+                          }
+                          if (!RegExp(r'^[A-Za-z0-9]{6,8}$').hasMatch(pin)) {
+                            return 'PIN: أحرف وأرقام فقط';
+                          }
                           return null;
                         },
                       ),
@@ -182,18 +204,47 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
-                            disabledBackgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            disabledBackgroundColor:
+                                const Color(0xFF2563EB).withValues(alpha: 0.3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: _isLoading
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('تسجيل الدخول', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                              : const Text(
+                                  'تسجيل الدخول',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
+                      if (widget.teacherCode == null) ...[
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TeacherConnectScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.qr_code, size: 18),
+                          label: const Text('تسجيل عبر باركود المعلم'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF2563EB),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -202,6 +253,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ),
         ),
       ),
+    );
+  }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
     );
   }
 }

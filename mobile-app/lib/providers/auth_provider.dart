@@ -13,11 +13,13 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.uninitialized;
   StudentModel? _student;
   String? _error;
+  String? _teacherCode;
 
   AuthStatus get status => _status;
   StudentModel? get student => _student;
   String? get error => _error;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
+  String? get teacherCode => _teacherCode;
 
   Future<void> tryAutoLogin() async {
     final token = await _storage.read(key: AppConstants.storageKeyToken);
@@ -26,6 +28,9 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
+
+    _teacherCode =
+        await _storage.read(key: AppConstants.storageKeyTeacherCode);
 
     // Load cached profile first
     final cached = LocalDB.getProfile();
@@ -45,17 +50,22 @@ class AuthProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<bool> login(String code, String pin) async {
+  Future<bool> login(String code, String pin, {String? teacherCode}) async {
     _status = AuthStatus.loading;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _api.login(code, pin);
+      final response = await _api.login(code, pin, teacherCode: teacherCode);
       final token = response['access_token'] as String;
 
       await _storage.write(key: AppConstants.storageKeyToken, value: token);
       await _storage.write(key: AppConstants.storageKeyCode, value: code);
+      if (teacherCode != null) {
+        await _storage.write(
+            key: AppConstants.storageKeyTeacherCode, value: teacherCode);
+        _teacherCode = teacherCode;
+      }
 
       // Fetch full profile
       final profile = await _api.getProfile();
@@ -77,6 +87,7 @@ class AuthProvider extends ChangeNotifier {
     await _storage.deleteAll();
     LocalDB.clearAll();
     _student = null;
+    _teacherCode = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }

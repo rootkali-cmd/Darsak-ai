@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme.dart';
 import 'core/local_db.dart';
 import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
-import 'screens/login_screen.dart';
+import 'screens/teacher_connect_screen.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
@@ -90,7 +91,7 @@ class _AuthGateState extends State<AuthGate> {
         return const HomeScreen();
       case AuthStatus.unauthenticated:
       case AuthStatus.loading:
-        return const LoginScreen();
+        return const TeacherConnectScreen();
     }
   }
 }
