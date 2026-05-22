@@ -386,8 +386,15 @@ export default function LandingPage() {
   box-shadow: 0 0 20px rgba(0,243,255,0.2);
 }
 @media (max-width: 640px) {
-  .ds-cta { flex-direction: column; gap: 0.5rem; }
-  .ds-cta button, .ds-cta a { width: 100%; justify-content: center; }
+  .ds-cta { flex-direction: column; gap: 0.4rem; bottom: 1rem; }
+  .ds-cta button, .ds-cta a { width: 100%; justify-content: center; padding: 0.5rem 1rem; font-size: 0.7rem; }
+  .ds-hud { inset: 0.75rem; font-size: 7px; }
+  .ds-hud-side { display: none; }
+  .ds-lang-btn { top: 1.5rem !important; left: 0.75rem !important; right: auto !important; padding: 0.35rem 0.6rem; font-size: 0.6rem; }
+  .ds-card { width: 75vw; max-width: 260px; height: auto; min-height: 280px; padding: 1.25rem; }
+  .ds-card h2 { font-size: 1.5rem; }
+  .ds-card-num { font-size: 2.5rem; bottom: 1rem; right: 1rem; }
+  .ds-big-text { font-size: 12vw; letter-spacing: -0.15rem; }
 }
       `}}></style>
     </>

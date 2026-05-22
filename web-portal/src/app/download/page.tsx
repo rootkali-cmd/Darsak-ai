@@ -192,6 +192,12 @@ export default function DownloadPage() {
             : 'Apps are under active development • For internal use'}
         </motion.p>
       </div>
+      <style>{`
+        @media (max-width: 640px) {
+          .fixed.top-4.left-4, .fixed.top-4 { font-size: 7px; }
+          .hud-text { letter-spacing: 1px; }
+        }
+      `}</style>
     </div>
   )
 }

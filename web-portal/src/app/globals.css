@@ -447,6 +447,35 @@ body {
   body {
     cursor: auto;
   }
+  .global-scanlines { opacity: 0.04; }
+  .global-vignette  { opacity: 0.15; }
+  .global-noise     { display: none; }
+}
+
+@media (max-width: 640px) {
+  .brutal-btn,
+  .brutal-btn-secondary {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+  .brutal-card {
+    padding: 1rem;
+  }
+  .brutal-card.p-8 {
+    padding: 1.25rem;
+  }
+  .brutal-input {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  h1.text-2xl {
+    font-size: 1.35rem;
+  }
+  .fixed.top-4.left-4,
+  .fixed.top-4.ltr\\:left-4,
+  .fixed.top-4.rtl\\:right-4 {
+    font-size: 8px;
+  }
 }
 
 /* ============================================
