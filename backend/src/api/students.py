@@ -4,11 +4,11 @@ from src.utils.dependencies import get_current_user, get_current_teacher
 from src.models.audit_log import ActorType
 from src.schemas.student import (
     StudentCreate, StudentUpdate, StudentResponse, StudentLogin, StudentTokenResponse,
-    StudentPinUpdate,
+    StudentPinUpdate, TeacherVerifyRequest, TeacherVerifyResponse,
 )
 from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
 from src.core.security.auth import create_access_token, verify_password
-from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator
+from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -169,6 +169,19 @@ async def update_student_pin(
     return StudentResponse(**updated)
 
 
+@router.post("/verify-teacher", response_model=TeacherVerifyResponse)
+async def verify_teacher(request: TeacherVerifyRequest):
+    teacher = await user_service.repo.select_one({"teacher_code": request.teacher_code})
+    if not teacher:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid teacher code")
+
+    return TeacherVerifyResponse(
+        teacher_id=teacher["id"],
+        teacher_code=teacher["teacher_code"],
+        teacher_name=teacher["full_name"],
+    )
+
+
 @router.post("/login", response_model=StudentTokenResponse)
 async def student_login(credentials: StudentLogin):
     student = await student_service.get_by_code(credentials.code)
@@ -177,6 +190,12 @@ async def student_login(credentials: StudentLogin):
 
     if not verify_password(credentials.pin, student["pin_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+
+    # If teacher_code provided, verify student belongs to that teacher
+    if credentials.teacher_code:
+        teacher = await user_service.repo.select_one({"teacher_code": credentials.teacher_code})
+        if not teacher or str(student.get("teacher_id")) != str(teacher["id"]):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student does not belong to this teacher")
 
     token = create_access_token(student["id"], expires_delta=None)
 

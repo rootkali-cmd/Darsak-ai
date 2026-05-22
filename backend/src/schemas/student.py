@@ -40,9 +40,20 @@ class StudentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TeacherVerifyRequest(BaseModel):
+    teacher_code: str
+
+
+class TeacherVerifyResponse(BaseModel):
+    teacher_id: UUID
+    teacher_code: str
+    teacher_name: str
+
+
 class StudentLogin(BaseModel):
     code: str
     pin: str
+    teacher_code: str | None = None
 
 
 class StudentTokenResponse(BaseModel):
