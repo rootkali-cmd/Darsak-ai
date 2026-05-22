@@ -25,6 +25,18 @@ _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting DarsakAI Hub with Supabase...")
+
+    # Auto-migrate: ensure pin_hash column exists
+    try:
+        from sqlalchemy import text
+        from src.utils.database import engine
+        async with engine.connect() as conn:
+            await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);"))
+            await conn.commit()
+            logger.info("Schema check: pin_hash column OK")
+    except Exception as e:
+        logger.warning("Schema migration skipped: %s", e)
+
     if not os.environ.get("VERCEL"):
         await sync_buffer.connect()
         start_scheduler()

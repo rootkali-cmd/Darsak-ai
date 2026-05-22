@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'core/theme.dart';
 import 'core/local_db.dart';
 import 'providers/auth_provider.dart';
@@ -11,6 +12,8 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalDB.init();
+  await initializeDateFormatting('ar');
+  Intl.defaultLocale = 'ar';
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const DarsakMobileApp());
 }
