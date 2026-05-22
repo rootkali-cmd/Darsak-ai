@@ -27,9 +27,10 @@ SYSTEM_PROMPT = """أنت محلل تعليمي ذكي متخصص في منهج 
 
 class AIAnalyzer:
     def __init__(self):
-        self.base_url = settings.OLLAMA_BASE_URL
-        self.model = settings.OLLAMA_MODEL
+        self.api_key = settings.GROQ_API_KEY
+        self.model = settings.GROQ_MODEL
         self.timeout = settings.AI_TIMEOUT
+        self.api_url = "https://api.groq.com/openai/v1/chat/completions"
 
     async def analyze_student(
         self,
@@ -38,76 +39,54 @@ class AIAnalyzer:
         grades: list[dict],
         curriculum_context: str | None = None,
     ) -> dict[str, Any]:
-        grade_summary = json.dumps(grades, ensure_ascii=False, indent=2)
+        if not self.api_key:
+            logger.warning("GROQ_API_KEY not set, using fallback analysis")
+            return self._fallback_analysis(subject, grades)
 
-        user_prompt = f"""حلل أداء الطالب التالي:
+        grade_summary = json.dumps(grades, ensure_ascii=False, indent=2)
+        curriculum = f"\nسياق المنهج: {curriculum_context}" if curriculum_context else ""
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": f"""حلل أداء الطالب التالي:
 
 الطالب: {student_name}
 المادة: {subject}
 الدرجات:
-{grade_summary}
+{grade_summary}{curriculum}
 
-{f"سياق المنهج: {curriculum_context}" if curriculum_context else ""}
-
-قدم التقرير بصيغة JSON فقط."""
+قدم التقرير بصيغة JSON فقط.""",
+            },
+        ]
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/api/generate",
+                    self.api_url,
                     json={
                         "model": self.model,
-                        "prompt": user_prompt,
-                        "system": SYSTEM_PROMPT,
-                        "stream": False,
-                        "format": {
-                            "type": "object",
-                            "properties": {
-                                "strengths": {"type": "array", "items": {"type": "string"}},
-                                "weaknesses": {"type": "array", "items": {"type": "string"}},
-                                "recommended_focus": {"type": "array", "items": {"type": "string"}},
-                                "next_exercise_suggestion": {"type": "string"},
-                            },
-                            "required": ["strengths", "weaknesses", "recommended_focus", "next_exercise_suggestion"],
-                        },
+                        "messages": messages,
+                        "temperature": 0.3,
+                        "response_format": {"type": "json_object"},
+                    },
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
                     },
                 )
                 response.raise_for_status()
                 result = response.json()
-                raw_output = result.get("response", "")
+                content = result["choices"][0]["message"]["content"]
+                return json.loads(content)
 
-                parsed = self._parse_json_output(raw_output)
-                return parsed
-
-        except httpx.ConnectError:
-            logger.error("Cannot connect to Ollama at %s", self.base_url)
+        except httpx.HTTPStatusError as e:
+            logger.error("Groq API error: %s - %s", e.response.status_code, e.response.text)
             return self._fallback_analysis(subject, grades)
         except Exception as e:
             logger.error("AI analysis failed: %s", str(e))
             return self._fallback_analysis(subject, grades)
-
-    def _parse_json_output(self, raw: str) -> dict[str, Any]:
-        raw = raw.strip()
-        if raw.startswith("```"):
-            lines = raw.split("\n")
-            json_lines = []
-            in_json = False
-            for line in lines:
-                if line.strip().startswith("```json") or line.strip() == "```":
-                    in_json = not in_json if line.strip().startswith("```") else True
-                    continue
-                if in_json or (not line.strip().startswith("```")):
-                    json_lines.append(line)
-            raw = "\n".join(json_lines).strip()
-
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            start = raw.find("{")
-            end = raw.rfind("}") + 1
-            if start >= 0 and end > start:
-                return json.loads(raw[start:end])
-            raise
 
     def _fallback_analysis(self, subject: str, grades: list[dict]) -> dict[str, Any]:
         if not grades:
