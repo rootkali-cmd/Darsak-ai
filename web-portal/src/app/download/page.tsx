@@ -16,7 +16,7 @@ const apps = [
     fileName: 'DarsakAI.apk',
     size: '69 MB',
     platform: 'Android',
-    note: 'v1.0.0 • Code-128 barcode scanner • Offline-first',
+    note: 'v1.0.1 • Code-128 barcode scanner • Offline-first',
   },
   {
     id: 'desktop',
