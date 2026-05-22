@@ -1,0 +1,418 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #030303;
+  --bg-secondary: #0a0a0a;
+  --card-bg: rgba(10, 10, 10, 0.4);
+  --text: #e0e0e0;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --accent: #ff003c;
+  --accent-2: #00f3ff;
+  --accent-3: #ccff00;
+  --border: rgba(255, 255, 255, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --overlay-color: #000;
+  --font-display: 'Syncopate', sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+  --font-arabic: 'Tajawal', system-ui, sans-serif;
+}
+
+
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-arabic, 'Tajawal'), var(--font-mono, system-ui), sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[lang="ar"] {
+  font-feature-settings: "liga" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================
+   GLOBAL OVERLAYS
+   ============================================ */
+.global-scanlines {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to bottom,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0) 50%,
+    var(--overlay-color) 50%,
+    var(--overlay-color) 100%);
+  background-size: 100% 4px;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 100;
+  mix-blend-mode: overlay;
+}
+
+.global-vignette {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle, transparent 40%, var(--overlay-color) 120%);
+  z-index: 99;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.global-noise {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============================================
+   BRUTAL CARDS
+   ============================================ */
+.brutal-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 0 0 1px var(--shadow-color), 0 20px 50px var(--shadow-color);
+  transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+}
+
+.brutal-card::before, .brutal-card::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid transparent;
+  transition: 0.3s;
+  pointer-events: none;
+}
+
+.brutal-card::before {
+  top: -1px;
+  inset-inline-start: -1px;
+  border-top-color: var(--border);
+  border-inline-start-color: var(--border);
+}
+
+.brutal-card::after {
+  bottom: -1px;
+  inset-inline-end: -1px;
+  border-bottom-color: var(--border);
+  border-inline-end-color: var(--border);
+}
+
+.brutal-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 30px rgba(255,0,60,0.15), 0 20px 50px var(--shadow-color);
+  background: var(--card-bg);
+}
+
+.brutal-card:hover::before, .brutal-card:hover::after {
+  width: 100%;
+  height: 100%;
+  border-color: var(--accent);
+}
+
+/* ============================================
+   BRUTAL BUTTONS
+   ============================================ */
+.brutal-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--accent);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: var(--font-code);
+  text-transform: uppercase;
+}
+
+.brutal-btn:hover {
+  background: #cc0030;
+}
+
+.brutal-btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-code);
+  text-transform: uppercase;
+}
+
+.brutal-btn-secondary:hover {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
+/* ============================================
+   BRUTAL INPUTS
+   ============================================ */
+.brutal-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: white;
+  transition: all 0.3s ease;
+  font-family: var(--font-code);
+}
+
+.brutal-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255,0,60,0.2), 0 0 20px rgba(255,0,60,0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.brutal-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   HUD ELEMENTS
+   ============================================ */
+.hud-text {
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.hud-accent {
+  color: var(--accent-2);
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cc0030;
+}
+
+/* ============================================
+   COMPATIBILITY UTILITY CLASSES
+   ============================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.glass-strong {
+  background: rgba(5, 5, 5, 0.9);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 0 0 1px var(--shadow-color), 0 20px 50px var(--shadow-color);
+}
+
+.glass-card::before, .glass-card::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid transparent;
+  transition: 0.3s;
+  pointer-events: none;
+}
+
+.glass-card::before {
+  top: -1px;
+  inset-inline-start: -1px;
+  border-top-color: var(--border);
+  border-inline-start-color: var(--border);
+}
+
+.glass-card::after {
+  bottom: -1px;
+  inset-inline-end: -1px;
+  border-bottom-color: var(--border);
+  border-inline-end-color: var(--border);
+}
+
+.glass-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 30px rgba(255,0,60,0.15), 0 20px 50px var(--shadow-color);
+  background: var(--card-bg);
+}
+
+.glass-card:hover::before, .glass-card:hover::after {
+  width: 100%;
+  height: 100%;
+  border-color: var(--accent);
+}
+
+.input-glass {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.input-glass:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255,0,60,0.2), 0 0 20px rgba(255,0,60,0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.input-glass::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-neon {
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--accent);
+  transition: background 0.2s;
+  font-family: var(--font-code);
+}
+
+.btn-neon:hover {
+  background: #cc0030;
+}
+
+.neon-text {
+  color: var(--accent-2);
+}
+
+.neon-border {
+  border-color: var(--accent);
+}
+
+.bg-neon-gradient {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+.shadow-neon {
+  box-shadow: 0 0 20px rgba(255,0,60,0.3), 0 0 40px rgba(255,0,60,0.1);
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(255,0,60,0.5), 0 0 40px rgba(255,0,60,0.3);
+}
+
+.text-outline {
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================================
+   TEXT EFFECTS
+   ============================================ */
+.text-accent {
+  color: var(--accent);
+}
+
+.text-accent-2 {
+  color: var(--accent-2);
+}
+
+/* ============================================
+   RTL OVERRIDES
+   ============================================ */
+[dir="rtl"] .brutal-card::before {
+  inset-inline-start: -1px;
+  inset-inline-end: auto;
+  border-inline-start-color: var(--border);
+  border-inline-end-color: transparent;
+}
+[dir="rtl"] .brutal-card::after {
+  inset-inline-end: -1px;
+  inset-inline-start: auto;
+  border-inline-end-color: var(--border);
+  border-inline-start-color: transparent;
+}
+[dir="rtl"] .brutal-card:hover::before,
+[dir="rtl"] .brutal-card:hover::after {
+  border-color: var(--accent);
+}
+
+[dir="rtl"] .glass-card::before {
+  inset-inline-start: -1px;
+  inset-inline-end: auto;
+  border-inline-start-color: var(--border);
+  border-inline-end-color: transparent;
+}
+[dir="rtl"] .glass-card::after {
+  inset-inline-end: -1px;
+  inset-inline-start: auto;
+  border-inline-end-color: var(--border);
+  border-inline-start-color: transparent;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+  body {
+    cursor: auto;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

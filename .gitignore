@@ -1,0 +1,58 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+*.spec
+dist/
+build/
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+coverage/
+htmlcov/
+.alembic/
+migrations/
+
+# --- Secrets & Config ---
+.env
+.env.local
+.env*.local
+*.log
+
+# --- Node.js ---
+node_modules/
+.next/
+out/
+
+# --- Flutter / Dart ---
+flutter_*.png
+*.class
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+app.*.symbols
+app.*.map.json
+
+# --- IDE ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# --- Project-specific ---
+darsak_db/
+darsak_accounts_db/

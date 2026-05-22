@@ -1,0 +1,16 @@
+{
+  "name": "darsak-ai-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "cd web-portal && PORT=3000 npm run dev",
+    "dev:backend": "cd backend && ./dist/darsak-backend-run/darsak-backend-run",
+    "dev": "npx kill-port 3000 3001 3002 8000 && concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+    "build:backend": "cd backend && rm -rf build dist && venv/bin/pyinstaller --onedir --name darsak-backend-run --hidden-import=uvicorn.logging --hidden-import=uvicorn.loops.auto --hidden-import=uvicorn.protocols.http.auto run.py",
+    "build:web": "cd web-portal && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "kill-port": "^1.6.0"
+  }
+}
