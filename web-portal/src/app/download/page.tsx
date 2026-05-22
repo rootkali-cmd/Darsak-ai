@@ -14,9 +14,9 @@ const apps = [
     icon: Smartphone,
     color: '#00f3ff',
     fileName: 'DarsakAI.apk',
-    size: '69 MB',
+    size: '70 MB',
     platform: 'Android',
-    note: 'v1.0.1 • Code-128 barcode scanner • Offline-first',
+    note: 'v1.0.1 • QR scanner • 6-8 alphanumeric PIN • Offline-first • Signed release',
   },
   {
     id: 'desktop',
