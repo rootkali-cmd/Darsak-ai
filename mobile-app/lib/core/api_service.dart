@@ -36,7 +36,7 @@ class ApiService {
     final response = await _dio.post('/students/login', data: {
       'code': code,
       'pin': pin,
-      if (teacherCode != null) 'teacher_code': teacherCode,
+      'teacher_code': ?teacherCode,
     });
     return response.data;
   }

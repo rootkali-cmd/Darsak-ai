@@ -51,9 +51,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> login(String code, String pin, {String? teacherCode}) async {
-    _status = AuthStatus.loading;
     _error = null;
-    notifyListeners();
+    // Don't change status to loading — AuthGate would rebuild and break the flow.
+    // LoginScreen manages its own loading indicator locally.
 
     try {
       final response = await _api.login(code, pin, teacherCode: teacherCode);

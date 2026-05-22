@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import 'login_screen.dart';
@@ -34,7 +34,8 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic));
+    ).animate(
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic));
     _fadeController.forward();
   }
 
@@ -45,15 +46,16 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
     super.dispose();
   }
 
-  Future<void> _connect() async {
-    final code = _codeController.text.trim();
-    if (code.isEmpty) {
+  Future<void> _connect({String? code}) async {
+    final teacherCode = (code ?? _codeController.text).trim();
+    if (teacherCode.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('أدخل كود المعلم'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
       return;
@@ -62,17 +64,20 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
     setState(() => _isLoading = true);
 
     try {
-      final result = await _api.verifyTeacher(code);
+      final result = await _api.verifyTeacher(teacherCode);
       if (!mounted) return;
       await _storage.write(
-          key: AppConstants.storageKeyTeacherCode, value: result['teacher_code'] as String);
+          key: AppConstants.storageKeyTeacherCode,
+          value: result['teacher_code'] as String);
       await _storage.write(
-          key: AppConstants.storageKeyTeacherName, value: result['teacher_name'] as String);
+          key: AppConstants.storageKeyTeacherName,
+          value: result['teacher_name'] as String);
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => LoginScreen(teacherCode: result['teacher_code'] as String),
+          builder: (_) =>
+              LoginScreen(teacherCode: result['teacher_code'] as String),
         ),
       );
     } catch (e) {
@@ -83,10 +88,23 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
           content: const Text('كود المعلم غير صحيح'),
           backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
     }
+  }
+
+  void _openScanner() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+    ).then((teacherCode) {
+      if (teacherCode != null && teacherCode is String) {
+        _codeController.text = teacherCode;
+        _connect(code: teacherCode);
+      }
+    });
   }
 
   @override
@@ -144,8 +162,8 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                         labelText: 'كود المعلم',
                         hintText: 'TCH-XXXXXX',
                         hintStyle: TextStyle(color: Colors.grey[600]),
-                        prefixIcon:
-                            const Icon(Icons.person, color: Color(0xFF2563EB)),
+                        prefixIcon: const Icon(Icons.person,
+                            color: Color(0xFF2563EB)),
                         filled: true,
                         fillColor: const Color(0xFF141414),
                         border: OutlineInputBorder(
@@ -162,34 +180,33 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                       onFieldSubmitted: (_) => _connect(),
                     ),
                     const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF141414),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF2A2A2A)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline,
-                              color: Colors.grey[500], size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'يمكنك مسح الباركود المطبوع باستخدام Scanner لاصق',
-                              style:
-                                  TextStyle(color: Colors.grey[500], fontSize: 12),
-                            ),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _openScanner,
+                        icon: const Icon(Icons.qr_code_scanner, size: 20),
+                        label: const Text(
+                          'مسح QR Code',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E1E1E),
+                          foregroundColor: const Color(0xFFF5F5F5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Color(0xFF2A2A2A)),
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _connect,
+                        onPressed: _isLoading ? null : () => _connect(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
                           disabledBackgroundColor:
@@ -215,9 +232,117 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                               ),
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      label: const Text('تسجيل دخول الطالب مباشرة'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[500],
+                      ),
+                    ),
                   ],
                 ),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class QrScannerScreen extends StatefulWidget {
+  const QrScannerScreen({super.key});
+
+  @override
+  State<QrScannerScreen> createState() => _QrScannerScreenState();
+}
+
+class _QrScannerScreenState extends State<QrScannerScreen> {
+  MobileScannerController? _controller;
+  bool _found = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = MobileScannerController();
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_found) return;
+    final barcode = capture.barcodes.isNotEmpty ? capture.barcodes.first : null;
+    if (barcode == null) return;
+    final raw = barcode.rawValue;
+    if (raw == null || raw.isEmpty) return;
+
+    _found = true;
+
+    String? teacherCode;
+
+    // Parse darsak://teacher/{teacher_id}/{teacher_code}
+    if (raw.startsWith('darsak://teacher/')) {
+      final parts = raw.split('/');
+      if (parts.length >= 4) {
+        teacherCode = parts[3];
+      }
+    }
+
+    // If it doesn't match the URI, try using the raw value directly
+    if (teacherCode == null && raw.startsWith('TCH-')) {
+      teacherCode = raw;
+    }
+
+    if (teacherCode != null) {
+      Navigator.pop(context, teacherCode);
+    } else {
+      _found = false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('باركود غير صالح'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('مسح QR Code'),
+        centerTitle: true,
+      ),
+      body: MobileScanner(
+        controller: _controller,
+        onDetect: _onDetect,
+        overlayBuilder: (context, constraints) => Container(
+          alignment: Alignment.center,
+          child: Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFF2563EB), width: 2),
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
         ),
