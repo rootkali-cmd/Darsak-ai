@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 from contextlib import asynccontextmanager
@@ -24,12 +25,14 @@ _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting DarsakAI Hub with Supabase...")
-    await sync_buffer.connect()
-    start_scheduler()
+    if not os.environ.get("VERCEL"):
+        await sync_buffer.connect()
+        start_scheduler()
     logger.info("DarsakAI Hub started successfully")
     yield
+    if not os.environ.get("VERCEL"):
+        stop_scheduler()
     logger.info("Shutting down DarsakAI Hub...")
-    stop_scheduler()
 
 
 app = FastAPI(
