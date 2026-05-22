@@ -56,3 +56,4 @@ Thumbs.db
 # --- Project-specific ---
 darsak_db/
 darsak_accounts_db/
+.env.production
