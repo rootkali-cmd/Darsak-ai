@@ -181,9 +181,8 @@ export default function LoginPage() {
                 إنشاء حساب
               </button>
             </p>
-            <a
-              href="/DarsakAI.apk"
-              download
+            <button
+              onClick={() => router.push('/download')}
               className="inline-flex items-center gap-1.5 text-[10px] hud-text text-[var(--accent-2)] hover:underline"
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -191,8 +190,8 @@ export default function LoginPage() {
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              تحميل تطبيق الموبايل
-            </a>
+              التطبيقات
+            </button>
           </div>
         </div>
       </motion.div>
