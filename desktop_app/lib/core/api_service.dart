@@ -164,4 +164,16 @@ class ApiService {
     final response = await _dio.get('/qr/generate/$teacherId');
     return response.data;
   }
+
+  Future<Map<String, dynamic>> getStudentPinStatus(String studentId) async {
+    final response = await _dio.get('/students/$studentId/pin');
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> resetStudentPin(String studentId, String newPin) async {
+    final response = await _dio.patch('/students/$studentId/pin', data: {
+      'pin': newPin,
+    });
+    return response.data;
+  }
 }

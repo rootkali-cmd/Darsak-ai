@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'package:barcode/barcode.dart';
@@ -176,6 +177,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       index: index,
                       onAnalyze: () => _showStudentAnalysis(context, data, student),
                       onShowBarcode: () => _showStudentBarcode(context, student),
+                      onSetPin: () => _showSetPinDialog(context, student),
                     );
                   },
                 ),
@@ -320,6 +322,149 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
               },
               child: const Text('إضافة'),
             ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSetPinDialog(BuildContext context, StudentModel student) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
+    final pinController = TextEditingController();
+    final confirmController = TextEditingController();
+    bool isLoading = false;
+    String? statusText;
+    bool? hasPin;
+
+    // Check current PIN status
+    context.read<DataProvider>().api.getStudentPinStatus(student.id).then((res) {
+      hasPin = res['has_pin'] == true;
+      statusText = hasPin == true ? 'الطالب لديه PIN بالفعل' : 'الطالب ليس لديه PIN';
+    }).catchError((_) {
+      statusText = 'لا يمكن التحقق من حالة PIN';
+    });
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: surfaceColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: borderColor),
+          ),
+          title: Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.accent, AppTheme.accentLight]),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(child: Icon(Icons.lock, color: Colors.white, size: 18)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text('PIN: ${student.fullName}', style: TextStyle(color: textPrimary, fontSize: 16))),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (statusText != null)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (hasPin == true ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            hasPin == true ? Icons.check_circle : Icons.info,
+                            size: 14,
+                            color: hasPin == true ? AppTheme.success : AppTheme.warning,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(statusText!, style: TextStyle(color: textSecondary, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: pinController,
+                    decoration: const InputDecoration(
+                      labelText: 'PIN الجديد (6-8 أحرف وأرقام)',
+                      hintText: 'مثال: ABC123',
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                      _UpperCaseTextFormatter(),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmController,
+                    decoration: const InputDecoration(
+                      labelText: 'تأكيد PIN',
+                      hintText: 'أعد كتابة PIN',
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                      _UpperCaseTextFormatter(),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : () async {
+                  final pin = pinController.text.trim();
+                  final confirm = confirmController.text.trim();
+                  if (pin.length < 6 || pin.length > 8) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN يجب أن يكون 6-8 أحرف وأرقام'), backgroundColor: AppTheme.warning));
+                    return;
+                  }
+                  if (pin != confirm) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN غير متطابق'), backgroundColor: AppTheme.warning));
+                    return;
+                  }
+                  setDialogState(() => isLoading = true);
+                  try {
+                    await context.read<DataProvider>().api.resetStudentPin(student.id, pin);
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('تم تعيين PIN للطالب ${student.fullName}'),
+                      backgroundColor: AppTheme.success,
+                    ));
+                  } catch (e) {
+                    setDialogState(() => isLoading = false);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تعيين PIN'), backgroundColor: AppTheme.danger));
+                  }
+                },
+                child: isLoading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(hasPin == true ? 'إعادة تعيين' : 'تعيين PIN'),
+              ),
             ),
           ],
         ),
@@ -604,12 +749,23 @@ class _BarcodePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+class _UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
+  }
+}
+
 class _StudentCard extends StatefulWidget {
   final StudentModel student;
   final int index;
   final VoidCallback? onAnalyze;
   final VoidCallback? onShowBarcode;
-  const _StudentCard({required this.student, required this.index, this.onAnalyze, this.onShowBarcode});
+  final VoidCallback? onSetPin;
+  const _StudentCard({required this.student, required this.index, this.onAnalyze, this.onShowBarcode, this.onSetPin});
 
   @override
   State<_StudentCard> createState() => _StudentCardState();
@@ -757,6 +913,22 @@ class _StudentCardState extends State<_StudentCard> with SingleTickerProviderSta
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text('باركود', style: TextStyle(color: AppTheme.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (widget.onSetPin != null)
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: widget.onSetPin,
+                            child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.warning.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text('PIN', style: TextStyle(color: AppTheme.warning, fontSize: 11, fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ),

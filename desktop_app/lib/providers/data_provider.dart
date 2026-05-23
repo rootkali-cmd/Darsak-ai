@@ -17,6 +17,7 @@ class DataProvider extends ChangeNotifier {
   List<GroupModel> get groups => _groups;
   bool get isLoading => _isLoading;
   bool get isOffline => _isOffline;
+  ApiService get api => _api;
 
   DataProvider(this._sync) {
     _sync.addListener(_onSyncChange);
