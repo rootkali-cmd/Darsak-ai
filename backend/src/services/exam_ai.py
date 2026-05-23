@@ -1,7 +1,6 @@
 import json
 import logging
 import base64
-import io
 from typing import Any
 
 import httpx
@@ -23,7 +22,7 @@ QUESTION_GEN_PROMPT = """أنت معلم خبير في المناهج التعل
 المطلوب:
 1. تحليل النص أو الصورة المقدمة
 2. استخراج أهم المعلومات
-3. توليد أسئلة متنوعة (اختيار متعدد + مقالي)
+3. توليد 5-10 أسئلة متنوعة (اختيار متعدد + مقالي)
 4. توفير نموذج إجابة كامل لكل سؤال
 
 القواعد:
@@ -82,13 +81,90 @@ ANALYSIS_PROMPT = """أنت محلل تعليمي خبير. حلل أداء ال
 }}"""
 
 
+class AIProvider:
+    def __init__(self, name: str, api_key: str, base_url: str, model: str, vision_model: str, priority: int):
+        self.name = name
+        self.api_key = api_key
+        self.base_url = base_url
+        self.model = model
+        self.vision_model = vision_model
+        self.priority = priority
+
+    async def call(self, messages: list, use_vision: bool = False, json_mode: bool = True) -> dict[str, Any] | None:
+        if not self.api_key:
+            return None
+        model = self.vision_model if use_vision else self.model
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 4096,
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        if "openrouter" in self.base_url:
+            headers["HTTP-Referer"] = "https://darsak-ai.vercel.app"
+            headers["X-Title"] = "DarsakAI"
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT) as client:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
+                response.raise_for_status()
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                return json.loads(content)
+        except httpx.HTTPStatusError as e:
+            logger.warning("%s API error %s: %s", self.name, e.response.status_code, e.response.text[:200])
+            return None
+        except Exception as e:
+            logger.warning("%s API call failed: %s", self.name, str(e))
+            return None
+
+
 class ExamAIService:
     def __init__(self):
-        self.api_key = settings.GROQ_API_KEY
-        self.model = "llama-3.2-90b-vision-preview"
-        self.fast_model = settings.GROQ_MODEL
-        self.timeout = settings.AI_TIMEOUT if hasattr(settings, 'AI_TIMEOUT') else 60
-        self.api_url = "https://api.groq.com/openai/v1/chat/completions"
+        self.providers: list[AIProvider] = []
+        if settings.OPENROUTER_API_KEY:
+            self.providers.append(AIProvider(
+                name="OpenRouter",
+                api_key=settings.OPENROUTER_API_KEY,
+                base_url="https://openrouter.ai/api/v1",
+                model=settings.OPENROUTER_MODEL,
+                vision_model=settings.OPENROUTER_VISION_MODEL,
+                priority=0,
+            ))
+            logger.info("OpenRouter AI enabled (model=%s, vision=%s)", settings.OPENROUTER_MODEL, settings.OPENROUTER_VISION_MODEL)
+        if settings.GROQ_API_KEY:
+            self.providers.append(AIProvider(
+                name="Groq",
+                api_key=settings.GROQ_API_KEY,
+                base_url="https://api.groq.com/openai/v1",
+                model=settings.GROQ_MODEL,
+                vision_model="llama-3.2-90b-vision-preview",
+                priority=1,
+            ))
+            logger.info("Groq AI enabled (model=%s)", settings.GROQ_MODEL)
+        if not self.providers:
+            logger.warning("No AI provider configured! Set OPENROUTER_API_KEY or GROQ_API_KEY")
+
+    async def _call_best(self, messages: list, use_vision: bool = False) -> dict[str, Any]:
+        for provider in self.providers:
+            result = await provider.call(messages, use_vision=use_vision)
+            if result is not None:
+                logger.info("AI call succeeded via %s", provider.name)
+                return result
+            logger.warning("%s failed, trying next provider...", provider.name)
+        logger.error("All AI providers failed, using fallback")
+        return self._fallback_questions()
 
     async def extract_text_from_pdf(self, pdf_bytes: bytes) -> str:
         if not HAS_PDF_SUPPORT:
@@ -110,35 +186,31 @@ class ExamAIService:
     async def generate_questions_from_text(self, text: str, subject: str | None = None) -> dict[str, Any]:
         if not text.strip():
             return self._fallback_questions()
-
         subject_ctx = f"\nالمادة: {subject}" if subject else ""
         messages = [
             {"role": "system", "content": QUESTION_GEN_PROMPT},
             {
                 "role": "user",
-                "content": f"""قم بتحليل المحتوى التالي وتوليد أسئلة امتحان منه:{subject_ctx}
-
-{text[:8000]}""",
+                "content": f"قم بتحليل المحتوى التالي وتوليد أسئلة امتحان منه:{subject_ctx}\n\n{text[:12000]}",
             },
         ]
-
-        return await self._call_groq(messages)
+        return await self._call_best(messages)
 
     async def generate_questions_from_image(self, image_bytes: bytes, subject: str | None = None) -> dict[str, Any]:
         b64 = self._image_to_base64(image_bytes)
         subject_ctx = f"\nالمادة: {subject}" if subject else ""
+        fmt = 'أخرج JSON صالح فقط بهذا التنسيق:\n{"title":"عنوان","description":"وصف","questions":[{"type":"multiple_choice","question_text":"نص","options":[{"key":"أ","text":"..."}],"correct_answer":"أ","points":5,"page_number":1}]}'
         messages = [
             {"role": "system", "content": QUESTION_GEN_PROMPT},
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": f"قم بتحليل الصورة التعليمية التالية وتوليد أسئلة امتحان منها.{subject_ctx}\n\nأخرج JSON صالح فقط بهذا التنسيق:\n{{\n  \"title\": \"عنوان الامتحان\",\n  \"description\": \"وصف\",\n  \"questions\": [\n    {{\n      \"type\": \"multiple_choice\",\n      \"question_text\": \"نص السؤال\",\n      \"options\": [{{\"key\": \"أ\", \"text\": \"...\"}}],\n      \"correct_answer\": \"أ\",\n      \"points\": 5,\n      \"page_number\": 1\n    }}\n  ]\n}}"},
+                    {"type": "text", "text": f"قم بتحليل الصورة التعليمية التالية وتوليد أسئلة امتحان منها.{subject_ctx}\n\n{fmt}"},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
                 ],
             },
         ]
-
-        return await self._call_groq(messages, use_vision=True)
+        return await self._call_best(messages, use_vision=True)
 
     async def generate_questions_from_pdf(self, pdf_bytes: bytes, subject: str | None = None) -> dict[str, Any]:
         text = await self.extract_text_from_pdf(pdf_bytes)
@@ -154,61 +226,20 @@ class ExamAIService:
         total_score: float,
         max_score: float,
     ) -> dict[str, Any]:
-        if not self.api_key:
-            return self._fallback_analysis()
-
         exam_data = json.dumps({
             "title": exam_title,
             "questions": questions,
             "total_score": total_score,
             "max_score": max_score,
         }, ensure_ascii=False, indent=2)
-
         answers_data = json.dumps(student_answers, ensure_ascii=False, indent=2)
-
         messages = [
             {"role": "system", "content": ANALYSIS_PROMPT.format(
                 exam_data=exam_data,
                 student_answers=answers_data,
             )},
         ]
-
-        return await self._call_groq(messages)
-
-    async def _call_groq(self, messages: list, use_vision: bool = False) -> dict[str, Any]:
-        if not self.api_key:
-            logger.warning("GROQ_API_KEY not set, using fallback")
-            return self._fallback_questions()
-
-        model = self.model if use_vision else self.fast_model
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": 0.3,
-            "response_format": {"type": "json_object"},
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    self.api_url,
-                    json=payload,
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json",
-                    },
-                )
-                response.raise_for_status()
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
-                data = json.loads(content)
-                return data
-        except httpx.HTTPStatusError as e:
-            logger.error("Groq API error: %s - %s", e.response.status_code, e.response.text)
-            return self._fallback_questions()
-        except Exception as e:
-            logger.error("AI call failed: %s", str(e))
-            return self._fallback_questions()
+        return await self._call_best(messages)
 
     def _fallback_questions(self) -> dict[str, Any]:
         return {

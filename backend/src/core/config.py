@@ -18,7 +18,11 @@ class Settings(BaseSettings):
 
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
-    AI_TIMEOUT: int = 30
+    AI_TIMEOUT: int = 60
+
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "google/gemini-2.0-flash-001"
+    OPENROUTER_VISION_MODEL: str = "google/gemini-2.0-flash-001"
 
     SECRET_KEY: str = "change-me-in-production-use-openssl-rand"
     ALGORITHM: str = "HS256"
