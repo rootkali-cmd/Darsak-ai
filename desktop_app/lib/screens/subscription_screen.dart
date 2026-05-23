@@ -148,7 +148,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final isActive = _subscriptionService.isSubscriptionActive(_subscription);
     final remainingDays = _subscriptionService.getRemainingDays(_subscription);
     final planName = _subscription?['plan_name']?.toString() ?? 'الباقة الحالية';
-    final expiryDate = _subscription?['expiry_date']?.toString() ?? '--';
+    final expiryDate = _subscription?['expires_at']?.toString() ?? '--';
     final studentLimit = _subscription?['student_limit']?.toString() ?? '--';
 
     return Column(
