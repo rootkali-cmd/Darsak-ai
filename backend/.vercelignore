@@ -1,0 +1,8 @@
+mobile-app
+desktop_app
+accounts_app
+web-portal
+.git
+*.zip
+*.apk
+*.aab
