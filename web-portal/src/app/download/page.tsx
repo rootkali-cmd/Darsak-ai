@@ -26,7 +26,6 @@ const apps: {
     color: '#00f3ff',
     files: [
       { name: 'DarsakAI-Student.apk', label: 'Android APK', size: '72 MB' },
-      { name: 'DarsakAI-Student.aab', label: 'Android AAB (Google Play)', size: '62 MB' },
     ],
     platform: 'Android ✓ / iOS قريباً',
     note: 'Signed release • com.darsak.ai • Camera only permission',
