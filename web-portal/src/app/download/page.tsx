@@ -9,26 +9,26 @@ const apps = [
   {
     id: 'mobile',
     title: 'DarsakAI Mobile',
-    description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والملف الشخصي',
-    descriptionEn: 'Student mobile app — grades, attendance & profile',
+    description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
+    descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,
     color: '#00f3ff',
     fileName: 'DarsakAI.apk',
-    size: '70 MB',
-    platform: 'Android',
-    note: 'v1.1.0',
+    size: '68 MB (مجمّع)',
+    platform: 'Android / iOS',
+    note: 'v1.1.0 • Android APK • iOS قريباً على App Store',
   },
   {
     id: 'desktop',
     title: 'DarsakAI Desktop',
-    description: 'نظام إدارة الفصل للمعلم - students, grades, attendance',
-    descriptionEn: 'Teacher desktop app — full classroom management',
+    description: 'نظام إدارة الفصل للمعلم - students, grades, attendance, exams',
+    descriptionEn: 'Teacher desktop app — full classroom & exam management',
     icon: Monitor,
     color: '#ccff00',
     fileName: null,
     size: '—',
-    platform: 'Windows / Linux',
-    note: 'v1.1.0 • يحتاج بناء على ويندوز',
+    platform: 'Linux ✓ / Windows قريباً',
+    note: 'v1.1.0 • Linux build جاهز • Windows قيد التطوير',
   },
   {
     id: 'accounts',
@@ -40,20 +40,22 @@ const apps = [
     fileName: null,
     size: '—',
     platform: 'Windows / Linux',
-    note: 'v1.1.0 • يحتاج بناء على ويندوز',
+    note: 'v1.1.0 • يحتاج بناء',
   },
 ]
 
 const features = [
-  { ar: 'نظام الاشتراكات (Basic/Pro/Unlimited)', en: 'Subscription system (Basic/Pro/Unlimited)' },
+  { ar: 'نظام الاختبارات الذكي (AI + PDF ← أسئلة)', en: 'Smart exam system (AI + PDF → questions)' },
+  { ar: 'تقييم ذكي: تصحيح + تحليل نقاط القوة/الضعف', en: 'AI grading: auto-correct + strengths/weaknesses' },
+  { ar: 'تايمر + أسئلة اختيار متعدد + مقالي', en: 'Timer + MCQs + essay questions' },
+  { ar: 'نظام الاشتراكات (Basic 199 / Pro 499 / Unlimited 999)', en: 'Subscription system (Basic 199 / Pro 499 / Unlimited 999)' },
   { ar: 'دفع عبر فودافون كاش + تحميل الإيصال', en: 'Vodafone Cash payment + receipt upload' },
-  { ar: 'إشعارات التفعيل والرفض', en: 'Activation & rejection notifications' },
-  { ar: 'QR Code المعلم (قسم مستقل)', en: 'Teacher QR code (own section)' },
+  { ar: 'إشعارات التفعيل والرفض (بوت تليجرام)', en: 'Activation/rejection notifications (Telegram bot)' },
+  { ar: 'توليد كود اشتراك عبر بوت تليجرام', en: 'Subscription code generation via Telegram bot' },
+  { ar: 'QR Code المسح الضوئي للحضور', en: 'QR code attendance scanning' },
   { ar: 'إدارة PIN للطلاب', en: 'Student PIN management' },
-  { ar: 'مسح QR Code / باركود', en: 'QR & barcode scanner' },
-  { ar: 'Offline-first', en: 'Offline-first (cached data)' },
-  { ar: 'توقيع release (Signed APK)', en: 'Signed release APK' },
-  { ar: 'iOS support (iPad/iPhone)', en: 'iOS support (iPad/iPhone)' },
+  { ar: 'Offline-first (Hive cache)', en: 'Offline-first (Hive cache)' },
+  { ar: 'Signed APK + iOS support', en: 'Signed APK + iOS support' },
 ]
 
 export default function DownloadPage() {
@@ -207,7 +209,7 @@ export default function DownloadPage() {
             }}
           >
             <h3 className="text-sm font-bold mb-4 hud-text" style={{ fontFamily: 'var(--font-display)' }}>
-              {isAr ? 'الميزات في v1.0.2' : 'v1.0.2 FEATURES'}
+              {isAr ? 'الميزات في v1.1.0' : 'v1.1.0 FEATURES'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (
