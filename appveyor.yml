@@ -4,7 +4,8 @@ image: Visual Studio 2022
 
 install:
   - ps: |
-      # Remove pre-installed Flutter from PATH to avoid conflicts
+      $ErrorActionPreference = 'SilentlyContinue'
+      # Remove pre-installed Flutter from PATH
       $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch 'flutter' }) -join ';'
       # Download Flutter
       $FLUTTER_URL = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.0-stable.zip"
@@ -16,8 +17,9 @@ install:
       Expand-Archive -Path $FLUTTER_ZIP -DestinationPath $env:APPVEYOR_BUILD_FOLDER
       # Prepend to PATH
       $env:Path = "$FLUTTER_DIR\bin;$env:Path"
-      cmd /c "flutter config --enable-windows-desktop" 2>&1
-      if ($LASTEXITCODE -ne 0) { Write-Host "[WARN] flutter config exited with code $LASTEXITCODE (non-fatal)" }
+      # Enable Windows desktop (stderr redirected to avoid PowerShell errors)
+      $output = flutter config --enable-windows-desktop 2>&1
+      Write-Host "flutter config output: $output"
   - flutter --version
 
 build_script:
