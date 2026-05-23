@@ -213,6 +213,20 @@ Win32Window::MessageHandler(HWND hwnd,
       }
       return 0;
 
+    case WM_INPUTLANGCHANGE:
+      if (child_content_ != nullptr) {
+        PostMessage(child_content_, message, wparam, lparam);
+      }
+      return 0;
+
+    case WM_IME_SETCONTEXT:
+    case WM_IME_NOTIFY:
+    case WM_IME_CHAR:
+      if (child_content_ != nullptr) {
+        SendMessage(child_content_, message, wparam, lparam);
+      }
+      return 0;
+
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
