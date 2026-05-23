@@ -91,4 +91,26 @@ class SubscriptionService {
   Future<void> clearCache() async {
     await _storage.delete(key: AppConstants.storageKeySubscription);
   }
+
+  Future<Map<String, dynamic>> sendPaymentRequest(String planId, String phoneNumber, int amount, String? screenshot) async {
+    final data = {
+      'plan_id': planId,
+      'phone_number': phoneNumber,
+      'amount': amount,
+      if (screenshot != null) 'screenshot': screenshot,
+    };
+    final response = await _dio.post('/subscriptions/payment-request', data: data);
+    return response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
+  }
+
+  Future<List<dynamic>> getNotifications() async {
+    final response = await _dio.get('/subscriptions/notifications');
+    return response.data is List ? response.data as List : [];
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    await _dio.post('/subscriptions/notifications/$notificationId/read');
+  }
 }
