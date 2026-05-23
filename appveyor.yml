@@ -3,24 +3,12 @@ version: 1.1.0.{build}
 image: Visual Studio 2022
 
 install:
-  - ps: |
-      $PSNativeCommandUseErrorActionPreference = $false
-      # Remove pre-installed Flutter from PATH
-      $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch 'flutter' }) -join ';'
-      # Download Flutter
-      $FLUTTER_URL = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.0-stable.zip"
-      $FLUTTER_ZIP = "$env:APPVEYOR_BUILD_FOLDER\flutter.zip"
-      $FLUTTER_DIR = "$env:APPVEYOR_BUILD_FOLDER\flutter"
-      Write-Host "Downloading latest Flutter..."
-      Invoke-WebRequest -Uri $FLUTTER_URL -OutFile $FLUTTER_ZIP -UseBasicParsing
-      Write-Host "Extracting..."
-      Expand-Archive -Path $FLUTTER_ZIP -DestinationPath $env:APPVEYOR_BUILD_FOLDER
-      # Prepend to PATH
-      $env:Path = "$FLUTTER_DIR\bin;$env:Path"
-      flutter config --enable-windows-desktop
-  - flutter --version
+  - curl -sL -o flutter.zip https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.0-stable.zip
+  - tar -xf flutter.zip
 
 build_script:
+  - set PATH=%APPVEYOR_BUILD_FOLDER%\flutter\bin;%PATH%
+  - flutter config --enable-windows-desktop
   - cd desktop_app
   - flutter pub get
   - flutter build windows --release
