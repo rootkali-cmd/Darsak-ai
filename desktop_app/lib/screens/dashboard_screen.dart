@@ -195,7 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             SubscriptionOverlay(
               onRefresh: _checkSubscription,
               onActivate: () {
-                setState(() => _selectedIndex = 7);
+                setState(() => _selectedIndex = 8);
               },
             ),
         ],
@@ -210,10 +210,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 2: return 'المجموعات';
       case 3: return 'الحضور';
       case 4: return 'الدرجات';
-      case 5: return 'الفواتير';
-      case 6: return 'QR Code';
-      case 7: return 'الاشتراكات';
-      case 8: return 'الإعدادات';
+      case 5: return 'الاختبارات';
+      case 6: return 'الفواتير';
+      case 7: return 'QR Code';
+      case 8: return 'الاشتراكات';
+      case 9: return 'الإعدادات';
       default: return 'لوحة التحكم';
     }
   }
