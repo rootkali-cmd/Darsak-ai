@@ -57,3 +57,6 @@ Thumbs.db
 darsak_db/
 darsak_accounts_db/
 .env.production
+
+# Zip files
+*.zip

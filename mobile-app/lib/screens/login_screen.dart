@@ -128,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         decoration: InputDecoration(
                           labelText: 'كود الطالب',
-                          hintText: 'STU-001',
+                          hintText: 'STXXXXXXX',
                           hintStyle: TextStyle(color: Colors.grey[600]),
                           prefixIcon:
                               const Icon(Icons.badge, color: Color(0xFF2563EB)),

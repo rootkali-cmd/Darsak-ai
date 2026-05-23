@@ -14,6 +14,7 @@ from src.api import (
     auth_router, students_router, groups_router, attendance_router,
     grades_router, invoices_router, qr_router, sync_router,
     student_me_router, subscriptions_router, versions_router,
+    webhook_router,
 )
 
 settings = get_settings()
@@ -152,3 +153,4 @@ app.include_router(sync_router, prefix=settings.API_V1_PREFIX)
 app.include_router(student_me_router, prefix=settings.API_V1_PREFIX)
 app.include_router(subscriptions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(versions_router, prefix=settings.API_V1_PREFIX)
+app.include_router(webhook_router, prefix=settings.API_V1_PREFIX)

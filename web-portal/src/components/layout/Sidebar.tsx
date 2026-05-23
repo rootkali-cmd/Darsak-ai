@@ -18,6 +18,7 @@ import {
   X,
   UserCog,
   Sparkles,
+  CreditCard,
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
 
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/dashboard/grades', label: 'الدرجات', icon: GraduationCap },
   { href: '/dashboard/invoices', label: 'الفواتير', icon: Receipt },
   { href: '/dashboard/qr', label: 'QR Code', icon: QrCode },
+  { href: '/dashboard/subscription', label: 'الاشتراكات', icon: CreditCard },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
 ]
 

@@ -11,6 +11,7 @@ settings = get_settings()
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", settings.TELEGRAM_BOT_TOKEN)
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", settings.TELEGRAM_CHAT_ID)
+TELEGRAM_WEBHOOK_URL = os.environ.get("TELEGRAM_WEBHOOK_URL", "")
 
 _bot_app = None
 _user_states: dict[int, str] = {}
@@ -18,6 +19,23 @@ _user_states: dict[int, str] = {}
 
 def is_authorized(chat_id: int) -> bool:
     return str(chat_id) == str(TELEGRAM_CHAT_ID)
+
+
+async def set_webhook():
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_WEBHOOK_URL:
+        logger.info("TELEGRAM_WEBHOOK_URL not set, skipping webhook registration")
+        return
+    try:
+        import httpx
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json={"url": TELEGRAM_WEBHOOK_URL})
+            if resp.status_code == 200:
+                logger.info("Telegram webhook set to %s", TELEGRAM_WEBHOOK_URL)
+            else:
+                logger.error("Failed to set webhook: %s", resp.text)
+    except Exception as e:
+        logger.error("Failed to set Telegram webhook: %s", e)
 
 
 def get_bot_app():
@@ -247,8 +265,20 @@ async def start_bot():
     try:
         await app.initialize()
         await app.start()
-        await app.updater.start_polling()
-        logger.info("Telegram bot started successfully")
+
+        webhook_url = TELEGRAM_WEBHOOK_URL or os.environ.get("VERCEL_URL", "")
+        if webhook_url:
+            full_webhook = f"https://{webhook_url}" if not webhook_url.startswith("http") else webhook_url
+            if not full_webhook.endswith("/api/telegram-webhook"):
+                if full_webhook.endswith("/"):
+                    full_webhook = f"{full_webhook}api/telegram-webhook"
+                else:
+                    full_webhook = f"{full_webhook}/api/telegram-webhook"
+            await app.bot.set_webhook(url=full_webhook)
+            logger.info("Telegram bot ready (webhook mode) at %s", full_webhook)
+        else:
+            await app.updater.start_polling()
+            logger.info("Telegram bot started (polling mode)")
     except Exception as e:
         logger.error("Failed to start Telegram bot: %s", e)
 
@@ -258,7 +288,8 @@ async def stop_bot():
     if _bot_app is None:
         return
     try:
-        await _bot_app.updater.stop()
+        if _bot_app.updater and _bot_app.updater.running:
+            await _bot_app.updater.stop()
         await _bot_app.stop()
         await _bot_app.shutdown()
         logger.info("Telegram bot stopped")

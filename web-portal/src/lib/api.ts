@@ -157,3 +157,11 @@ export const syncApi = {
   ack: (data: { acked_ids: string[] }) =>
     api.post('/sync/ack', data),
 }
+
+// Subscriptions API
+export const subscriptionsApi = {
+  plans: () => api.get('/subscriptions/plans'),
+  my: () => api.get('/subscriptions/my'),
+  activate: (code: string) => api.post('/subscriptions/activate', { code }),
+  check: (feature: string) => api.post('/subscriptions/check', { feature }),
+}

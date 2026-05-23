@@ -45,7 +45,7 @@ class StudentService:
 
     async def create(self, teacher_id: str, full_name: str, **kwargs) -> dict:
         import uuid
-        code = f"STU-{uuid.uuid4().hex[:3].upper()}"
+        code = f"ST{uuid.uuid4().hex[:7].upper()}"
         pin_hash = hash_password(kwargs.pop("pin")) if kwargs.get("pin") else None
 
         return await self.repo.insert({

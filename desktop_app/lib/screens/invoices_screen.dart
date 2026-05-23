@@ -129,80 +129,124 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
 
     final amountController = TextEditingController();
     final descController = TextEditingController();
+    final codeController = TextEditingController();
     String? selectedStudentId;
+    String? selectedStudentName;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: surfaceColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: borderColor),
-        ),
-        title: Text('إضافة فاتورة جديدة', style: TextStyle(color: textPrimary)),
-        content: SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: selectedStudentId,
-                decoration: const InputDecoration(labelText: 'الطالب'),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('اختر الطالب')),
-                  ...data.students.map((s) => DropdownMenuItem(
-                        value: s.id,
-                        child: Text('${s.fullName} (${s.code})'),
-                      )),
-                ],
-                onChanged: (v) => selectedStudentId = v,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountController,
-                decoration: const InputDecoration(labelText: 'المبلغ'),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              TextField(controller: descController, decoration: const InputDecoration(labelText: 'الوصف')),
-            ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: surfaceColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: borderColor),
           ),
-        ),
-        actions: [
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: ElevatedButton(
-              onPressed: () {
-              if (selectedStudentId != null && amountController.text.isNotEmpty) {
-                final invoiceData = {
-                  'student_id': selectedStudentId,
-                  'amount': double.tryParse(amountController.text) ?? 0,
-                  'description': descController.text,
-                  'paid': false,
-                  'created_at': DateTime.now().toIso8601String(),
-                };
-                LocalDB.addToSyncQueue('invoice', invoiceData);
-                LocalDB.saveData(LocalDB.invoicesBox, DateTime.now().millisecondsSinceEpoch.toString(), invoiceData);
-                Navigator.pop(ctx);
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('تم إضافة الفاتورة'),
-                    backgroundColor: AppTheme.success,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          title: Text('إضافة فاتورة جديدة', style: TextStyle(color: textPrimary)),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: codeController,
+                  decoration: InputDecoration(
+                    labelText: 'كود الطالب',
+                    hintText: 'STXXXXXXX',
+                    suffixIcon: selectedStudentName != null
+                        ? Icon(Icons.check_circle, color: AppTheme.success)
+                        : null,
                   ),
-                );
-              }
-            },
-            child: const Text('إضافة'),
+                  onChanged: (v) {
+                    final cleaned = v.trim().toUpperCase();
+                    if (cleaned.length >= 9) {
+                      final matches = data.students.where((s) => s.code == cleaned).toList();
+                      if (matches.isNotEmpty) {
+                        setDialogState(() {
+                          selectedStudentId = matches.first.id;
+                          selectedStudentName = matches.first.fullName;
+                        });
+                      } else {
+                        setDialogState(() {
+                          selectedStudentId = null;
+                          selectedStudentName = null;
+                        });
+                      }
+                    } else {
+                      setDialogState(() {
+                        selectedStudentId = null;
+                        selectedStudentName = null;
+                      });
+                    }
+                  },
+                ),
+                if (selectedStudentName != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.person, color: AppTheme.success, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          selectedStudentName!,
+                          style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountController,
+                  decoration: const InputDecoration(labelText: 'المبلغ'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'الوصف')),
+              ],
+            ),
           ),
-          ),
-        ],
+          actions: [
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: ElevatedButton(
+                onPressed: selectedStudentId != null && amountController.text.isNotEmpty
+                    ? () {
+                        final invoiceData = {
+                          'student_id': selectedStudentId,
+                          'amount': double.tryParse(amountController.text) ?? 0,
+                          'description': descController.text,
+                          'paid': false,
+                          'created_at': DateTime.now().toIso8601String(),
+                        };
+                        LocalDB.addToSyncQueue('invoice', invoiceData);
+                        LocalDB.saveData(LocalDB.invoicesBox, DateTime.now().millisecondsSinceEpoch.toString(), invoiceData);
+                        Navigator.pop(ctx);
+                        setState(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('تم إضافة الفاتورة'),
+                            backgroundColor: AppTheme.success,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        );
+                      }
+                    : null,
+                child: const Text('إضافة'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

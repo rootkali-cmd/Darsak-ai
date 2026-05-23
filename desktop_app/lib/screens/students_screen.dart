@@ -359,7 +359,8 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                 onPressed: () {
                 if (nameController.text.isNotEmpty && phoneController.text.isNotEmpty && parentPhoneController.text.isNotEmpty && selectedGroupId != null) {
                   final rng = math.Random();
-                  final code = 'STU-${rng.nextInt(900) + 100}';
+                  final chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                  final code = 'ST${List.generate(7, (_) => chars[rng.nextInt(chars.length)]).join()}';
                   final student = StudentModel(
                     id: code,
                     code: code,
