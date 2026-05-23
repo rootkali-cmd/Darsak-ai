@@ -25,10 +25,12 @@ const apps = [
     descriptionEn: 'Teacher desktop app — full classroom & exam management',
     icon: Monitor,
     color: '#ccff00',
-    fileName: null,
-    size: '—',
-    platform: 'Linux ✓ / Windows قريباً',
-    note: 'v1.1.0 • Linux build جاهز • Windows قيد التطوير',
+    files: [
+      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '14 MB' },
+      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable', size: '15 MB' },
+    ],
+    platform: 'Windows ✓ / Linux ✓',
+    note: 'v1.1.0 • Installer بـ GUI + Desktop Shortcut • Portable ZIP عادي',
   },
   {
     id: 'accounts',
@@ -144,17 +146,19 @@ export default function DownloadPage() {
                     <span className="text-[var(--text-muted)]">{isAr ? 'المنصة' : 'Platform'}</span>
                     <span style={{ color: app.color }}>{app.platform}</span>
                   </div>
-                  <div className="flex justify-between text-[10px] hud-text">
-                    <span className="text-[var(--text-muted)]">{isAr ? 'الحجم' : 'Size'}</span>
-                    <span>{app.size}</span>
-                  </div>
+                  {app.size && (
+                    <div className="flex justify-between text-[10px] hud-text">
+                      <span className="text-[var(--text-muted)]">{isAr ? 'الحجم' : 'Size'}</span>
+                      <span>{app.size}</span>
+                    </div>
+                  )}
                   {app.note && (
                     <p className="text-[10px] hud-text text-[var(--text-muted)] opacity-60 pt-2 border-t border-[var(--border)]">
                       {app.note}
                     </p>
                   )}
 
-                  {/* Download button */}
+                  {/* Download button(s) */}
                   {app.fileName ? (
                     <a
                       href={`/${app.fileName}`}
@@ -175,6 +179,31 @@ export default function DownloadPage() {
                       <Download className="w-3.5 h-3.5" />
                       {isAr ? 'تحميل' : 'DOWNLOAD'}
                     </a>
+                  ) : app.files ? (
+                    <div className="space-y-2">
+                      {app.files.map((f) => (
+                        <a
+                          key={f.name}
+                          href={`/${f.name}`}
+                          download
+                          className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold hud-text uppercase tracking-wider transition-all"
+                          style={{
+                            background: app.color,
+                            color: '#000',
+                            border: `1px solid ${app.color}`,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = '0.8'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = '1'
+                          }}
+                        >
+                          <Download className="w-3 h-3" />
+                          {isAr ? f.label : f.label} ({f.size})
+                        </a>
+                      ))}
+                    </div>
                   ) : (
                     <div
                       className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold hud-text uppercase tracking-wider cursor-not-allowed"
