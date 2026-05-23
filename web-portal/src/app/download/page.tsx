@@ -5,22 +5,35 @@ import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { Smartphone, Monitor, ArrowLeft, Download, Sparkles } from 'lucide-react'
 
-const apps = [
+const apps: {
+  id: string;
+  title: string;
+  description: string;
+  descriptionEn: string;
+  icon: any;
+  color: string;
+  files?: { name: string; label: string; size: string }[];
+  size?: string;
+  platform: string;
+  note: string;
+}[] = [
   {
     id: 'mobile',
-    title: 'DarsakAI Mobile',
+    title: 'DarsakAI Student v1.0.0',
     description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
     descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,
     color: '#00f3ff',
-    fileName: 'DarsakAI.apk',
-    size: '68 MB (مجمّع)',
-    platform: 'Android / iOS',
-    note: 'v1.1.0 • Android APK • iOS قريباً على App Store',
+    files: [
+      { name: 'DarsakAI-Student.apk', label: 'Android APK', size: '72 MB' },
+      { name: 'DarsakAI-Student.aab', label: 'Android AAB (Google Play)', size: '62 MB' },
+    ],
+    platform: 'Android ✓ / iOS قريباً',
+    note: 'Signed release • com.darsak.ai • Camera only permission',
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop',
+    title: 'DarsakAI Desktop v1.1.0',
     description: 'نظام إدارة الفصل للمعلم - students, grades, attendance, exams',
     descriptionEn: 'Teacher desktop app — full classroom & exam management',
     icon: Monitor,
@@ -31,19 +44,18 @@ const apps = [
       { name: 'DarsakAI-Linux.tar.gz', label: 'Linux Bundle', size: '14 MB' },
     ],
     platform: 'Windows ✓ / Linux ✓',
-    note: 'v1.1.0 • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',
+    note: 'Build 1.1.0.26 • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',
   },
   {
     id: 'accounts',
-    title: 'DarsakAI Accounts',
+    title: 'DarsakAI Accounts v1.0.0',
     description: 'نظام الحسابات والمالية للفصل',
     descriptionEn: 'Finance & accounts management',
     icon: Monitor,
     color: '#ff003c',
-    fileName: null,
     size: '—',
     platform: 'Windows / Linux',
-    note: 'v1.1.0 • يحتاج بناء',
+    note: 'يحتاج بناء',
   },
 ]
 
@@ -160,29 +172,9 @@ export default function DownloadPage() {
                   )}
 
                   {/* Download button(s) */}
-                  {app.fileName ? (
-                    <a
-                      href={`/${app.fileName}`}
-                      download
-                      className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold hud-text uppercase tracking-wider transition-all"
-                      style={{
-                        background: app.color,
-                        color: '#000',
-                        border: `1px solid ${app.color}`,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.opacity = '0.8'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = '1'
-                      }}
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      {isAr ? 'تحميل' : 'DOWNLOAD'}
-                    </a>
-                  ) : app.files ? (
+                  {'files' in app && app.files ? (
                     <div className="space-y-2">
-                      {app.files.map((f) => (
+                      {app.files.map((f: any) => (
                         <a
                           key={f.name}
                           href={`/${f.name}`}
@@ -239,7 +231,7 @@ export default function DownloadPage() {
             }}
           >
             <h3 className="text-sm font-bold mb-4 hud-text" style={{ fontFamily: 'var(--font-display)' }}>
-              {isAr ? 'الميزات في v1.1.0' : 'v1.1.0 FEATURES'}
+              {isAr ? 'الميزات في v1.0.0' : 'v1.0.0 FEATURES'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (
