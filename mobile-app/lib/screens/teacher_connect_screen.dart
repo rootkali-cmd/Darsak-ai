@@ -366,11 +366,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         if (code.isNotEmpty) return code;
       }
     }
-    // TCH-XXXXXX or TCH:XXXXXX
     if (clean.length <= 20 && RegExp(r'^TCH[-:][A-Z0-9]+$').hasMatch(clean)) {
       return clean.replaceAll(':', '-');
     }
-    // Plain teacher code
     if (clean.length <= 20 && RegExp(r'^[A-Z0-9\-]+$').hasMatch(clean)) {
       return clean;
     }
@@ -390,6 +388,41 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       body: MobileScanner(
         controller: _controller,
         onDetect: _onDetect,
+        errorBuilder: (context, error, child) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.camera_alt_outlined,
+                    size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  'تعذر الوصول إلى الكاميرا',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'يرجى التحقق من إذن الكاميرا في إعدادات الجهاز',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                  ),
+                  child: const Text('رجوع',
+                      style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          ),
+        ),
         overlayBuilder: (context, constraints) => Container(
           alignment: Alignment.center,
           child: Container(
