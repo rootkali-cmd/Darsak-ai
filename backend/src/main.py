@@ -27,14 +27,41 @@ _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 async def lifespan(app: FastAPI):
     logger.info("Starting DarsakAI Hub with Supabase...")
 
-    # Auto-migrate: ensure pin_hash column exists
+    # Auto-migrate
     try:
         from sqlalchemy import text
         from src.utils.database import engine
         async with engine.connect() as conn:
             await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);"))
+
+            # Payment requests table
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS payment_requests (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+                    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+                    phone_number VARCHAR(20) NOT NULL,
+                    amount DECIMAL(10,2) NOT NULL,
+                    screenshot TEXT,
+                    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+                    admin_message TEXT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+                    title VARCHAR(255) NOT NULL,
+                    body TEXT NOT NULL,
+                    type VARCHAR(50) DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error')),
+                    read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
             await conn.commit()
-            logger.info("Schema check: pin_hash column OK")
+            logger.info("Schema check: all tables OK")
     except Exception as e:
         logger.warning("Schema migration skipped: %s", e)
 

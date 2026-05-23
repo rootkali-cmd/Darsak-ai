@@ -286,3 +286,62 @@ class AuditService:
         if at and at not in VALID_ACTOR_TYPES:
             kwargs["actor_type"] = "system"
         return await self.repo.insert(kwargs)
+
+
+class PaymentRequestService:
+    def __init__(self):
+        self.repo = SupabaseRepository("payment_requests")
+
+    async def create(self, teacher_id: str, plan_id: str, phone_number: str, amount: float, screenshot: str | None = None) -> dict:
+        return await self.repo.insert({
+            "teacher_id": teacher_id,
+            "plan_id": plan_id,
+            "phone_number": phone_number,
+            "amount": amount,
+            "screenshot": screenshot,
+            "status": "pending",
+        })
+
+    async def get_by_id(self, payment_id: str) -> dict | None:
+        return await self.repo.select_one({"id": payment_id})
+
+    async def get_by_teacher(self, teacher_id: str, limit: int = 10) -> list[dict]:
+        return await self.repo.select({"teacher_id": teacher_id}, limit=limit, order="created_at desc")
+
+    async def get_pending(self, limit: int = 50) -> list[dict]:
+        return await self.repo.select({"status": "pending"}, limit=limit, order="created_at asc")
+
+    async def approve(self, payment_id: str) -> dict:
+        return await self.repo.update({"id": payment_id}, {
+            "status": "approved",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    async def reject(self, payment_id: str, message: str) -> dict:
+        return await self.repo.update({"id": payment_id}, {
+            "status": "rejected",
+            "admin_message": message,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+
+class NotificationService:
+    def __init__(self):
+        self.repo = SupabaseRepository("notifications")
+
+    async def create(self, teacher_id: str, title: str, body: str, type: str = "info") -> dict:
+        return await self.repo.insert({
+            "teacher_id": teacher_id,
+            "title": title,
+            "body": body,
+            "type": type,
+        })
+
+    async def get_unread(self, teacher_id: str) -> list[dict]:
+        return await self.repo.select({"teacher_id": teacher_id, "read": False}, limit=50, order="created_at desc")
+
+    async def mark_read(self, notification_id: str) -> dict:
+        return await self.repo.update({"id": notification_id}, {"read": True})
+
+    async def mark_all_read(self, teacher_id: str) -> None:
+        await self.repo.update({"teacher_id": teacher_id, "read": False}, {"read": True})

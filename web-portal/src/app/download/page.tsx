@@ -16,7 +16,7 @@ const apps = [
     fileName: 'DarsakAI.apk',
     size: '70 MB',
     platform: 'Android',
-    note: 'v1.0.2',
+    note: 'v1.1.0',
   },
   {
     id: 'desktop',
@@ -28,7 +28,7 @@ const apps = [
     fileName: null,
     size: '—',
     platform: 'Windows / Linux',
-    note: 'يحتاج بناء على ويندوز • flutter build windows',
+    note: 'v1.1.0 • يحتاج بناء على ويندوز',
   },
   {
     id: 'accounts',
@@ -40,19 +40,20 @@ const apps = [
     fileName: null,
     size: '—',
     platform: 'Windows / Linux',
-    note: 'يحتاج بناء على ويندوز • flutter build windows',
+    note: 'v1.1.0 • يحتاج بناء على ويندوز',
   },
 ]
 
 const features = [
-  { ar: 'QR Code المعلم (قسم مستقل في القائمة)', en: 'Teacher QR code (own sidebar section)' },
-  { ar: 'إدارة PIN للطلاب (سطح المكتب)', en: 'Student PIN management (desktop)' },
-  { ar: 'مسح QR Code / باركود المعلم', en: 'QR & barcode scanner' },
-  { ar: 'PIN 6-8 أحرف وأرقام', en: '6-8 alphanumeric PIN' },
-  { ar: 'دعم الباركود اللاصق (Hardware Scanner)', en: 'Hardware barcode scanner support' },
-  { ar: 'Offline-first (يعرض البيانات المحفوظة)', en: 'Offline-first (cached data)' },
-  { ar: 'طباعة QR Code (80×60 mm PDF)', en: 'Print QR code (80×60 mm PDF)' },
+  { ar: 'نظام الاشتراكات (Basic/Pro/Unlimited)', en: 'Subscription system (Basic/Pro/Unlimited)' },
+  { ar: 'دفع عبر فودافون كاش + تحميل الإيصال', en: 'Vodafone Cash payment + receipt upload' },
+  { ar: 'إشعارات التفعيل والرفض', en: 'Activation & rejection notifications' },
+  { ar: 'QR Code المعلم (قسم مستقل)', en: 'Teacher QR code (own section)' },
+  { ar: 'إدارة PIN للطلاب', en: 'Student PIN management' },
+  { ar: 'مسح QR Code / باركود', en: 'QR & barcode scanner' },
+  { ar: 'Offline-first', en: 'Offline-first (cached data)' },
   { ar: 'توقيع release (Signed APK)', en: 'Signed release APK' },
+  { ar: 'iOS support (iPad/iPhone)', en: 'iOS support (iPad/iPhone)' },
 ]
 
 export default function DownloadPage() {

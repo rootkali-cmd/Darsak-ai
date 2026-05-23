@@ -164,4 +164,7 @@ export const subscriptionsApi = {
   my: () => api.get('/subscriptions/my'),
   activate: (code: string) => api.post('/subscriptions/activate', { code }),
   check: (feature: string) => api.post('/subscriptions/check', { feature }),
+  paymentRequests: () => api.get('/subscriptions/payment-requests'),
+  notifications: () => api.get('/subscriptions/notifications'),
+  markNotificationRead: (id: string) => api.post(`/subscriptions/notifications/${id}/read`),
 }

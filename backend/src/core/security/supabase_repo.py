@@ -31,12 +31,16 @@ class SupabaseRepository:
         result = self.client.table(self.table_name).insert(data).execute()
         return result.data[0] if result.data else {}
 
-    async def select(self, filters: dict | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+    async def select(self, filters: dict | None = None, limit: int = 50, offset: int = 0, order: str | None = None) -> list[dict]:
         query = self.client.table(self.table_name).select("*")
         if filters:
             for key, value in filters.items():
                 query = query.eq(key, value)
-        query = query.limit(limit).offset(offset).order("created_at", desc=True)
+        query = query.limit(limit).offset(offset)
+        if order:
+            query = query.order(order, desc=True)
+        else:
+            query = query.order("created_at", desc=True)
         result = query.execute()
         return result.data
 

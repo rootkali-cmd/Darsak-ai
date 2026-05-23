@@ -6,7 +6,7 @@ import httpx
 
 from src.core.config import get_settings
 from src.core.security.crypto_utils import generate_license_key
-from src.services import subscription_plan_service, subscription_code_service
+from src.services import subscription_plan_service, subscription_code_service, teacher_subscription_service, payment_request_service, notification_service
 
 logger = logging.getLogger("darsak")
 
@@ -58,6 +58,26 @@ async def handle_message(chat_id: int, text: str):
         return
 
     state = _user_states.get(chat_id)
+
+    if state and state.startswith("reject_msg_"):
+        payment_id = state.replace("reject_msg_", "")
+        payment = await payment_request_service.get_by_id(payment_id)
+        if not payment:
+            await tg_send(chat_id, "❌ طلب الدفع غير موجود.")
+            _user_states.pop(chat_id, None)
+            return
+
+        await payment_request_service.reject(payment_id, text)
+        await notification_service.create(
+            teacher_id=payment["teacher_id"],
+            title="❌ لم يتم تفعيل اشتراكك",
+            body=text,
+            type="error",
+        )
+        await tg_send(chat_id, f"✅ تم إرسال رسالة الرفض للمعلم.")
+        _user_states.pop(chat_id, None)
+        await tg_send(chat_id, "اختر من الأزرار:", keyboard=main_keyboard())
+        return
 
     if state == "waiting_for_code_check":
         code = text.strip().upper()
@@ -161,6 +181,56 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
     elif data == "back":
         await tg_edit(chat_id, message_id, "🎓 مرحباً بك في بوت الاشتراكات - درسك AI\n\nاختر من الأزرار أدناه:", keyboard=main_keyboard())
 
+    elif data.startswith("pay_approve_") or data.startswith("pay_reject_"):
+        payment_id = data.replace("pay_approve_", "").replace("pay_reject_", "")
+        payment = await payment_request_service.get_by_id(payment_id)
+
+        if not payment:
+            await tg_edit(chat_id, message_id, "❌ طلب الدفع غير موجود.")
+            return
+
+        if payment["status"] != "pending":
+            await tg_edit(chat_id, message_id, "⚠️ تمت معالجة هذا الطلب بالفعل.")
+            return
+
+        if data.startswith("pay_approve_"):
+            plan = await subscription_plan_service.get_by_id(payment["plan_id"])
+            if not plan:
+                await tg_edit(chat_id, message_id, "❌ الباقة غير موجودة.")
+                return
+
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+            await teacher_subscription_service.create(
+                teacher_id=payment["teacher_id"],
+                plan_id=payment["plan_id"],
+                code_id=payment_id,
+                expires_at=expires_at,
+            )
+            await payment_request_service.approve(payment_id)
+            await notification_service.create(
+                teacher_id=payment["teacher_id"],
+                title="✅ تم تفعيل اشتراكك",
+                body=f"تم تفعيل اشتراكك في باقة {plan['name']} بنجاح! الباقة سارية لمدة 30 يوماً.",
+                type="success",
+            )
+
+            teacher_str = str(payment["teacher_id"])[:8] if not hasattr(payment["teacher_id"], "hex") else payment["teacher_id"].hex[:8]
+            await tg_edit(chat_id, message_id,
+                f"✅ تم تفعيل الاشتراك بنجاح!\n\n"
+                f"📌 الباقة: {plan['name']}\n"
+                f"👤 المعلم: {teacher_str}\n"
+                f"📅 ينتهي في: {(datetime.now(timezone.utc) + timedelta(days=30)).strftime('%Y-%m-%d')}",
+                keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]],
+            )
+
+        elif data.startswith("pay_reject_"):
+            _user_states[chat_id] = f"reject_msg_{payment_id}"
+            await tg_edit(chat_id, message_id,
+                "✍️ اكتب رسالة الرفض للمعلم:\n\n"
+                "(سيتم إرسالها كإشعار للمعلم)",
+                keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]],
+            )
+
 
 async def handle_start(chat_id: int):
     if not is_authorized(chat_id):
@@ -229,3 +299,38 @@ async def setup_telegram_webhook():
     if ok:
         return {"ok": True, "webhook_url": detail}
     raise HTTPException(status_code=500, detail=detail)
+
+
+async def notify_admin_payment_request(payment_request: dict, plan: dict):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    chat_id = int(TELEGRAM_CHAT_ID)
+    payment_id = payment_request["id"]
+    if hasattr(payment_id, "hex"):
+        payment_id_str = payment_id.hex
+    else:
+        payment_id_str = str(payment_id)
+
+    teacher = payment_request.get("teacher_id", "-")
+    if hasattr(teacher, "hex"):
+        teacher_str = teacher.hex[:8]
+    else:
+        teacher_str = str(teacher)[:8]
+
+    text = (
+        f"💰 طلب اشتراك جديد\n\n"
+        f"📌 الباقة: {plan['name']}\n"
+        f"💵 المبلغ: {payment_request['amount']} ج.م\n"
+        f"📱 رقم المحول: {payment_request['phone_number']}\n"
+        f"🆔 المعلم: {teacher_str}\n"
+        f"🆔 الطلب: {payment_id_str}\n"
+    )
+
+    keyboard = [
+        [
+            {"text": "✅ تفعيل", "callback_data": f"pay_approve_{payment_id_str}"},
+            {"text": "❌ إلغاء", "callback_data": f"pay_reject_{payment_id_str}"},
+        ]
+    ]
+    await tg_send(chat_id, text, keyboard=keyboard)
+

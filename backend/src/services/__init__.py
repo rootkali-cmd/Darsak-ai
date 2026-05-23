@@ -9,6 +9,8 @@ from src.services.supabase_services import (
     SubscriptionPlanService,
     SubscriptionCodeService,
     TeacherSubscriptionService,
+    PaymentRequestService,
+    NotificationService,
 )
 from src.services.ai_analyzer import ai_analyzer
 from src.services.sync_buffer import sync_buffer
@@ -28,6 +30,8 @@ audit_service = AuditService()
 subscription_plan_service = SubscriptionPlanService()
 subscription_code_service = SubscriptionCodeService()
 teacher_subscription_service = TeacherSubscriptionService()
+payment_request_service = PaymentRequestService()
+notification_service = NotificationService()
 
 __all__ = [
     "user_service",

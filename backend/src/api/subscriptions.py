@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
 
 from src.utils.dependencies import get_current_teacher, get_current_admin
 from src.schemas.subscription import (
@@ -15,6 +15,8 @@ from src.services import (
     subscription_plan_service,
     subscription_code_service,
     teacher_subscription_service,
+    payment_request_service,
+    notification_service,
 )
 from src.core.subscription_guard import get_remaining_limit, require_active_subscription
 
@@ -162,6 +164,65 @@ async def check_feature(
         remaining=result["remaining"],
         plan_name=plan_name,
     )
+
+
+@router.post("/payment-request")
+async def create_payment_request(
+    plan_id: str = Form(...),
+    phone_number: str = Form(...),
+    amount: float = Form(...),
+    screenshot: UploadFile | None = File(None),
+    current_user: dict = Depends(get_current_teacher),
+):
+    plan = await subscription_plan_service.get_by_id(plan_id)
+    if not plan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+
+    screenshot_b64 = None
+    if screenshot:
+        import base64
+        content = await screenshot.read()
+        screenshot_b64 = f"data:{screenshot.content_type};base64,{base64.b64encode(content).decode()}"
+
+    request = await payment_request_service.create(
+        teacher_id=current_user["id"],
+        plan_id=plan_id,
+        phone_number=phone_number,
+        amount=amount,
+        screenshot=screenshot_b64,
+    )
+
+    # Notify admin via Telegram bot
+    try:
+        from src.api.webhook import notify_admin_payment_request
+        await notify_admin_payment_request(request, plan)
+    except Exception:
+        pass
+
+    return {"ok": True, "payment_id": request["id"]}
+
+
+@router.get("/payment-requests")
+async def list_payment_requests(
+    current_user: dict = Depends(get_current_teacher),
+):
+    return await payment_request_service.get_by_teacher(current_user["id"])
+
+
+@router.get("/notifications")
+async def list_notifications(
+    current_user: dict = Depends(get_current_teacher),
+):
+    return await notification_service.get_unread(current_user["id"])
+
+
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    current_user: dict = Depends(get_current_teacher),
+):
+    await notification_service.mark_read(notification_id)
+    return {"ok": True}
 
 
 @router.get("/admin/codes", response_model=list)
