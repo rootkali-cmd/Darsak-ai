@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../core/local_db.dart';
+import '../core/api_service.dart';
 import '../providers/data_provider.dart';
+import '../providers/sync_provider.dart';
 import '../models/student.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -63,6 +65,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
     _scannerController.dispose();
     _scannerFocus.dispose();
     super.dispose();
+  }
+
+  void _markAndSync(String studentId, String status, StudentModel student, BuildContext context) {
+    if (_selectedDay.isEmpty) {
+      _selectedDay = _formatDate(DateTime.now());
+    }
+    setState(() => _records[studentId] = status);
+
+    final data = {
+      'student_id': studentId,
+      'group_id': _groupId,
+      'lecture_id': '${_groupId}_${_formatDate(_weekStart)}',
+      'status': status,
+      'date': _selectedDay,
+    };
+
+    LocalDB.addToSyncQueue('attendance', data);
+    // Sync immediately
+    context.read<SyncProvider>().syncNow();
   }
 
   void _handleBarcodeScan(String code, BuildContext context) {
@@ -222,7 +243,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
         actions: [
           MouseRegion(
             cursor: SystemMouseCursors.click,
-            child: ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً')),
+            child: ElevatedButton(
+              onPressed: () {
+                _markAndSync(student.id, 'present', student, context);
+                Navigator.pop(ctx);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+              child: const Text('تسجيل حضور'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ),
         ],
       ),
@@ -381,13 +414,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                               onStatusChanged: (s) => setState(() => _records[student.id] = s),
                               onSave: () {
                                 if (status != null && _selectedDay.isNotEmpty) {
-                                  LocalDB.addToSyncQueue('attendance', {
-                                    'student_id': student.id,
-                                    'group_id': _groupId,
-                                    'lecture_id': '${_groupId}_${_formatDate(_weekStart)}',
-                                    'status': status,
-                                    'date': _selectedDay,
-                                  });
+                                  _markAndSync(student.id, status, student, context);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: const Text('تم تسجيل الحضور'),

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, TokenRefresh, UserUpdate
 from src.core.security.auth import verify_password, create_access_token, create_refresh_token, decode_token
+from src.core.security.sanitizer import sanitize_text, sanitize_email
 from src.services import user_service, audit_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -15,8 +16,8 @@ def get_client_ip(request: Request) -> str:
 async def register(user_data: UserCreate, request: Request):
     try:
         user = await user_service.create(
-            email=user_data.email,
-            full_name=user_data.full_name,
+            email=sanitize_email(user_data.email),
+            full_name=sanitize_text(user_data.full_name) or user_data.full_name,
             password=user_data.password,
             role=user_data.role.value if hasattr(user_data.role, 'value') else user_data.role,
         )
@@ -37,7 +38,7 @@ async def register(user_data: UserCreate, request: Request):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, request: Request):
-    user = await user_service.get_by_email(credentials.email)
+    user = await user_service.get_by_email(credentials.email.lower().strip())
     if not user or not verify_password(credentials.password, user["hashed_password"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     if not user.get("is_active", True):

@@ -38,32 +38,34 @@ class AuthProvider extends ChangeNotifier {
     _teacherCode =
         await _storage.read(key: AppConstants.storageKeyTeacherCode);
 
-    // Load cached profile first
-    final cached = LocalDB.getProfile();
-    if (cached != null) {
-      _student = StudentModel.fromJson(cached);
+    // Verify token is still valid before logging in
+    try {
+      final data = await _api.getProfile();
+      _student = StudentModel.fromJson(data);
+      LocalDB.saveProfile(data);
+    } catch (_) {
+      // Token expired or invalid — clear and go to login
+      await _storage.delete(key: AppConstants.storageKeyToken);
+      await _storage.delete(key: AppConstants.storageKeyTeacherCode);
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return;
     }
 
-    // Check subscription from cache
+    // Check subscription from cache (will be refreshed later)
     final subActive = await _subscriptionService.isSubscriptionActive();
     _isSubscriptionActive = subActive;
     _subscriptionData = await _subscriptionService.getCachedSubscription();
 
     if (!subActive) {
-      _status = AuthStatus.subscriptionExpired;
-      notifyListeners();
-      return;
+      // Still allow login but mark subscription expired — overlay will show
     }
 
     _status = AuthStatus.authenticated;
     notifyListeners();
 
-    // Refresh profile and subscription in background
+    // Refresh subscription in background
     try {
-      final data = await _api.getProfile();
-      _student = StudentModel.fromJson(data);
-      LocalDB.saveProfile(data);
-
       final subData = await _subscriptionService.getMySubscription();
       _subscriptionData = subData;
       _isSubscriptionActive = await _subscriptionService.isSubscriptionActive();

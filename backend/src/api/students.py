@@ -8,6 +8,7 @@ from src.schemas.student import (
 )
 from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
 from src.core.security.auth import create_access_token, verify_password
+from src.core.security.sanitizer import sanitize_text, sanitize_student_code, sanitize_pin, sanitize_teacher_code
 from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service
 from src.core.subscription_guard import enforce_student_limit, enforce_ai_request_limit
 
@@ -27,11 +28,11 @@ async def create_student(
     await enforce_student_limit(current_user["id"])
     student = await student_service.create(
         teacher_id=current_user["id"],
-        full_name=student_data.full_name,
-        phone=student_data.phone,
-        parent_phone=student_data.parent_phone,
-        grade_level=student_data.grade_level,
-        pin=student_data.pin,
+        full_name=sanitize_text(student_data.full_name) or student_data.full_name,
+        phone=sanitize_text(student_data.phone) if student_data.phone else None,
+        parent_phone=sanitize_text(student_data.parent_phone) if student_data.parent_phone else None,
+        grade_level=sanitize_text(student_data.grade_level) if student_data.grade_level else None,
+        pin=sanitize_pin(student_data.pin) if student_data.pin else None,
     )
 
     await audit_service.log(
@@ -173,7 +174,7 @@ async def delete_student(
 
 @router.post("/verify-teacher", response_model=TeacherVerifyResponse)
 async def verify_teacher(request: TeacherVerifyRequest):
-    teacher = await user_service.repo.select_one({"teacher_code": request.teacher_code})
+    teacher = await user_service.repo.select_one({"teacher_code": sanitize_teacher_code(request.teacher_code)})
     if not teacher:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid teacher code")
 
@@ -186,11 +187,11 @@ async def verify_teacher(request: TeacherVerifyRequest):
 
 @router.post("/login", response_model=StudentTokenResponse)
 async def student_login(credentials: StudentLogin):
-    student = await student_service.get_by_code(credentials.code)
+    student = await student_service.get_by_code(sanitize_student_code(credentials.code))
     if not student or not student.get("pin_hash"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
-    if not verify_password(credentials.pin, student["pin_hash"]):
+    if not verify_password(sanitize_pin(credentials.pin), student["pin_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
     # If teacher_code provided, verify student belongs to that teacher

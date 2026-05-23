@@ -19,7 +19,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final data = context.watch<DataProvider>();
     final student = auth.student;
 
-    if (student == null) return const SizedBox();
+    if (student == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('الملف الشخصي')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
