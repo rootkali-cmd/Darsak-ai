@@ -14,6 +14,7 @@ import 'attendance_screen.dart';
 import 'grades_screen.dart';
 import 'invoices_screen.dart';
 import 'settings_screen.dart';
+import 'qr_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -178,7 +179,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 3: return 'الحضور';
       case 4: return 'الدرجات';
       case 5: return 'الفواتير';
-      case 6: return 'الإعدادات';
+      case 6: return 'QR Code';
+      case 7: return 'الإعدادات';
       default: return 'لوحة التحكم';
     }
   }
@@ -198,6 +200,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 5:
         return const InvoicesScreen(key: ValueKey('invoices'));
       case 6:
+        return const QrScreen(key: ValueKey('qr'));
+      case 7:
         return const SettingsScreen(key: ValueKey('settings'));
       default:
         return _buildHome(key: const ValueKey('home'));

@@ -36,6 +36,7 @@ class _SidebarState extends State<Sidebar> {
       {'label': 'الحضور', 'icon': Icons.calendar_today_outlined, 'activeIcon': Icons.calendar_today},
       {'label': 'الدرجات', 'icon': Icons.grade_outlined, 'activeIcon': Icons.grade},
       {'label': 'الفواتير', 'icon': Icons.receipt_long_outlined, 'activeIcon': Icons.receipt_long},
+      {'label': 'QR Code', 'icon': Icons.qr_code_outlined, 'activeIcon': Icons.qr_code},
       {'label': 'الإعدادات', 'icon': Icons.settings_outlined, 'activeIcon': Icons.settings},
     ];
 

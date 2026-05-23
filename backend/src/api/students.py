@@ -128,6 +128,25 @@ async def reset_student_pin(
     return StudentResponse(**updated)
 
 
+@router.get("/{student_id}/pin")
+async def get_student_pin(
+    student_id: str,
+    current_user: dict = Depends(get_current_teacher),
+):
+    student = await student_service.get_by_id(student_id)
+    if not student or student["teacher_id"] != current_user["id"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+
+    if not student.get("pin_hash"):
+        return {"has_pin": False, "pin": None, "hint": "لم يتم تعيين رمز سري بعد"}
+
+    return {
+        "has_pin": True,
+        "pin": None,
+        "hint": "الرمز السري موجود. يمكنك إعادة تعيينه من خلال هذا الرابط أو الاتصال بالمدرس.",
+    }
+
+
 @router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_student(
     student_id: str,
@@ -148,50 +167,6 @@ async def delete_student(
         resource_id=student_id,
         ip_address=get_client_ip(request),
     )
-
-
-@router.get("/{student_id}/pin")
-async def get_student_pin(
-    student_id: str,
-    current_user: dict = Depends(get_current_teacher),
-):
-    student = await student_service.get_by_id(student_id)
-    if not student or student["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
-
-    if not student.get("pin_hash"):
-        return {"has_pin": False, "pin": None, "hint": "لم يتم تعيين رمز سري بعد"}
-
-    return {
-        "has_pin": True,
-        "pin": None,
-        "hint": "الرمز السري موجود. يمكنك إعادة تعيينه من خلال هذا الرابط أو الاتصال بالمدرس.",
-    }
-
-
-@router.patch("/{student_id}/pin", response_model=StudentResponse)
-async def update_student_pin(
-    student_id: str,
-    pin_data: StudentPinUpdate,
-    request: Request,
-    current_user: dict = Depends(get_current_teacher),
-):
-    student = await student_service.get_by_id(student_id)
-    if not student or student["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
-
-    updated = await student_service.update(student_id, {"pin": pin_data.pin})
-
-    await audit_service.log(
-        actor_type=current_user.get("role", "teacher"),
-        action="student_pin_reset",
-        actor_id=current_user["id"],
-        resource_type="student",
-        resource_id=student_id,
-        ip_address=get_client_ip(request),
-    )
-
-    return StudentResponse(**updated)
 
 
 @router.post("/verify-teacher", response_model=TeacherVerifyResponse)
