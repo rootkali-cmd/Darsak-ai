@@ -1,0 +1,49 @@
+name: Build Windows Desktop
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check-runner:
+    runs-on: windows-latest
+    steps:
+      - run: echo "Windows runner allocated! OS:"
+      - run: systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+
+  build-windows:
+    needs: check-runner
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop_app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+
+      - run: flutter pub get
+
+      - run: flutter build windows --release
+
+      - name: Upload Windows build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarsakAI-Desktop-Windows
+          path: desktop_app/build/windows/x64/release/
+          compression-level: 9
+
+      - name: Create ZIP for release
+        run: |
+          powershell Compress-Archive -Path build/windows/x64/release/* -DestinationPath DarsakAI-Windows.zip
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarsakAI-Windows-zip
+          path: desktop_app/DarsakAI-Windows.zip
