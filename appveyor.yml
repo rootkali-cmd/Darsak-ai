@@ -15,7 +15,6 @@ build_script:
 
 after_build:
   - 7z a -tzip "%APPVEYOR_BUILD_FOLDER%\DarsakAI-Windows.zip" "%APPVEYOR_BUILD_FOLDER%\desktop_app\build\windows\x64\runner\Release\*" -mx9
-  - "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" desktop_app\installer\setup.iss
 
 artifacts:
   - path: DarsakAI-Windows.zip
@@ -24,9 +23,5 @@ artifacts:
   - path: desktop_app\build\windows\x64\runner\Release
     name: DarsakAI-Desktop-Windows
     type: Folder
-
-  - path: desktop_app\build\installer\DarsakAI-Setup-1.1.0.exe
-    name: DarsakAI-Setup
-    type: File
 
 deploy: off
