@@ -10,6 +10,7 @@ from src.api.student_me import router as student_me_router
 from src.api.subscriptions import router as subscriptions_router
 from src.api.versions import router as versions_router
 from src.api.webhook import router as webhook_router
+from src.api.exams import router as exams_router
 
 __all__ = [
     "auth_router",
@@ -24,4 +25,5 @@ __all__ = [
     "subscriptions_router",
     "versions_router",
     "webhook_router",
+    "exams_router",
 ]

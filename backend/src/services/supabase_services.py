@@ -345,3 +345,177 @@ class NotificationService:
 
     async def mark_all_read(self, teacher_id: str) -> None:
         await self.repo.update({"teacher_id": teacher_id, "read": False}, {"read": True})
+
+
+class ExamService:
+    def __init__(self):
+        self.repo = SupabaseRepository("exams")
+        self.question_repo = SupabaseRepository("questions")
+
+    async def create(self, teacher_id: str, title: str, duration_minutes: int = 30, description: str | None = None) -> dict:
+        return await self.repo.insert({
+            "teacher_id": teacher_id,
+            "title": title,
+            "description": description,
+            "duration_minutes": duration_minutes,
+            "status": "draft",
+        })
+
+    async def get_by_id(self, exam_id: str) -> dict | None:
+        return await self.repo.select_one({"id": exam_id})
+
+    async def get_by_teacher(self, teacher_id: str) -> list[dict]:
+        return await self.repo.select({"teacher_id": teacher_id}, limit=100)
+
+    async def update(self, exam_id: str, data: dict) -> dict:
+        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        return await self.repo.update({"id": exam_id}, data)
+
+    async def delete(self, exam_id: str) -> bool:
+        return await self.repo.delete({"id": exam_id})
+
+    async def get_questions(self, exam_id: str) -> list[dict]:
+        return await self.question_repo.select({"exam_id": exam_id}, limit=200, order="order_index asc")
+
+    async def add_question(self, exam_id: str, question_type: str, question_text: str,
+                           points: int = 1, options: list | None = None,
+                           correct_answer: str | None = None, order_index: int = 1,
+                           page_number: int = 1) -> dict:
+        return await self.question_repo.insert({
+            "exam_id": exam_id,
+            "type": question_type,
+            "question_text": question_text,
+            "options": options,
+            "correct_answer": correct_answer,
+            "points": points,
+            "order_index": order_index,
+            "page_number": page_number,
+        })
+
+    async def update_question(self, question_id: str, data: dict) -> dict:
+        return await self.question_repo.update({"id": question_id}, data)
+
+    async def delete_question(self, question_id: str) -> bool:
+        return await self.question_repo.delete({"id": question_id})
+
+    async def bulk_add_questions(self, exam_id: str, questions: list[dict]) -> list[dict]:
+        created = []
+        for i, q in enumerate(questions, 1):
+            q.setdefault("order_index", i)
+            q["exam_id"] = exam_id
+            created.append(await self.question_repo.insert(q))
+        return created
+
+    async def publish(self, exam_id: str) -> dict:
+        total = await self.question_repo.count({"exam_id": exam_id})
+        return await self.update(exam_id, {"status": "published", "total_points": total * 10})
+
+    async def get_published_for_student(self, student_id: str) -> list[dict]:
+        exams = await self.repo.select({"status": "published"}, limit=100)
+        return exams
+
+
+class StudentExamService:
+    def __init__(self):
+        self.repo = SupabaseRepository("student_exams")
+        self.answers_repo = SupabaseRepository("student_answers")
+        self.results_repo = SupabaseRepository("exam_results")
+
+    async def start(self, exam_id: str, student_id: str) -> dict:
+        existing = await self.repo.select_one({"exam_id": exam_id, "student_id": student_id})
+        if existing:
+            return existing
+        return await self.repo.insert({
+            "exam_id": exam_id,
+            "student_id": student_id,
+            "status": "in_progress",
+        })
+
+    async def save_answer(self, student_exam_id: str, question_id: str, answer: str) -> dict:
+        existing = await self.answers_repo.select_one({
+            "student_exam_id": student_exam_id,
+            "question_id": question_id,
+        })
+        if existing:
+            return await self.answers_repo.update({"id": existing["id"]}, {"answer": answer})
+        return await self.answers_repo.insert({
+            "student_exam_id": student_exam_id,
+            "question_id": question_id,
+            "answer": answer,
+        })
+
+    async def submit(self, student_exam_id: str, answers: list[dict]) -> dict:
+        for a in answers:
+            await self.save_answer(student_exam_id, a["question_id"], a["answer"])
+        se = await self.repo.update({"id": student_exam_id}, {
+            "status": "submitted",
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
+        })
+        return se
+
+    async def grade_mc_questions(self, student_exam_id: str) -> dict:
+        se = await self.repo.select_one({"id": student_exam_id})
+        if not se:
+            raise ValueError("Student exam not found")
+        answers = await self.answers_repo.select({"student_exam_id": student_exam_id})
+        questions = await SupabaseRepository("questions").select({"exam_id": se["exam_id"]}, limit=200)
+        questions_map = {q["id"]: q for q in questions}
+        total = 0
+        max_score = 0
+        correct = 0
+        wrong = 0
+        essay_score = 0.0
+        for a in answers:
+            q = questions_map.get(a.get("question_id"))
+            if not q:
+                continue
+            pts = q.get("points", 1)
+            max_score += pts
+            if q["type"] == "multiple_choice":
+                if a.get("answer") == q.get("correct_answer"):
+                    total += pts
+                    correct += 1
+                    self.answers_repo.update({"id": a["id"]}, {"is_correct": True, "score": pts})
+                else:
+                    wrong += 1
+                    self.answers_repo.update({"id": a["id"]}, {"is_correct": False, "score": 0})
+            else:
+                essay_score += pts
+        total += essay_score
+        await self.repo.update({"id": student_exam_id}, {
+            "total_score": total,
+            "max_score": max_score,
+            "status": "graded",
+        })
+        return {
+            "total_score": total,
+            "max_score": max_score,
+            "correct_count": correct,
+            "wrong_count": wrong,
+            "essay_score": essay_score,
+        }
+
+    async def get_result(self, student_exam_id: str) -> dict | None:
+        return await self.results_repo.select_one({"student_exam_id": student_exam_id})
+
+    async def save_ai_analysis(self, student_exam_id: str, analysis: dict) -> dict:
+        result = await self.results_repo.select_one({"student_exam_id": student_exam_id})
+        if result:
+            return await self.results_repo.update({"id": result["id"]}, analysis)
+        se = await self.repo.select_one({"id": student_exam_id})
+        return await self.results_repo.insert({
+            "student_exam_id": student_exam_id,
+            **analysis,
+        })
+
+    async def get_student_exams(self, student_id: str) -> list[dict]:
+        return await self.repo.select({"student_id": student_id}, limit=50)
+
+    async def get_by_id(self, student_exam_id: str) -> dict | None:
+        return await self.repo.select_one({"id": student_exam_id})
+
+    async def get_answers(self, student_exam_id: str) -> list[dict]:
+        return await self.answers_repo.select({"student_exam_id": student_exam_id})
+
+    async def get_class_results(self, exam_id: str) -> list[dict]:
+        return await self.repo.select({"exam_id": exam_id}, limit=200)

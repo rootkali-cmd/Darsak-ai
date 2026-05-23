@@ -9,6 +9,7 @@ import 'grades_screen.dart';
 import 'attendance_screen.dart';
 import 'profile_screen.dart';
 import 'subscription_screen.dart';
+import 'exam_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -414,6 +415,14 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen()));
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.quiz_outlined,
+            label: 'الاختبارات',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamListScreen()));
             },
           ),
           _DrawerItem(

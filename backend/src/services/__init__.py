@@ -11,8 +11,11 @@ from src.services.supabase_services import (
     TeacherSubscriptionService,
     PaymentRequestService,
     NotificationService,
+    ExamService,
+    StudentExamService,
 )
 from src.services.ai_analyzer import ai_analyzer
+from src.services.exam_ai import exam_ai_service
 from src.services.sync_buffer import sync_buffer
 from src.services.qr_service import qr_service
 from src.services.pdf_generator import pdf_generator
@@ -32,6 +35,8 @@ subscription_code_service = SubscriptionCodeService()
 teacher_subscription_service = TeacherSubscriptionService()
 payment_request_service = PaymentRequestService()
 notification_service = NotificationService()
+exam_service = ExamService()
+student_exam_service = StudentExamService()
 
 __all__ = [
     "user_service",
@@ -44,6 +49,10 @@ __all__ = [
     "subscription_plan_service",
     "subscription_code_service",
     "teacher_subscription_service",
+    "payment_request_service",
+    "notification_service",
+    "exam_service",
+    "student_exam_service",
     "ai_analyzer",
     "sync_buffer",
     "qr_service",

@@ -104,4 +104,37 @@ class ApiService {
   }
 
   Dio get dio => _dio;
+
+  // ─── Exam / Quiz System ──────────────────────────────────────────
+
+  Future<List<dynamic>> getAvailableExams() async {
+    final response = await _dio.get('/exams/available');
+    return response.data is List ? response.data as List : [];
+  }
+
+  Future<Map<String, dynamic>> startExam(String examId) async {
+    final response = await _dio.post('/exams/$examId/start');
+    return response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
+  }
+
+  Future<List<dynamic>> getExamQuestions(String examId) async {
+    final response = await _dio.get('/exams/$examId/questions-student');
+    return response.data is List ? response.data as List : [];
+  }
+
+  Future<Map<String, dynamic>> submitExam(String examId, List<Map<String, dynamic>> answers) async {
+    final response = await _dio.post('/exams/$examId/submit', data: {
+      'answers': answers,
+    });
+    return response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
+  }
+
+  Future<List<dynamic>> getMyExamResults() async {
+    final response = await _dio.get('/exams/my-results');
+    return response.data is List ? response.data as List : [];
+  }
 }
