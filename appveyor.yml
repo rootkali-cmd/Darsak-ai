@@ -5,6 +5,7 @@ image: Visual Studio 2022
 install:
   - curl -sL -o flutter.zip https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.0-stable.zip
   - tar -xf flutter.zip
+  - choco install innosetup --no-progress -y
 
 build_script:
   - set PATH=%APPVEYOR_BUILD_FOLDER%\flutter\bin;%PATH%
@@ -15,6 +16,7 @@ build_script:
 
 after_build:
   - 7z a -tzip "%APPVEYOR_BUILD_FOLDER%\DarsakAI-Windows.zip" "%APPVEYOR_BUILD_FOLDER%\desktop_app\build\windows\x64\runner\Release\*" -mx9
+  - iscc desktop_app\installer\setup.iss
 
 artifacts:
   - path: DarsakAI-Windows.zip
@@ -23,5 +25,8 @@ artifacts:
   - path: desktop_app\build\windows\x64\runner\Release
     name: DarsakAI-Desktop-Windows
     type: Folder
+
+  - path: desktop_app\build\installer\DarsakAI-Setup-1.1.0.exe
+    name: DarsakAI-Setup
 
 deploy: off
