@@ -31,6 +31,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('الملف الشخصي'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.info_outline, color: Color(0xFF2563EB)),
+            onPressed: _showVersionInfo,
+          ),
+          IconButton(
             icon: const Icon(Icons.logout, color: Color(0xFFEF4444)),
             onPressed: () => _confirmLogout(context),
           ),
@@ -251,6 +255,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showVersionInfo() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('معلومات التطبيق', style: TextStyle(color: Color(0xFFF5F5F5))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('الاسم', 'DarsakAI'),
+            const SizedBox(height: 8),
+            _buildInfoRow('الإصدار', '1.1.0'),
+            const SizedBox(height: 8),
+            _buildInfoRow('المنصة', 'Android'),
+            const SizedBox(height: 8),
+            _buildInfoRow('النظام', 'Android 6.0+'),
+            const SizedBox(height: 8),
+            _buildInfoRow('المطور', 'DarsakAI Team'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('حسناً', style: TextStyle(color: Color(0xFF2563EB))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        Text(value, style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 13, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }

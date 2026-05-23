@@ -43,6 +43,14 @@ async def tg_edit(chat_id: int, message_id: int, text: str, keyboard: list | Non
         await client.post(f"{TG_API}/editMessageText", json=payload)
 
 
+async def answer_callback(callback_query_id: str, text: str | None = None):
+    payload = {"callback_query_id": callback_query_id}
+    if text:
+        payload["text"] = text
+    async with httpx.AsyncClient() as client:
+        await client.post(f"{TG_API}/answerCallbackQuery", json=payload)
+
+
 def main_keyboard():
     return [
         [{"text": "🔑 توليد كود", "callback_data": "generate_code"}],
@@ -265,6 +273,7 @@ async def telegram_webhook(request: Request):
 
         elif "callback_query" in update:
             cq = update["callback_query"]
+            await answer_callback(cq["id"])
             chat_id = cq["message"]["chat"]["id"]
             message_id = cq["message"]["message_id"]
             data = cq.get("data", "")
