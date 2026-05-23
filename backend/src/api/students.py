@@ -9,6 +9,7 @@ from src.schemas.student import (
 from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
 from src.core.security.auth import create_access_token, verify_password
 from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service
+from src.core.subscription_guard import enforce_student_limit, enforce_ai_request_limit
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -23,6 +24,7 @@ async def create_student(
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
+    await enforce_student_limit(current_user["id"])
     student = await student_service.create(
         teacher_id=current_user["id"],
         full_name=student_data.full_name,
@@ -212,6 +214,8 @@ async def analyze_student(
     analyze_request: AIAnalysisRequest,
     current_user: dict = Depends(get_current_teacher),
 ):
+    await enforce_ai_request_limit(current_user["id"])
+
     student = await student_service.get_by_id(str(analyze_request.student_id))
     if not student or student["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")

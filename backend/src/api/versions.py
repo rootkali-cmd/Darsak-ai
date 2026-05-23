@@ -1,0 +1,43 @@
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/versions", tags=["Versions"])
+
+VERSIONS = {
+    "mobile": {
+        "version": "1.0.2",
+        "build": 3,
+        "apk_url": "https://darsak-ai.vercel.app/DarsakAI.apk",
+        "size_mb": 70,
+        "changes_ar": "إصلاح QR code، تحسين PIN، إضافة الاشتراكات",
+        "changes_en": "QR fix, PIN improvements, subscriptions",
+        "force_update": False,
+    },
+    "desktop": {
+        "version": "1.0.2",
+        "build": 3,
+        "download_url": None,
+        "size_mb": None,
+        "changes_ar": "شاشة QR مستقلة، إصلاح PIN، دعم الاشتراكات",
+        "changes_en": "Standalone QR screen, PIN fix, subscriptions",
+        "force_update": False,
+    },
+    "accounts": {
+        "version": "1.0.0",
+        "build": 1,
+        "download_url": None,
+        "size_mb": None,
+        "changes_ar": "الإصدار الأول",
+        "changes_en": "Initial release",
+        "force_update": False,
+    },
+}
+
+
+@router.get("/")
+async def get_versions():
+    return VERSIONS
+
+
+@router.get("/{platform}")
+async def get_version(platform: str):
+    return VERSIONS.get(platform, {"error": "Unknown platform"})

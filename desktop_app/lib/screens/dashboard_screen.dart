@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../core/subscription_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../providers/sync_provider.dart';
@@ -8,6 +9,7 @@ import '../widgets/sidebar.dart';
 import '../widgets/sync_indicator.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/quick_action.dart';
+import '../widgets/subscription_overlay.dart';
 import 'students_screen.dart';
 import 'groups_screen.dart';
 import 'attendance_screen.dart';
@@ -15,6 +17,7 @@ import 'grades_screen.dart';
 import 'invoices_screen.dart';
 import 'settings_screen.dart';
 import 'qr_screen.dart';
+import 'subscription_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -40,6 +43,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   late VoidCallback _goToAttendance;
   late VoidCallback _goToGrades;
 
+  final _subscriptionService = SubscriptionService();
+  bool _subscriptionExpired = false;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +65,20 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DataProvider>().loadData();
+      _checkSubscription();
+    });
+  }
+
+  Future<void> _checkSubscription() async {
+    final sub = await _subscriptionService.getMySubscription();
+    if (sub != null) {
+      await _subscriptionService.cacheSubscription(sub);
+    }
+    final cached = sub ?? await _subscriptionService.getCachedSubscription();
+    final expired = !_subscriptionService.isSubscriptionActive(cached);
+    if (!mounted) return;
+    setState(() {
+      _subscriptionExpired = expired;
     });
   }
 
@@ -80,92 +100,103 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final textMuted = isDark ? AppTheme.darkTextMuted : AppTheme.lightTextMuted;
 
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          Sidebar(
-            selectedIndex: _selectedIndex,
-            onItemSelected: (i) {
-              setState(() => _selectedIndex = i);
-              _slideController.reset();
-              _slideController.forward();
-            },
-            userName: auth.user?.fullName ?? 'مدرس',
-            onLogout: () => auth.logout(),
+          Row(
+            children: [
+              Sidebar(
+                selectedIndex: _selectedIndex,
+                onItemSelected: (i) {
+                  setState(() => _selectedIndex = i);
+                  _slideController.reset();
+                  _slideController.forward();
+                },
+                userName: auth.user?.fullName ?? 'مدرس',
+                onLogout: () => auth.logout(),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        border: Border(bottom: BorderSide(color: borderColor)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: sync.isOnline ? AppTheme.success : AppTheme.danger,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            sync.isOnline ? 'متصل' : 'غير متصل',
+                            style: TextStyle(
+                              color: sync.isOnline ? AppTheme.success : AppTheme.danger,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            '/',
+                            style: TextStyle(color: borderColor, fontSize: 13),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            _getPageTitle(),
+                            style: TextStyle(color: textMuted, fontSize: 13),
+                          ),
+                          const Spacer(),
+                          SyncIndicator(
+                            isOnline: sync.isOnline,
+                            isSyncing: sync.isSyncing,
+                            status: sync.status,
+                            onSync: () => context.read<SyncProvider>().syncNow(),
+                          ),
+                          const SizedBox(width: 8),
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: IconButton(
+                              onPressed: widget.toggleTheme,
+                              icon: Icon(
+                                widget.themeMode == ThemeMode.dark
+                                    ? Icons.light_mode_outlined
+                                    : Icons.dark_mode_outlined,
+                                size: 20,
+                              ),
+                              style: IconButton.styleFrom(
+                                padding: const EdgeInsets.all(8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _buildPage(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    border: Border(bottom: BorderSide(color: borderColor)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: sync.isOnline ? AppTheme.success : AppTheme.danger,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        sync.isOnline ? 'متصل' : 'غير متصل',
-                        style: TextStyle(
-                          color: sync.isOnline ? AppTheme.success : AppTheme.danger,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        '/',
-                        style: TextStyle(color: borderColor, fontSize: 13),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        _getPageTitle(),
-                        style: TextStyle(color: textMuted, fontSize: 13),
-                      ),
-                      const Spacer(),
-                      SyncIndicator(
-                        isOnline: sync.isOnline,
-                        isSyncing: sync.isSyncing,
-                        status: sync.status,
-                        onSync: () => context.read<SyncProvider>().syncNow(),
-                      ),
-                      const SizedBox(width: 8),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: IconButton(
-                          onPressed: widget.toggleTheme,
-                          icon: Icon(
-                            widget.themeMode == ThemeMode.dark
-                                ? Icons.light_mode_outlined
-                                : Icons.dark_mode_outlined,
-                            size: 20,
-                          ),
-                          style: IconButton.styleFrom(
-                            padding: const EdgeInsets.all(8),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _buildPage(),
-                  ),
-                ),
-              ],
+          if (_subscriptionExpired && _selectedIndex != 7)
+            SubscriptionOverlay(
+              onRefresh: _checkSubscription,
+              onActivate: () {
+                setState(() => _selectedIndex = 7);
+              },
             ),
-          ),
         ],
       ),
     );
@@ -180,7 +211,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 4: return 'الدرجات';
       case 5: return 'الفواتير';
       case 6: return 'QR Code';
-      case 7: return 'الإعدادات';
+      case 7: return 'الاشتراكات';
+      case 8: return 'الإعدادات';
       default: return 'لوحة التحكم';
     }
   }
@@ -202,6 +234,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 6:
         return const QrScreen(key: ValueKey('qr'));
       case 7:
+        return const SubscriptionScreen(key: ValueKey('subscription'));
+      case 8:
         return const SettingsScreen(key: ValueKey('settings'));
       default:
         return _buildHome(key: const ValueKey('home'));

@@ -32,6 +32,9 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": True}
 
 

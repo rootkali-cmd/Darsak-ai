@@ -13,7 +13,7 @@ from src.services import sync_buffer, start_scheduler, stop_scheduler
 from src.api import (
     auth_router, students_router, groups_router, attendance_router,
     grades_router, invoices_router, qr_router, sync_router,
-    student_me_router,
+    student_me_router, subscriptions_router, versions_router,
 )
 
 settings = get_settings()
@@ -40,10 +40,27 @@ async def lifespan(app: FastAPI):
     if not os.environ.get("VERCEL"):
         await sync_buffer.connect()
         start_scheduler()
+
+    # Start Telegram bot
+    try:
+        from src.bot.telegram_bot import start_bot, stop_bot
+        await start_bot()
+    except Exception as e:
+        logger.warning("Telegram bot startup skipped: %s", e)
+
     logger.info("DarsakAI Hub started successfully")
     yield
+
     if not os.environ.get("VERCEL"):
         stop_scheduler()
+
+    # Stop Telegram bot
+    try:
+        from src.bot.telegram_bot import stop_bot
+        await stop_bot()
+    except Exception as e:
+        logger.warning("Telegram bot shutdown skipped: %s", e)
+
     logger.info("Shutting down DarsakAI Hub...")
 
 
@@ -133,3 +150,5 @@ app.include_router(invoices_router, prefix=settings.API_V1_PREFIX)
 app.include_router(qr_router, prefix=settings.API_V1_PREFIX)
 app.include_router(sync_router, prefix=settings.API_V1_PREFIX)
 app.include_router(student_me_router, prefix=settings.API_V1_PREFIX)
+app.include_router(subscriptions_router, prefix=settings.API_V1_PREFIX)
+app.include_router(versions_router, prefix=settings.API_V1_PREFIX)

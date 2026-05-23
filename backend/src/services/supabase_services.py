@@ -1,6 +1,6 @@
 from typing import Any
 from uuid import UUID
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from src.core.security.supabase_repo import SupabaseRepository
 from src.core.security.auth import hash_password
@@ -194,6 +194,87 @@ class InvoiceService:
 
 
 VALID_ACTOR_TYPES = {"student", "teacher", "assistant", "system"}
+
+class SubscriptionPlanService:
+    def __init__(self):
+        self.repo = SupabaseRepository("subscription_plans")
+
+    async def list_active(self) -> list[dict]:
+        return await self.repo.select({"is_active": True}, limit=50)
+
+    async def get_by_id(self, plan_id: str) -> dict | None:
+        return await self.repo.select_one({"id": plan_id})
+
+    async def get_by_name(self, name: str) -> dict | None:
+        return await self.repo.select_one({"name": name})
+
+
+class SubscriptionCodeService:
+    def __init__(self):
+        self.repo = SupabaseRepository("subscription_codes")
+
+    async def create(self, code: str, plan_id: str, expires_at: str | None = None) -> dict:
+        return await self.repo.insert({
+            "code": code,
+            "plan_id": plan_id,
+            "expires_at": expires_at,
+        })
+
+    async def get_by_code(self, code: str) -> dict | None:
+        return await self.repo.select_one({"code": code})
+
+    async def mark_used(self, code_id: str, teacher_id: str) -> dict:
+        return await self.repo.update(
+            {"id": code_id},
+            {
+                "is_used": True,
+                "used_by_teacher_id": teacher_id,
+                "used_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    async def list_all(self, limit: int = 100) -> list[dict]:
+        return await self.repo.select({}, limit=limit)
+
+    async def count_by_used(self, is_used: bool) -> int:
+        return await self.repo.count({"is_used": is_used})
+
+
+class TeacherSubscriptionService:
+    def __init__(self):
+        self.repo = SupabaseRepository("teacher_subscriptions")
+
+    async def create(self, teacher_id: str, plan_id: str, code_id: str, expires_at: str) -> dict:
+        return await self.repo.insert({
+            "teacher_id": teacher_id,
+            "plan_id": plan_id,
+            "code_id": code_id,
+            "expires_at": expires_at,
+            "is_active": True,
+        })
+
+    async def get_by_teacher(self, teacher_id: str) -> dict | None:
+        return await self.repo.select_one({"teacher_id": teacher_id})
+
+    async def update(self, subscription_id: str, data: dict) -> dict:
+        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        return await self.repo.update({"id": subscription_id}, data)
+
+    async def get_active_subscription(self, teacher_id: str) -> dict | None:
+        sub = await self.repo.select_one({"teacher_id": teacher_id, "is_active": True})
+        if not sub:
+            return None
+        expires = sub.get("expires_at")
+        if expires:
+            if isinstance(expires, str):
+                expires_dt = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+            else:
+                expires_dt = expires
+            if expires_dt < datetime.now(timezone.utc):
+                await self.update(sub["id"], {"is_active": False})
+                return None
+        return sub
+
 
 class AuditService:
     def __init__(self):

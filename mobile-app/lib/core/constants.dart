@@ -7,4 +7,5 @@ class AppConstants {
   static const String storageKeyName = 'student_name';
   static const String storageKeyTeacherCode = 'teacher_code';
   static const String storageKeyTeacherName = 'teacher_name';
+  static const String storageKeySubscription = 'subscription_data';
 }

@@ -176,4 +176,30 @@ class ApiService {
     });
     return response.data;
   }
+
+  Future<Map<String, dynamic>?> getMySubscription() async {
+    try {
+      final response = await _dio.get('/subscriptions/my');
+      return response.data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> activateCode(String code) async {
+    final response = await _dio.post('/subscriptions/activate', data: {
+      'code': code,
+    });
+    return response.data;
+  }
+
+  Future<List<dynamic>> getPlans() async {
+    final response = await _dio.get('/subscriptions/plans');
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> checkVersion(String platform) async {
+    final response = await _dio.get('/versions/$platform');
+    return response.data;
+  }
 }

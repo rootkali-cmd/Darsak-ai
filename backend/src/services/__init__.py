@@ -6,6 +6,9 @@ from src.services.supabase_services import (
     GradeService,
     InvoiceService,
     AuditService,
+    SubscriptionPlanService,
+    SubscriptionCodeService,
+    TeacherSubscriptionService,
 )
 from src.services.ai_analyzer import ai_analyzer
 from src.services.sync_buffer import sync_buffer
@@ -22,6 +25,9 @@ attendance_service = AttendanceService()
 grade_service = GradeService()
 invoice_service = InvoiceService()
 audit_service = AuditService()
+subscription_plan_service = SubscriptionPlanService()
+subscription_code_service = SubscriptionCodeService()
+teacher_subscription_service = TeacherSubscriptionService()
 
 __all__ = [
     "user_service",
@@ -31,6 +37,9 @@ __all__ = [
     "grade_service",
     "invoice_service",
     "audit_service",
+    "subscription_plan_service",
+    "subscription_code_service",
+    "teacher_subscription_service",
     "ai_analyzer",
     "sync_buffer",
     "qr_service",

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_teacher
 from src.schemas.grade import GradeCreate, GradeBulkUpload, GradeResponse
 from src.services import grade_service, student_service, audit_service
+from src.core.subscription_guard import enforce_grade_limit
 
 router = APIRouter(prefix="/grades", tags=["Grades"])
 
@@ -16,6 +17,8 @@ async def create_grade(
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
+    await enforce_grade_limit(current_user["id"])
+
     student = await student_service.get_by_id(str(grade_data.student_id))
     if not student or student["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")

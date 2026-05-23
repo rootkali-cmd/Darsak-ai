@@ -3,23 +3,29 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/local_db.dart';
+import '../core/subscription_service.dart';
 import '../models/student.dart';
 
-enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
+enum AuthStatus { uninitialized, authenticated, unauthenticated, loading, subscriptionExpired }
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
+  final SubscriptionService _subscriptionService = SubscriptionService();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   AuthStatus _status = AuthStatus.uninitialized;
   StudentModel? _student;
   String? _error;
   String? _teacherCode;
+  bool _isSubscriptionActive = false;
+  Map<String, dynamic>? _subscriptionData;
 
   AuthStatus get status => _status;
   StudentModel? get student => _student;
   String? get error => _error;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   String? get teacherCode => _teacherCode;
+  bool get isSubscriptionActive => _isSubscriptionActive;
+  Map<String, dynamic>? get subscriptionData => _subscriptionData;
 
   Future<void> tryAutoLogin() async {
     final token = await _storage.read(key: AppConstants.storageKeyToken);
@@ -38,14 +44,32 @@ class AuthProvider extends ChangeNotifier {
       _student = StudentModel.fromJson(cached);
     }
 
+    // Check subscription from cache
+    final subActive = await _subscriptionService.isSubscriptionActive();
+    _isSubscriptionActive = subActive;
+    _subscriptionData = await _subscriptionService.getCachedSubscription();
+
+    if (!subActive) {
+      _status = AuthStatus.subscriptionExpired;
+      notifyListeners();
+      return;
+    }
+
     _status = AuthStatus.authenticated;
     notifyListeners();
 
-    // Refresh profile in background
+    // Refresh profile and subscription in background
     try {
       final data = await _api.getProfile();
       _student = StudentModel.fromJson(data);
       LocalDB.saveProfile(data);
+
+      final subData = await _subscriptionService.getMySubscription();
+      _subscriptionData = subData;
+      _isSubscriptionActive = await _subscriptionService.isSubscriptionActive();
+      if (!_isSubscriptionActive) {
+        _status = AuthStatus.subscriptionExpired;
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -72,6 +96,22 @@ class AuthProvider extends ChangeNotifier {
       _student = StudentModel.fromJson(profile);
       LocalDB.saveProfile(profile);
 
+      // Check subscription
+      try {
+        final subData = await _subscriptionService.getMySubscription();
+        _subscriptionData = subData;
+        _isSubscriptionActive = await _subscriptionService.isSubscriptionActive();
+      } catch (_) {
+        _isSubscriptionActive = false;
+        _subscriptionData = null;
+      }
+
+      if (!_isSubscriptionActive) {
+        _status = AuthStatus.subscriptionExpired;
+        notifyListeners();
+        return true;
+      }
+
       _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
@@ -83,11 +123,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshSubscription() async {
+    try {
+      final subData = await _subscriptionService.getMySubscription();
+      _subscriptionData = subData;
+      _isSubscriptionActive = await _subscriptionService.isSubscriptionActive();
+      if (_isSubscriptionActive) {
+        _status = AuthStatus.authenticated;
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<void> logout() async {
     await _storage.deleteAll();
+    await _subscriptionService.clearCache();
     LocalDB.clearAll();
     _student = null;
     _teacherCode = null;
+    _subscriptionData = null;
+    _isSubscriptionActive = false;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }

@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/services.dart';
 import '../core/theme.dart';
 import '../core/local_db.dart';
+import '../core/subscription_service.dart';
 import '../providers/data_provider.dart';
 import '../models/student.dart';
 import '../models/group.dart';
@@ -107,7 +108,11 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: ElevatedButton.icon(
-                      onPressed: () => _showAddStudentDialog(context, data),
+                      onPressed: () async {
+                        final canAdd = await _canAddStudent();
+                        if (!mounted) return;
+                        if (canAdd) _showAddStudentDialog(context, data);
+                      },
                       icon: const Icon(Icons.person_add, size: 18),
                       label: const Text('إضافة طالب'),
                     ),
@@ -182,7 +187,11 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: ElevatedButton.icon(
-                          onPressed: () => _showAddStudentDialog(context, data),
+                          onPressed: () async {
+                            final canAdd = await _canAddStudent();
+                            if (!mounted) return;
+                            if (canAdd) _showAddStudentDialog(context, data);
+                          },
                           icon: const Icon(Icons.person_add, size: 18),
                           label: const Text('إضافة طالب جديد'),
                         ),
@@ -221,6 +230,30 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
         ],
       ),
     );
+  }
+
+  Future<bool> _canAddStudent() async {
+    final sub = SubscriptionService();
+    final cached = await sub.getCachedSubscription();
+    if (!mounted) return false;
+    final data = context.read<DataProvider>();
+    final currentCount = data.students.length;
+    if (cached == null) return true;
+    final limitStr = cached['student_limit']?.toString();
+    if (limitStr == null) return true;
+    if (limitStr.contains('غير محدود')) return true;
+    final limit = int.tryParse(limitStr);
+    if (limit != null && currentCount >= limit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لقد تجاوزت الحد المسموح به من الطلاب في باقتك'),
+          backgroundColor: AppTheme.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return false;
+    }
+    return true;
   }
 
   void _showAddStudentDialog(BuildContext context, DataProvider data) {

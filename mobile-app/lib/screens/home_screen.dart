@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../widgets/stat_card.dart';
@@ -7,6 +8,7 @@ import '../widgets/shimmer_loading.dart';
 import 'grades_screen.dart';
 import 'attendance_screen.dart';
 import 'profile_screen.dart';
+import 'subscription_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +32,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final data = context.watch<DataProvider>();
     final student = auth.student;
 
+    final expiryDays = auth.subscriptionData != null
+        ? _parseRemainingDays(auth.subscriptionData!)
+        : 0;
+    final showExpiryBanner = auth.isAuthenticated && !auth.isSubscriptionActive;
+
     return Scaffold(
+      drawer: _buildDrawer(context, auth),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => data.loadAll(),
@@ -40,7 +48,11 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(student, data),
+                if (showExpiryBanner) ...[
+                  _buildExpiryBanner(),
+                  const SizedBox(height: 12),
+                ],
+                _buildHeader(student, data, auth),
                 const SizedBox(height: 24),
                 if (data.isLoading && data.grades.isEmpty)
                   const ShimmerList(count: 3)
@@ -60,23 +72,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(dynamic student, DataProvider data) {
+  Widget _buildHeader(dynamic student, DataProvider data, AuthProvider auth) {
     final initials = student?.fullName?.isNotEmpty == true ? student.fullName[0] : '?';
     final name = student?.fullName ?? 'طالب';
     final code = student?.code ?? '';
     return Row(
       children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
-            borderRadius: BorderRadius.all(Radius.circular(14)),
-          ),
-          child: Center(
-            child: Text(
-              initials,
-              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        Builder(
+          builder: (ctx) => GestureDetector(
+            onTap: () => Scaffold.of(ctx).openDrawer(),
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+              ),
+              child: Center(
+                child: Text(
+                  initials,
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
           ),
         ),
@@ -89,34 +106,48 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6, height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: data.isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+        if (!auth.isSubscriptionActive)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.danger.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
+            ),
+            child: const Text(
+              'اشتراك منتهي',
+              style: TextStyle(color: AppTheme.danger, fontSize: 10, fontWeight: FontWeight.bold),
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6, height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: data.isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                data.isOffline ? 'غير متصل' : 'متصل',
-                style: TextStyle(
-                  color: data.isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                  fontSize: 11,
+                const SizedBox(width: 4),
+                Text(
+                  data.isOffline ? 'غير متصل' : 'متصل',
+                  style: TextStyle(
+                    color: data.isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                    fontSize: 11,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -330,6 +361,140 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildDrawer(BuildContext context, AuthProvider auth) {
+    return Drawer(
+      backgroundColor: const Color(0xFF0A0A0A),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFF1E3A5F), Color(0xFF0A0A0A)]),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  width: 56, height: 56,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                  ),
+                  child: const Center(child: Icon(Icons.school, color: Colors.white, size: 30)),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  auth.student?.fullName ?? 'طالب',
+                  style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  auth.student?.code ?? '',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          _DrawerItem(
+            icon: Icons.home,
+            label: 'الرئيسية',
+            onTap: () => Navigator.pop(context),
+          ),
+          _DrawerItem(
+            icon: Icons.assignment,
+            label: 'الدرجات',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const GradesScreen()));
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.calendar_month,
+            label: 'الحضور',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen()));
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.person,
+            label: 'الملف الشخصي',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+            },
+          ),
+          const Divider(color: Color(0xFF2A2A2A), height: 1),
+          _DrawerItem(
+            icon: Icons.card_membership,
+            label: 'الاشتراك',
+            trailing: !auth.isSubscriptionActive
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.danger.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text('منتهي', style: TextStyle(color: AppTheme.danger, fontSize: 10)),
+                  )
+                : null,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+            },
+          ),
+          const Divider(color: Color(0xFF2A2A2A), height: 1),
+          _DrawerItem(
+            icon: Icons.logout,
+            label: 'تسجيل الخروج',
+            iconColor: AppTheme.danger,
+            textColor: AppTheme.danger,
+            onTap: () {
+              Navigator.pop(context);
+              auth.logout();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpiryBanner() {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen())),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.danger.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: AppTheme.danger, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'اشتراكك منتهٍ. فعّل اشتراكك الآن للاستمرار.',
+                style: TextStyle(color: AppTheme.danger, fontSize: 12),
+              ),
+            ),
+            const Icon(Icons.arrow_back_ios, color: AppTheme.danger, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int _parseRemainingDays(Map<String, dynamic> subData) {
+    final expiresAt = subData['expires_at'] as String?;
+    if (expiresAt == null) return 0;
+    final expiry = DateTime.tryParse(expiresAt);
+    if (expiry == null) return 0;
+    return expiry.difference(DateTime.now()).inDays;
+  }
+
   Widget _buildBottomNav() {
     return Container(
       decoration: const BoxDecoration(
@@ -366,6 +531,41 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final Color? iconColor;
+  final Color? textColor;
+
+  const _DrawerItem({
+    required this.icon,
+    required this.label,
+    this.trailing,
+    this.onTap,
+    this.iconColor,
+    this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? Colors.grey[500], size: 22),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: textColor ?? const Color(0xFFF5F5F5),
+          fontSize: 14,
+        ),
+      ),
+      trailing: trailing,
+      onTap: onTap,
+      dense: true,
     );
   }
 }

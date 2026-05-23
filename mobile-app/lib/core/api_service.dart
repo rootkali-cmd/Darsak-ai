@@ -73,6 +73,23 @@ class ApiService {
     });
   }
 
+  Future<Map<String, dynamic>> getMySubscription() async {
+    final response = await _dio.get('/subscriptions/my');
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> activateCode(String code) async {
+    final response = await _dio.post('/subscriptions/activate', data: {
+      'code': code,
+    });
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> checkVersion() async {
+    final response = await _dio.get('/versions/mobile');
+    return response.data;
+  }
+
   Future<Map<String, dynamic>> checkInQR({
     required String teacherId,
     required String groupId,

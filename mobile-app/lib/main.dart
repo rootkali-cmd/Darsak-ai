@@ -9,6 +9,7 @@ import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
 import 'screens/teacher_connect_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/subscription_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -89,6 +90,8 @@ class _AuthGateState extends State<AuthGate> {
         );
       case AuthStatus.authenticated:
         return const HomeScreen();
+      case AuthStatus.subscriptionExpired:
+        return const SubscriptionScreen();
       case AuthStatus.unauthenticated:
       case AuthStatus.loading:
         return const TeacherConnectScreen();

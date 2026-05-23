@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/local_sync/local_sync_client.dart';
+import 'core/subscription_service.dart';
+import 'screens/subscription_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +16,8 @@ void main() async {
   // Ensure accounts DB directory exists
   final accountsDir = Directory(accountsDbPath);
   if (!await accountsDir.exists()) await accountsDir.create(recursive: true);
+
+  final prefs = await SharedPreferences.getInstance();
 
   await Hive.initFlutter(accountsDbPath);
 
@@ -27,7 +32,12 @@ void main() async {
   final syncClient = LocalSyncClient();
   syncClient.connect();
 
-  runApp(DarsakAccountsApp(syncClient: syncClient));
+  final subscriptionService = SubscriptionService(prefs);
+
+  runApp(DarsakAccountsApp(
+    syncClient: syncClient,
+    subscriptionService: subscriptionService,
+  ));
 }
 
 Future<void> _backupDb(String accountsDbPath) async {
@@ -75,19 +85,27 @@ Future<void> _syncStudentsFromMain(String mainDbPath, String accountsDbPath) asy
 
 class DarsakAccountsApp extends StatelessWidget {
   final LocalSyncClient syncClient;
-  const DarsakAccountsApp({super.key, required this.syncClient});
+  final SubscriptionService subscriptionService;
+  const DarsakAccountsApp({
+    super.key,
+    required this.syncClient,
+    required this.subscriptionService,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AccountsProvider(syncClient),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AccountsProvider(syncClient)),
+        Provider.value(value: subscriptionService),
+      ],
       child: MaterialApp(
         title: 'DarsakAI Accounts',
         debugShowCheckedModeBanner: false,
         theme: _buildTheme(Brightness.dark),
         darkTheme: _buildTheme(Brightness.dark),
         themeMode: ThemeMode.dark,
-        home: const AccountsHome(),
+        home: const SubscriptionGate(),
         builder: (context, child) => Directionality(
           textDirection: TextDirection.rtl,
           child: child!,
@@ -114,6 +132,62 @@ class DarsakAccountsApp extends StatelessWidget {
       ),
       cardColor: isDark ? const Color(0xFF141414) : const Color(0xFFFFFFFF),
       dividerColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2E5EA),
+    );
+  }
+}
+
+class SubscriptionGate extends StatefulWidget {
+  const SubscriptionGate({super.key});
+
+  @override
+  State<SubscriptionGate> createState() => _SubscriptionGateState();
+}
+
+class _SubscriptionGateState extends State<SubscriptionGate> {
+  Map<String, dynamic>? _subscription;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSubscription();
+  }
+
+  Future<void> _checkSubscription() async {
+    final service = context.read<SubscriptionService>();
+    final sub = await service.getMySubscription();
+    if (mounted) setState(() { _subscription = sub; _loading = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    final service = context.read<SubscriptionService>();
+    final active = service.isSubscriptionActive(_subscription);
+
+    if (!active) {
+      return SubscriptionScreen(
+        onActivated: () {
+          _checkSubscription();
+        },
+      );
+    }
+
+    return AccountsHome(
+      onSubscriptionTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SubscriptionScreen(
+              onActivated: () {
+                _checkSubscription();
+              },
+            ),
+          ),
+        );
+        _checkSubscription();
+      },
     );
   }
 }
@@ -222,7 +296,8 @@ class AccountsProvider extends ChangeNotifier {
 }
 
 class AccountsHome extends StatefulWidget {
-  const AccountsHome({super.key});
+  final VoidCallback? onSubscriptionTap;
+  const AccountsHome({super.key, this.onSubscriptionTap});
 
   @override
   State<AccountsHome> createState() => _AccountsHomeState();
@@ -247,6 +322,11 @@ class _AccountsHomeState extends State<AccountsHome> {
       appBar: AppBar(
         title: const Text('نظام الحسابات - درسك AI'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.subscriptions),
+            onPressed: widget.onSubscriptionTap,
+            tooltip: 'الاشتراك',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => provider.loadData(),
