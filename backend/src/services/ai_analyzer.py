@@ -27,10 +27,17 @@ SYSTEM_PROMPT = """أنت محلل تعليمي ذكي متخصص في منهج 
 
 class AIAnalyzer:
     def __init__(self):
-        self.api_key = settings.GROQ_API_KEY
+        self.api_key = settings.GROQ_API_KEY or settings.OPENROUTER_API_KEY
         self.model = settings.GROQ_MODEL
         self.timeout = settings.AI_TIMEOUT
         self.api_url = "https://api.groq.com/openai/v1/chat/completions"
+        self.fallback_provider = None
+        if settings.OPENROUTER_API_KEY:
+            self.fallback_provider = {
+                "api_key": settings.OPENROUTER_API_KEY,
+                "model": settings.OPENROUTER_MODEL,
+                "base_url": "https://openrouter.ai/api/v1",
+            }
 
     async def analyze_student(
         self,
@@ -40,7 +47,7 @@ class AIAnalyzer:
         curriculum_context: str | None = None,
     ) -> dict[str, Any]:
         if not self.api_key:
-            logger.warning("GROQ_API_KEY not set, using fallback analysis")
+            logger.warning("No AI API key set, using fallback analysis")
             return self._fallback_analysis(subject, grades)
 
         grade_summary = json.dumps(grades, ensure_ascii=False, indent=2)
@@ -50,43 +57,67 @@ class AIAnalyzer:
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": f"""حلل أداء الطالب التالي:
-
-الطالب: {student_name}
-المادة: {subject}
-الدرجات:
-{grade_summary}{curriculum}
-
-قدم التقرير بصيغة JSON فقط.""",
+                "content": f"حلل أداء الطالب التالي:\n\nالطالب: {student_name}\nالمادة: {subject}\nالدرجات:\n{grade_summary}{curriculum}\n\nقدم التقرير بصيغة JSON فقط.",
             },
         ]
 
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    self.api_url,
-                    json={
-                        "model": self.model,
-                        "messages": messages,
-                        "temperature": 0.3,
-                        "response_format": {"type": "json_object"},
-                    },
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json",
-                    },
-                )
-                response.raise_for_status()
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
-                return json.loads(content)
+        result = await self._call_with_fallback(messages)
+        if result:
+            return result
+        return self._fallback_analysis(subject, grades)
 
-        except httpx.HTTPStatusError as e:
-            logger.error("Groq API error: %s - %s", e.response.status_code, e.response.text)
-            return self._fallback_analysis(subject, grades)
-        except Exception as e:
-            logger.error("AI analysis failed: %s", str(e))
-            return self._fallback_analysis(subject, grades)
+    async def _call_with_fallback(self, messages: list) -> dict | None:
+        for provider_name, cfg in [("Groq", None), ("OpenRouter", self.fallback_provider)]:
+            try:
+                if provider_name == "Groq":
+                    if not settings.GROQ_API_KEY:
+                        continue
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        response = await client.post(
+                            "https://api.groq.com/openai/v1/chat/completions",
+                            json={
+                                "model": self.model,
+                                "messages": messages,
+                                "temperature": 0.3,
+                                "response_format": {"type": "json_object"},
+                            },
+                            headers={
+                                "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+                                "Content-Type": "application/json",
+                            },
+                        )
+                        response.raise_for_status()
+                        result = response.json()
+                        content = result["choices"][0]["message"]["content"]
+                        return json.loads(content)
+                elif provider_name == "OpenRouter" and cfg:
+                    headers = {
+                        "Authorization": f"Bearer {cfg['api_key']}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://darsak-ai.vercel.app",
+                        "X-Title": "DarsakAI",
+                    }
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        response = await client.post(
+                            f"{cfg['base_url']}/chat/completions",
+                            json={
+                                "model": cfg["model"],
+                                "messages": messages,
+                                "temperature": 0.3,
+                                "max_tokens": 4096,
+                                "response_format": {"type": "json_object"},
+                            },
+                            headers=headers,
+                        )
+                        response.raise_for_status()
+                        result = response.json()
+                        content = result["choices"][0]["message"]["content"]
+                        return json.loads(content)
+            except httpx.HTTPStatusError as e:
+                logger.warning("%s API error: %s", provider_name, e.response.status_code)
+            except Exception as e:
+                logger.warning("%s API failed: %s", provider_name, str(e))
+        return None
 
     def _fallback_analysis(self, subject: str, grades: list[dict]) -> dict[str, Any]:
         if not grades:
