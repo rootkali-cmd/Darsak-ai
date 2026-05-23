@@ -24,7 +24,7 @@ class QRService:
 
     @staticmethod
     def generate_teacher_qr(teacher_id: UUID, teacher_code: str) -> str:
-        payload = f"darsak://teacher/{teacher_id}/{teacher_code}"
+        payload = teacher_code
         return QRService.generate_qr_base64(payload)
 
 

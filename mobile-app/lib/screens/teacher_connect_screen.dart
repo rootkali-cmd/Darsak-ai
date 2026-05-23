@@ -46,41 +46,31 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
   void _onInputChanged() {
     if (_parsingBarcode) return;
     final text = _codeController.text;
-    // Check if a barcode scanner typed a full URI (ends with newline or is pasted)
-    if (text.startsWith('darsak://teacher/') && text.contains('\n')) {
+    if (text.endsWith('\n')) {
       _parsingBarcode = true;
-      final parsed = _extractTeacherCode(text);
-      if (parsed != null) {
-        _codeController.text = parsed;
+      final clean = text.trim();
+      String? code;
+      if (clean.startsWith('darsak://teacher/')) {
+        code = _extractTeacherCode(clean);
+      } else if (clean.startsWith('TCH-') && clean.length <= 20) {
+        code = clean;
+      } else {
+        code = clean;
+      }
+      if (code != null && code.isNotEmpty) {
+        _codeController.text = code;
         _codeController.selection = TextSelection.fromPosition(
-          TextPosition(offset: parsed.length),
+          TextPosition(offset: code.length),
         );
-        // Auto-submit after short delay
         Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) _connect(code: parsed);
+          if (mounted) _connect(code: code);
         });
       }
       _parsingBarcode = false;
-    } else if (text.startsWith('darsak://teacher/')) {
-      // Still typing - wait for more input
-      final parsed = _extractTeacherCode(text);
-      if (parsed != null && text.endsWith('\n')) {
-        _parsingBarcode = true;
-        _codeController.text = parsed;
-        _codeController.selection = TextSelection.fromPosition(
-          TextPosition(offset: parsed.length),
-        );
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) _connect(code: parsed);
-        });
-        _parsingBarcode = false;
-      }
     }
   }
 
   String? _extractTeacherCode(String raw) {
-    // Format: darsak://teacher/{teacher_id}/{teacher_code}
-    // Or: darsak://teacher/{teacher_id}/{teacher_code}\n
     try {
       final clean = raw.trim().split('\n').first.trim();
       if (clean.startsWith('darsak://teacher/')) {
@@ -90,9 +80,8 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
           if (code.isNotEmpty) return code;
         }
       }
-      // Direct TCH- code
-      if (clean.startsWith('TCH-') && clean.length <= 20) {
-        return clean;
+      if (clean.length <= 20 && RegExp(r'^TCH[-:][A-Z0-9]+$').hasMatch(clean)) {
+        return clean.replaceAll(':', '-');
       }
     } catch (_) {}
     return null;
@@ -370,7 +359,6 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   String? _extractCodeFromRaw(String raw) {
     final clean = raw.trim();
-    // Format: darsak://teacher/{teacher_id}/{teacher_code}
     if (clean.startsWith('darsak://teacher/')) {
       final parts = clean.split('/');
       if (parts.length >= 4) {
@@ -378,11 +366,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         if (code.isNotEmpty) return code;
       }
     }
-    // Direct TCH- code
-    if (clean.startsWith('TCH-') && clean.length <= 20) {
-      return clean;
+    // TCH-XXXXXX or TCH:XXXXXX
+    if (clean.length <= 20 && RegExp(r'^TCH[-:][A-Z0-9]+$').hasMatch(clean)) {
+      return clean.replaceAll(':', '-');
     }
-    // Fallback: try using raw value directly if short enough
+    // Plain teacher code
     if (clean.length <= 20 && RegExp(r'^[A-Z0-9\-]+$').hasMatch(clean)) {
       return clean;
     }

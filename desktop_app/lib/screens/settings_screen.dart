@@ -207,8 +207,6 @@ class SettingsScreen extends StatelessWidget {
           final data = snapshot.data!;
           final qrBase64 = data['qr_base64'] as String;
           final teacherCode = data['teacher_code'] as String;
-          final teacherId = data['teacher_id'] as String;
-          final qrPayload = 'darsak://teacher/$teacherId/$teacherCode';
 
           // Decode base64 to image bytes
           final base64Str = qrBase64.contains(',') ? qrBase64.split(',').last : qrBase64;
