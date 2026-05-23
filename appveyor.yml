@@ -14,14 +14,13 @@ build_script:
   - flutter build windows --release
 
 after_build:
-  - cd build\windows\x64\release
-  - 7z a -tzip "%APPVEYOR_BUILD_FOLDER%\DarsakAI-Windows.zip" * -mx9
+  - 7z a -tzip "%APPVEYOR_BUILD_FOLDER%\DarsakAI-Windows.zip" "%APPVEYOR_BUILD_FOLDER%\desktop_app\build\windows\x64\runner\Release\*" -mx9
 
 artifacts:
   - path: DarsakAI-Windows.zip
     name: DarsakAI-Windows-zip
 
-  - path: desktop_app\build\windows\x64\release
+  - path: desktop_app\build\windows\x64\runner\Release
     name: DarsakAI-Desktop-Windows
     type: Folder
 
