@@ -16,8 +16,8 @@ install:
       Expand-Archive -Path $FLUTTER_ZIP -DestinationPath $env:APPVEYOR_BUILD_FOLDER
       # Prepend to PATH
       $env:Path = "$FLUTTER_DIR\bin;$env:Path"
-      flutter config --enable-windows-desktop 2>&1
-      if ($LASTEXITCODE -ne 0) { Write-Host "Flutter config warning (non-fatal)" }
+      cmd /c "flutter config --enable-windows-desktop" 2>&1
+      if ($LASTEXITCODE -ne 0) { Write-Host "[WARN] flutter config exited with code $LASTEXITCODE (non-fatal)" }
   - flutter --version
 
 build_script:
