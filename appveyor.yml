@@ -1,0 +1,38 @@
+version: 1.1.0.{build}
+
+image: Visual Studio 2022
+
+environment:
+  FLUTTER_VERSION: '3.24.5'
+
+install:
+  - ps: |
+      $FLUTTER_URL = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_$env:FLUTTER_VERSION-stable.zip"
+      $FLUTTER_ZIP = "$env:APPVEYOR_BUILD_FOLDER\flutter.zip"
+      Write-Host "Downloading Flutter $env:FLUTTER_VERSION..."
+      Invoke-WebRequest -Uri $FLUTTER_URL -OutFile $FLUTTER_ZIP -UseBasicParsing
+      Write-Host "Extracting..."
+      Expand-Archive -Path $FLUTTER_ZIP -DestinationPath $env:APPVEYOR_BUILD_FOLDER
+      $env:Path += ";$env:APPVEYOR_BUILD_FOLDER\flutter\bin"
+      [Environment]::SetEnvironmentVariable("Path", $env:Path, [EnvironmentVariableTarget]::Machine)
+      flutter config --enable-windows-desktop
+  - flutter --version
+
+build_script:
+  - cd desktop_app
+  - flutter pub get
+  - flutter build windows --release
+
+after_build:
+  - cd build\windows\x64\release
+  - 7z a -tzip "%APPVEYOR_BUILD_FOLDER%\DarsakAI-Windows.zip" * -mx9
+
+artifacts:
+  - path: DarsakAI-Windows.zip
+    name: DarsakAI-Windows-zip
+
+  - path: desktop_app\build\windows\x64\release
+    name: DarsakAI-Desktop-Windows
+    type: Folder
+
+deploy: off
