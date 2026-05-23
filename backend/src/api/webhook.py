@@ -134,7 +134,7 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
             return
 
         code = generate_license_key()
-        expires_at = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         plan_id = plan["id"]
         if hasattr(plan_id, "hex"):
             plan_id_str = plan_id.hex
@@ -147,7 +147,8 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
             f"📌 الباقة: {plan['name']}\n"
             f"🔑 الكود: `{code}`\n"
             f"💰 السعر: {plan['price_egp']} ج.م\n"
-            f"📅 الصلاحية: سنة من تاريخ التفعيل\n\n"
+            f"📅 الصلاحية: شهر من تاريخ التفعيل\n"
+            f"🔒 استخدام مرة واحدة فقط\n\n"
             f"أرسل هذا الكود للمدرس لتفعيل اشتراكه.",
             parse_mode="Markdown")
 
