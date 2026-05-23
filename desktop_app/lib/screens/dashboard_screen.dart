@@ -10,6 +10,7 @@ import '../widgets/sync_indicator.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/quick_action.dart';
 import '../widgets/subscription_overlay.dart';
+import 'exam_list_screen.dart';
 import 'students_screen.dart';
 import 'groups_screen.dart';
 import 'attendance_screen.dart';
@@ -190,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               ),
             ],
           ),
-          if (_subscriptionExpired && _selectedIndex != 7)
+          if (_subscriptionExpired && _selectedIndex != 8)
             SubscriptionOverlay(
               onRefresh: _checkSubscription,
               onActivate: () {
@@ -230,12 +231,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 4:
         return const GradesScreen(key: ValueKey('grades'));
       case 5:
-        return const InvoicesScreen(key: ValueKey('invoices'));
+        return const ExamListScreen(key: ValueKey('exams'));
       case 6:
-        return const QrScreen(key: ValueKey('qr'));
+        return const InvoicesScreen(key: ValueKey('invoices'));
       case 7:
-        return const SubscriptionScreen(key: ValueKey('subscription'));
+        return const QrScreen(key: ValueKey('qr'));
       case 8:
+        return const SubscriptionScreen(key: ValueKey('subscription'));
+      case 9:
         return const SettingsScreen(key: ValueKey('settings'));
       default:
         return _buildHome(key: const ValueKey('home'));

@@ -202,4 +202,79 @@ class ApiService {
     final response = await _dio.get('/versions/$platform');
     return response.data;
   }
+
+  // ─── Exams ──────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getExams() async {
+    final response = await _dio.get('/exams');
+    return response.data is List ? response.data as List : [];
+  }
+
+  Future<Map<String, dynamic>> createExam(String title, int durationMinutes, {String? description}) async {
+    final response = await _dio.post('/exams', data: {
+      'title': title,
+      'duration_minutes': durationMinutes,
+      if (description != null) 'description': description,
+    });
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> getExam(String examId) async {
+    final response = await _dio.get('/exams/$examId');
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> updateExam(String examId, Map<String, dynamic> data) async {
+    final response = await _dio.put('/exams/$examId', data: data);
+    return response.data;
+  }
+
+  Future<void> deleteExam(String examId) async {
+    await _dio.delete('/exams/$examId');
+  }
+
+  Future<Map<String, dynamic>> publishExam(String examId) async {
+    final response = await _dio.post('/exams/$examId/publish');
+    return response.data;
+  }
+
+  Future<List<dynamic>> getExamQuestions(String examId) async {
+    final response = await _dio.get('/exams/$examId/questions');
+    return response.data is List ? response.data as List : [];
+  }
+
+  Future<Map<String, dynamic>> addQuestion(String examId, Map<String, dynamic> data) async {
+    final response = await _dio.post('/exams/$examId/questions', data: data);
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> updateQuestion(String examId, String questionId, Map<String, dynamic> data) async {
+    final response = await _dio.put('/exams/$examId/questions/$questionId', data: data);
+    return response.data;
+  }
+
+  Future<void> deleteQuestion(String examId, String questionId) async {
+    await _dio.delete('/exams/$examId/questions/$questionId');
+  }
+
+  Future<Map<String, dynamic>> aiGenerateExam(String title, String filePath, {String? subject, int durationMinutes = 30}) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+      'title': title,
+      if (subject != null) 'subject': subject,
+      'duration_minutes': durationMinutes,
+    });
+    final response = await _dio.post('/exams/ai-generate', data: formData);
+    return response.data;
+  }
+
+  Future<List<dynamic>> getExamResults(String examId) async {
+    final response = await _dio.get('/exams/$examId/results');
+    return response.data is List ? response.data as List : [];
+  }
+
+  Future<Map<String, dynamic>> analyzeStudentExam(String studentExamId) async {
+    final response = await _dio.post('/exams/analyze/$studentExamId');
+    return response.data;
+  }
 }
