@@ -16,7 +16,7 @@ const apps = [
     fileName: 'DarsakAI.apk',
     size: '70 MB',
     platform: 'Android',
-    note: 'v1.0.1',
+    note: 'v1.0.2',
   },
   {
     id: 'desktop',
@@ -45,12 +45,13 @@ const apps = [
 ]
 
 const features = [
+  { ar: 'QR Code المعلم (قسم مستقل في القائمة)', en: 'Teacher QR code (own sidebar section)' },
+  { ar: 'إدارة PIN للطلاب (سطح المكتب)', en: 'Student PIN management (desktop)' },
   { ar: 'مسح QR Code / باركود المعلم', en: 'QR & barcode scanner' },
   { ar: 'PIN 6-8 أحرف وأرقام', en: '6-8 alphanumeric PIN' },
   { ar: 'دعم الباركود اللاصق (Hardware Scanner)', en: 'Hardware barcode scanner support' },
   { ar: 'Offline-first (يعرض البيانات المحفوظة)', en: 'Offline-first (cached data)' },
-  { ar: 'تغيير PIN من الملف الشخصي', en: 'Change PIN from profile' },
-  { ar: 'تسجيل دخول بربط المعلم', en: 'Teacher-linked login flow' },
+  { ar: 'طباعة QR Code (80×60 mm PDF)', en: 'Print QR code (80×60 mm PDF)' },
   { ar: 'توقيع release (Signed APK)', en: 'Signed release APK' },
 ]
 
@@ -205,7 +206,7 @@ export default function DownloadPage() {
             }}
           >
             <h3 className="text-sm font-bold mb-4 hud-text" style={{ fontFamily: 'var(--font-display)' }}>
-              {isAr ? 'الميزات في v1.0.1' : 'v1.0.1 FEATURES'}
+              {isAr ? 'الميزات في v1.0.2' : 'v1.0.2 FEATURES'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (

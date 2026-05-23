@@ -360,27 +360,28 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
     );
   }
 
-  void _showSetPinDialog(BuildContext context, StudentModel student) {
+  Future<void> _showSetPinDialog(BuildContext context, StudentModel student) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
     final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
     final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
-    final pinController = TextEditingController();
-    final confirmController = TextEditingController();
-    bool isLoading = false;
+    // Fetch PIN status first
     String? statusText;
     bool? hasPin;
-
-    // Check current PIN status
-    context.read<DataProvider>().api.getStudentPinStatus(student.id).then((res) {
+    try {
+      final res = await context.read<DataProvider>().api.getStudentPinStatus(student.id);
       hasPin = res['has_pin'] == true;
       statusText = hasPin == true ? 'الطالب لديه PIN بالفعل' : 'الطالب ليس لديه PIN';
-    }).catchError((_) {
+    } catch (_) {
       statusText = 'لا يمكن التحقق من حالة PIN';
-    });
+    }
 
+    final pinController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -466,7 +467,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
             MouseRegion(
               cursor: SystemMouseCursors.click,
               child: ElevatedButton(
-                onPressed: isLoading ? null : () async {
+                onPressed: () async {
                   final pin = pinController.text.trim();
                   final confirm = confirmController.text.trim();
                   if (pin.length < 6 || pin.length > 8) {
@@ -477,7 +478,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN غير متطابق'), backgroundColor: AppTheme.warning));
                     return;
                   }
-                  setDialogState(() => isLoading = true);
+                  setDialogState(() => {});
                   try {
                     await context.read<DataProvider>().api.resetStudentPin(student.id, pin);
                     if (!ctx.mounted) return;
@@ -488,13 +489,10 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       backgroundColor: AppTheme.success,
                     ));
                   } catch (e) {
-                    setDialogState(() => isLoading = false);
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تعيين PIN'), backgroundColor: AppTheme.danger));
                   }
                 },
-                child: isLoading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(hasPin == true ? 'إعادة تعيين' : 'تعيين PIN'),
+                child: Text(hasPin == true ? 'إعادة تعيين' : 'تعيين PIN'),
               ),
             ),
           ],
