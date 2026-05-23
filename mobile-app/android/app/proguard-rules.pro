@@ -6,7 +6,7 @@
 -keep class com.hive.** { *; }
 
 # Keep model classes for JSON serialization
--keep class com.darsak.darsak_mobile.models.** { *; }
+-keep class com.darsak.ai.models.** { *; }
 
 # Dio
 -keep class com.dio.** { *; }
