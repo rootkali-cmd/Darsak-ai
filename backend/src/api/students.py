@@ -57,7 +57,11 @@ async def list_students(
         limit=limit,
         offset=skip,
     )
-    return [StudentResponse(**s) for s in students]
+    result = []
+    for s in students:
+        s["has_pin"] = s.get("pin_hash") is not None
+        result.append(StudentResponse(**s))
+    return result
 
 
 @router.get("/count")
@@ -74,13 +78,32 @@ async def get_student(
     student = await student_service.get_by_id(student_id)
     if not student or student["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+    student["has_pin"] = student.get("pin_hash") is not None
     return StudentResponse(**student)
 
 
-@router.patch("/{student_id}", response_model=StudentResponse)
-async def update_student(
+@router.get("/{student_id}/pin")
+async def check_student_pin(
     student_id: str,
-    update_data: StudentUpdate,
+    current_user: dict = Depends(get_current_teacher),
+):
+    student = await student_service.get_by_id(student_id)
+    if not student or student["teacher_id"] != current_user["id"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+
+    if not student.get("pin_hash"):
+        return {"has_pin": False, "hint": "لم يتم تعيين رمز سري بعد"}
+
+    return {
+        "has_pin": True,
+        "hint": "تم تعيين رمز سري للطالب",
+    }
+
+
+@router.patch("/{student_id}/pin", response_model=StudentResponse)
+async def reset_student_pin(
+    student_id: str,
+    pin_data: StudentPinUpdate,
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
@@ -88,18 +111,20 @@ async def update_student(
     if not student or student["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
-    data = update_data.model_dump(exclude_unset=True)
-    updated = await student_service.update(student_id, data)
+    await student_service.update(student_id, {"pin": pin_data.pin})
 
     await audit_service.log(
         actor_type=current_user.get("role", "teacher"),
-        action="student_updated",
+        action="pin_reset",
         actor_id=current_user["id"],
         resource_type="student",
         resource_id=student_id,
         ip_address=get_client_ip(request),
+        metadata={"target_student": student.get("full_name")},
     )
 
+    updated = await student_service.get_by_id(student_id)
+    updated["has_pin"] = updated.get("pin_hash") is not None
     return StudentResponse(**updated)
 
 

@@ -8,6 +8,7 @@ class StudentModel {
   final String? gradeLevel;
   final String? groupId;
   final bool isPaid;
+  final bool hasPin;
   final DateTime createdAt;
 
   StudentModel({
@@ -20,6 +21,7 @@ class StudentModel {
     this.gradeLevel,
     this.groupId,
     this.isPaid = false,
+    this.hasPin = false,
     required this.createdAt,
   });
 
@@ -34,6 +36,7 @@ class StudentModel {
       gradeLevel: json['grade_level'],
       groupId: json['group_id'],
       isPaid: json['is_paid'] ?? false,
+      hasPin: json['has_pin'] ?? false,
       createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
@@ -48,6 +51,7 @@ class StudentModel {
         'grade_level': gradeLevel,
         'group_id': groupId,
         'is_paid': isPaid,
+        'has_pin': hasPin,
         'created_at': createdAt.toIso8601String(),
       };
 

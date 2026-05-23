@@ -34,6 +34,7 @@ class StudentResponse(BaseModel):
     parent_phone: str | None = None
     grade_level: str | None = None
     teacher_id: UUID
+    has_pin: bool = False
     created_at: datetime
     updated_at: datetime
 

@@ -23,6 +23,7 @@ class StudentsScreen extends StatefulWidget {
 class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStateMixin {
   String _search = '';
   String _groupId = '';
+  bool _showNoPinOnly = false;
   late AnimationController _listController;
   late Animation<double> _listAnimation;
 
@@ -49,6 +50,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
   Widget build(BuildContext context) {
     final data = context.watch<DataProvider>();
     final students = data.filterStudents(search: _search, groupId: _groupId);
+    final filteredStudents = _showNoPinOnly ? students.where((s) => !s.hasPin).toList() : students;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
@@ -86,10 +88,20 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${students.length}',
+                          '${filteredStudents.length}',
                           style: TextStyle(color: AppTheme.accent, fontSize: 12),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      if (_showNoPinOnly)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.danger.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text('بدون PIN', style: TextStyle(color: AppTheme.danger, fontSize: 10)),
+                        ),
                     ],
                   ),
                   MouseRegion(
@@ -127,12 +139,31 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       onChanged: (v) => setState(() => _groupId = v ?? ''),
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _showNoPinOnly = !_showNoPinOnly),
+                      icon: Icon(
+                        Icons.lock_open,
+                        size: 18,
+                        color: _showNoPinOnly ? AppTheme.danger : textMuted,
+                      ),
+                      label: Text(
+                        'بدون PIN',
+                        style: TextStyle(
+                          color: _showNoPinOnly ? AppTheme.danger : textMuted,
+                          fontWeight: _showNoPinOnly ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
               if (data.isLoading)
                 const Center(child: CircularProgressIndicator())
-              else if (students.isEmpty)
+              else if (filteredStudents.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(60),
                   decoration: BoxDecoration(
@@ -144,9 +175,9 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                     children: [
                       Icon(Icons.people_outline, size: 56, color: textMuted),
                       const SizedBox(height: 16),
-                      Text('لا يوجد طلاب', style: TextStyle(color: textSecondary, fontSize: 16)),
+                      Text(_showNoPinOnly ? 'جميع الطلاب لديهم PIN' : 'لا يوجد طلاب', style: TextStyle(color: textSecondary, fontSize: 16)),
                       const SizedBox(height: 8),
-                      Text('أضف طالبك الأول للبدء', style: TextStyle(color: textMuted, fontSize: 13)),
+                      Text(_showNoPinOnly ? 'كل الطلاب لديهم رمز سري' : 'أضف طالبك الأول للبدء', style: TextStyle(color: textMuted, fontSize: 13)),
                       const SizedBox(height: 20),
                       MouseRegion(
                         cursor: SystemMouseCursors.click,
@@ -169,9 +200,9 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                     mainAxisSpacing: 16,
                     childAspectRatio: 2.5,
                   ),
-                  itemCount: students.length,
+                  itemCount: filteredStudents.length,
                   itemBuilder: (context, index) {
-                    final student = students[index];
+                    final student = filteredStudents[index];
                     return _StudentCard(
                       student: student,
                       index: index,
@@ -878,6 +909,19 @@ class _StudentCardState extends State<_StudentCard> with SingleTickerProviderSta
                           fontSize: 12,
                         ),
                       ),
+                      if (!widget.student.hasPin)
+                        Container(
+                          margin: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppTheme.danger.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'بدون PIN',
+                            style: TextStyle(color: AppTheme.danger, fontSize: 9, fontWeight: FontWeight.w600),
+                          ),
+                        ),
                     ],
                   ),
                 ),
