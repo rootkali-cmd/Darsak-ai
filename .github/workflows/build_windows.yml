@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     defaults:
       run:
         working-directory: desktop_app
@@ -21,11 +21,6 @@ jobs:
         with:
           flutter-version: '3.24.x'
           channel: 'stable'
-
-      - name: Install Visual Studio prerequisites
-        run: |
-          choco install visualstudio2022-workload-vctools -y --no-progress
-        shell: pwsh
 
       - run: flutter pub get
 
