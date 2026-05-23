@@ -7,7 +7,7 @@ install:
       # Remove pre-installed Flutter from PATH to avoid conflicts
       $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch 'flutter' }) -join ';'
       # Download Flutter
-      $FLUTTER_URL = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_latest-stable.zip"
+      $FLUTTER_URL = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.0-stable.zip"
       $FLUTTER_ZIP = "$env:APPVEYOR_BUILD_FOLDER\flutter.zip"
       $FLUTTER_DIR = "$env:APPVEYOR_BUILD_FOLDER\flutter"
       Write-Host "Downloading latest Flutter..."
