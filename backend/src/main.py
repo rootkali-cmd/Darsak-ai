@@ -42,12 +42,24 @@ async def lifespan(app: FastAPI):
         await sync_buffer.connect()
         start_scheduler()
 
-    # Start Telegram bot
-    try:
-        from src.bot.telegram_bot import start_bot, stop_bot
-        await start_bot()
-    except Exception as e:
-        logger.warning("Telegram bot startup skipped: %s", e)
+    # Set Telegram webhook on Vercel
+    if os.environ.get("VERCEL"):
+        try:
+            from src.api.webhook import _setup_webhook
+            ok, detail = await _setup_webhook()
+            if ok:
+                logger.info("Telegram webhook set up")
+            else:
+                logger.warning("Telegram webhook setup: %s", detail)
+        except Exception as e:
+            logger.warning("Telegram webhook setup skipped: %s", e)
+    else:
+        # Start Telegram bot (local polling)
+        try:
+            from src.bot.telegram_bot import start_bot, stop_bot
+            await start_bot()
+        except Exception as e:
+            logger.warning("Telegram bot startup skipped: %s", e)
 
     logger.info("DarsakAI Hub started successfully")
     yield
@@ -55,12 +67,13 @@ async def lifespan(app: FastAPI):
     if not os.environ.get("VERCEL"):
         stop_scheduler()
 
-    # Stop Telegram bot
-    try:
-        from src.bot.telegram_bot import stop_bot
-        await stop_bot()
-    except Exception as e:
-        logger.warning("Telegram bot shutdown skipped: %s", e)
+    # Stop Telegram bot (local only)
+    if not os.environ.get("VERCEL"):
+        try:
+            from src.bot.telegram_bot import stop_bot
+            await stop_bot()
+        except Exception as e:
+            logger.warning("Telegram bot shutdown skipped: %s", e)
 
     logger.info("Shutting down DarsakAI Hub...")
 

@@ -1,19 +1,172 @@
+import os
+import logging
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException
-from src.bot.telegram_bot import get_bot_app, start_bot
+import httpx
+
+from src.core.config import get_settings
+from src.core.security.crypto_utils import generate_license_key
+from src.services import subscription_plan_service, subscription_code_service
+
+logger = logging.getLogger("darsak")
 
 router = APIRouter()
 
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", get_settings().TELEGRAM_BOT_TOKEN)
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", get_settings().TELEGRAM_CHAT_ID)
 
-def _ensure_bot():
-    app = get_bot_app()
-    if app is not None:
-        return app
-    import asyncio
-    try:
-        asyncio.create_task(start_bot())
-    except Exception:
-        pass
-    return get_bot_app()
+TG_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+_user_states: dict[int, str] = {}
+
+
+def is_authorized(chat_id: int) -> bool:
+    return str(chat_id) == str(TELEGRAM_CHAT_ID)
+
+
+async def tg_send(chat_id: int, text: str, keyboard: list | None = None, parse_mode: str | None = None):
+    payload = {"chat_id": chat_id, "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    if keyboard:
+        payload["reply_markup"] = {"inline_keyboard": keyboard}
+    async with httpx.AsyncClient() as client:
+        await client.post(f"{TG_API}/sendMessage", json=payload)
+
+
+async def tg_edit(chat_id: int, message_id: int, text: str, keyboard: list | None = None, parse_mode: str | None = None):
+    payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    if keyboard:
+        payload["reply_markup"] = {"inline_keyboard": keyboard}
+    async with httpx.AsyncClient() as client:
+        await client.post(f"{TG_API}/editMessageText", json=payload)
+
+
+def main_keyboard():
+    return [
+        [{"text": "🔑 توليد كود", "callback_data": "generate_code"}],
+        [{"text": "🔍 فحص كود", "callback_data": "check_code"}],
+        [{"text": "📋 الباقات", "callback_data": "list_plans"}],
+        [{"text": "📊 إحصائيات", "callback_data": "stats"}],
+    ]
+
+
+async def handle_message(chat_id: int, text: str):
+    if not is_authorized(chat_id):
+        await tg_send(chat_id, "⛔ غير مصرح لك باستخدام هذا البوت.")
+        return
+
+    state = _user_states.get(chat_id)
+
+    if state == "waiting_for_code_check":
+        code = text.strip().upper()
+        record = await subscription_code_service.get_by_code(code)
+        if not record:
+            await tg_send(chat_id, "❌ الكود غير صالح أو غير موجود.")
+        elif record.get("is_used"):
+            used_at = record.get("used_at", "غير معروف")
+            await tg_send(chat_id, f"⚠️ هذا الكود مستخدم بالفعل.\n📅 تاريخ الاستخدام: {used_at}")
+        else:
+            plan = await subscription_plan_service.get_by_id(record["plan_id"])
+            plan_name = plan["name"] if plan else "غير معروفة"
+            await tg_send(chat_id, f"✅ الكود صالح!\n\n📌 الباقة: {plan_name}\n🔑 الكود: `{code}`\n📅 الحالة: غير مستخدم", parse_mode="Markdown")
+
+        _user_states.pop(chat_id, None)
+        await tg_send(chat_id, "اختر من الأزرار:", keyboard=main_keyboard())
+    else:
+        await tg_send(chat_id, "🎓 مرحباً بك في بوت الاشتراكات - درسك AI\n\nاختر من الأزرار أدناه:", keyboard=main_keyboard())
+
+
+async def handle_callback(chat_id: int, message_id: int, data: str):
+    if not is_authorized(chat_id):
+        await tg_edit(chat_id, message_id, "⛔ غير مصرح لك باستخدام هذا البوت.")
+        return
+
+    if data == "generate_code":
+        plans = await subscription_plan_service.list_active()
+        keyboard = []
+        for plan in plans:
+            plan_id = plan["id"]
+            if hasattr(plan_id, "hex"):
+                plan_id_str = plan_id.hex
+            else:
+                plan_id_str = str(plan_id)
+            keyboard.append([
+                {"text": f"{plan['name']} - {plan['price_egp']} ج.م", "callback_data": f"plan_{plan_id_str}"}
+            ])
+        keyboard.append([{"text": "🔙 رجوع", "callback_data": "back"}])
+        await tg_edit(chat_id, message_id, "اختر الباقة لتوليد كود:", keyboard=keyboard)
+
+    elif data.startswith("plan_"):
+        plan_id_str = data.replace("plan_", "")
+        plan = await subscription_plan_service.get_by_id(plan_id_str)
+        if not plan:
+            await tg_edit(chat_id, message_id, "❌ الباقة غير موجودة.")
+            return
+
+        code = generate_license_key()
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+        plan_id = plan["id"]
+        if hasattr(plan_id, "hex"):
+            plan_id_str = plan_id.hex
+        else:
+            plan_id_str = str(plan_id)
+
+        await subscription_code_service.create(code, plan_id_str, expires_at)
+        await tg_edit(chat_id, message_id,
+            f"✅ تم توليد الكود بنجاح!\n\n"
+            f"📌 الباقة: {plan['name']}\n"
+            f"🔑 الكود: `{code}`\n"
+            f"💰 السعر: {plan['price_egp']} ج.م\n"
+            f"📅 الصلاحية: سنة من تاريخ التفعيل\n\n"
+            f"أرسل هذا الكود للمدرس لتفعيل اشتراكه.",
+            parse_mode="Markdown")
+
+    elif data == "check_code":
+        await tg_edit(chat_id, message_id, "أرسل الكود الذي تريد فحصه (مثال: XXXX-XXXX-XXXX-XXXX):")
+        _user_states[chat_id] = "waiting_for_code_check"
+
+    elif data == "list_plans":
+        plans = await subscription_plan_service.list_active()
+        text = "📋 *الباقات المتاحة:*\n\n"
+        for plan in plans:
+            features = plan.get("features_json", []) or []
+            features_text = "\n".join([f"• {f}" for f in features]) if features else "لا توجد مميزات محددة"
+            max_students_text = "غير محدود" if plan["max_students"] == -1 else str(plan["max_students"])
+            text += (
+                f"*{plan['name']}*\n"
+                f"💰 {plan['price_egp']} ج.م\n"
+                f"👥 الطلاب: {max_students_text}\n"
+                f"🤖 طلبات AI: {plan['max_ai_requests']}/شهر\n"
+                f"📌 المميزات:\n{features_text}\n\n"
+            )
+        await tg_edit(chat_id, message_id, text, keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]], parse_mode="Markdown")
+
+    elif data == "stats":
+        all_codes = await subscription_code_service.list_all(limit=9999)
+        total = len(all_codes)
+        used = sum(1 for c in all_codes if c.get("is_used"))
+        remaining = total - used
+        plans = await subscription_plan_service.list_active()
+        text = (
+            f"📊 *الإحصائيات:*\n\n"
+            f"إجمالي الأكواد: {total}\n"
+            f"✅ مستخدم: {used}\n"
+            f"🆓 متبقي: {remaining}\n"
+            f"📋 الباقات النشطة: {len(plans)}\n"
+        )
+        await tg_edit(chat_id, message_id, text, keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]], parse_mode="Markdown")
+
+    elif data == "back":
+        await tg_edit(chat_id, message_id, "🎓 مرحباً بك في بوت الاشتراكات - درسك AI\n\nاختر من الأزرار أدناه:", keyboard=main_keyboard())
+
+
+async def handle_start(chat_id: int):
+    if not is_authorized(chat_id):
+        await tg_send(chat_id, "⛔ غير مصرح لك باستخدام هذا البوت.")
+        return
+    await tg_send(chat_id, "🎓 مرحباً بك في بوت الاشتراكات - درسك AI\n\nاختر من الأزرار أدناه:", keyboard=main_keyboard())
 
 
 @router.post("/telegram-webhook")
@@ -23,37 +176,56 @@ async def telegram_webhook(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    app = _ensure_bot()
-    if app is None:
-        raise HTTPException(status_code=500, detail="Bot not initialized")
+    if not TELEGRAM_BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="Bot token not configured")
 
     try:
-        from telegram import Update
-        update = Update.de_json(body, app.bot)
-        await app.process_update(update)
+        update = body
+        if "message" in update:
+            msg = update["message"]
+            chat_id = msg["chat"]["id"]
+            text = msg.get("text", "")
+            entities = msg.get("entities", [])
+            is_command = any(e.get("type") == "bot_command" for e in entities)
+
+            if is_command and text == "/start":
+                await handle_start(chat_id)
+            else:
+                await handle_message(chat_id, text)
+
+        elif "callback_query" in update:
+            cq = update["callback_query"]
+            chat_id = cq["message"]["chat"]["id"]
+            message_id = cq["message"]["message_id"]
+            data = cq.get("data", "")
+            await handle_callback(chat_id, message_id, data)
+
     except Exception as e:
-        from src.core.logging import setup_logging
-        logger = setup_logging("INFO")
         logger.error("Failed to process Telegram update: %s", e)
 
     return {"ok": True}
 
 
+async def _setup_webhook():
+    if not TELEGRAM_BOT_TOKEN:
+        return False, "Bot token not configured"
+
+    vercel_url = os.environ.get("VERCEL_URL", "")
+    if not vercel_url:
+        return False, "VERCEL_URL not set"
+
+    webhook_url = f"https://{vercel_url}/api/telegram-webhook"
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{TG_API}/setWebhook", json={"url": webhook_url})
+        if resp.status_code == 200 and resp.json().get("ok"):
+            logger.info("Telegram webhook set to %s", webhook_url)
+            return True, webhook_url
+        return False, resp.text
+
+
 @router.post("/setup-telegram-webhook")
 async def setup_telegram_webhook():
-    app = _ensure_bot()
-    if app is None:
-        raise HTTPException(status_code=500, detail="Bot not initialized")
-    from src.core.logging import setup_logging
-    logger = setup_logging("INFO")
-    from src.core.config import get_settings
-    settings = get_settings()
-    import os
-    vercel_url = os.environ.get("VERCEL_URL", "")
-    if vercel_url:
-        webhook_url = f"https://{vercel_url}/api/telegram-webhook"
-        await app.bot.set_webhook(url=webhook_url)
-        logger.info("Telegram webhook manually set to %s", webhook_url)
-        return {"ok": True, "webhook_url": webhook_url}
-    return {"ok": False, "detail": "VERCEL_URL not set"}
-
+    ok, detail = await _setup_webhook()
+    if ok:
+        return {"ok": True, "webhook_url": detail}
+    raise HTTPException(status_code=500, detail=detail)
