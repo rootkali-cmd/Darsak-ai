@@ -21,6 +21,7 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  bool _parsingBarcode = false;
 
   @override
   void initState() {
@@ -37,10 +38,69 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
     ).animate(
         CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic));
     _fadeController.forward();
+
+    // Listen for hardware barcode scanner input (types the full URI)
+    _codeController.addListener(_onInputChanged);
+  }
+
+  void _onInputChanged() {
+    if (_parsingBarcode) return;
+    final text = _codeController.text;
+    // Check if a barcode scanner typed a full URI (ends with newline or is pasted)
+    if (text.startsWith('darsak://teacher/') && text.contains('\n')) {
+      _parsingBarcode = true;
+      final parsed = _extractTeacherCode(text);
+      if (parsed != null) {
+        _codeController.text = parsed;
+        _codeController.selection = TextSelection.fromPosition(
+          TextPosition(offset: parsed.length),
+        );
+        // Auto-submit after short delay
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) _connect(code: parsed);
+        });
+      }
+      _parsingBarcode = false;
+    } else if (text.startsWith('darsak://teacher/')) {
+      // Still typing - wait for more input
+      final parsed = _extractTeacherCode(text);
+      if (parsed != null && text.endsWith('\n')) {
+        _parsingBarcode = true;
+        _codeController.text = parsed;
+        _codeController.selection = TextSelection.fromPosition(
+          TextPosition(offset: parsed.length),
+        );
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) _connect(code: parsed);
+        });
+        _parsingBarcode = false;
+      }
+    }
+  }
+
+  String? _extractTeacherCode(String raw) {
+    // Format: darsak://teacher/{teacher_id}/{teacher_code}
+    // Or: darsak://teacher/{teacher_id}/{teacher_code}\n
+    try {
+      final clean = raw.trim().split('\n').first.trim();
+      if (clean.startsWith('darsak://teacher/')) {
+        final parts = clean.split('/');
+        if (parts.length >= 4) {
+          final code = parts[3];
+          if (code.isNotEmpty) return code;
+        }
+      }
+      // Direct TCH- code
+      if (clean.startsWith('TCH-') && clean.length <= 20) {
+        return clean;
+      }
+    } catch (_) {}
+    return null;
   }
 
   @override
   void dispose() {
+    _codeController.removeListener(_onInputChanged);
     _codeController.dispose();
     _fadeController.dispose();
     super.dispose();
@@ -290,21 +350,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (raw == null || raw.isEmpty) return;
 
     _found = true;
-
-    String? teacherCode;
-
-    // Parse darsak://teacher/{teacher_id}/{teacher_code}
-    if (raw.startsWith('darsak://teacher/')) {
-      final parts = raw.split('/');
-      if (parts.length >= 4) {
-        teacherCode = parts[3];
-      }
-    }
-
-    // If it doesn't match the URI, try using the raw value directly
-    if (teacherCode == null && raw.startsWith('TCH-')) {
-      teacherCode = raw;
-    }
+    final teacherCode = _extractCodeFromRaw(raw);
 
     if (teacherCode != null) {
       Navigator.pop(context, teacherCode);
@@ -320,6 +366,27 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         ),
       );
     }
+  }
+
+  String? _extractCodeFromRaw(String raw) {
+    final clean = raw.trim();
+    // Format: darsak://teacher/{teacher_id}/{teacher_code}
+    if (clean.startsWith('darsak://teacher/')) {
+      final parts = clean.split('/');
+      if (parts.length >= 4) {
+        final code = parts[3];
+        if (code.isNotEmpty) return code;
+      }
+    }
+    // Direct TCH- code
+    if (clean.startsWith('TCH-') && clean.length <= 20) {
+      return clean;
+    }
+    // Fallback: try using raw value directly if short enough
+    if (clean.length <= 20 && RegExp(r'^[A-Z0-9\-]+$').hasMatch(clean)) {
+      return clean;
+    }
+    return null;
   }
 
   @override

@@ -16,7 +16,7 @@ const apps = [
     fileName: 'DarsakAI.apk',
     size: '70 MB',
     platform: 'Android',
-    note: 'v1.0.1 • QR scanner • 6-8 alphanumeric PIN • Offline-first • Signed release',
+    note: 'v1.0.1',
   },
   {
     id: 'desktop',
@@ -42,6 +42,16 @@ const apps = [
     platform: 'Windows / Linux',
     note: 'يحتاج بناء على ويندوز • flutter build windows',
   },
+]
+
+const features = [
+  { ar: 'مسح QR Code / باركود المعلم', en: 'QR & barcode scanner' },
+  { ar: 'PIN 6-8 أحرف وأرقام', en: '6-8 alphanumeric PIN' },
+  { ar: 'دعم الباركود اللاصق (Hardware Scanner)', en: 'Hardware barcode scanner support' },
+  { ar: 'Offline-first (يعرض البيانات المحفوظة)', en: 'Offline-first (cached data)' },
+  { ar: 'تغيير PIN من الملف الشخصي', en: 'Change PIN from profile' },
+  { ar: 'تسجيل دخول بربط المعلم', en: 'Teacher-linked login flow' },
+  { ar: 'توقيع release (Signed APK)', en: 'Signed release APK' },
 ]
 
 export default function DownloadPage() {
@@ -179,6 +189,36 @@ export default function DownloadPage() {
             </motion.div>
           ))}
         </div>
+
+        {/* Features / Changelog */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mt-12 max-w-lg mx-auto"
+        >
+          <div
+            className="p-6"
+            style={{
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h3 className="text-sm font-bold mb-4 hud-text" style={{ fontFamily: 'var(--font-display)' }}>
+              {isAr ? 'الميزات في v1.0.1' : 'v1.0.1 FEATURES'}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {features.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-[10px] hud-text">
+                  <span className="text-[var(--accent-2)]">▸</span>
+                  <span className="text-[var(--text-muted)]">
+                    {isAr ? f.ar : f.en}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
 
         {/* Info note */}
         <motion.p
