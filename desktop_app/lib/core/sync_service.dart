@@ -28,9 +28,10 @@ class SyncService {
       _handleConnectivityChange(results);
     });
 
-    _syncTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+    _syncTimer = Timer.periodic(const Duration(minutes: 3), (_) {
       if (_isOnline && !_isSyncing) {
         syncToServer();
+        syncFromServer();
       }
     });
   }
@@ -52,7 +53,8 @@ class SyncService {
 
   void _handleConnectivityChange(List<ConnectivityResult> results) {
     final wasOnline = _isOnline;
-    _isOnline = results.any((r) => r != ConnectivityResult.none);
+    // On desktop, connectivity_plus may return empty results; assume online
+    _isOnline = results.isEmpty || results.any((r) => r != ConnectivityResult.none);
 
     if (_isOnline && !wasOnline) {
       _lastSyncStatus = 'تم استعادة الاتصال - جاري المزامنة...';
@@ -95,6 +97,9 @@ class SyncService {
                 break;
               case 'invoice':
                 await _api.createInvoice(data);
+                break;
+              case 'student':
+                await _api.createStudent(data);
                 break;
             }
             synced = true;

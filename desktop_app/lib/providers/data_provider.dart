@@ -11,12 +11,11 @@ class DataProvider extends ChangeNotifier {
   List<StudentModel> _students = [];
   List<GroupModel> _groups = [];
   bool _isLoading = false;
-  bool _isOffline = false;
 
   List<StudentModel> get students => _students;
   List<GroupModel> get groups => _groups;
   bool get isLoading => _isLoading;
-  bool get isOffline => _isOffline;
+  bool get isOffline => !_sync.isOnline;
   ApiService get api => _api;
 
   DataProvider(this._sync) {
@@ -55,7 +54,6 @@ class DataProvider extends ChangeNotifier {
       final studentsData = await _api.getStudents();
       final groupsData = await _api.getGroups();
 
-      // Only replace in-memory data if API returned non-empty data
       if (studentsData.isNotEmpty) {
         final apiStudents = studentsData.map((s) => StudentModel.fromJson(s)).toList();
         for (final s in apiStudents) {
@@ -72,10 +70,9 @@ class DataProvider extends ChangeNotifier {
         _groups = apiGroups;
       }
 
-      _isOffline = false;
       notifyListeners();
     } catch (_) {
-      _isOffline = true;
+      // Don't set offline here — use SyncService.isOnline instead
     }
   }
 
