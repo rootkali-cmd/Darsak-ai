@@ -8,7 +8,13 @@ on:
   workflow_dispatch:
 
 jobs:
+  test-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Runner works! OS: $(uname -a)"
+
   build-windows:
+    needs: test-runner
     runs-on: windows-latest
     defaults:
       run:
