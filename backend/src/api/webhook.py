@@ -289,11 +289,13 @@ async def _setup_webhook():
     if not TELEGRAM_BOT_TOKEN:
         return False, "Bot token not configured"
 
-    vercel_url = os.environ.get("VERCEL_URL", "")
-    if not vercel_url:
-        return False, "VERCEL_URL not set"
-
-    webhook_url = f"https://{vercel_url}/api/telegram-webhook"
+    webhook_url = "https://darsak-ai-o8cs.vercel.app/api/telegram-webhook"
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{TG_API}/setWebhook", json={"url": webhook_url})
+        if resp.status_code == 200 and resp.json().get("ok"):
+            logger.info("Telegram webhook set to %s", webhook_url)
+            return True, webhook_url
+        return False, resp.text
     async with httpx.AsyncClient() as client:
         resp = await client.post(f"{TG_API}/setWebhook", json={"url": webhook_url})
         if resp.status_code == 200 and resp.json().get("ok"):
