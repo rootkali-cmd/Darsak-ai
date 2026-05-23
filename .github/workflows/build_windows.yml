@@ -3,17 +3,12 @@ name: Build Windows Desktop
 on:
   push:
     branches: [main]
+    paths:
+      - 'desktop_app/**'
   workflow_dispatch:
 
 jobs:
-  check-runner:
-    runs-on: windows-latest
-    steps:
-      - run: echo "Windows runner allocated! OS:"
-      - run: systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
-
   build-windows:
-    needs: check-runner
     runs-on: windows-latest
     defaults:
       run:
