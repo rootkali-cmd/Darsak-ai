@@ -24,6 +24,9 @@ class UserResponse(BaseModel):
     teacher_code: str | None = None
     is_active: bool
     created_at: datetime
+    onboarding_completed: bool = False
+    subjects: list[str] = []
+    levels: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -41,3 +44,9 @@ class TokenRefresh(BaseModel):
 class UserUpdate(BaseModel):
     full_name: str | None = None
     password: str | None = Field(None, min_length=6, max_length=128)
+
+
+class OnboardingUpdate(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=255)
+    subjects: list[str] = []
+    levels: list[str] = []

@@ -203,6 +203,19 @@ class ApiService {
     return response.data;
   }
 
+  Future<Map<String, dynamic>> saveOnboarding({
+    required String fullName,
+    required List<String> subjects,
+    required List<String> levels,
+  }) async {
+    final response = await _dio.patch('/auth/onboarding', data: {
+      'full_name': fullName,
+      'subjects': subjects,
+      'levels': levels,
+    });
+    return response.data;
+  }
+
   // ─── Exams ──────────────────────────────────────────────────────
 
   Future<List<dynamic>> getExams() async {

@@ -105,21 +105,10 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
         if (auth.isAuthenticated) {
-          return FutureBuilder<bool>(
-            future: auth.isOnboardingCompleted,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Scaffold(
-                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                  body: const Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (snapshot.data == true) {
-                return DashboardScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
-              }
-              return OnboardingScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
-            },
-          );
+          if (auth.onboardingCompleted) {
+            return DashboardScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
+          }
+          return OnboardingScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
         }
         return LoginScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
       },

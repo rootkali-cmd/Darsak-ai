@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from src.utils.dependencies import get_current_user, get_current_teacher
-from src.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, TokenRefresh, UserUpdate
+from src.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, TokenRefresh, UserUpdate, OnboardingUpdate
 from src.core.security.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from src.core.security.sanitizer import sanitize_text, sanitize_email
 from src.services import user_service, audit_service
@@ -86,4 +86,34 @@ async def update_me(
 ):
     data = update_data.model_dump(exclude_unset=True)
     updated = await user_service.update(current_user["id"], data)
+    return UserResponse(**updated)
+
+
+@router.patch("/onboarding", response_model=UserResponse)
+async def save_onboarding(
+    onboarding_data: OnboardingUpdate,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    await user_service.update(
+        current_user["id"],
+        {
+            "full_name": sanitize_text(onboarding_data.full_name) or onboarding_data.full_name,
+            "subjects": onboarding_data.subjects,
+            "levels": onboarding_data.levels,
+            "onboarding_completed": True,
+        },
+    )
+
+    await audit_service.log(
+        actor_type=current_user.get("role", "teacher"),
+        action="onboarding_completed",
+        actor_id=current_user["id"],
+        resource_type="user",
+        resource_id=current_user["id"],
+        ip_address=request.client.host if request.client else "unknown",
+        metadata={"subjects": onboarding_data.subjects, "levels": onboarding_data.levels},
+    )
+
+    updated = await user_service.get_by_id(current_user["id"])
     return UserResponse(**updated)

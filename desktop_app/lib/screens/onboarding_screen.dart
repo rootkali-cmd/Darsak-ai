@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
 import 'dashboard_screen.dart';
@@ -52,16 +51,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
   }
 
   Future<void> _complete() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('onboarding_subjects', selectedSubjects.toList());
-    await prefs.setStringList('onboarding_levels', selectedLevels.toList());
-    await prefs.setBool('onboarding_completed', true);
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => DashboardScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode),
-        ),
+    final name = nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى إدخال اسمك'), backgroundColor: AppTheme.danger));
+      return;
+    }
+
+    try {
+      await context.read<AuthProvider>().saveOnboarding(
+        fullName: name,
+        subjects: selectedSubjects.toList(),
+        levels: selectedLevels.toList(),
       );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => DashboardScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل حفظ البيانات، تحقق من الاتصال'), backgroundColor: AppTheme.danger));
+      }
     }
   }
 

@@ -8,14 +8,16 @@ class AuthProvider extends ChangeNotifier {
   UserModel? _user;
   bool _isLoading = false;
   String? _error;
+  bool _onboardingCompleted = false;
+  List<String> _subjects = [];
+  List<String> _levels = [];
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
-  Future<bool> get isOnboardingCompleted async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('onboarding_completed') ?? false;
-  }
+  bool get onboardingCompleted => _onboardingCompleted;
+  List<String> get subjects => _subjects;
+  List<String> get levels => _levels;
   String? get error => _error;
 
   Future<bool> login(String email, String password) async {
@@ -31,8 +33,10 @@ class AuthProvider extends ChangeNotifier {
 
       final userData = await _api.getMe();
       _user = UserModel.fromJson(userData);
-      // Save user locally for offline access
-      await _cacheUser(_user!);
+      _onboardingCompleted = userData['onboarding_completed'] == true;
+      _subjects = (userData['subjects'] as List?)?.cast<String>() ?? [];
+      _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
+      await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -54,17 +58,36 @@ class AuthProvider extends ChangeNotifier {
     try {
       final userData = await _api.getMe();
       _user = UserModel.fromJson(userData);
-      // Update cached user data
-      await _cacheUser(_user!);
+      _onboardingCompleted = userData['onboarding_completed'] == true;
+      _subjects = (userData['subjects'] as List?)?.cast<String>() ?? [];
+      _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
+      await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
       notifyListeners();
     } catch (_) {
-      // If offline, load cached user data
       await _loadCachedUser();
     }
   }
 
+  Future<void> saveOnboarding({required String fullName, required List<String> subjects, required List<String> levels}) async {
+    await _api.saveOnboarding(fullName: fullName, subjects: subjects, levels: levels);
+    _onboardingCompleted = true;
+    _subjects = subjects;
+    _levels = levels;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_completed', true);
+    await prefs.setStringList('onboarding_subjects', subjects);
+    await prefs.setStringList('onboarding_levels', levels);
+    if (_user != null) {
+      await _cacheUser(_user!, onboardingCompleted: true, subjects: subjects, levels: levels);
+    }
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     _user = null;
+    _onboardingCompleted = false;
+    _subjects = [];
+    _levels = [];
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
@@ -78,7 +101,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _cacheUser(UserModel user) async {
+  Future<void> _cacheUser(UserModel user, {bool onboardingCompleted = false, List<String> subjects = const [], List<String> levels = const []}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('cached_user_id', user.id);
     await prefs.setString('cached_user_name', user.fullName);
@@ -87,6 +110,9 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('cached_user_code', user.teacherCode ?? '');
     await prefs.setBool('cached_user_is_active', user.isActive);
     await prefs.setString('cached_user_created_at', user.createdAt.toIso8601String());
+    await prefs.setBool('cached_onboarding_completed', onboardingCompleted);
+    await prefs.setStringList('cached_onboarding_subjects', subjects);
+    await prefs.setStringList('cached_onboarding_levels', levels);
   }
 
   Future<void> _loadCachedUser() async {
@@ -104,6 +130,9 @@ class AuthProvider extends ChangeNotifier {
         isActive: prefs.getBool('cached_user_is_active') ?? true,
         createdAt: DateTime.tryParse(prefs.getString('cached_user_created_at') ?? '') ?? DateTime.now(),
       );
+      _onboardingCompleted = prefs.getBool('cached_onboarding_completed') ?? false;
+      _subjects = prefs.getStringList('cached_onboarding_subjects') ?? [];
+      _levels = prefs.getStringList('cached_onboarding_levels') ?? [];
       notifyListeners();
     }
   }
