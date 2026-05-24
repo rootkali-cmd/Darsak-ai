@@ -5,11 +5,11 @@ router = APIRouter(prefix="/versions", tags=["Versions"])
 VERSIONS = {
     "mobile": {
         "version": "1.0.2",
-        "build": 3,
+        "build": 4,
         "apk_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Student.apk",
-        "size_mb": 70,
-        "changes_ar": "إصلاح QR code، تحسين PIN، إضافة الاشتراكات",
-        "changes_en": "QR fix, PIN improvements, subscriptions",
+        "size_mb": 72,
+        "changes_ar": "توقيع APK رسمي، إصلاح QR code، تحسين PIN، إضافة الاشتراكات",
+        "changes_en": "Official APK signing, QR fix, PIN improvements, subscriptions",
         "force_update": False,
     },
     "desktop": {
