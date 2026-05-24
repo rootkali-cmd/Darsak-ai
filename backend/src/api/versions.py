@@ -13,12 +13,12 @@ VERSIONS = {
         "force_update": False,
     },
     "desktop": {
-        "version": "1.1.36",
-        "build": 36,
+        "version": "1.1.37",
+        "build": 37,
         "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup.exe",
         "size_mb": 14,
-        "changes_ar": "تحديث شامل وتحسين الأداء",
-        "changes_en": "Major update with performance improvements",
+        "changes_ar": "إصلاح مشكلة تعيين PIN للطلاب، تحديث تلقائي",
+        "changes_en": "Fix student PIN setting issue, auto-update improvements",
         "force_update": False,
     },
     "accounts": {

@@ -103,7 +103,7 @@ async def check_student_pin(
     }
 
 
-@router.patch("/{student_id}/pin", response_model=StudentResponse)
+@router.patch("/{student_id}/pin")
 async def reset_student_pin(
     student_id: str,
     pin_data: StudentPinUpdate,
@@ -114,7 +114,7 @@ async def reset_student_pin(
     if not student or student["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
-    await student_service.update(student_id, {"pin": pin_data.pin})
+    await student_service.update(student_id, {"pin": sanitize_pin(pin_data.pin)})
 
     await audit_service.log(
         actor_type=current_user.get("role", "teacher"),
@@ -126,9 +126,7 @@ async def reset_student_pin(
         metadata={"target_student": student.get("full_name")},
     )
 
-    updated = await student_service.get_by_id(student_id)
-    updated["has_pin"] = updated.get("pin_hash") is not None
-    return StudentResponse(**updated)
+    return {"message": "PIN updated successfully", "has_pin": True}
 
 
 @router.get("/{student_id}/pin")

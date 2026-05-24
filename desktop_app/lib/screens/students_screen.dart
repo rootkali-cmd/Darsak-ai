@@ -523,7 +523,8 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       backgroundColor: AppTheme.success,
                     ));
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تعيين PIN'), backgroundColor: AppTheme.danger));
+                    final msg = e.toString().contains('422') ? 'PIN غير صالح (6-8 أحرف وأرقام إنجليزية)' : 'فشل تعيين PIN';
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: AppTheme.danger));
                   }
                 },
                 child: Text(hasPin == true ? 'إعادة تعيين' : 'تعيين PIN'),
