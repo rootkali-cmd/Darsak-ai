@@ -6,7 +6,7 @@ VERSIONS = {
     "mobile": {
         "version": "1.0.2",
         "build": 3,
-        "apk_url": "https://darsak-ai.vercel.app/DarsakAI.apk",
+        "apk_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Student.apk",
         "size_mb": 70,
         "changes_ar": "إصلاح QR code، تحسين PIN، إضافة الاشتراكات",
         "changes_en": "QR fix, PIN improvements, subscriptions",
