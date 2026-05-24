@@ -19,7 +19,7 @@ const apps: {
 }[] = [
   {
     id: 'mobile',
-    title: 'DarsakAI Student v1.0.0',
+    title: 'DarsakAI Student v1.0.2',
     description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
     descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,

@@ -15,10 +15,10 @@ VERSIONS = {
     "desktop": {
         "version": "1.1.36",
         "build": 36,
-        "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup-signed.exe",
+        "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup.exe",
         "size_mb": 14,
-        "changes_ar": "توقيع رقمي (Code Signing) للويندوز - إزالة تحذير SmartScreen",
-        "changes_en": "Code signing for Windows - removed SmartScreen warning",
+        "changes_ar": "تحديث شامل وتحسين الأداء",
+        "changes_en": "Major update with performance improvements",
         "force_update": False,
     },
     "accounts": {
