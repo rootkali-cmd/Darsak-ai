@@ -60,3 +60,8 @@ darsak_accounts_db/
 
 # Zip files
 *.zip
+
+# Source code — not open source
+mobile-app/
+desktop_app/
+accounts_app/
