@@ -176,7 +176,7 @@ export default function DownloadPage() {
                       {app.files.map((f: any) => (
                         <a
                           key={f.name}
-                          href={`https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/${f.name}`}
+                          href={`/${f.name}`}
                           download
                           className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold hud-text uppercase tracking-wider transition-all"
                           style={{
