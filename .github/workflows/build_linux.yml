@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'desktop_app/**'
+      - '.github/workflows/build_linux.yml'
   workflow_dispatch:
 
 permissions:
