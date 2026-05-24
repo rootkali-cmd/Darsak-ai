@@ -38,7 +38,7 @@ const apps: {
     icon: Monitor,
     color: '#ccff00',
     files: [
-      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '14 MB' },
+      { name: 'DarsakAI-Setup-signed.exe', label: 'Windows Installer (signed)', size: '14 MB' },
       { name: 'DarsakAI-Windows.zip', label: 'Windows Portable', size: '15 MB' },
       { name: 'DarsakAI-Linux.tar.gz', label: 'Linux Bundle', size: '14 MB' },
     ],
