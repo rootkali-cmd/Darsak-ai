@@ -13,12 +13,12 @@ VERSIONS = {
         "force_update": False,
     },
     "desktop": {
-        "version": "1.0.2",
-        "build": 3,
-        "download_url": None,
-        "size_mb": None,
-        "changes_ar": "شاشة QR مستقلة، إصلاح PIN، دعم الاشتراكات",
-        "changes_en": "Standalone QR screen, PIN fix, subscriptions",
+        "version": "1.2.0",
+        "build": 4,
+        "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup-signed.exe",
+        "size_mb": 14,
+        "changes_ar": "توقيع رقمي (Code Signing) للويندوز - إزالة تحذير SmartScreen",
+        "changes_en": "Code signing for Windows - removed SmartScreen warning",
         "force_update": False,
     },
     "accounts": {

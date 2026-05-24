@@ -32,7 +32,7 @@ const apps: {
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop v1.1.0',
+    title: 'DarsakAI Desktop v1.2.0',
     description: 'نظام إدارة الفصل للمعلم - students, grades, attendance, exams',
     descriptionEn: 'Teacher desktop app — full classroom & exam management',
     icon: Monitor,
@@ -43,7 +43,7 @@ const apps: {
       { name: 'DarsakAI-Linux.tar.gz', label: 'Linux Bundle', size: '14 MB' },
     ],
     platform: 'Windows ✓ / Linux ✓',
-    note: 'Build 1.1.0.26 • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',
+    note: 'Build 1.2.0 • Code Signing • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',
   },
   {
     id: 'accounts',
