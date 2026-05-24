@@ -1,0 +1,127 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'core/theme.dart';
+import 'core/local_db.dart';
+import 'core/sync_service.dart';
+import 'core/update_service.dart';
+import 'core/local_sync/local_sync_service.dart';
+import 'providers/auth_provider.dart';
+import 'providers/data_provider.dart';
+import 'providers/sync_provider.dart';
+import 'screens/login_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/onboarding_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LocalDB.init();
+
+  // Start local P2P sync server
+  final localSync = LocalSyncService();
+  await localSync.start();
+
+  runApp(DarsakApp(localSync: localSync));
+}
+
+class DarsakApp extends StatefulWidget {
+  final LocalSyncService localSync;
+  const DarsakApp({super.key, required this.localSync});
+
+  @override
+  State<DarsakApp> createState() => _DarsakAppState();
+}
+
+class _DarsakAppState extends State<DarsakApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+
+  void toggleTheme() {
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.localSync.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final syncService = SyncService(localSync: widget.localSync);
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => DataProvider(syncService)),
+        ChangeNotifierProvider(create: (_) => SyncProvider(syncService)),
+        ChangeNotifierProvider(create: (_) => UpdateService()),
+      ],
+      child: MaterialApp(
+        title: 'DarsakAI Desktop',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: _themeMode,
+        home: AppEntryPoint(toggleTheme: toggleTheme, themeMode: _themeMode),
+        builder: (context, child) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: child!,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class AppEntryPoint extends StatefulWidget {
+  final VoidCallback toggleTheme;
+  final ThemeMode themeMode;
+
+  const AppEntryPoint({
+    super.key,
+    required this.toggleTheme,
+    required this.themeMode,
+  });
+
+  @override
+  State<AppEntryPoint> createState() => _AppEntryPointState();
+}
+
+class _AppEntryPointState extends State<AppEntryPoint> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthProvider>().loadUser();
+      context.read<UpdateService>().checkForUpdate();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isAuthenticated) {
+          return FutureBuilder<bool>(
+            future: auth.isOnboardingCompleted,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Scaffold(
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  body: const Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.data == true) {
+                return DashboardScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
+              }
+              return OnboardingScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
+            },
+          );
+        }
+        return LoginScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
+      },
+    );
+  }
+}

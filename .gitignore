@@ -61,7 +61,11 @@ darsak_accounts_db/
 # Zip files
 *.zip
 
-# Source code — not open source
-mobile-app/
-desktop_app/
-accounts_app/
+# Build artifacts
+mobile-app/build/
+desktop_app/build/
+accounts_app/build/
+mobile-app/android/.gradle/
+desktop_app/.dart_tool/
+mobile-app/.dart_tool/
+accounts_app/.dart_tool/
