@@ -1,6 +1,6 @@
 [Setup]
 AppName=DarsakAI
-AppVersion=1.1.0
+AppVersion=1.1.1
 AppPublisher=DarsakAI
 DefaultDirName={autopf}\DarsakAI
 DefaultGroupName=DarsakAI

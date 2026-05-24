@@ -52,3 +52,4 @@ jobs:
           }
           gh release upload $tag --clobber "${{ runner.temp }}\DarsakAI-Windows.zip"
           gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.1.0.exe"
+          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.1.0.exe#DarsakAI-Setup.exe"
