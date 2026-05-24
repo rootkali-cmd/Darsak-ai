@@ -1,4 +1,4 @@
-name: Build Windows Desktop
+name: Build & Deploy Desktop Windows
 
 on:
   push:
@@ -26,19 +26,24 @@ jobs:
 
       - run: flutter build windows --release
 
-      - name: Upload Windows build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: DarsakAI-Desktop-Windows
-          path: desktop_app/build/windows/x64/release/
-          compression-level: 9
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
 
-      - name: Create ZIP for release
+      - name: Build Installer
+        run: iscc installer/setup.iss
+
+      - name: Create ZIP
         run: |
-          powershell Compress-Archive -Path build/windows/x64/release/* -DestinationPath DarsakAI-Windows.zip
+          powershell Compress-Archive -Path build/windows/x64/release/* -DestinationPath ${{ runner.temp }}\DarsakAI-Windows.zip -Force
 
-      - name: Upload ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: DarsakAI-Windows-zip
-          path: desktop_app/DarsakAI-Windows.zip
+      - name: Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v1.0.0"
+          $release = gh release view $tag --json uploadUrl --jq '.uploadUrl' 2>$null
+          if (-not $release) {
+            gh release create $tag --title "DarsakAI v1.0.0" --notes "تحديث تلقائي" --latest
+          }
+          gh release upload $tag --clobber "${{ runner.temp }}\DarsakAI-Windows.zip"
+          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.1.0.exe"
