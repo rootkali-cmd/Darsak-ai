@@ -67,6 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DataProvider>().loadData();
+      context.read<UpdateService>().checkForUpdate();
       _checkSubscription();
     });
   }

@@ -1,11 +1,18 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'api_service.dart';
+import 'constants.dart';
 import 'local_db.dart';
 import 'local_sync/local_sync_service.dart';
 
 class SyncService {
   final ApiService _api = ApiService();
+  final Dio _dio = Dio(BaseOptions(
+    baseUrl: AppConstants.apiBaseUrl,
+    connectTimeout: const Duration(seconds: 5),
+    receiveTimeout: const Duration(seconds: 5),
+  ));
   final Connectivity _connectivity = Connectivity();
   final LocalSyncService? _localSync;
   StreamSubscription? _connectivitySubscription;
@@ -48,21 +55,35 @@ class SyncService {
 
   Future<void> _checkConnectivity() async {
     final results = await _connectivity.checkConnectivity();
-    _handleConnectivityChange(results);
+    await _handleConnectivityChange(results);
   }
 
-  void _handleConnectivityChange(List<ConnectivityResult> results) {
+  Future<void> _handleConnectivityChange(List<ConnectivityResult> results) async {
     final wasOnline = _isOnline;
-    // On desktop, connectivity_plus may return empty results; assume online
-    _isOnline = results.isEmpty || results.any((r) => r != ConnectivityResult.none);
+    final hasNetworkInterface = results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
+
+    if (hasNetworkInterface) {
+      _isOnline = true;
+    } else {
+      _isOnline = await _pingApi();
+    }
 
     if (_isOnline && !wasOnline) {
       _lastSyncStatus = 'تم استعادة الاتصال - جاري المزامنة...';
       _notifyListeners(_lastSyncStatus, 'connected');
       syncToServer();
-    } else if (!_isOnline) {
+    } else if (!_isOnline && wasOnline) {
       _lastSyncStatus = 'وضع عدم الاتصال';
       _notifyListeners(_lastSyncStatus, 'disconnected');
+    }
+  }
+
+  Future<bool> _pingApi() async {
+    try {
+      final response = await _dio.get('/versions/desktop');
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 

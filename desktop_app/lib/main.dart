@@ -49,6 +49,7 @@ class _DarsakAppState extends State<DarsakApp> {
   @override
   Widget build(BuildContext context) {
     final syncService = SyncService(localSync: widget.localSync);
+    syncService.init();
 
     return MultiProvider(
       providers: [
