@@ -20,35 +20,52 @@ _user_states: dict[int, str] = {}
 
 
 def is_authorized(chat_id: int) -> bool:
+    if not TELEGRAM_CHAT_ID:
+        return True
     return str(chat_id) == str(TELEGRAM_CHAT_ID)
 
 
 async def tg_send(chat_id: int, text: str, keyboard: list | None = None, parse_mode: str | None = None):
+    if not TELEGRAM_BOT_TOKEN:
+        return
     payload = {"chat_id": chat_id, "text": text}
     if parse_mode:
         payload["parse_mode"] = parse_mode
     if keyboard:
         payload["reply_markup"] = {"inline_keyboard": keyboard}
-    async with httpx.AsyncClient() as client:
-        await client.post(f"{TG_API}/sendMessage", json=payload)
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{TG_API}/sendMessage", json=payload, timeout=10)
+    except Exception as e:
+        logger.error("tg_send failed: %s", e)
 
 
 async def tg_edit(chat_id: int, message_id: int, text: str, keyboard: list | None = None, parse_mode: str | None = None):
+    if not TELEGRAM_BOT_TOKEN:
+        return
     payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
     if parse_mode:
         payload["parse_mode"] = parse_mode
     if keyboard:
         payload["reply_markup"] = {"inline_keyboard": keyboard}
-    async with httpx.AsyncClient() as client:
-        await client.post(f"{TG_API}/editMessageText", json=payload)
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{TG_API}/editMessageText", json=payload, timeout=10)
+    except Exception as e:
+        logger.error("tg_edit failed: %s", e)
 
 
 async def answer_callback(callback_query_id: str, text: str | None = None):
+    if not TELEGRAM_BOT_TOKEN:
+        return
     payload = {"callback_query_id": callback_query_id}
     if text:
         payload["text"] = text
-    async with httpx.AsyncClient() as client:
-        await client.post(f"{TG_API}/answerCallbackQuery", json=payload)
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{TG_API}/answerCallbackQuery", json=payload, timeout=10)
+    except Exception as e:
+        logger.error("answer_callback failed: %s", e)
 
 
 def main_keyboard():
@@ -60,9 +77,16 @@ def main_keyboard():
     ]
 
 
+async def handle_start(chat_id: int):
+    if not is_authorized(chat_id):
+        if TELEGRAM_CHAT_ID:
+            await tg_send(chat_id, "⛔ غير مصرح لك باستخدام هذا البوت.")
+            return
+    await tg_send(chat_id, "🎓 مرحباً بك في بوت الاشتراكات - درسك AI\n\nاختر من الأزرار أدناه:", keyboard=main_keyboard())
+
+
 async def handle_message(chat_id: int, text: str):
     if not is_authorized(chat_id):
-        await tg_send(chat_id, "⛔ غير مصرح لك باستخدام هذا البوت.")
         return
 
     state = _user_states.get(chat_id)
@@ -108,7 +132,6 @@ async def handle_message(chat_id: int, text: str):
 
 async def handle_callback(chat_id: int, message_id: int, data: str):
     if not is_authorized(chat_id):
-        await tg_edit(chat_id, message_id, "⛔ غير مصرح لك باستخدام هذا البوت.")
         return
 
     if data == "generate_code":
@@ -116,10 +139,7 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
         keyboard = []
         for plan in plans:
             plan_id = plan["id"]
-            if hasattr(plan_id, "hex"):
-                plan_id_str = plan_id.hex
-            else:
-                plan_id_str = str(plan_id)
+            plan_id_str = plan_id.hex if hasattr(plan_id, "hex") else str(plan_id)
             keyboard.append([
                 {"text": f"{plan['name']} - {plan['price_egp']} ج.م", "callback_data": f"plan_{plan_id_str}"}
             ])
@@ -136,10 +156,7 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
         code = generate_license_key()
         expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         plan_id = plan["id"]
-        if hasattr(plan_id, "hex"):
-            plan_id_str = plan_id.hex
-        else:
-            plan_id_str = str(plan_id)
+        plan_id_str = plan_id.hex if hasattr(plan_id, "hex") else str(plan_id)
 
         await subscription_code_service.create(code, plan_id_str, expires_at)
         await tg_edit(chat_id, message_id,
@@ -147,8 +164,7 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
             f"📌 الباقة: {plan['name']}\n"
             f"🔑 الكود: `{code}`\n"
             f"💰 السعر: {plan['price_egp']} ج.م\n"
-            f"📅 الصلاحية: شهر من تاريخ التفعيل\n"
-            f"🔒 استخدام مرة واحدة فقط\n\n"
+            f"📅 الصلاحية: شهر من تاريخ التفعيل\n\n"
             f"أرسل هذا الكود للمدرس لتفعيل اشتراكه.",
             parse_mode="Markdown")
 
@@ -193,11 +209,9 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
     elif data.startswith("pay_approve_") or data.startswith("pay_reject_"):
         payment_id = data.replace("pay_approve_", "").replace("pay_reject_", "")
         payment = await payment_request_service.get_by_id(payment_id)
-
         if not payment:
             await tg_edit(chat_id, message_id, "❌ طلب الدفع غير موجود.")
             return
-
         if payment["status"] != "pending":
             await tg_edit(chat_id, message_id, "⚠️ تمت معالجة هذا الطلب بالفعل.")
             return
@@ -207,7 +221,6 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
             if not plan:
                 await tg_edit(chat_id, message_id, "❌ الباقة غير موجودة.")
                 return
-
             expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
             await teacher_subscription_service.create(
                 teacher_id=payment["teacher_id"],
@@ -222,8 +235,7 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
                 body=f"تم تفعيل اشتراكك في باقة {plan['name']} بنجاح! الباقة سارية لمدة 30 يوماً.",
                 type="success",
             )
-
-            teacher_str = str(payment["teacher_id"])[:8] if not hasattr(payment["teacher_id"], "hex") else payment["teacher_id"].hex[:8]
+            teacher_str = str(payment["teacher_id"])[:8]
             await tg_edit(chat_id, message_id,
                 f"✅ تم تفعيل الاشتراك بنجاح!\n\n"
                 f"📌 الباقة: {plan['name']}\n"
@@ -231,7 +243,6 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
                 f"📅 ينتهي في: {(datetime.now(timezone.utc) + timedelta(days=30)).strftime('%Y-%m-%d')}",
                 keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]],
             )
-
         elif data.startswith("pay_reject_"):
             _user_states[chat_id] = f"reject_msg_{payment_id}"
             await tg_edit(chat_id, message_id,
@@ -239,13 +250,6 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
                 "(سيتم إرسالها كإشعار للمعلم)",
                 keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]],
             )
-
-
-async def handle_start(chat_id: int):
-    if not is_authorized(chat_id):
-        await tg_send(chat_id, "⛔ غير مصرح لك باستخدام هذا البوت.")
-        return
-    await tg_send(chat_id, "🎓 مرحباً بك في بوت الاشتراكات - درسك AI\n\nاختر من الأزرار أدناه:", keyboard=main_keyboard())
 
 
 @router.post("/telegram-webhook")
@@ -256,7 +260,8 @@ async def telegram_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
     if not TELEGRAM_BOT_TOKEN:
-        raise HTTPException(status_code=500, detail="Bot token not configured")
+        logger.warning("Telegram webhook called but TELEGRAM_BOT_TOKEN not set")
+        return {"ok": False, "error": "Bot token not configured"}
 
     try:
         update = body
@@ -288,21 +293,23 @@ async def telegram_webhook(request: Request):
 
 async def _setup_webhook():
     if not TELEGRAM_BOT_TOKEN:
-        return False, "Bot token not configured"
+        return False, "TELEGRAM_BOT_TOKEN not configured"
 
-    webhook_url = "https://darsak-ai-o8cs.vercel.app/api/telegram-webhook"
+    vercel_url = os.environ.get("VERCEL_URL", "darsak-ai-o8cs.vercel.app")
+    webhook_url = f"https://{vercel_url}/api/telegram-webhook"
+
     async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{TG_API}/setWebhook", json={"url": webhook_url})
-        if resp.status_code == 200 and resp.json().get("ok"):
-            logger.info("Telegram webhook set to %s", webhook_url)
-            return True, webhook_url
-        return False, resp.text
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{TG_API}/setWebhook", json={"url": webhook_url})
-        if resp.status_code == 200 and resp.json().get("ok"):
-            logger.info("Telegram webhook set to %s", webhook_url)
-            return True, webhook_url
-        return False, resp.text
+        try:
+            resp = await client.post(f"{TG_API}/setWebhook", json={"url": webhook_url}, timeout=15)
+            data = resp.json()
+            if data.get("ok"):
+                logger.info("Telegram webhook set to %s", webhook_url)
+                return True, webhook_url
+            logger.error("Telegram setWebhook failed: %s", data)
+            return False, data.get("description", str(data))
+        except Exception as e:
+            logger.error("Telegram setWebhook request failed: %s", e)
+            return False, str(e)
 
 
 @router.post("/setup-telegram-webhook")
@@ -313,21 +320,24 @@ async def setup_telegram_webhook():
     raise HTTPException(status_code=500, detail=detail)
 
 
+@router.get("/telegram-status")
+async def telegram_status():
+    return {
+        "token_configured": bool(TELEGRAM_BOT_TOKEN),
+        "chat_id_configured": bool(TELEGRAM_CHAT_ID),
+        "chat_id": TELEGRAM_CHAT_ID[:4] + "..." if TELEGRAM_CHAT_ID else None,
+    }
+
+
 async def notify_admin_payment_request(payment_request: dict, plan: dict):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
     chat_id = int(TELEGRAM_CHAT_ID)
     payment_id = payment_request["id"]
-    if hasattr(payment_id, "hex"):
-        payment_id_str = payment_id.hex
-    else:
-        payment_id_str = str(payment_id)
+    payment_id_str = payment_id.hex if hasattr(payment_id, "hex") else str(payment_id)
 
     teacher = payment_request.get("teacher_id", "-")
-    if hasattr(teacher, "hex"):
-        teacher_str = teacher.hex[:8]
-    else:
-        teacher_str = str(teacher)[:8]
+    teacher_str = teacher.hex[:8] if hasattr(teacher, "hex") else str(teacher)[:8]
 
     text = (
         f"💰 طلب اشتراك جديد\n\n"
@@ -345,4 +355,3 @@ async def notify_admin_payment_request(payment_request: dict, plan: dict):
         ]
     ]
     await tg_send(chat_id, text, keyboard=keyboard)
-
