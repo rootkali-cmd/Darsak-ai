@@ -50,42 +50,76 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build apk --release --split-per-abi
+      - name: Build universal APK
+        run: flutter build apk --release
 
-      - run: flutter build apk --release
+      - name: Build per-abi APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed 's/+.*//')
+          BUILD=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed 's/.*+//' | sed "s/'//g")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+
+      - name: Rename APK files with version
+        run: |
+          APK_DIR="build/app/outputs/flutter-apk"
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD="${{ steps.version.outputs.build }}"
+
+          # Rename universal
+          if [ -f "$APK_DIR/app-release.apk" ]; then
+            mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Student-v${VERSION}+${BUILD}-universal.apk"
+          fi
+
+          # Rename per-abi
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            if [ -f "$APK_DIR/app-${abi}-release.apk" ]; then
+              mv "$APK_DIR/app-${abi}-release.apk" "$APK_DIR/DarsakAI-Student-v${VERSION}+${BUILD}-${abi}.apk"
+            fi
+          done
 
       - name: Compute SHA256
         id: sha256
         run: |
-          UNIVERSAL=$(ls build/app/outputs/flutter-apk/DarsakAI-Student-*-universal.apk 2>/dev/null || ls build/app/outputs/flutter-apk/app-release.apk)
-          ARM64=$(ls build/app/outputs/flutter-apk/DarsakAI-Student-*-arm64-v8a.apk 2>/dev/null || ls build/app/outputs/flutter-apk/app-arm64-v8a-release.apk)
-          ARMV7=$(ls build/app/outputs/flutter-apk/DarsakAI-Student-*-armeabi-v7a.apk 2>/dev/null || ls build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk)
-          X86_64=$(ls build/app/outputs/flutter-apk/DarsakAI-Student-*-x86_64.apk 2>/dev/null || ls build/app/outputs/flutter-apk/app-x86_64-release.apk)
+          APK_DIR="build/app/outputs/flutter-apk"
+          UNIVERSAL=$(ls "$APK_DIR"/DarsakAI-Student-*-universal.apk 2>/dev/null | head -1)
+          ARM64=$(ls "$APK_DIR"/DarsakAI-Student-*-arm64-v8a.apk 2>/dev/null | head -1)
+          ARMV7=$(ls "$APK_DIR"/DarsakAI-Student-*-armeabi-v7a.apk 2>/dev/null | head -1)
 
-          echo "universal_sha256=$(sha256sum "$UNIVERSAL" | cut -d' ' -f1)" >> $GITHUB_OUTPUT
-          echo "arm64_sha256=$(sha256sum "$ARM64" | cut -d' ' -f1)" >> $GITHUB_OUTPUT
-
-          echo "universal_size=$(stat -c%s "$UNIVERSAL")" >> $GITHUB_OUTPUT
-          echo "arm64_size=$(stat -c%s "$ARM64")" >> $GITHUB_OUTPUT
-
-          echo "universal_path=$UNIVERSAL" >> $GITHUB_OUTPUT
-          echo "arm64_path=$ARM64" >> $GITHUB_OUTPUT
+          if [ -n "$UNIVERSAL" ]; then
+            echo "universal_sha256=$(sha256sum "$UNIVERSAL" | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+            echo "universal_size=$(stat -c%s "$UNIVERSAL")" >> $GITHUB_OUTPUT
+            echo "universal_path=$UNIVERSAL" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$ARM64" ]; then
+            echo "arm64_sha256=$(sha256sum "$ARM64" | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+            echo "arm64_size=$(stat -c%s "$ARM64")" >> $GITHUB_OUTPUT
+            echo "arm64_path=$ARM64" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v1.0.0"
-          gh release upload "$TAG" --clobber "${{ steps.sha256.outputs.universal_path }}"
-          gh release upload "$TAG" --clobber "${{ steps.sha256.outputs.arm64_path }}"
-
-      - name: Rename APKs for backward compatibility
-        run: |
-          UNIVERSAL="${{ steps.sha256.outputs.universal_path }}"
-          cp "$UNIVERSAL" build/app/outputs/flutter-apk/DarsakAI-Student.apk
+          if [ -n "${{ steps.sha256.outputs.universal_path }}" ]; then
+            gh release upload "$TAG" --clobber "${{ steps.sha256.outputs.universal_path }}"
+          fi
+          if [ -n "${{ steps.sha256.outputs.arm64_path }}" ]; then
+            gh release upload "$TAG" --clobber "${{ steps.sha256.outputs.arm64_path }}"
+          fi
 
       - name: Upload backward-compatible APK
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload v1.0.0 --clobber "build/app/outputs/flutter-apk/DarsakAI-Student.apk#DarsakAI-Student.apk"
+          APK_DIR="build/app/outputs/flutter-apk"
+          UNIVERSAL=$(ls "$APK_DIR"/DarsakAI-Student-*-universal.apk 2>/dev/null | head -1)
+          if [ -n "$UNIVERSAL" ]; then
+            cp "$UNIVERSAL" "$APK_DIR/DarsakAI-Student.apk"
+            gh release upload v1.0.0 --clobber "$APK_DIR/DarsakAI-Student.apk#DarsakAI-Student.apk"
+          fi

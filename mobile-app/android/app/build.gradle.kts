@@ -60,26 +60,6 @@ android {
             isUniversalApk = true
         }
     }
-
-    applicationVariants.all {
-        val variant = this
-        variant.outputs
-            .matching { it.name.contains("universal") }
-            .all {
-                val abi = (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).filter?.name ?: "universal"
-                val versionName = variant.versionName ?: "1.0"
-                val versionCode = variant.versionCode ?: 1
-                outputFileName = "DarsakAI-Student-v${versionName}+${versionCode}-${abi}.apk"
-            }
-        variant.outputs
-            .matching { !it.name.contains("universal") }
-            .all {
-                val abi = (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).filter?.name ?: "universal"
-                val versionName = variant.versionName ?: "1.0"
-                val versionCode = variant.versionCode ?: 1
-                outputFileName = "DarsakAI-Student-v${versionName}+${versionCode}-${abi}.apk"
-            }
-    }
 }
 
 flutter {
