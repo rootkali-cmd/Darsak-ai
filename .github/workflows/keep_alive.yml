@@ -8,7 +8,22 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping health endpoint
-        run: curl -sSf -o /dev/null -w "%{http_code}" https://darsak-ai-o8cs.vercel.app/health
-      - name: Ping Telegram webhook (re-set if needed)
-        run: curl -sSf -o /dev/null -w " %{http_code}" -X POST https://darsak-ai-o8cs.vercel.app/api/setup-telegram-webhook
+      - name: Ping Backend Health
+        run: |
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-ai-o8cs.vercel.app/health)
+          echo "Backend health: $CODE"
+          [ "$CODE" = "200" ] || exit 1
+      - name: Ping Website
+        run: |
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-ai.vercel.app)
+          echo "Website: $CODE"
+          [ "$CODE" = "200" ] || exit 1
+      - name: Ping Download Page
+        run: |
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-ai.vercel.app/download)
+          echo "Download page: $CODE"
+          [ "$CODE" = "200" ] || exit 1
+      - name: Ping Telegram Webhook
+        run: |
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 -X POST https://darsak-ai-o8cs.vercel.app/api/setup-telegram-webhook)
+          echo "Telegram webhook: $CODE"
