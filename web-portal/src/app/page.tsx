@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Lenis from 'lenis'
+import { auth } from '@/lib/auth'
 
 const CONFIG = {
   itemCount: 10,
@@ -31,8 +32,13 @@ export default function LandingPage() {
   const itemsRef = useRef<Item[]>([])
   const stateRef = useRef({ scroll: 0, velocity: 0, targetSpeed: 0, mouseX: 0, mouseY: 0 })
   const [lang, setLang] = useState<'en' | 'ar'>('en')
+  const [loggedIn, setLoggedIn] = useState(false)
   const isAr = lang === 'ar'
   const texts = isAr ? TEXTS_AR : TEXTS_EN
+
+  useEffect(() => {
+    setLoggedIn(auth.isAuthenticated())
+  }, [])
 
   useEffect(() => {
     CONFIG.loopSize = CONFIG.itemCount * CONFIG.zGap
@@ -219,12 +225,24 @@ export default function LandingPage() {
       </button>
 
       <div className="ds-cta">
-        <button className="ds-btn-primary" onClick={() => router.push('/login')}>
-          {isAr ? 'تسجيل الدخول' : 'LOGIN'}
-        </button>
-        <button className="ds-btn-secondary" onClick={() => router.push('/register')}>
-          {isAr ? 'ابدأ مجاناً' : 'START FREE'}
-        </button>
+        {loggedIn ? (
+          <button className="ds-btn-primary ds-btn-grid-full" onClick={() => router.push('/dashboard')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+            </svg>
+            {isAr ? 'لوحة التحكم' : 'DASHBOARD'}
+          </button>
+        ) : (
+          <>
+            <button className="ds-btn-primary" onClick={() => router.push('/login')}>
+              {isAr ? 'تسجيل الدخول' : 'LOGIN'}
+            </button>
+            <button className="ds-btn-secondary" onClick={() => router.push('/register')}>
+              {isAr ? 'ابدأ مجاناً' : 'START FREE'}
+            </button>
+          </>
+        )}
         <button className="ds-btn-download" onClick={() => router.push('/pricing')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="3" width="20" height="18" rx="2" ry="2" />
@@ -394,8 +412,9 @@ export default function LandingPage() {
   box-shadow: 0 0 20px rgba(0,243,255,0.2);
 }
 @media (max-width: 640px) {
-  .ds-cta { flex-direction: column; gap: 0.4rem; bottom: 1rem; }
-  .ds-cta button, .ds-cta a { width: 100%; justify-content: center; padding: 0.5rem 1rem; font-size: 0.7rem; }
+  .ds-cta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; bottom: 1rem; width: calc(100% - 2rem); max-width: 400px; }
+  .ds-cta button, .ds-cta a { width: 100%; justify-content: center; padding: 0.6rem 0.5rem; font-size: 0.7rem; }
+  .ds-cta .ds-btn-grid-full { grid-column: 1 / -1; }
   .ds-hud { inset: 0.75rem; font-size: 7px; }
   .ds-hud-side { display: none; }
   .ds-lang-btn { top: 1.5rem !important; left: 0.75rem !important; right: auto !important; padding: 0.35rem 0.6rem; font-size: 0.6rem; }
