@@ -19,20 +19,20 @@ const apps: {
 }[] = [
   {
     id: 'mobile',
-    title: 'DarsakAI Student v1.0.2',
+      title: 'DarsakAI Student v1.1.0',
     description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
     descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,
     color: '#00f3ff',
     files: [
-      { name: 'DarsakAI-Student.apk', label: 'Android APK', size: '72 MB' },
+      { name: 'DarsakAI-Student-v1.1.0+2-universal.apk', label: 'Android APK (Universal)', size: '82 MB' },
     ],
     platform: 'Android ✓',
     note: 'Signed release • com.darsak.ai • Camera only permission',
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop v1.1.36',
+      title: 'DarsakAI Desktop v1.2.0',
     description: 'نظام إدارة الفصل للمعلم - students, grades, attendance, exams',
     descriptionEn: 'Teacher desktop app — full classroom & exam management',
     icon: Monitor,
@@ -43,7 +43,7 @@ const apps: {
       { name: 'DarsakAI-Linux.tar.gz', label: 'Linux Bundle', size: '14 MB' },
     ],
     platform: 'Windows ✓ / Linux ✓',
-    note: 'Build 1.1.36 • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',
+    note: 'Build 1.2.0 • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',
   },
   {
     id: 'accounts',
@@ -59,17 +59,17 @@ const apps: {
 ]
 
 const features = [
+  { ar: 'نظام التحديث التلقائي (Auto-update مع شريط التقدم)', en: 'Auto-update system with progress bar' },
   { ar: 'نظام الاختبارات الذكي (AI + PDF ← أسئلة)', en: 'Smart exam system (AI + PDF → questions)' },
   { ar: 'تقييم ذكي: تصحيح + تحليل نقاط القوة/الضعف', en: 'AI grading: auto-correct + strengths/weaknesses' },
-  { ar: 'تايمر + أسئلة اختيار متعدد + مقالي', en: 'Timer + MCQs + essay questions' },
   { ar: 'نظام الاشتراكات (Basic 199 / Pro 499 / Unlimited 999)', en: 'Subscription system (Basic 199 / Pro 499 / Unlimited 999)' },
   { ar: 'دفع عبر فودافون كاش + تحميل الإيصال', en: 'Vodafone Cash payment + receipt upload' },
   { ar: 'إشعارات التفعيل والرفض (بوت تليجرام)', en: 'Activation/rejection notifications (Telegram bot)' },
   { ar: 'توليد كود اشتراك عبر بوت تليجرام', en: 'Subscription code generation via Telegram bot' },
   { ar: 'QR Code المسح الضوئي للحضور', en: 'QR code attendance scanning' },
   { ar: 'إدارة PIN للطلاب', en: 'Student PIN management' },
-  { ar: 'Offline-first (Hive cache)', en: 'Offline-first (Hive cache)' },
-  { ar: 'Signed APK + iOS support', en: 'Signed APK + iOS support' },
+  { ar: 'Offline-first مع كشف الانترنت', en: 'Offline-first with internet detection' },
+  { ar: 'Signed APK + تحديثات أمنية', en: 'Signed APK + security updates' },
 ]
 
 export default function DownloadPage() {
@@ -230,7 +230,7 @@ export default function DownloadPage() {
             }}
           >
             <h3 className="text-sm font-bold mb-4 hud-text" style={{ fontFamily: 'var(--font-display)' }}>
-              {isAr ? 'الميزات في v1.0.0' : 'v1.0.0 FEATURES'}
+              {isAr ? 'الميزات في v1.1.0' : 'v1.1.0 FEATURES'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (
