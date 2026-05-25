@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'api_service.dart';
@@ -17,10 +18,13 @@ class SyncService {
   final LocalSyncService? _localSync;
   StreamSubscription? _connectivitySubscription;
   Timer? _syncTimer;
+  Timer? _reconnectTimer;
   bool _isOnline = false;
   bool _isSyncing = false;
   String _lastSyncStatus = 'غير متصل';
   final List<Function(String, String)> _listeners = [];
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectDelay = 120;
 
   bool get isOnline => _isOnline;
   bool get isSyncing => _isSyncing;
@@ -35,11 +39,70 @@ class SyncService {
       _handleConnectivityChange(results);
     });
 
-    _syncTimer = Timer.periodic(const Duration(minutes: 3), (_) {
+    _syncTimer = Timer.periodic(const Duration(minutes: 3), () {
       if (_isOnline && !_isSyncing) {
         syncToServer();
         syncFromServer();
       }
+    });
+  }
+
+  void addListener(Function(String, String) listener) {
+    _listeners.add(listener);
+  }
+
+  void _notifyListeners(String status, String type) {
+    for (final listener in _listeners) {
+      listener(status, type);
+    }
+  }
+
+  Future<void> _checkConnectivity() async {
+    final results = await _connectivity.checkConnectivity();
+    await _handleConnectivityChange(results);
+  }
+
+  Future<void> _handleConnectivityChange(List<ConnectivityResult> results) async {
+    final wasOnline = _isOnline;
+    final hasNetworkInterface = results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
+
+    if (hasNetworkInterface) {
+      _isOnline = true;
+      _reconnectAttempts = 0;
+    } else {
+      _isOnline = await _pingApi();
+      if (!_isOnline) {
+        _scheduleReconnect();
+      }
+    }
+
+    if (_isOnline && !wasOnline) {
+      _lastSyncStatus = 'تم استعادة الاتصال - جاري المزامنة...';
+      _notifyListeners(_lastSyncStatus, 'connected');
+      fullSync();
+    } else if (!_isOnline && wasOnline) {
+      _lastSyncStatus = 'وضع عدم الاتصال';
+      _notifyListeners(_lastSyncStatus, 'disconnected');
+    }
+  }
+
+  void _scheduleReconnect() {
+    _reconnectTimer?.cancel();
+    final delay = min(pow(2, _reconnectAttempts).toInt(), _maxReconnectDelay);
+    _reconnectAttempts++;
+    _reconnectTimer = Timer(Duration(seconds: delay), () {
+      _checkConnectivity();
+    });
+  }
+
+  Future<bool> _pingApi() async {
+    try {
+      final response = await _dio.get('/versions/desktop');
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
     });
   }
 

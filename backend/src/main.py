@@ -7,6 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from collections import defaultdict
 
+import sentry_sdk
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN", ""),
+    traces_sample_rate=1.0,
+    environment=os.environ.get("ENVIRONMENT", "development"),
+    release=f"darsakai-backend@{os.environ.get('VERSION', '1.0.0')}",
+)
+
 from src.core.config import get_settings
 from src.core.logging import setup_logging
 from src.services import sync_buffer, start_scheduler, stop_scheduler

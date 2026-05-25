@@ -2,9 +2,9 @@
 AppName=DarsakAI
 AppVersion=1.2.0
 AppPublisher=DarsakAI
-AppPublisherURL=https://darsak-ai-o8cs.vercel.app
-AppSupportURL=https://darsak-ai-o8cs.vercel.app
-AppUpdatesURL=https://github.com/rootkali-cmd/Darsak-ai/releases
+AppPublisherURL=https://enjaz.one
+AppSupportURL=https://enjaz.one
+AppUpdatesURL=https://enjaz.one
 AppCopyright=Copyright (C) 2026 DarsakAI. All rights reserved.
 DefaultDirName={autopf}\DarsakAI
 DefaultGroupName=DarsakAI

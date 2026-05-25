@@ -6,6 +6,13 @@ import '../core/update_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/sync_provider.dart';
 
+const List<Map<String, String>> _channels = [
+  {'key': 'stable', 'label': 'مستقر', 'labelEn': 'Stable'},
+  {'key': 'beta', 'label': 'تجريبي', 'labelEn': 'Beta'},
+  {'key': 'dev', 'label': 'تطوير', 'labelEn': 'Dev'},
+  {'key': 'nightly', 'label': 'ليلي', 'labelEn': 'Nightly'},
+];
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -314,6 +321,35 @@ class SettingsScreen extends StatelessWidget {
                           Icon(Icons.check_circle_outline, size: 16, color: AppTheme.success),
                           const SizedBox(width: 6),
                           Text('التطبيق محدث', style: TextStyle(color: AppTheme.success, fontSize: 13)),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Consumer<UpdateService>(
+                    builder: (context, update, _) {
+                      return Row(
+                        children: [
+                          Text('قناة التحديثات', style: TextStyle(color: textSecondary, fontSize: 13)),
+                          const SizedBox(width: 12),
+                          DropdownButton<String>(
+                            value: update.channel,
+                            dropdownColor: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+                            underline: const SizedBox(),
+                            style: TextStyle(color: textPrimary, fontSize: 13),
+                            items: _channels.map((c) {
+                              return DropdownMenuItem(
+                                value: c['key'],
+                                child: Text(c['label'] ?? c['key']!),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                update.setChannel(value);
+                                update.checkForUpdate(force: true);
+                              }
+                            },
+                          ),
                         ],
                       );
                     },

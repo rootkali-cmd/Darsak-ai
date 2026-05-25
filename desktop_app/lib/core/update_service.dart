@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
@@ -6,7 +6,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import '../core/constants.dart';
+import '../core/telemetry_service.dart';
+import '../core/update_strategy.dart';
 
 class UpdateInfo {
   final String version;
@@ -20,6 +23,7 @@ class UpdateInfo {
   final String? sha256;
   final String? minSupportedVersion;
   final int rollout;
+  final String channel;
 
   UpdateInfo({
     required this.version,
@@ -33,6 +37,7 @@ class UpdateInfo {
     this.sha256,
     this.minSupportedVersion,
     this.rollout = 100,
+    this.channel = 'stable',
   });
 
   factory UpdateInfo.fromJson(Map<String, dynamic> json) {
@@ -50,6 +55,7 @@ class UpdateInfo {
       sha256: json['sha256'] as String?,
       minSupportedVersion: json['min_supported_version'] as String?,
       rollout: json['rollout'] as int? ?? 100,
+      channel: json['channel'] as String? ?? 'stable',
     );
   }
 
@@ -80,6 +86,8 @@ class UpdateService extends ChangeNotifier {
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 120),
   ));
+  final TelemetryService _telemetry = TelemetryService();
+  final UpdateStrategy _strategy = createUpdateStrategy();
 
   UpdateStatus _status = UpdateStatus.upToDate;
   UpdateInfo? _updateInfo;
@@ -92,6 +100,9 @@ class UpdateService extends ChangeNotifier {
   bool _ignoredVersion = false;
   String? _lastInstalledVersion;
   int _installAttempts = 0;
+  String _channel = 'stable';
+  Timer? _retryTimer;
+
   static const int _maxInstallAttempts = 3;
 
   UpdateStatus get status => _status;
@@ -101,6 +112,7 @@ class UpdateService extends ChangeNotifier {
   int get totalBytes => _totalBytes;
   String? get errorMessage => _errorMessage;
   String? get errorDetail => _errorDetail;
+  String get channel => _channel;
   bool get isChecking => _status == UpdateStatus.checking;
   bool get isDownloading => _status == UpdateStatus.downloading;
   bool get isUpToDate => _status == UpdateStatus.upToDate;
@@ -143,9 +155,23 @@ class UpdateService extends ChangeNotifier {
     return '${dir.path}/updates';
   }
 
+  Future<void> loadChannel() async {
+    final prefs = await SharedPreferences.getInstance();
+    _channel = prefs.getString('update_channel') ?? 'stable';
+  }
+
+  Future<void> setChannel(String channel) async {
+    _channel = channel;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('update_channel', channel);
+    notifyListeners();
+  }
+
   Future<void> checkForUpdate({bool force = false}) async {
     if (_status == UpdateStatus.checking) return;
     if (_ignoredVersion && !force) return;
+
+    await loadChannel();
 
     _status = UpdateStatus.checking;
     _errorMessage = null;
@@ -153,7 +179,8 @@ class UpdateService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _dio.get('/versions/${AppConstants.platformName}');
+      final response = await _dio.get('/versions/${AppConstants.platformName}',
+          queryParameters: {'channel': _channel});
       if (response.statusCode != 200) {
         _status = UpdateStatus.upToDate;
         notifyListeners();
@@ -192,14 +219,14 @@ class UpdateService extends ChangeNotifier {
         return;
       }
 
-      if (latest.minSupportedVersion != null &&
-          _isNewerVersion(currentVersion, latest.minSupportedVersion!)) {
+      if (latest.minSupportedVersion != null) {
         final currentParts = currentVersion.split('.').map(int.parse).toList();
         final minParts = latest.minSupportedVersion!.split('.').map(int.parse).toList();
         if (_compareVersions(currentParts, minParts) < 0) {
           _updateInfo = latest;
           _status = UpdateStatus.available;
           _errorMessage = 'إصدارك قديم جداً. يجب التحديث فوراً.';
+          _telemetry.updateAvailable(latest.version);
           notifyListeners();
           return;
         }
@@ -211,15 +238,12 @@ class UpdateService extends ChangeNotifier {
         return;
       }
 
-      if (latest.mandatory) {
-        _updateInfo = latest;
-        _status = UpdateStatus.available;
-        notifyListeners();
-        return;
-      }
-
+      _telemetry.updateCheck();
       _updateInfo = latest;
       _status = UpdateStatus.available;
+      if (latest.mandatory) {
+        _telemetry.updateAvailable(latest.version);
+      }
     } catch (e) {
       _status = UpdateStatus.upToDate;
     }
@@ -315,6 +339,7 @@ class UpdateService extends ChangeNotifier {
       }
 
       _cachedDownloadPath = filePath;
+      _telemetry.updateStarted(_updateInfo!.version);
 
       await _dio.download(
         _updateInfo!.downloadUrl!,
@@ -331,6 +356,7 @@ class UpdateService extends ChangeNotifier {
 
       final downloadedFile = File(filePath);
       if (!await downloadedFile.exists() || await downloadedFile.length() == 0) {
+        _telemetry.updateFailed(_updateInfo!.version, 'corrupted_download');
         _status = UpdateStatus.error;
         _errorMessage = 'فشل التحميل - الملف تالف';
         _errorDetail = 'حجم الملف صفر أو غير موجود';
@@ -342,6 +368,7 @@ class UpdateService extends ChangeNotifier {
         final hash = await _computeSha256(downloadedFile);
         if (hash != _updateInfo!.sha256) {
           await downloadedFile.delete();
+          _telemetry.hashMismatch(_updateInfo!.version, 'expected ${_updateInfo!.sha256}, got $hash');
           _status = UpdateStatus.error;
           _errorMessage = 'توقيع الملف غير متطابق';
           _errorDetail = 'قد يكون الملف تالفاً أو تم العبث به';
@@ -350,8 +377,10 @@ class UpdateService extends ChangeNotifier {
         }
       }
 
+      _telemetry.updateDownloaded(_updateInfo!.version);
       _status = UpdateStatus.readyToInstall;
     } catch (e) {
+      _telemetry.updateFailed(_updateInfo?.version ?? '', e.toString());
       _status = UpdateStatus.error;
       _errorMessage = 'فشل التحميل';
       _errorDetail = e.toString();
@@ -369,7 +398,7 @@ class UpdateService extends ChangeNotifier {
     try {
       final files = await dir.list().toList();
       for (final f in files) {
-        if (f is File && f.path.endsWith('.exe') || f is File && f.path.endsWith('.tar.gz')) {
+        if (f is File && (f.path.endsWith('.exe') || f.path.endsWith('.tar.gz') || f.path.endsWith('.zip'))) {
           final age = DateTime.now().difference(await f.lastModified());
           if (age.inHours > 1) {
             await f.delete();
@@ -380,21 +409,29 @@ class UpdateService extends ChangeNotifier {
   }
 
   Future<void> _closeAppGracefully() async {
-    if (!Platform.isWindows) return;
-
     try {
-      final currentPid = pid;
+      await windowManager.destroy();
+      await Future.delayed(const Duration(seconds: 3));
+
       if (Platform.isWindows) {
-        await Process.run('taskkill', ['/PID', currentPid.toString(), '/F'],
+        await Process.run('taskkill', ['/F', '/IM', 'DarsakAI.exe'],
             runInShell: true);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (Platform.isWindows) {
+        try {
+          await Process.run('taskkill', ['/F', '/IM', 'DarsakAI.exe'],
+              runInShell: true);
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> installUpdate() async {
     if (_cachedDownloadPath == null) return;
 
     if (_installAttempts >= _maxInstallAttempts) {
+      _telemetry.installerFailed(_updateInfo?.version ?? '', 'max_attempts_reached');
       _status = UpdateStatus.error;
       _errorMessage = 'فشل التثبيت بعد $_maxInstallAttempts محاولات';
       _errorDetail = 'يرجى تنزيل التحديث يدوياً من الموقع';
@@ -425,9 +462,18 @@ class UpdateService extends ChangeNotifier {
         return;
       }
 
+      if (!await _strategy.validateInstaller(_cachedDownloadPath!)) {
+        _status = UpdateStatus.error;
+        _errorMessage = 'ملف التثبيت غير صالح';
+        _errorDetail = 'الملف لا يبدو كمثبت صحيح';
+        notifyListeners();
+        return;
+      }
+
       if (_updateInfo?.sha256 != null) {
         final hash = await _computeSha256(file);
         if (hash != _updateInfo!.sha256) {
+          _telemetry.hashMismatch(_updateInfo!.version, hash);
           _status = UpdateStatus.error;
           _errorMessage = 'توقيع الملف غير متطابق';
           _errorDetail = 'تم رفض التثبيت حفاظاً على الأمان';
@@ -438,88 +484,21 @@ class UpdateService extends ChangeNotifier {
 
       if (Platform.isWindows) {
         await _closeAppGracefully();
-
-        final result = await Process.run(
-          file.path,
-          ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
-          runInShell: true,
-        ).timeout(const Duration(seconds: 30));
-
-        if (result.exitCode != 0) {
-          _status = UpdateStatus.error;
-          _errorMessage = 'فشل تشغيل المثبت';
-          _errorDetail = 'رمز الخطأ: ${result.exitCode}';
-          notifyListeners();
-          return;
-        }
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('last_installed_version', _updateInfo!.version);
-        await prefs.remove('ignored_update_version');
-
-        _status = UpdateStatus.restartRequired;
-      } else if (Platform.isLinux) {
-        final dir = await getApplicationSupportDirectory();
-        final extractDir = '${dir.path}/extracted';
-        final extractDirectory = Directory(extractDir);
-        if (await extractDirectory.exists()) {
-          await extractDirectory.delete(recursive: true);
-        }
-        await extractDirectory.create(recursive: true);
-
-        final result = await Process.run(
-          'tar',
-          ['-xzf', file.path, '-C', extractDir],
-          runInShell: true,
-        ).timeout(const Duration(seconds: 30));
-
-        if (result.exitCode != 0) {
-          if (await extractDirectory.exists()) {
-            await extractDirectory.delete(recursive: true);
-          }
-          _status = UpdateStatus.error;
-          _errorMessage = 'فشل فك الضغط';
-          _errorDetail = 'رمز الخطأ: ${result.exitCode}';
-          notifyListeners();
-          return;
-        }
-
-        final appDir = Directory(extractDir);
-        final files = await appDir.list(recursive: true).toList();
-        bool binaryCopied = false;
-        for (final f in files) {
-          if (f is File) {
-            final relativePath = f.path.replaceAll('${appDir.path}/', '');
-            if (relativePath == 'darsak_desktop') {
-              await f.copy('/opt/darsakai/darsak_desktop');
-              await Process.run('chmod', ['+x', '/opt/darsakai/darsak_desktop']);
-              binaryCopied = true;
-            }
-          }
-        }
-
-        if (await extractDirectory.exists()) {
-          await extractDirectory.delete(recursive: true);
-        }
-
-        if (!binaryCopied) {
-          _status = UpdateStatus.error;
-          _errorMessage = 'الملف التنفيذي غير موجود في الأرشيف';
-          _errorDetail = 'قد يكون الأرشيف تالفاً';
-          notifyListeners();
-          return;
-        }
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('last_installed_version', _updateInfo!.version);
-        await prefs.remove('ignored_update_version');
-
-        _status = UpdateStatus.restartRequired;
       }
 
+      await _strategy.install(_cachedDownloadPath!,
+          expectedBinary: Platform.isLinux ? 'darsak_desktop' : null);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_installed_version', _updateInfo!.version);
+      await prefs.remove('ignored_update_version');
+
+      _telemetry.updateInstalled(_updateInfo!.version);
       _installAttempts = 0;
       _cachedDownloadPath = null;
+      _status = UpdateStatus.restartRequired;
     } catch (e) {
+      _telemetry.installerFailed(_updateInfo?.version ?? '', e.toString());
       if (e is TimeoutException) {
         _status = UpdateStatus.error;
         _errorMessage = 'انتهت مهلة التثبيت';
@@ -532,6 +511,13 @@ class UpdateService extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  Future<void> retryDownload() async {
+    if (_errorMessage != null && _updateInfo != null) {
+      _installAttempts = 0;
+      await downloadUpdate();
+    }
   }
 
   void restartApp() {
@@ -561,5 +547,11 @@ class UpdateService extends ChangeNotifier {
     if (_errorMessage != null) {
       checkForUpdate(force: true);
     }
+  }
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
   }
 }

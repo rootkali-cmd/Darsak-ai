@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:window_manager/window_manager.dart';
 import 'core/theme.dart';
 import 'core/local_db.dart';
 import 'core/sync_service.dart';
@@ -12,15 +14,30 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalDB.init();
 
-  // Start local P2P sync server
+  await windowManager.ensureInitialized();
+
   final localSync = LocalSyncService();
   await localSync.start();
 
-  runApp(DarsakApp(localSync: localSync));
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = const String.fromEnvironment(
+        'SENTRY_DSN',
+        defaultValue: '',
+      );
+      options.tracesSampleRate = 1.0;
+      options.environment = const String.fromEnvironment(
+        'FLUTTER_ENV',
+        defaultValue: 'development',
+      );
+      options.release = 'darsak_desktop@${AppConstants.appVersion}';
+    },
+    appRunner: () => runApp(DarsakApp(localSync: localSync)),
+  );
 }
 
 class DarsakApp extends StatefulWidget {
