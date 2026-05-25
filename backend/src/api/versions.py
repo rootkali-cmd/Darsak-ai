@@ -1,36 +1,83 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from datetime import datetime, timezone
+import logging
 
+logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/versions", tags=["Versions"])
 
-VERSIONS = {
-    "mobile": {
-        "version": "1.0.2",
-        "build": 4,
-        "apk_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Student.apk",
-        "size_mb": 72,
-        "changes_ar": "توقيع APK رسمي، إصلاح QR code، تحسين PIN، تفعيل التحديث التلقائي",
-        "changes_en": "Official APK signing, QR fix, PIN improvements, enable auto-update",
-        "force_update": False,
-    },
-    "desktop": {
-        "version": "1.1.37",
-        "build": 37,
-        "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup-1.1.0.exe",
+VERSIONS: dict[str, dict] = {
+    "windows": {
+        "version": "1.2.0",
+        "build": 40,
+        "mandatory": False,
+        "changelog": [
+            "تحسين نظام التحديث التلقائي مع شريط التقدم",
+            "إصلاح مشكلة عدم الاتصال بالإنترنت",
+            "إصلاح مشكلة تعيين PIN للطلاب",
+            "تحسين الأداء والاستقرار",
+        ],
+        "changelog_en": [
+            "Improved auto-update system with progress bar",
+            "Fixed offline detection issue",
+            "Fixed student PIN setting issue",
+            "Performance and stability improvements",
+        ],
+        "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup-1.2.0.exe",
         "size_mb": 14,
-        "changes_ar": "إصلاح مشكلة تعيين PIN للطلاب، إصلاح الاتصال بالإنترنت، تفعيل التحديث التلقائي",
-        "changes_en": "Fix student PIN setting, fix offline detection, enable auto-update",
-        "force_update": False,
+        "release_date": "2026-05-24",
+    },
+    "linux": {
+        "version": "1.2.0",
+        "build": 40,
+        "mandatory": False,
+        "changelog": [
+            "تحسين نظام التحديث التلقائي",
+            "إصلاح مشكلة عدم الاتصال بالإنترنت",
+            "إصلاح مشكلة تعيين PIN للطلاب",
+            "تحسين الأداء والاستقرار",
+        ],
+        "changelog_en": [
+            "Improved auto-update system",
+            "Fixed offline detection issue",
+            "Fixed student PIN setting issue",
+            "Performance and stability improvements",
+        ],
+        "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
+        "size_mb": 20,
+        "release_date": "2026-05-24",
+    },
+    "android": {
+        "version": "1.1.0",
+        "build": 5,
+        "mandatory": False,
+        "changelog": [
+            "تحسين واجهة المستخدم",
+            "إصلاح أخطاء",
+            "تحسين الأداء",
+        ],
+        "changelog_en": [
+            "Improved user interface",
+            "Bug fixes",
+            "Performance improvements",
+        ],
+        "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Student.apk",
+        "size_mb": 72,
+        "release_date": "2026-05-24",
     },
     "accounts": {
         "version": "1.0.0",
         "build": 1,
+        "mandatory": False,
+        "changelog": [],
+        "changelog_en": [],
         "download_url": None,
         "size_mb": None,
-        "changes_ar": "الإصدار الأول",
-        "changes_en": "Initial release",
-        "force_update": False,
+        "release_date": "2026-05-24",
     },
 }
+
+CACHE: dict[str, tuple[dict, datetime]] = {}
+CACHE_TTL_SECONDS = 300
 
 
 @router.get("/")
@@ -40,4 +87,16 @@ async def get_versions():
 
 @router.get("/{platform}")
 async def get_version(platform: str):
-    return VERSIONS.get(platform, {"error": "Unknown platform"})
+    now = datetime.now(timezone.utc)
+
+    if platform in CACHE:
+        cached, timestamp = CACHE[platform]
+        if (now - timestamp).total_seconds() < CACHE_TTL_SECONDS:
+            return cached
+
+    entry = VERSIONS.get(platform)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Unknown platform: {platform}")
+
+    CACHE[platform] = (entry, now)
+    return entry

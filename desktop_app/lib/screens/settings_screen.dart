@@ -176,10 +176,11 @@ class SettingsScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Text(
-                              update.updateInfo!.changesAr,
-                              style: TextStyle(color: textMuted, fontSize: 12),
-                            ),
+                            if (update.updateInfo!.changelog.isNotEmpty)
+                              ...update.updateInfo!.changelog.take(3).map((item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text('• $item', style: TextStyle(color: textMuted, fontSize: 12)),
+                              )),
                             const SizedBox(height: 12),
                             MouseRegion(
                               cursor: SystemMouseCursors.click,

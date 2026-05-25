@@ -20,6 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: subosito/flutter-action@v2
         with:
@@ -41,9 +43,18 @@ jobs:
         run: |
           powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath ${{ runner.temp }}\DarsakAI-Windows.zip -Force
 
+      - name: Generate Changelog
+        id: changelog
+        shell: bash
+        run: |
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          git log --oneline --no-decorate HEAD~5..HEAD 2>/dev/null || echo "No recent changes" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: powershell
         run: |
           $tag = "v1.0.0"
           $release = gh release view $tag --json uploadUrl --jq '.uploadUrl' 2>$null
@@ -51,5 +62,39 @@ jobs:
             gh release create $tag --title "DarsakAI v1.0.0" --notes "تحديث تلقائي" --latest
           }
           gh release upload $tag --clobber "${{ runner.temp }}\DarsakAI-Windows.zip"
-          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.1.0.exe"
-          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.1.0.exe#DarsakAI-Setup.exe"
+          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.2.0.exe"
+          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.2.0.exe#DarsakAI-Setup.exe"
+
+      - name: Generate latest-windows.json
+        shell: bash
+        run: |
+          VERSION="1.2.0"
+          BUILD=${{ github.run_number }}
+          SIZE=$(stat -c%s "build/installer/DarsakAI-Setup-1.2.0.exe" 2>/dev/null || echo 0)
+          SIZE_MB=$((SIZE / 1048576))
+          DATE=$(date +%Y-%m-%d)
+          cat > ${{ runner.temp }}/latest-windows.json << JSONEOF
+          {
+            "version": "${VERSION}",
+            "build": ${BUILD},
+            "mandatory": false,
+            "changelog": [
+              "تحسين نظام التحديث التلقائي مع شريط التقدم",
+              "إصلاح مشكلة عدم الاتصال بالإنترنت",
+              "إصلاح مشكلة تعيين PIN للطلاب",
+              "تحسين الأداء والاستقرار"
+            ],
+            "changelog_en": [
+              "Improved auto-update system with progress bar",
+              "Fixed offline detection issue",
+              "Fixed student PIN setting issue",
+              "Performance and stability improvements"
+            ],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup-1.2.0.exe",
+            "size_mb": ${SIZE_MB},
+            "release_date": "${DATE}"
+          }
+          JSONEOF
+          gh release upload v1.0.0 --clobber "${{ runner.temp }}/latest-windows.json#latest-windows.json"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -9,31 +9,36 @@ import '../core/constants.dart';
 class UpdateInfo {
   final String version;
   final int build;
+  final bool mandatory;
+  final List<String> changelog;
+  final List<String> changelogEn;
   final String? downloadUrl;
   final int? sizeMb;
-  final String changesAr;
-  final String changesEn;
-  final bool forceUpdate;
+  final String? releaseDate;
 
   UpdateInfo({
     required this.version,
     required this.build,
+    required this.mandatory,
+    required this.changelog,
+    required this.changelogEn,
     this.downloadUrl,
     this.sizeMb,
-    required this.changesAr,
-    required this.changesEn,
-    required this.forceUpdate,
+    this.releaseDate,
   });
 
   factory UpdateInfo.fromJson(Map<String, dynamic> json) {
+    final raw = json['changelog'];
+    final rawEn = json['changelog_en'];
     return UpdateInfo(
       version: json['version'] as String? ?? '',
       build: json['build'] as int? ?? 0,
+      mandatory: json['mandatory'] as bool? ?? false,
+      changelog: raw is List ? raw.cast<String>() : [],
+      changelogEn: rawEn is List ? rawEn.cast<String>() : [],
       downloadUrl: json['download_url'] as String?,
       sizeMb: json['size_mb'] as int?,
-      changesAr: json['changes_ar'] as String? ?? '',
-      changesEn: json['changes_en'] as String? ?? '',
-      forceUpdate: json['force_update'] as bool? ?? false,
+      releaseDate: json['release_date'] as String?,
     );
   }
 
@@ -46,6 +51,7 @@ enum UpdateStatus {
   available,
   downloading,
   readyToInstall,
+  installing,
   error,
 }
 
@@ -53,34 +59,73 @@ class UpdateService extends ChangeNotifier {
   final Dio _dio = Dio(BaseOptions(
     baseUrl: AppConstants.apiBaseUrl,
     connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 60),
   ));
 
   UpdateStatus _status = UpdateStatus.upToDate;
   UpdateInfo? _updateInfo;
   double _downloadProgress = 0;
+  int _downloadedBytes = 0;
+  int _totalBytes = 0;
   String? _errorMessage;
   String? _cachedDownloadPath;
+  bool _ignoredVersion = false;
 
   UpdateStatus get status => _status;
   UpdateInfo? get updateInfo => _updateInfo;
   double get downloadProgress => _downloadProgress;
+  int get downloadedBytes => _downloadedBytes;
+  int get totalBytes => _totalBytes;
   String? get errorMessage => _errorMessage;
   bool get isChecking => _status == UpdateStatus.checking;
   bool get isDownloading => _status == UpdateStatus.downloading;
+  bool get isUpToDate => _status == UpdateStatus.upToDate;
+  bool get isReadyToInstall => _status == UpdateStatus.readyToInstall;
+  bool get isError => _status == UpdateStatus.error;
+  bool get isInstalling => _status == UpdateStatus.installing;
 
-  Future<void> checkForUpdate() async {
+  String get downloadSpeed {
+    if (_totalBytes <= 0 || _downloadProgress <= 0) return '';
+    final elapsed = _downloadProgress * 10;
+    if (elapsed <= 0) return '';
+    final bytesPerSec = _downloadedBytes / elapsed;
+    if (bytesPerSec >= 1024 * 1024) {
+      return '${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MB/s';
+    } else if (bytesPerSec >= 1024) {
+      return '${(bytesPerSec / 1024).toStringAsFixed(0)} KB/s';
+    }
+    return '${bytesPerSec.toStringAsFixed(0)} B/s';
+  }
+
+  String get downloadPercent {
+    return '${(_downloadProgress * 100).toStringAsFixed(0)}%';
+  }
+
+  String get downloadedSize {
+    if (_totalBytes <= 0) return '';
+    final mb = _downloadedBytes / (1024 * 1024);
+    return mb >= 1 ? '${mb.toStringAsFixed(1)} MB' : '${(_downloadedBytes / 1024).toStringAsFixed(0)} KB';
+  }
+
+  String get totalSize {
+    if (_totalBytes <= 0) return '';
+    final mb = _totalBytes / (1024 * 1024);
+    return mb >= 1 ? '${mb.toStringAsFixed(1)} MB' : '${(_totalBytes / 1024).toStringAsFixed(0)} KB';
+  }
+
+  Future<void> checkForUpdate({bool force = false}) async {
     if (_status == UpdateStatus.checking) return;
+
+    if (_ignoredVersion && !force) return;
 
     _status = UpdateStatus.checking;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final response = await _dio.get('/versions/desktop');
+      final response = await _dio.get('/versions/${AppConstants.platformName}');
       if (response.statusCode != 200) {
-        _status = UpdateStatus.error;
-        _errorMessage = 'فشل الاتصال بالخادم';
+        _status = UpdateStatus.upToDate;
         notifyListeners();
         return;
       }
@@ -94,6 +139,15 @@ class UpdateService extends ChangeNotifier {
         return;
       }
 
+      final prefs = await SharedPreferences.getInstance();
+      _ignoredVersion = prefs.getString('ignored_update_version') == latest.version;
+
+      if (_ignoredVersion && !latest.mandatory) {
+        _status = UpdateStatus.upToDate;
+        notifyListeners();
+        return;
+      }
+
       final currentVersion = AppConstants.appVersion;
       if (_isNewerVersion(latest.version, currentVersion)) {
         _updateInfo = latest;
@@ -102,8 +156,7 @@ class UpdateService extends ChangeNotifier {
         _status = UpdateStatus.upToDate;
       }
     } catch (e) {
-      _status = UpdateStatus.error;
-      _errorMessage = 'خطأ في التحقق من التحديثات';
+      _status = UpdateStatus.upToDate;
     }
 
     notifyListeners();
@@ -113,15 +166,31 @@ class UpdateService extends ChangeNotifier {
     try {
       final latestParts = latest.split('.').map(int.parse).toList();
       final currentParts = current.split('.').map(int.parse).toList();
+      final maxLen = latestParts.length > currentParts.length
+          ? latestParts.length
+          : currentParts.length;
 
-      for (int i = 0; i < latestParts.length && i < currentParts.length; i++) {
+      while (latestParts.length < maxLen) latestParts.add(0);
+      while (currentParts.length < maxLen) currentParts.add(0);
+
+      for (int i = 0; i < maxLen; i++) {
         if (latestParts[i] > currentParts[i]) return true;
         if (latestParts[i] < currentParts[i]) return false;
       }
-      return latestParts.length > currentParts.length;
+      return false;
     } catch (_) {
       return false;
     }
+  }
+
+  Future<void> ignoreVersion() async {
+    if (_updateInfo == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ignored_update_version', _updateInfo!.version);
+    _ignoredVersion = true;
+    _status = UpdateStatus.upToDate;
+    _updateInfo = null;
+    notifyListeners();
   }
 
   Future<void> downloadUpdate() async {
@@ -129,24 +198,47 @@ class UpdateService extends ChangeNotifier {
 
     _status = UpdateStatus.downloading;
     _downloadProgress = 0;
+    _downloadedBytes = 0;
+    _totalBytes = 0;
+    _errorMessage = null;
     notifyListeners();
 
     try {
       final dir = await getApplicationSupportDirectory();
+      final downloadDir = Directory('${dir.path}/updates');
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
+      }
+
       final fileName = _updateInfo!.downloadUrl!.split('/').last;
-      final filePath = '${dir.path}/$fileName';
+      final filePath = '${downloadDir.path}/$fileName';
+
+      if (File(filePath).existsSync()) {
+        await File(filePath).delete();
+      }
+
       _cachedDownloadPath = filePath;
 
       await _dio.download(
         _updateInfo!.downloadUrl!,
         filePath,
         onReceiveProgress: (received, total) {
+          _downloadedBytes = received;
+          _totalBytes = total;
           if (total > 0) {
             _downloadProgress = received / total;
-            notifyListeners();
           }
+          notifyListeners();
         },
       );
+
+      final downloadedFile = File(filePath);
+      if (!await downloadedFile.exists() || await downloadedFile.length() == 0) {
+        _status = UpdateStatus.error;
+        _errorMessage = 'فشل التحميل - الملف تالف';
+        notifyListeners();
+        return;
+      }
 
       _status = UpdateStatus.readyToInstall;
     } catch (e) {
@@ -159,6 +251,9 @@ class UpdateService extends ChangeNotifier {
 
   Future<void> installUpdate() async {
     if (_cachedDownloadPath == null) return;
+
+    _status = UpdateStatus.installing;
+    notifyListeners();
 
     try {
       final file = File(_cachedDownloadPath!);
@@ -175,20 +270,36 @@ class UpdateService extends ChangeNotifier {
           ['/SILENT', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
           runInShell: true,
         );
+        exit(0);
       } else if (Platform.isLinux) {
         final dir = await getApplicationSupportDirectory();
-        final extractDir = dir.path;
+        final extractDir = '${dir.path}/extracted';
+        final extractDirectory = Directory(extractDir);
+        if (await extractDirectory.exists()) {
+          await extractDirectory.delete(recursive: true);
+        }
+        await extractDirectory.create(recursive: true);
+
         await Process.run(
           'tar',
           ['-xzf', file.path, '-C', extractDir],
           runInShell: true,
         );
+
         final appDir = Directory(extractDir);
-        final files = await appDir.list().toList();
+        final files = await appDir.list(recursive: true).toList();
         for (final f in files) {
           if (f is File) {
-            await f.copy('/opt/darsakai/darsak_desktop');
+            final relativePath = f.path.replaceAll('${appDir.path}/', '');
+            if (relativePath == 'darsak_desktop') {
+              await f.copy('/opt/darsakai/darsak_desktop');
+              await Process.run('chmod', ['+x', '/opt/darsakai/darsak_desktop']);
+            }
           }
+        }
+
+        if (await extractDirectory.exists()) {
+          await extractDirectory.delete(recursive: true);
         }
       }
 
@@ -207,6 +318,13 @@ class UpdateService extends ChangeNotifier {
     _status = UpdateStatus.upToDate;
     _updateInfo = null;
     _errorMessage = null;
+    _downloadProgress = 0;
     notifyListeners();
+  }
+
+  void retry() {
+    if (_errorMessage != null) {
+      checkForUpdate(force: true);
+    }
   }
 }

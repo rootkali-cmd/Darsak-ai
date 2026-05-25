@@ -1,7 +1,15 @@
 class AppConstants {
   static const String apiBaseUrl = 'https://darsak-ai-o8cs.vercel.app/api';
   static const String appName = 'DarsakAI Desktop';
-  static const String appVersion = '1.1.0';
+  static const String appVersion = '1.2.0';
+
+  static String get platformName {
+    if (const bool.fromEnvironment('is_linux', defaultValue: false)) return 'linux';
+    return 'windows';
+  }
+
+  static const String downloadBaseUrl = 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0';
+  static const String repositoryUrl = 'https://github.com/rootkali-cmd/Darsak-ai';
 }
 
 class LocalSyncConfig {

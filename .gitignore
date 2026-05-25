@@ -62,10 +62,10 @@ darsak_accounts_db/
 *.zip
 
 # Build artifacts
-mobile-app/build/
 desktop_app/build/
-accounts_app/build/
-mobile-app/android/.gradle/
 desktop_app/.dart_tool/
-mobile-app/.dart_tool/
-accounts_app/.dart_tool/
+
+# Private source (not open source)
+mobile-app/
+accounts_app/
+web-portal/public/DarsakAI-Student.aab

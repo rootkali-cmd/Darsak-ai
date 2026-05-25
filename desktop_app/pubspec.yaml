@@ -1,7 +1,7 @@
 name: darsak_desktop
 description: "DarsakAI Desktop App - Offline-first teacher dashboard"
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.0+1
 
 environment:
   sdk: ^3.9.0
@@ -43,6 +43,8 @@ dependencies:
   file_picker: ^11.0.2
   csv: ^8.0.0
   path_provider: ^2.1.5
+  url_launcher: ^6.2.4
+  package_info_plus: ^8.3.0
 
 dev_dependencies:
   flutter_test:
