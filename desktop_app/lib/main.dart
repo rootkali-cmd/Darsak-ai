@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/theme.dart';
+import 'core/constants.dart';
 import 'core/local_db.dart';
 import 'core/sync_service.dart';
 import 'core/update_service.dart';

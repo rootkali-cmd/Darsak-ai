@@ -39,7 +39,7 @@ class SyncService {
       _handleConnectivityChange(results);
     });
 
-    _syncTimer = Timer.periodic(const Duration(minutes: 3), () {
+    _syncTimer = Timer.periodic(const Duration(minutes: 3), (_) {
       if (_isOnline && !_isSyncing) {
         syncToServer();
         syncFromServer();
@@ -103,52 +103,6 @@ class SyncService {
       return false;
     }
   }
-    });
-  }
-
-  void addListener(Function(String, String) listener) {
-    _listeners.add(listener);
-  }
-
-  void _notifyListeners(String status, String type) {
-    for (final listener in _listeners) {
-      listener(status, type);
-    }
-  }
-
-  Future<void> _checkConnectivity() async {
-    final results = await _connectivity.checkConnectivity();
-    await _handleConnectivityChange(results);
-  }
-
-  Future<void> _handleConnectivityChange(List<ConnectivityResult> results) async {
-    final wasOnline = _isOnline;
-    final hasNetworkInterface = results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
-
-    if (hasNetworkInterface) {
-      _isOnline = true;
-    } else {
-      _isOnline = await _pingApi();
-    }
-
-    if (_isOnline && !wasOnline) {
-      _lastSyncStatus = 'تم استعادة الاتصال - جاري المزامنة...';
-      _notifyListeners(_lastSyncStatus, 'connected');
-      syncToServer();
-    } else if (!_isOnline && wasOnline) {
-      _lastSyncStatus = 'وضع عدم الاتصال';
-      _notifyListeners(_lastSyncStatus, 'disconnected');
-    }
-  }
-
-  Future<bool> _pingApi() async {
-    try {
-      final response = await _dio.get('/versions/desktop');
-      return response.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
-  }
 
   Future<void> syncToServer() async {
     if (_isSyncing) return;
@@ -164,12 +118,10 @@ class SyncService {
 
         bool synced = false;
 
-        // Try local P2P sync first
         if (_localSync != null) {
           synced = await _localSync.trySendToPeer(item);
         }
 
-        // Fall back to cloud API
         if (!synced && _isOnline) {
           try {
             switch (type) {
@@ -213,10 +165,8 @@ class SyncService {
     _notifyListeners('جاري تحميل البيانات...', 'syncing');
 
     try {
-      // Backup before sync
       await LocalDB.createBackup();
 
-      // Fetch ALL data first before touching local storage
       final students = await _api.getStudents();
       final groups = await _api.getGroups();
       final grades = await _api.getGrades();
@@ -224,8 +174,6 @@ class SyncService {
       final lastSync = LocalDB.getLastSyncTime() ?? DateTime.now().subtract(const Duration(days: 30));
       final attendance = await _api.getAttendance(date: lastSync.toIso8601String());
 
-      // Only replace local data if API returned data for that box
-      // Never delete non-empty local data with empty API response
       if (students.isNotEmpty) {
         final localLen = LocalDB.getAllData(LocalDB.studentsBox).length;
         if (localLen == 0 || students.length >= localLen) {
@@ -291,5 +239,6 @@ class SyncService {
   void dispose() {
     _connectivitySubscription?.cancel();
     _syncTimer?.cancel();
+    _reconnectTimer?.cancel();
   }
 }
