@@ -65,7 +65,12 @@ darsak_accounts_db/
 desktop_app/build/
 desktop_app/.dart_tool/
 
-# Private source (not open source)
-mobile-app/
+# Mobile build artifacts (not source)
+mobile-app/build/
+mobile-app/.dart_tool/
+mobile-app/android/.gradle/
+mobile-app/android/build/
+mobile-app/ios/
+
 accounts_app/
 web-portal/public/DarsakAI-Student.aab
