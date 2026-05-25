@@ -39,16 +39,38 @@ jobs:
       - name: Build Installer
         run: iscc installer/setup.iss
 
-      - name: Create ZIP
+      - name: Create Portable ZIP
         run: |
           powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath ${{ runner.temp }}\DarsakAI-Windows.zip -Force
+
+      - name: Verify Release Assets
+        shell: powershell
+        run: |
+          $exe = "build\installer\DarsakAI-Setup.exe"
+          $zip = "${{ runner.temp }}\DarsakAI-Windows.zip"
+          if (-not (Test-Path $exe)) { throw "Installer EXE not found at $exe" }
+          if (-not (Test-Path $zip)) { throw "Portable ZIP not found at $zip" }
+          $exeSize = (Get-Item $exe).Length
+          $zipSize = (Get-Item $zip).Length
+          if ($exeSize -eq 0) { throw "Installer EXE is empty" }
+          if ($zipSize -eq 0) { throw "Portable ZIP is empty" }
+          Write-Output "EXE size: $exeSize bytes"
+          Write-Output "ZIP size: $zipSize bytes"
+
+      - name: Compute SHA256
+        id: sha256
+        shell: powershell
+        run: |
+          $exePath = "build\installer\DarsakAI-Setup.exe"
+          $hash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLower()
+          echo "sha256=$hash" >> $env:GITHUB_OUTPUT
 
       - name: Generate Changelog
         id: changelog
         shell: bash
         run: |
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          git log --oneline --no-decorate HEAD~5..HEAD 2>/dev/null || echo "No recent changes" >> $GITHUB_OUTPUT
+          git log --oneline --no-decorate HEAD~10..HEAD 2>/dev/null || echo "- تحديث النظام" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload to GitHub Release
@@ -62,22 +84,30 @@ jobs:
             gh release create $tag --title "DarsakAI v1.0.0" --notes "تحديث تلقائي" --latest
           }
           gh release upload $tag --clobber "${{ runner.temp }}\DarsakAI-Windows.zip"
-          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.2.0.exe"
-          gh release upload $tag --clobber "build\installer\DarsakAI-Setup-1.2.0.exe#DarsakAI-Setup.exe"
+          gh release upload $tag --clobber "build\installer\DarsakAI-Setup.exe"
+          gh release upload $tag --clobber "build\installer\DarsakAI-Setup.exe#DarsakAI-Setup.exe"
 
       - name: Generate latest-windows.json
         shell: bash
         run: |
           VERSION="1.2.0"
           BUILD=${{ github.run_number }}
-          SIZE=$(stat -c%s "build/installer/DarsakAI-Setup-1.2.0.exe" 2>/dev/null || echo 0)
+          SIZE=$(stat -c%s "build/installer/DarsakAI-Setup.exe" 2>/dev/null || echo 0)
           SIZE_MB=$((SIZE / 1048576))
           DATE=$(date +%Y-%m-%d)
+          SHA256="${{ steps.sha256.outputs.sha256 }}"
+          CHANGELOG=$(cat <<'CHLOG'
+          ${{ steps.changelog.outputs.changelog }}
+          CHLOG
+          )
           cat > ${{ runner.temp }}/latest-windows.json << JSONEOF
           {
             "version": "${VERSION}",
             "build": ${BUILD},
             "mandatory": false,
+            "min_supported_version": "1.0.0",
+            "rollout": 100,
+            "sha256": "${SHA256}",
             "changelog": [
               "تحسين نظام التحديث التلقائي مع شريط التقدم",
               "إصلاح مشكلة عدم الاتصال بالإنترنت",
@@ -90,7 +120,7 @@ jobs:
               "Fixed student PIN setting issue",
               "Performance and stability improvements"
             ],
-            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup-1.2.0.exe",
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup.exe",
             "size_mb": ${SIZE_MB},
             "release_date": "${DATE}"
           }

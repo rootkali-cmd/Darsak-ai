@@ -203,6 +203,33 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                   ),
                                 );
                               }
+                              if (update.isRestartRequired) {
+                                return MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _selectedIndex = 9),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.accent.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.restart_alt, size: 14, color: AppTheme.accent),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'أعد التشغيل',
+                                            style: TextStyle(color: AppTheme.accent, fontSize: 11, fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
                               return const SizedBox.shrink();
                             },
                           ),

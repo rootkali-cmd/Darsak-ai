@@ -152,6 +152,44 @@ class SettingsScreen extends StatelessWidget {
                         );
                       }
 
+                      if (update.isInstalling) {
+                        return Row(
+                          children: [
+                            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            const SizedBox(width: 12),
+                            Text('جاري التثبيت...', style: TextStyle(color: textSecondary, fontSize: 13)),
+                          ],
+                        );
+                      }
+
+                      if (update.isRestartRequired) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.check_circle, size: 16, color: AppTheme.success),
+                                const SizedBox(width: 6),
+                                Text('تم التثبيت', style: TextStyle(color: AppTheme.success, fontSize: 13)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: ElevatedButton.icon(
+                                onPressed: () => update.restartApp(),
+                                icon: const Icon(Icons.restart_alt, size: 16),
+                                label: const Text('إعادة التشغيل'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.success,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
                       if (update.status == UpdateStatus.available && update.updateInfo != null) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +240,7 @@ class SettingsScreen extends StatelessWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('جارٍ التحميل... ${(update.downloadProgress * 100).toStringAsFixed(0)}%',
+                            Text('جارٍ التحميل... ${update.downloadPercent}',
                               style: TextStyle(color: textSecondary, fontSize: 13)),
                             const SizedBox(height: 8),
                             ClipRRect(
@@ -211,6 +249,11 @@ class SettingsScreen extends StatelessWidget {
                                 value: update.downloadProgress,
                                 minHeight: 6,
                               ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${update.downloadedSize} / ${update.totalSize}',
+                              style: TextStyle(color: textMuted, fontSize: 11),
                             ),
                           ],
                         );
@@ -244,8 +287,26 @@ class SettingsScreen extends StatelessWidget {
                         );
                       }
 
-                      if (update.status == UpdateStatus.error && update.errorMessage != null) {
-                        return Text(update.errorMessage!, style: TextStyle(color: AppTheme.danger, fontSize: 12));
+                      if (update.isError) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(update.errorMessage ?? 'حدث خطأ',
+                                style: TextStyle(color: AppTheme.danger, fontSize: 12)),
+                            if (update.errorDetail != null)
+                              Text(update.errorDetail!,
+                                  style: TextStyle(color: textMuted, fontSize: 11)),
+                            const SizedBox(height: 8),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: TextButton.icon(
+                                onPressed: () => update.retry(),
+                                icon: const Icon(Icons.refresh, size: 14),
+                                label: const Text('إعادة المحاولة'),
+                              ),
+                            ),
+                          ],
+                        );
                       }
 
                       return Row(

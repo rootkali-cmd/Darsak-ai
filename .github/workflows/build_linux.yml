@@ -43,6 +43,25 @@ jobs:
         run: |
           tar -czf ${{ runner.temp }}/DarsakAI-Linux.tar.gz -C build/linux/x64/release .
 
+      - name: Verify Release Assets
+        run: |
+          if [ ! -f "${{ runner.temp }}/DarsakAI-Linux.tar.gz" ]; then
+            echo "ERROR: Linux archive not found"
+            exit 1
+          fi
+          SIZE=$(stat -c%s "${{ runner.temp }}/DarsakAI-Linux.tar.gz")
+          if [ "$SIZE" -eq 0 ]; then
+            echo "ERROR: Linux archive is empty"
+            exit 1
+          fi
+          echo "Archive size: $SIZE bytes"
+
+      - name: Compute SHA256
+        id: sha256
+        run: |
+          HASH=$(sha256sum "${{ runner.temp }}/DarsakAI-Linux.tar.gz" | cut -d' ' -f1)
+          echo "sha256=$HASH" >> $GITHUB_OUTPUT
+
       - name: Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,11 +76,15 @@ jobs:
           SIZE=$(stat -c%s "${{ runner.temp }}/DarsakAI-Linux.tar.gz" 2>/dev/null || echo 0)
           SIZE_MB=$((SIZE / 1048576))
           DATE=$(date +%Y-%m-%d)
+          SHA256="${{ steps.sha256.outputs.sha256 }}"
           cat > ${{ runner.temp }}/latest-linux.json << JSONEOF
           {
             "version": "${VERSION}",
             "build": ${BUILD},
             "mandatory": false,
+            "min_supported_version": "1.0.0",
+            "rollout": 100,
+            "sha256": "${SHA256}",
             "changelog": [
               "تحسين نظام التحديث التلقائي",
               "إصلاح مشكلة عدم الاتصال بالإنترنت",

@@ -8,7 +8,7 @@ class AppConstants {
     return 'windows';
   }
 
-  static const String downloadBaseUrl = 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0';
+  static const String downloadBaseUrl = 'https://darsak-ai-o8cs.vercel.app/api/download';
   static const String repositoryUrl = 'https://github.com/rootkali-cmd/Darsak-ai';
 }
 

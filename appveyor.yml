@@ -26,7 +26,7 @@ artifacts:
     name: DarsakAI-Desktop-Windows
     type: Folder
 
-  - path: desktop_app\build\installer\DarsakAI-Setup-1.2.0.exe
+  - path: desktop_app\build\installer\DarsakAI-Setup.exe
     name: DarsakAI-Setup
 
 deploy: off
