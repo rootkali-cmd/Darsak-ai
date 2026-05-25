@@ -1,12 +1,23 @@
 import io
 import base64
-import qrcode
+import logging
 from uuid import UUID
+
+logger = logging.getLogger("darsak")
+
+try:
+    import qrcode
+    HAS_QRCODE = True
+except ImportError:
+    HAS_QRCODE = False
+    logger.warning("qrcode not installed; QR generation disabled")
 
 
 class QRService:
     @staticmethod
     def generate_qr_base64(data: str, size: int = 300) -> str:
+        if not HAS_QRCODE:
+            raise RuntimeError("QR generation unavailable: qrcode not installed")
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,

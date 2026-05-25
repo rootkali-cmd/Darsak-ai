@@ -1,14 +1,20 @@
 import io
+import logging
 from datetime import datetime
 from uuid import UUID
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-)
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+logger = logging.getLogger("darsak")
+
+try:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    HAS_REPORTLAB = True
+except ImportError:
+    HAS_REPORTLAB = False
+    logger.warning("reportlab not installed; PDF generation disabled")
 
 
 class PDFGenerator:
@@ -21,6 +27,8 @@ class PDFGenerator:
         grades: list[dict],
         teacher_name: str,
     ) -> bytes:
+        if not HAS_REPORTLAB:
+            raise RuntimeError("PDF generation unavailable: reportlab not installed")
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
