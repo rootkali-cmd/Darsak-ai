@@ -18,6 +18,8 @@ _user_states: dict[int, str] = {}
 
 
 def is_authorized(chat_id: int) -> bool:
+    if not TELEGRAM_CHAT_ID:
+        return True
     return str(chat_id) == str(TELEGRAM_CHAT_ID)
 
 
