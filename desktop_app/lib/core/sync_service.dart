@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'api_service.dart';
+import 'analytics_service.dart';
+import 'structured_logger.dart';
 import 'constants.dart';
 import 'local_db.dart';
 import 'local_sync/local_sync_service.dart';
@@ -48,7 +50,13 @@ class SyncService {
   }
 
   void addListener(Function(String, String) listener) {
-    _listeners.add(listener);
+    if (!_listeners.contains(listener)) {
+      _listeners.add(listener);
+    }
+  }
+
+  void removeListener(Function(String, String) listener) {
+    _listeners.remove(listener);
   }
 
   void _notifyListeners(String status, String type) {
@@ -79,10 +87,14 @@ class SyncService {
     if (_isOnline && !wasOnline) {
       _lastSyncStatus = 'تم استعادة الاتصال - جاري المزامنة...';
       _notifyListeners(_lastSyncStatus, 'connected');
+      AnalyticsService.instance.reconnectSuccess();
+      StructuredLogger.instance.info('reconnect_success', data: { 'attempts': _reconnectAttempts });
       fullSync();
     } else if (!_isOnline && wasOnline) {
       _lastSyncStatus = 'وضع عدم الاتصال';
       _notifyListeners(_lastSyncStatus, 'disconnected');
+      AnalyticsService.instance.offlineModeEnabled();
+      StructuredLogger.instance.warning('offline_mode_enabled', data: { 'attempts': _reconnectAttempts });
     }
   }
 

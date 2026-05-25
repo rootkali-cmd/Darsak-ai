@@ -7,6 +7,9 @@ import 'core/constants.dart';
 import 'core/local_db.dart';
 import 'core/sync_service.dart';
 import 'core/update_service.dart';
+import 'core/analytics_service.dart';
+import 'core/structured_logger.dart';
+import 'core/remote_config_service.dart';
 import 'core/local_sync/local_sync_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
@@ -15,14 +18,24 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await LocalDB.init();
 
+  await LocalDB.init();
   await windowManager.ensureInitialized();
+
+  await StructuredLogger.instance.init();
+  await AnalyticsService.instance.init();
+  await RemoteConfigService.instance.init();
 
   final localSync = LocalSyncService();
   await localSync.start();
+
+  StructuredLogger.instance.info('app_started', data: {
+    'version': AppConstants.appVersion,
+    'platform': AppConstants.platformName,
+  });
+  AnalyticsService.instance.appOpened();
 
   await SentryFlutter.init(
     (options) {
@@ -51,6 +64,14 @@ class DarsakApp extends StatefulWidget {
 
 class _DarsakAppState extends State<DarsakApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+  late final SyncService _syncService;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncService = SyncService(localSync: widget.localSync);
+    _syncService.init();
+  }
 
   void toggleTheme() {
     setState(() {
@@ -60,20 +81,19 @@ class _DarsakAppState extends State<DarsakApp> {
 
   @override
   void dispose() {
+    _syncService.dispose();
     widget.localSync.dispose();
+    StructuredLogger.instance.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final syncService = SyncService(localSync: widget.localSync);
-    syncService.init();
-
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => DataProvider(syncService)),
-        ChangeNotifierProvider(create: (_) => SyncProvider(syncService)),
+        ChangeNotifierProvider(create: (_) => DataProvider(_syncService)),
+        ChangeNotifierProvider(create: (_) => SyncProvider(_syncService)),
         ChangeNotifierProvider(create: (_) => UpdateService()),
       ],
       child: MaterialApp(

@@ -19,6 +19,7 @@ import {
   UserCog,
   Sparkles,
   CreditCard,
+  BarChart2,
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
 
@@ -32,6 +33,7 @@ const navItems = [
   { href: '/dashboard/qr', label: 'QR Code', icon: QrCode },
   { href: '/dashboard/subscription', label: 'الاشتراكات', icon: CreditCard },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
+  { href: '/admin/analytics', label: 'التحليلات', icon: BarChart2 },
 ]
 
 export function Sidebar() {

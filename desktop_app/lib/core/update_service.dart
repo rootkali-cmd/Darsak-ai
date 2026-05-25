@@ -9,6 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import '../core/constants.dart';
 import '../core/telemetry_service.dart';
+import '../core/analytics_service.dart';
+import '../core/structured_logger.dart';
+import '../core/remote_config_service.dart';
 import '../core/update_strategy.dart';
 
 class UpdateInfo {
@@ -171,6 +174,27 @@ class UpdateService extends ChangeNotifier {
     if (_status == UpdateStatus.checking) return;
     if (_ignoredVersion && !force) return;
 
+    final remoteConfig = RemoteConfigService.instance;
+    if (remoteConfig.config.disableUpdates) {
+      _status = UpdateStatus.upToDate;
+      notifyListeners();
+      return;
+    }
+
+    if (remoteConfig.isBlocked) {
+      _status = UpdateStatus.available;
+      _errorMessage = 'هذا الإصدار محظور. يرجى تنزيل التحديث الجديد فوراً.';
+      notifyListeners();
+      return;
+    }
+
+    if (remoteConfig.isBelowMinimum) {
+      _status = UpdateStatus.available;
+      _errorMessage = 'إصدارك قديم جداً ويجب التحديث.';
+      notifyListeners();
+      return;
+    }
+
     await loadChannel();
 
     _status = UpdateStatus.checking;
@@ -238,11 +262,16 @@ class UpdateService extends ChangeNotifier {
         return;
       }
 
-      _telemetry.updateCheck();
+      AnalyticsService.instance.updateCheck(channel: _channel);
+      StructuredLogger.instance.info('update_check', data: {
+        'version': latest.version,
+        'channel': _channel,
+      });
       _updateInfo = latest;
       _status = UpdateStatus.available;
       if (latest.mandatory) {
         _telemetry.updateAvailable(latest.version);
+        AnalyticsService.instance.updateAvailable(latest.version, channel: _channel);
       }
     } catch (e) {
       _status = UpdateStatus.upToDate;
@@ -340,6 +369,7 @@ class UpdateService extends ChangeNotifier {
 
       _cachedDownloadPath = filePath;
       _telemetry.updateStarted(_updateInfo!.version);
+      AnalyticsService.instance.updateStarted(_updateInfo!.version);
 
       await _dio.download(
         _updateInfo!.downloadUrl!,
@@ -357,6 +387,7 @@ class UpdateService extends ChangeNotifier {
       final downloadedFile = File(filePath);
       if (!await downloadedFile.exists() || await downloadedFile.length() == 0) {
         _telemetry.updateFailed(_updateInfo!.version, 'corrupted_download');
+        AnalyticsService.instance.updateFailed(_updateInfo!.version, 'corrupted_download');
         _status = UpdateStatus.error;
         _errorMessage = 'فشل التحميل - الملف تالف';
         _errorDetail = 'حجم الملف صفر أو غير موجود';
@@ -369,6 +400,7 @@ class UpdateService extends ChangeNotifier {
         if (hash != _updateInfo!.sha256) {
           await downloadedFile.delete();
           _telemetry.hashMismatch(_updateInfo!.version, 'expected ${_updateInfo!.sha256}, got $hash');
+          AnalyticsService.instance.hashMismatch(_updateInfo!.version);
           _status = UpdateStatus.error;
           _errorMessage = 'توقيع الملف غير متطابق';
           _errorDetail = 'قد يكون الملف تالفاً أو تم العبث به';
@@ -378,9 +410,11 @@ class UpdateService extends ChangeNotifier {
       }
 
       _telemetry.updateDownloaded(_updateInfo!.version);
+      AnalyticsService.instance.updateDownloaded(_updateInfo!.version);
       _status = UpdateStatus.readyToInstall;
     } catch (e) {
       _telemetry.updateFailed(_updateInfo?.version ?? '', e.toString());
+      AnalyticsService.instance.updateFailed(_updateInfo?.version ?? '', e.toString());
       _status = UpdateStatus.error;
       _errorMessage = 'فشل التحميل';
       _errorDetail = e.toString();
@@ -432,6 +466,7 @@ class UpdateService extends ChangeNotifier {
 
     if (_installAttempts >= _maxInstallAttempts) {
       _telemetry.installerFailed(_updateInfo?.version ?? '', 'max_attempts_reached');
+      AnalyticsService.instance.installerFailed(_updateInfo?.version ?? '', 'max_attempts_reached');
       _status = UpdateStatus.error;
       _errorMessage = 'فشل التثبيت بعد $_maxInstallAttempts محاولات';
       _errorDetail = 'يرجى تنزيل التحديث يدوياً من الموقع';
@@ -494,11 +529,15 @@ class UpdateService extends ChangeNotifier {
       await prefs.remove('ignored_update_version');
 
       _telemetry.updateInstalled(_updateInfo!.version);
+      AnalyticsService.instance.updateInstalled(_updateInfo!.version);
       _installAttempts = 0;
       _cachedDownloadPath = null;
+      _telemetry.restartRequired(_updateInfo!.version);
+      AnalyticsService.instance.appRestartRequired(_updateInfo!.version);
       _status = UpdateStatus.restartRequired;
     } catch (e) {
       _telemetry.installerFailed(_updateInfo?.version ?? '', e.toString());
+      AnalyticsService.instance.installerFailed(_updateInfo?.version ?? '', e.toString());
       if (e is TimeoutException) {
         _status = UpdateStatus.error;
         _errorMessage = 'انتهت مهلة التثبيت';

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_service.dart';
+import '../core/analytics_service.dart';
+import '../core/structured_logger.dart';
 import '../models/user.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -38,12 +40,16 @@ class AuthProvider extends ChangeNotifier {
       _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
       await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
       _isLoading = false;
+      AnalyticsService.instance.loginSuccess();
+      StructuredLogger.instance.info('login_success', data: { 'email': email });
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString().contains('401')
           ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
           : 'فشل تسجيل الدخول';
+      AnalyticsService.instance.loginFailed(reason: _error);
+      StructuredLogger.instance.warning('login_failed', data: { 'email': email, 'error': _error });
       _isLoading = false;
       notifyListeners();
       return false;

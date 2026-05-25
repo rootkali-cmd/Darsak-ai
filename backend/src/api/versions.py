@@ -328,6 +328,17 @@ async def download_latest(
 
 
 TELEMETRY_LOG = "telemetry.jsonl"
+ANALYTICS_LOG = "analytics.jsonl"
+
+BLOCKED_VERSIONS: list[str] = []
+REMOTE_CONFIG: dict = {
+    "maintenance_mode": False,
+    "disable_updates": False,
+    "enable_beta_features": False,
+    "minimum_supported_version": "1.0.0",
+    "telemetry_enabled": True,
+    "blocked_versions": [],
+}
 
 
 @router.post("/telemetry/event")
@@ -346,3 +357,37 @@ async def telemetry_event(data: dict):
     except Exception as e:
         logger.warning(f"Telemetry write failed: {e}")
         return {"status": "error", "detail": str(e)}
+
+
+@router.get("/config/client")
+async def client_config():
+    return REMOTE_CONFIG
+
+
+@router.post("/config/client")
+async def update_client_config(config: dict):
+    global REMOTE_CONFIG
+    mergeable_keys = {"maintenance_mode", "disable_updates", "enable_beta_features",
+                       "minimum_supported_version", "telemetry_enabled"}
+    for key, value in config.items():
+        if key in mergeable_keys:
+            REMOTE_CONFIG[key] = value
+    if "blocked_versions" in config and isinstance(config["blocked_versions"], list):
+        REMOTE_CONFIG["blocked_versions"] = config["blocked_versions"]
+    logger.info("Remote config updated: %s", REMOTE_CONFIG)
+    return {"status": "ok", "config": REMOTE_CONFIG}
+
+
+@router.get("/blocked-versions")
+async def get_blocked_versions():
+    return {"blocked_versions": REMOTE_CONFIG.get("blocked_versions", [])}
+
+
+@router.post("/blocked-versions")
+async def set_blocked_versions(data: dict):
+    versions = data.get("versions", [])
+    if not isinstance(versions, list):
+        raise HTTPException(status_code=400, detail="versions must be a list")
+    REMOTE_CONFIG["blocked_versions"] = versions
+    logger.info("Blocked versions updated: %s", versions)
+    return {"status": "ok", "blocked_versions": versions}
