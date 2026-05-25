@@ -18,8 +18,8 @@ async def push_sync(
     sync_request: SyncPushRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    client = get_supabase()
-    result = client.table("encrypted_payloads").insert({
+    client = await get_supabase()
+    result = await client.table("encrypted_payloads").insert({
         "teacher_id": current_user["id"],
         "payload_type": sync_request.payload_type.value if hasattr(sync_request.payload_type, 'value') else sync_request.payload_type,
         "ciphertext": sync_request.ciphertext,
@@ -64,13 +64,13 @@ async def pull_sync(
     limit: int = 50,
     current_user: dict = Depends(get_current_teacher),
 ):
-    client = get_supabase()
+    client = await get_supabase()
     query = client.table("encrypted_payloads").select("*").eq("teacher_id", current_user["id"]).eq("sync_status", "pending").order("created_at", desc=False).limit(limit)
 
     if since:
         query = query.gt("created_at", since)
 
-    result = query.execute()
+    result = await query.execute()
     payloads = result.data
 
     items = []
@@ -108,9 +108,9 @@ async def ack_sync(
     if not ack_request.acked_ids:
         return SyncAckResponse(acknowledged=0)
 
-    client = get_supabase()
+    client = await get_supabase()
     for payload_id in ack_request.acked_ids:
-        client.table("encrypted_payloads").update({
+        await client.table("encrypted_payloads").update({
             "sync_status": "synced",
             "synced_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", payload_id).eq("teacher_id", current_user["id"]).execute()

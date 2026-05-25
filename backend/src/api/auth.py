@@ -1,10 +1,13 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, TokenRefresh, UserUpdate, OnboardingUpdate
 from src.core.security.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from src.core.security.sanitizer import sanitize_text, sanitize_email
+from src.core.security.supabase_repo import SupabaseError
 from src.services import user_service, audit_service
 
+logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
@@ -23,15 +26,30 @@ async def register(user_data: UserCreate, request: Request):
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except SupabaseError as e:
+        logger.error("Registration DB error: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="تعذر إنشاء الحساب. تأكد من اتصال قاعدة البيانات وحاول مرة أخرى",
+        )
+    except Exception as e:
+        logger.error("Unexpected registration error: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="حدث خطأ غير متوقع أثناء إنشاء الحساب. حاول مرة أخرى",
+        )
 
-    await audit_service.log(
-        actor_type="system",
-        action="user_registered",
-        actor_id=user["id"],
-        resource_type="user",
-        resource_id=user["id"],
-        ip_address=get_client_ip(request),
-    )
+    try:
+        await audit_service.log(
+            actor_type="system",
+            action="user_registered",
+            actor_id=user["id"],
+            resource_type="user",
+            resource_id=user["id"],
+            ip_address=get_client_ip(request),
+        )
+    except Exception as e:
+        logger.warning("Audit log failed after registration: %s", e)
 
     return UserResponse(**user)
 

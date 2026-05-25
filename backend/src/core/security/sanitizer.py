@@ -1,13 +1,9 @@
 import re
-import html
 
 
 def sanitize_text(value: str | None) -> str | None:
     if value is None:
         return None
-    value = html.escape(value, quote=True)
-    value = re.sub(r'[<>\'";()\[\]{}]', '', value)
-    value = re.sub(r'\b(select|insert|update|delete|drop|alter|create|exec|union|eval|script|javascript|onclick|onerror|onload)\b', '', value, flags=re.IGNORECASE)
     return value.strip()
 
 
