@@ -40,7 +40,7 @@ const apps: {
     files: [
       { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '14 MB' },
       { name: 'DarsakAI-Windows.zip', label: 'Windows Portable', size: '15 MB' },
-      { name: 'DarsakAI-Linux.tar.gz', label: 'Linux Bundle', size: '14 MB' },
+      { name: 'DarsakAI-Linux.tar.gz', label: 'Linux Bundle', size: '13 MB' },
     ],
     platform: 'Windows ✓ / Linux ✓',
     note: 'Build 1.2.0 • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',

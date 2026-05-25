@@ -41,7 +41,7 @@ jobs:
 
       - name: Create tar.gz
         run: |
-          tar -czf ${{ runner.temp }}/DarsakAI-Linux.tar.gz -C build/linux/x64/release .
+          tar -czf ${{ runner.temp }}/DarsakAI-Linux.tar.gz -C build/linux/x64/release/bundle .
 
       - name: Verify Release Assets
         run: |

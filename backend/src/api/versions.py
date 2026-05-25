@@ -53,7 +53,7 @@ CHANNELS: dict[str, dict[str, dict]] = {
                 "Performance and stability improvements",
             ],
             "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
-            "size_mb": 20,
+            "size_mb": 13,
             "release_date": "2026-05-25",
         },
         "android": {
@@ -131,7 +131,7 @@ CHANNELS: dict[str, dict[str, dict]] = {
                 "Security improvements",
             ],
             "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
-            "size_mb": 20,
+            "size_mb": 13,
             "release_date": "2026-05-25",
         },
         "android": {
@@ -191,7 +191,7 @@ CHANNELS: dict[str, dict[str, dict]] = {
             "changelog": ["تطوير مستمر"],
             "changelog_en": ["Continuous development"],
             "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
-            "size_mb": 20,
+            "size_mb": 13,
             "release_date": "2026-05-25",
         },
         "android": {
@@ -232,7 +232,7 @@ CHANNELS: dict[str, dict[str, dict]] = {
             "changelog": ["إصدار ليلي"],
             "changelog_en": ["Nightly build"],
             "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
-            "size_mb": 20,
+            "size_mb": 13,
             "release_date": "2026-05-25",
         },
         "android": {
