@@ -6,11 +6,15 @@ from typing import Any
 
 logger = logging.getLogger("darsak")
 
-LOG_DIR = os.environ.get("STRUCTURED_LOG_DIR", "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
+LOG_DIR = os.environ.get("STRUCTURED_LOG_DIR", "/tmp/logs" if os.environ.get("VERCEL") else "logs")
+
+
+def _ensure_log_dir() -> None:
+    os.makedirs(LOG_DIR, exist_ok=True)
 
 
 def _get_log_file() -> str:
+    _ensure_log_dir()
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return os.path.join(LOG_DIR, f"events-{date}.jsonl")
 
