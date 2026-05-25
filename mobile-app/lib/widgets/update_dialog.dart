@@ -7,8 +7,8 @@ class AndroidUpdateDialog extends StatelessWidget {
 
   const AndroidUpdateDialog({super.key, required this.info});
 
-  static void show(BuildContext context, AndroidUpdateInfo info) {
-    showDialog(
+  static Future<bool?> show(BuildContext context, AndroidUpdateInfo info) {
+    return showDialog<bool>(
       context: context,
       barrierDismissible: !info.mandatory,
       builder: (_) => AndroidUpdateDialog(info: info),

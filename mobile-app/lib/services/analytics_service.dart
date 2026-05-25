@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:posthog_flutter/posthog_flutter.dart';
 import '../core/constants.dart';
 
 class AnalyticsService {
@@ -26,29 +25,7 @@ class AnalyticsService {
     _initialized = true;
     final prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool('analytics_enabled') ?? true;
-
     if (!_enabled) return;
-
-    if (!kDebugMode) {
-      const posthogApiKey = String.fromEnvironment(
-        'POSTHOG_API_KEY',
-        defaultValue: '',
-      );
-      if (posthogApiKey.isNotEmpty) {
-        try {
-          await Posthog().init(
-            apiKey: posthogApiKey,
-            host: 'https://app.posthog.com',
-            options: PosthogOptions(
-              captureMode: CaptureMode.always,
-              captureScreenViews: false,
-              captureDeepLinks: false,
-            ),
-          );
-        } catch (_) {}
-      }
-    }
-
     await _flushQueue();
   }
 
@@ -63,22 +40,13 @@ class AnalyticsService {
     if (!_enabled) return;
     if (kDebugMode) return;
 
-    final props = {
-      'version': AppConstants.appVersion,
-      'platform': 'android',
-      'distinct_id': 'android',
-      if (properties != null) ...properties,
-    };
-
-    if (!kDebugMode) {
-      try {
-        Posthog().capture(event: event, properties: props);
-      } catch (_) {}
-    }
-
     final entry = {
       'event': event,
-      'properties': props,
+      'properties': {
+        'version': AppConstants.appVersion,
+        'platform': 'android',
+        if (properties != null) ...properties,
+      },
       'timestamp': DateTime.now().toUtc().toIso8601String(),
     };
 
@@ -98,9 +66,7 @@ class AnalyticsService {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_queueKey);
       final queue = raw != null ? List<Map<String, dynamic>>.from(jsonDecode(raw)) : <Map<String, dynamic>>[];
-      if (queue.length >= _maxQueueSize) {
-        queue.removeAt(0);
-      }
+      if (queue.length >= _maxQueueSize) queue.removeAt(0);
       queue.add(entry);
       await prefs.setString(_queueKey, jsonEncode(queue));
     } catch (_) {}
@@ -113,9 +79,7 @@ class AnalyticsService {
       if (raw == null) return;
       final queue = List<Map<String, dynamic>>.from(jsonDecode(raw));
       if (queue.isEmpty) return;
-
       await prefs.remove(_queueKey);
-
       for (final entry in queue) {
         try {
           await _dio.post('/analytics/event', data: entry);
