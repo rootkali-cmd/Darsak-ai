@@ -124,8 +124,9 @@ class PortableZipStrategy implements UpdateStrategy {
         if (f is File) {
           final relativePath = f.path.replaceAll('${appDir.path}/', '');
           if (expectedBinary == null || relativePath == expectedBinary) {
-            await f.copy('/opt/darsakai/darsak_desktop');
-            await Process.run('chmod', ['+x', '/opt/darsakai/darsak_desktop']);
+            final binaryPath = '${Platform.environment['HOME'] ?? '/opt'}/darsakai/darsak_desktop';
+            await f.copy(binaryPath);
+            await Process.run('chmod', ['+x', binaryPath]);
             binaryCopied = true;
           }
         }

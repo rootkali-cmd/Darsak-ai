@@ -30,6 +30,13 @@ async def create_exam(
     return ExamResponse(**exam)
 
 
+MAX_FILE_SIZE = 20 * 1024 * 1024
+ALLOWED_MIME_TYPES = {
+    "application/pdf",
+    "image/jpeg", "image/png", "image/webp", "image/gif",
+}
+
+
 @router.post("/ai-generate", status_code=status.HTTP_201_CREATED)
 async def ai_generate_exam(
     file: UploadFile = File(...),
@@ -38,9 +45,14 @@ async def ai_generate_exam(
     duration_minutes: int = Form(30),
     current_user: dict = Depends(get_current_teacher),
 ):
+    if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
+
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file")
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 20MB)")
 
     source_type = "pdf" if file.filename and file.filename.endswith(".pdf") else "images"
     if source_type == "pdf":

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from collections import defaultdict
+from typing import Tuple
 
 import sentry_sdk
 
@@ -29,7 +30,7 @@ from src.api import (
 settings = get_settings()
 logger = setup_logging(settings.LOG_LEVEL)
 
-_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+_rate_limit_store: dict[Tuple[str, str], list[float]] = defaultdict(list)
 
 
 @asynccontextmanager
@@ -199,25 +200,41 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
 @app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host if request.client else "unknown"
-    path = request.url.path
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
 
-    if path in ("/docs", "/openapi.json", "/health"):
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    if request.url.path in ("/docs", "/openapi.json", "/health"):
         return await call_next(request)
+
+    client_ip = request.client.host if request.client else "unknown"
+    auth_header = request.headers.get("authorization", "")
+    user_key = client_ip + auth_header[:20]
+    key = (user_key, request.url.path)
 
     now = time.time()
     window = 60
     max_requests = 120
+    if request.url.path in ("/api/auth/login", "/api/auth/register", "/api/students/login"):
+        max_requests = 10
 
-    requests_in_window = [t for t in _rate_limit_store[client_ip] if now - t < window]
-    _rate_limit_store[client_ip] = requests_in_window
+    requests_in_window = [t for t in _rate_limit_store[key] if now - t < window]
+    _rate_limit_store[key] = requests_in_window
 
     if len(requests_in_window) >= max_requests:
         return JSONResponse(
@@ -225,7 +242,7 @@ async def rate_limit_middleware(request: Request, call_next):
             content={"detail": "Too many requests. Try again later."},
         )
 
-    _rate_limit_store[client_ip].append(now)
+    _rate_limit_store[key].append(now)
     response = await call_next(request)
     return response
 

@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import RedirectResponse
 from datetime import datetime, timezone
 import logging
 import json
 import os
+
+from src.utils.dependencies import get_current_admin
 
 logger = logging.getLogger("darsak")
 router = APIRouter(prefix="", tags=["Versions"])
@@ -354,7 +356,7 @@ async def client_config():
 
 
 @router.post("/config/client")
-async def update_client_config(config: dict):
+async def update_client_config(config: dict, admin: dict = Depends(get_current_admin)):
     global REMOTE_CONFIG
     mergeable_keys = {"maintenance_mode", "disable_updates", "enable_beta_features",
                        "minimum_supported_version", "telemetry_enabled"}
@@ -373,7 +375,7 @@ async def get_blocked_versions():
 
 
 @router.post("/blocked-versions")
-async def set_blocked_versions(data: dict):
+async def set_blocked_versions(data: dict, admin: dict = Depends(get_current_admin)):
     versions = data.get("versions", [])
     if not isinstance(versions, list):
         raise HTTPException(status_code=400, detail="versions must be a list")

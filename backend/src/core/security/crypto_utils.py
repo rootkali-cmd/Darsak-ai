@@ -10,21 +10,23 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger("darsak")
 
-HMAC_KEY = os.environ.get("HMAC_SECRET_KEY", "darsak-hmac-secret-key-change-me")
+HMAC_KEY = os.environ.get("HMAC_SECRET_KEY", "")
 AES_KEY_B64 = os.environ.get("AES_ENCRYPTION_KEY", "")
 
 
 def _get_aes_key() -> bytes:
+    if not HMAC_KEY:
+        raise ValueError("HMAC_SECRET_KEY not set")
     if AES_KEY_B64:
         return base64.b64decode(AES_KEY_B64)
-    salt = b"darsak-fixed-salt"
+    salt = secrets.token_bytes(16)
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
     from cryptography.hazmat.primitives import hashes
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=100_000,
+        iterations=600_000,
     )
     return kdf.derive(HMAC_KEY.encode("utf-8"))
 

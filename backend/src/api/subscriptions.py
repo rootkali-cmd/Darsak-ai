@@ -166,6 +166,10 @@ async def check_feature(
     )
 
 
+ALLOWED_SCREENSHOT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024
+
+
 @router.post("/payment-request")
 async def create_payment_request(
     plan_id: str = Form(...),
@@ -180,9 +184,13 @@ async def create_payment_request(
 
     screenshot_b64 = None
     if screenshot:
+        if screenshot.content_type not in ALLOWED_SCREENSHOT_TYPES:
+            raise HTTPException(status_code=400, detail=f"Unsupported screenshot type: {screenshot.content_type}")
         import base64
         content = await screenshot.read()
-        screenshot_b64 = f"data:{screenshot.content_type};base64,{base64.b64encode(content).decode()}"
+        if len(content) > MAX_SCREENSHOT_SIZE:
+            raise HTTPException(status_code=400, detail="Screenshot too large (max 5MB)")
+        screenshot_b64 = f"data:image/png;base64,{base64.b64encode(content).decode()}"
 
     request = await payment_request_service.create(
         teacher_id=current_user["id"],

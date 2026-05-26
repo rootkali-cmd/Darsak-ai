@@ -1,10 +1,11 @@
 import os
 import logging
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 import httpx
 
 from src.core.config import get_settings
+from src.utils.dependencies import get_current_admin
 from src.core.security.crypto_utils import generate_license_key
 from src.services import subscription_plan_service, subscription_code_service, teacher_subscription_service, payment_request_service, notification_service
 
@@ -317,7 +318,7 @@ async def _setup_webhook():
 
 
 @router.post("/setup-telegram-webhook")
-async def setup_telegram_webhook():
+async def setup_telegram_webhook(admin: dict = Depends(get_current_admin)):
     ok, detail = await _setup_webhook()
     if ok:
         return {"ok": True, "webhook_url": detail}
@@ -325,7 +326,7 @@ async def setup_telegram_webhook():
 
 
 @router.get("/telegram-status")
-async def telegram_status():
+async def telegram_status(admin: dict = Depends(get_current_admin)):
     return {
         "token_configured": bool(TELEGRAM_BOT_TOKEN),
         "chat_id_configured": bool(TELEGRAM_CHAT_ID),

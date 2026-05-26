@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 class LocalDB {
-  static const String _sharedPath = '/home/ahmed/Documents/DarsakAi/darsak_db';
-  static const String _backupPath = '/home/ahmed/Documents/DarsakAi/darsak_db_backups';
+  static late final String _sharedPath;
+  static late final String _backupPath;
 
   static const String studentsBox = 'students';
   static const String groupsBox = 'groups';
@@ -15,6 +16,9 @@ class LocalDB {
   static const String settingsBox = 'settings';
 
   static Future<void> init() async {
+    final appDir = await getApplicationSupportDirectory();
+    _sharedPath = '${appDir.path}/darsak_db';
+    _backupPath = '${appDir.path}/darsak_db_backups';
     final dbDir = Directory(_sharedPath);
     if (!await dbDir.exists()) await dbDir.create(recursive: true);
     await Hive.initFlutter(_sharedPath);

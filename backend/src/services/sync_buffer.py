@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
 
@@ -28,7 +29,8 @@ class SyncBuffer:
             )
             await asyncio.wait_for(self.redis.ping(), timeout=5)
             self._connected = True
-            logger.info("Connected to Redis at %s", settings.REDIS_URL)
+            safe_url = urlparse(settings.REDIS_URL)._replace(netloc="***:***@" + urlparse(settings.REDIS_URL).hostname).geturl() if "@" in settings.REDIS_URL else settings.REDIS_URL
+            logger.info("Connected to Redis at %s", safe_url)
         except Exception as e:
             logger.warning("Redis connection failed, sync buffer disabled: %s", e)
             self._connected = False

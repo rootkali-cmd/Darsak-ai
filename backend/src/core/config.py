@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "google/gemini-2.0-flash-001"
     OPENROUTER_VISION_MODEL: str = "google/gemini-2.0-flash-001"
 
-    SECRET_KEY: str = "change-me-in-production-use-openssl-rand"
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -44,4 +44,7 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    if not s.SECRET_KEY or s.SECRET_KEY == "change-me-in-production-use-openssl-rand":
+        raise ValueError("SECRET_KEY must be set in environment")
+    return s

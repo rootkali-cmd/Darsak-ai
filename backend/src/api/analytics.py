@@ -2,8 +2,9 @@ import json
 import os
 from datetime import datetime, timezone
 from collections import defaultdict, Counter
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from src.core.structured_logger import write_event, count_events, aggregate_events
+from src.utils.dependencies import get_current_admin
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -32,12 +33,12 @@ async def analytics_event(data: dict):
         write_event(event, severity="info", platform=entry["platform"], version=entry["version"], data=entry["data"])
 
         return {"status": "ok"}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
+    except Exception:
+        return {"status": "error", "detail": "Internal error"}
 
 
 @router.get("/overview")
-async def analytics_overview():
+async def analytics_overview(admin: dict = Depends(get_current_admin)):
     total = count_events()
     updates = count_events("update_check")
     failures = count_events("update_failed") + count_events("installer_failed") + count_events("hash_mismatch")
@@ -64,7 +65,7 @@ async def analytics_overview():
 
 
 @router.get("/updates")
-async def analytics_updates():
+async def analytics_updates(admin: dict = Depends(get_current_admin)):
     checks = count_events("update_check")
     available = count_events("update_available")
     started = count_events("update_started")
@@ -84,7 +85,7 @@ async def analytics_updates():
 
 
 @router.get("/crashes")
-async def analytics_crashes():
+async def analytics_crashes(admin: dict = Depends(get_current_admin)):
     crashes = count_events("crash_detected")
     return {
         "total_crashes": crashes,
@@ -93,7 +94,7 @@ async def analytics_crashes():
 
 
 @router.get("/platforms")
-async def analytics_platforms():
+async def analytics_platforms(admin: dict = Depends(get_current_admin)):
     events_by_platform = aggregate_events(group_by="platform")
     return {
         "platforms": events_by_platform,
@@ -103,6 +104,7 @@ async def analytics_platforms():
 
 @router.get("/events")
 async def analytics_events(
+    admin: dict = Depends(get_current_admin),
     event: str | None = Query(None),
     limit: int = Query(50, le=500),
 ):
@@ -132,13 +134,13 @@ async def analytics_events(
 
 
 @router.get("/versions-usage")
-async def analytics_version_usage():
+async def analytics_version_usage(admin: dict = Depends(get_current_admin)):
     versions = aggregate_events(group_by="version", limit=20)
     return {"versions": versions}
 
 
 @router.get("/channels")
-async def analytics_channels():
+async def analytics_channels(admin: dict = Depends(get_current_admin)):
     data_entries: list[dict] = []
     if not os.path.exists(ANALYTICS_LOG):
         return {"channels": []}
