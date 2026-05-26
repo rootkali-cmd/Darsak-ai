@@ -44,7 +44,7 @@ class StructuredLogger {
       _fileSink?.write(line);
     } catch (_) {}
 
-    debug(entry['severity'] as String, event);
+    debug(event, data: {'severity': entry['severity'] as String});
   }
 
   void info(String event, {Map<String, dynamic>? data}) => _log(LogSeverity.info, event, data: data);
