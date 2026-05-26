@@ -21,12 +21,21 @@ after_build:
 artifacts:
   - path: DarsakAI-Windows.zip
     name: DarsakAI-Windows-zip
-
   - path: desktop_app\build\windows\x64\runner\Release
     name: DarsakAI-Desktop-Windows
     type: Folder
-
   - path: desktop_app\build\installer\DarsakAI-Setup.exe
     name: DarsakAI-Setup
 
-deploy: off
+on_success:
+  - ps: |
+      $tag = "v1.0.0"
+      $token = "${env:GITHUB_TOKEN}"
+      if (-not $token) { Write-Host "GITHUB_TOKEN not set, skipping deploy"; return }
+      $headers = @{ Authorization = "Bearer $token"; Accept = "application/vnd.github+json" }
+      $uploadUrl = "https://uploads.github.com/repos/rootkali-cmd/Darsak-ai/releases/$(gh release view $tag --json id --jq '.id')/assets"
+      foreach ($file in @("$env:APPVEYOR_BUILD_FOLDER\DarsakAI-Windows.zip", "$env:APPVEYOR_BUILD_FOLDER\desktop_app\build\installer\DarsakAI-Setup.exe")) {
+        $name = Split-Path $file -Leaf
+        Write-Host "Uploading $name..."
+        curl.exe -s -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/octet-stream" "$uploadUrl?name=$name&overwrite=true" --data-binary "@$file" | Out-Null
+      }

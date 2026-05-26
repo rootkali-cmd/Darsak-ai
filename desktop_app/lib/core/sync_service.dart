@@ -109,7 +109,7 @@ class SyncService {
 
   Future<bool> _pingApi() async {
     try {
-      final response = await _dio.get('/versions/desktop');
+      final response = await _dio.get('/health');
       return response.statusCode == 200;
     } catch (_) {
       return false;

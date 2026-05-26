@@ -292,7 +292,8 @@ async def get_version(
     if not channel_data:
         raise HTTPException(status_code=404, detail=f"Unknown channel: {channel}")
 
-    entry = channel_data.get(platform)
+    resolved = "windows" if platform == "desktop" else platform
+    entry = channel_data.get(resolved)
     if not entry:
         raise HTTPException(status_code=404, detail=f"Unknown platform: {platform}")
 
@@ -310,7 +311,8 @@ async def download_latest(
     if not channel_data:
         raise HTTPException(status_code=404, detail=f"Unknown channel: {channel}")
 
-    entry = channel_data.get(platform)
+    resolved = "windows" if platform == "desktop" else platform
+    entry = channel_data.get(resolved)
     if not entry or not entry.get("download_url"):
         raise HTTPException(status_code=404, detail=f"No download available for {platform} on {channel}")
 
