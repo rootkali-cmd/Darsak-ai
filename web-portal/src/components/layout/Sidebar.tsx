@@ -42,10 +42,12 @@ export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
-  const handleLogout = () => {
+const handleLogout = () => {
+  if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
     auth.clearTokens()
     window.location.href = '/login'
   }
+}
 
   return (
     <>

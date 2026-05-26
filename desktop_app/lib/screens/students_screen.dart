@@ -218,6 +218,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       onAnalyze: () => _showStudentAnalysis(context, data, student),
                       onShowBarcode: () => _showStudentBarcode(context, student),
                       onSetPin: () => _showSetPinDialog(context, student),
+                      onDelete: () => _showDeleteStudentDialog(context, data, student),
                     );
                   },
                 ),
@@ -355,13 +356,13 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
             ),
             MouseRegion(
               cursor: SystemMouseCursors.click,
-              child: ElevatedButton(
-                onPressed: () {
+                child: ElevatedButton(
+                onPressed: () async {
                 if (nameController.text.isNotEmpty && phoneController.text.isNotEmpty && parentPhoneController.text.isNotEmpty && selectedGroupId != null) {
                   final rng = math.Random();
                   final chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
                   final code = 'ST${List.generate(7, (_) => chars[rng.nextInt(chars.length)]).join()}';
-                  final student = StudentModel(
+                  var student = StudentModel(
                     id: code,
                     code: code,
                     fullName: nameController.text,
@@ -373,7 +374,29 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                     createdAt: DateTime.now(),
                   );
                   Navigator.pop(ctx);
-                  context.read<DataProvider>().addStudentLocally(student);
+                  final data = context.read<DataProvider>();
+                  data.addStudentLocally(student);
+                  // Try to create on backend so PIN/detete work immediately
+                  try {
+                    final created = await data.api.createStudent(student.toJson());
+                    final serverId = created['id']?.toString();
+                    if (serverId != null && serverId != code) {
+                      student = StudentModel(
+                        id: serverId,
+                        code: code,
+                        fullName: student.fullName,
+                        phone: student.phone,
+                        parentPhone: student.parentPhone,
+                        parentPhone2: student.parentPhone2,
+                        gradeLevel: student.gradeLevel,
+                        groupId: student.groupId,
+                        createdAt: student.createdAt,
+                      );
+                      data.removeStudent(code, code);
+                      data.addStudentLocally(student);
+                    }
+                  } catch (_) {}
+                  if (!context.mounted) return;
                   _showStudentBarcode(context, student);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -514,7 +537,9 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                   }
                   setDialogState(() => {});
                   try {
-                    await context.read<DataProvider>().api.resetStudentPin(student.id, pin);
+                    final data = context.read<DataProvider>();
+                    await data.api.resetStudentPin(student.id, pin);
+                    data.updateStudentPinStatus(student.id, true);
                     if (!ctx.mounted) return;
                     Navigator.pop(ctx);
                     if (!context.mounted) return;
@@ -523,7 +548,15 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       backgroundColor: AppTheme.success,
                     ));
                   } catch (e) {
-                    final msg = e.toString().contains('422') ? 'PIN غير صالح (6-8 أحرف وأرقام إنجليزية)' : 'فشل تعيين PIN';
+                    final errStr = e.toString();
+                    String msg;
+                    if (errStr.contains('404')) {
+                      msg = 'الطالب غير موجود على الخادم، قم بمزامنة البيانات أولاً';
+                    } else if (errStr.contains('422')) {
+                      msg = 'PIN غير صالح (6-8 أحرف وأرقام إنجليزية)';
+                    } else {
+                      msg = 'فشل تعيين PIN';
+                    }
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: AppTheme.danger));
                   }
                 },
@@ -663,6 +696,107 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
         ],
       ),
     );
+  }
+
+  Future<void> _showDeleteStudentDialog(BuildContext context, DataProvider data, StudentModel student) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: borderColor),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 24),
+            const SizedBox(width: 12),
+            Text('حذف الطالب', style: TextStyle(color: textPrimary, fontSize: 18)),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('هل أنت متأكد من حذف الطالب؟', style: TextStyle(color: textSecondary, fontSize: 15)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [AppTheme.accent, AppTheme.accentLight]),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(child: Text(student.initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(student.fullName, style: TextStyle(color: textPrimary, fontWeight: FontWeight.w600)),
+                        Text(student.code, style: TextStyle(color: textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text('جميع درجات وسجلات الحضور الخاصة به سيتم حذفها أيضًا.', style: TextStyle(color: AppTheme.danger, fontSize: 12)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // Try to delete from backend first
+    String? errorMsg;
+    try {
+      await data.api.deleteStudent(student.id);
+    } catch (e) {
+      errorMsg = e.toString().contains('404') ? 'الطالب غير موجود على الخادم' : 'فشل حذف الطالب من الخادم';
+    }
+
+    if (!context.mounted) return;
+
+    // Remove locally regardless of backend result
+    data.removeStudent(student.id, student.code);
+
+    if (errorMsg != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errorMsg),
+        backgroundColor: AppTheme.warning,
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('تم حذف الطالب ${student.fullName}'),
+        backgroundColor: AppTheme.success,
+      ));
+    }
   }
 
   void _showStudentBarcode(BuildContext context, StudentModel student) async {
@@ -829,7 +963,8 @@ class _StudentCard extends StatefulWidget {
   final VoidCallback? onAnalyze;
   final VoidCallback? onShowBarcode;
   final VoidCallback? onSetPin;
-  const _StudentCard({required this.student, required this.index, this.onAnalyze, this.onShowBarcode, this.onSetPin});
+  final VoidCallback? onDelete;
+  const _StudentCard({required this.student, required this.index, this.onAnalyze, this.onShowBarcode, this.onSetPin, this.onDelete});
 
   @override
   State<_StudentCard> createState() => _StudentCardState();
@@ -1009,6 +1144,23 @@ class _StudentCardState extends State<_StudentCard> with SingleTickerProviderSta
                           ),
                         ),
                       ),
+                      if (widget.onDelete != null) ...[
+                        const SizedBox(width: 6),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: widget.onDelete,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.danger.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text('حذف', style: TextStyle(color: AppTheme.danger, fontSize: 11, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 8),
                       const Icon(Icons.arrow_back, size: 16, color: AppTheme.accent),
                     ],

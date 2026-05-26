@@ -8,7 +8,7 @@ class StudentModel {
   final String? gradeLevel;
   final String? groupId;
   final bool isPaid;
-  final bool hasPin;
+  bool hasPin;
   final DateTime createdAt;
 
   StudentModel({

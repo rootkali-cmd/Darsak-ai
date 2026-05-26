@@ -477,7 +477,26 @@ class _HomeScreenState extends State<HomeScreen> {
             textColor: AppTheme.danger,
             onTap: () {
               Navigator.pop(context);
-              auth.logout();
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E1E2E),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text('تسجيل الخروج', style: TextStyle(color: Color(0xFFEF4444))),
+                  content: const Text('هل أنت متأكد من تسجيل الخروج؟', style: TextStyle(color: Color(0xFF9CA3AF))),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء', style: TextStyle(color: Color(0xFF9CA3AF)))),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        auth.logout();
+                      },
+                      child: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],

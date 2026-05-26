@@ -90,6 +90,32 @@ class DataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateStudentPinStatus(String studentId, bool hasPin) {
+    final idx = _students.indexWhere((s) => s.id == studentId);
+    if (idx == -1) return;
+    _students[idx] = StudentModel(
+      id: _students[idx].id,
+      code: _students[idx].code,
+      fullName: _students[idx].fullName,
+      phone: _students[idx].phone,
+      parentPhone: _students[idx].parentPhone,
+      parentPhone2: _students[idx].parentPhone2,
+      gradeLevel: _students[idx].gradeLevel,
+      groupId: _students[idx].groupId,
+      isPaid: _students[idx].isPaid,
+      hasPin: hasPin,
+      createdAt: _students[idx].createdAt,
+    );
+    LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, _students[idx].toJson());
+    notifyListeners();
+  }
+
+  void removeStudent(String studentId, String studentCode) {
+    _students.removeWhere((s) => s.id == studentId);
+    LocalDB.deleteData(LocalDB.studentsBox, studentCode);
+    notifyListeners();
+  }
+
   List<StudentModel> filterStudents({String? search, String? groupId}) {
     var filtered = _students;
     if (groupId != null && groupId.isNotEmpty) {

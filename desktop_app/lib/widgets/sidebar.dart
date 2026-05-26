@@ -175,7 +175,29 @@ class _SidebarState extends State<Sidebar> {
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
-                  onTap: widget.onLogout,
+                  onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: surfaceColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: borderColor),
+                        ),
+                        title: const Text('تسجيل الخروج', style: TextStyle(color: AppTheme.danger)),
+                        content: const Text('هل أنت متأكد من تسجيل الخروج؟'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) widget.onLogout();
+                  },
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: Container(
