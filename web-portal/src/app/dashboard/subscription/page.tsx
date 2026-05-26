@@ -26,7 +26,8 @@ import axios from 'axios'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 
-const VODAFONE_CASH_NUMBER = '201031524947'
+const SUPPORT_PHONE = '01031524947'
+const SUPPORT_PHONE_INTL = '201031524947'
 
 const plans = [
   {
@@ -71,6 +72,7 @@ export default function SubscriptionPage() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [screenshot, setScreenshot] = useState<string | null>(null)
   const [pendingPayments, setPendingPayments] = useState<any[]>([])
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: subscription, isLoading } = useQuery({
@@ -115,8 +117,8 @@ export default function SubscriptionPage() {
       })
     },
     onSuccess: () => {
-      toast.success('تم إرسال طلب الاشتراك، سيتم مراجعته من الإدارة')
       setShowPaymentDialog(false)
+      setShowSuccessDialog(true)
       setScreenshot(null)
       setPhoneNumber('')
       setSelectedPlan(null)
@@ -148,7 +150,7 @@ export default function SubscriptionPage() {
 
   const chooseWhatsApp = () => {
     const msg = encodeURIComponent(`أريد الاشتراك في ${selectedPlan.name}`)
-    window.open(`https://wa.me/${VODAFONE_CASH_NUMBER}?text=${msg}`, '_blank')
+    window.open(`https://wa.me/${SUPPORT_PHONE_INTL}?text=${msg}`, '_blank')
     setShowMethodDialog(false)
   }
 
@@ -369,7 +371,7 @@ export default function SubscriptionPage() {
                 <MessageSquare className="w-6 h-6 text-[var(--accent-2)]" />
                 <div>
                   <p className="font-bold text-sm">دعم عبر واتساب</p>
-                  <p className="text-xs text-text-muted">تواصل مع الدعم للاشتراك</p>
+                  <p className="text-xs text-text-muted">{SUPPORT_PHONE}</p>
                 </div>
               </button>
               <button
@@ -409,7 +411,7 @@ export default function SubscriptionPage() {
               <div className="p-4 border border-[var(--accent-2)]" style={{ background: 'rgba(0,243,255,0.05)' }}>
                 <p className="text-xs text-text-muted mb-1">حول إلى رقم فودافون كاش</p>
                 <p className="text-xl font-bold text-[var(--accent-2)]" dir="ltr" style={{ fontFamily: 'var(--font-mono, monospace)', letterSpacing: '3px' }}>
-                  {VODAFONE_CASH_NUMBER}
+                  {SUPPORT_PHONE}
                 </p>
               </div>
 
@@ -432,7 +434,7 @@ export default function SubscriptionPage() {
               {/* Amount */}
               <div>
                 <label className="text-xs text-text-muted mb-1 block">المبلغ</label>
-                <div className="flex items-center gap-2 px-4 py-3 border border-[var(--border)]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <div className="flex items-center gap-2 px-4 py-3 border border-[var(--border)] cursor-not-allowed opacity-80" style={{ background: 'rgba(255,255,255,0.02)' }}>
                   <span className="text-lg font-bold">{selectedPlan.price}</span>
                   <span className="text-text-muted text-sm">ج.م</span>
                 </div>
@@ -489,11 +491,48 @@ export default function SubscriptionPage() {
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    إرسال طلب الاشتراك
+                    تأكيد
                   </>
                 )}
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Success Dialog */}
+      {showSuccessDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => setShowSuccessDialog(false)}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md p-6 border border-[var(--border)] text-center"
+            style={{ background: 'var(--card-bg)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full border-2 border-[var(--success)]">
+              <CheckCircle className="w-8 h-8 text-[var(--success)]" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">تم الإرسال بنجاح!</h3>
+            <div className="space-y-2 text-sm text-text-secondary mb-6">
+              <p>سيتم التحقق من الدفع خلال 10 دقائق</p>
+              <p>وبحد أقصى ساعتين</p>
+              <div className="pt-3 border-t border-[var(--border)] mt-3">
+                <p>لو فيه مشكلة أو تأخير</p>
+                <p>تواصل معانا عبر الواتساب:</p>
+              </div>
+            </div>
+            <a
+              href={`https://wa.me/${SUPPORT_PHONE_INTL}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 text-xs font-bold text-black transition-opacity hover:opacity-80"
+              style={{ background: 'var(--accent-2)' }}
+              onClick={() => setShowSuccessDialog(false)}
+            >
+              <MessageSquare className="w-4 h-4" />
+              {SUPPORT_PHONE}
+            </a>
           </motion.div>
         </div>
       )}
