@@ -29,10 +29,14 @@ export default function LandingPage() {
   const router = useRouter()
   const viewportRef = useRef<HTMLDivElement>(null)
   const worldRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const beamRef = useRef<HTMLDivElement>(null)
   const itemsRef = useRef<Item[]>([])
-  const stateRef = useRef({ scroll: 0, velocity: 0, targetSpeed: 0, mouseX: 0, mouseY: 0 })
+  const stateRef = useRef({ scroll: 0, velocity: 0, targetSpeed: 0, mouseX: 0, mouseY: 0, entered: false })
   const [lang, setLang] = useState<'en' | 'ar'>('en')
   const [loggedIn, setLoggedIn] = useState(false)
+  const [welcome, setWelcome] = useState(false)
+  const lightStart = 4000
   const isAr = lang === 'ar'
   const texts = isAr ? TEXTS_AR : TEXTS_EN
 
@@ -187,6 +191,21 @@ export default function LandingPage() {
         }
       }
 
+      const rawScroll = s.scroll
+      if (rawScroll > lightStart && !s.entered) {
+        const intensity = Math.min((rawScroll - lightStart) / lightStart, 1)
+        if (overlayRef.current) overlayRef.current.style.opacity = String(intensity)
+        if (beamRef.current) {
+          beamRef.current.style.opacity = String(intensity * 0.5)
+          beamRef.current.style.transform = `scale(${1 + intensity * 4})`
+        }
+      }
+      if (rawScroll > 8000 && !s.entered) {
+        s.entered = true
+        setWelcome(true)
+        setTimeout(() => router.push('/login'), 1500)
+      }
+
       requestAnimationFrame(raf)
     }
     requestAnimationFrame(raf)
@@ -200,7 +219,7 @@ export default function LandingPage() {
       body.style.removeProperty('overflow')
       body.style.removeProperty('height')
     }
-  }, [lang])
+  }, [lang, router])
 
   return (
     <>
@@ -224,7 +243,7 @@ export default function LandingPage() {
         {isAr ? 'EN' : 'عربي'}
       </button>
 
-      <div className="ds-cta">
+      <div className="ds-cta" style={{ opacity: welcome ? 0 : 1, transition: 'opacity 0.3s' }}>
         {loggedIn ? (
           <button className="ds-btn-primary ds-btn-grid-full" onClick={() => router.push('/dashboard')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -264,6 +283,19 @@ export default function LandingPage() {
       <div ref={viewportRef} className="ds-viewport">
         <div ref={worldRef} className="ds-world" />
       </div>
+
+      <div ref={overlayRef} className="ds-light-overlay" style={{ opacity: 0 }} />
+      <div ref={beamRef} className="ds-light-beam" style={{ opacity: 0, transform: 'scale(1)' }} />
+
+      {welcome && (
+        <div className="ds-welcome">
+          <div className="ds-welcome-inner">
+            <span className="ds-welcome-ar">أهلاً في</span>
+            <span className="ds-welcome-brand">درسك AI</span>
+          </div>
+        </div>
+      )}
+
       <div className="ds-scroll-proxy" />
 
       <style dangerouslySetInnerHTML={{__html: `
@@ -273,145 +305,44 @@ export default function LandingPage() {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase;
 }
-.ds-hud-top, .ds-hud-bottom {
-  display: flex; justify-content: space-between; align-items: center;
-}
+.ds-hud-top, .ds-hud-bottom { display: flex; justify-content: space-between; align-items: center; }
 .ds-hud strong { color: #00f3ff; }
-.ds-hud-line {
-  flex: 1; height: 1px; background: rgba(255,255,255,0.2);
-  margin: 0 1rem; position: relative;
-}
-.ds-hud-line::after {
-  content: ''; position: absolute; right: 0; top: -2px;
-  width: 5px; height: 5px; background: #ff003c;
-}
-.ds-hud-side {
-  writing-mode: vertical-rl; transform: rotate(180deg);
-  align-self: flex-start; margin-top: auto; margin-bottom: auto;
-}
-.ds-viewport {
-  position: fixed; inset: 0; perspective: 1000px; overflow: hidden; z-index: 1;
-}
-.ds-world {
-  position: absolute; top: 50%; left: 50%;
-  transform-style: preserve-3d; will-change: transform;
-}
-.ds-item {
-  position: absolute; left: 0; top: 0;
-  backface-visibility: hidden; transform-origin: center center;
-  display: flex; align-items: center; justify-content: center;
-}
-.ds-card {
-  width: 320px; height: 460px;
-  background: rgba(10,10,10,0.4);
-  border: 1px solid rgba(255,255,255,0.1);
-  position: relative; padding: 2rem;
-  display: flex; flex-direction: column; justify-content: space-between;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.5);
-  transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
-  transform: translate(-50%, -50%);
-}
-.ds-card::before, .ds-card::after {
-  content: ''; position: absolute;
-  width: 10px; height: 10px; border: 1px solid transparent; transition: 0.3s;
-  pointer-events: none;
-}
-.ds-card::before {
-  top: -1px; left: -1px;
-  border-top-color: rgba(255,255,255,0.6); border-left-color: rgba(255,255,255,0.6);
-}
-.ds-card::after {
-  bottom: -1px; right: -1px;
-  border-bottom-color: rgba(255,255,255,0.6); border-right-color: rgba(255,255,255,0.6);
-}
-.ds-card:hover {
-  border-color: #ff003c;
-  box-shadow: 0 0 30px rgba(255,0,60,0.2);
-  background: rgba(20,20,20,0.8); z-index: 100;
-}
-.ds-card:hover::before, .ds-card:hover::after {
-  width: 100%; height: 100%; border-color: #ff003c;
-}
-.ds-card-header {
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 1rem; margin-bottom: 1rem;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.ds-card-id {
-  font-family: 'JetBrains Mono', monospace;
-  color: #ff003c; font-size: 0.8rem;
-}
-.ds-card h2 {
-  font-size: 2.5rem; line-height: 0.9; margin: 0;
-  text-transform: uppercase; font-weight: 700; color: #fff;
-  mix-blend-mode: hard-light;
-}
-.ds-card-footer {
-  margin-top: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem; color: rgba(255,255,255,0.4);
-  display: flex; justify-content: space-between;
-}
-.ds-card-num {
-  position: absolute; bottom: 2rem; right: 2rem;
-  font-size: 4rem; opacity: 0.1; font-weight: 900;
-}
-.ds-big-text {
-  font-size: 15vw; font-weight: 800;
-  color: transparent; -webkit-text-stroke: 2px rgba(255,255,255,0.15);
-  text-transform: uppercase; white-space: nowrap;
-  transform: translate(-50%, -50%); pointer-events: none;
-  letter-spacing: -0.5rem; mix-blend-mode: overlay;
-  font-family: 'Syncopate', sans-serif;
-}
-.ds-star {
-  position: absolute; width: 2px; height: 2px;
-  background: white; transform: translate(-50%, -50%);
-}
-.ds-scroll-proxy {
-  height: 10000vh; position: absolute; width: 100%; z-index: -1;
-}
-.ds-lang-btn {
-  position: fixed; top: 1.5rem; right: 1.5rem; z-index: 50;
-  padding: 0.5rem 1rem; border: 1px solid rgba(255,255,255,0.2);
-  font-size: 0.75rem; font-family: 'JetBrains Mono', monospace;
-  color: white; background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(8px); cursor: pointer; transition: all 0.2s;
-}
+.ds-hud-line { flex: 1; height: 1px; background: rgba(255,255,255,0.2); margin: 0 1rem; position: relative; }
+.ds-hud-line::after { content: ''; position: absolute; right: 0; top: -2px; width: 5px; height: 5px; background: #ff003c; }
+.ds-hud-side { writing-mode: vertical-rl; transform: rotate(180deg); align-self: flex-start; margin-top: auto; margin-bottom: auto; }
+.ds-viewport { position: fixed; inset: 0; perspective: 1000px; overflow: hidden; z-index: 1; }
+.ds-world { position: absolute; top: 50%; left: 50%; transform-style: preserve-3d; will-change: transform; }
+.ds-item { position: absolute; left: 0; top: 0; backface-visibility: hidden; transform-origin: center center; display: flex; align-items: center; justify-content: center; }
+.ds-card { width: 320px; height: 460px; background: rgba(10,10,10,0.4); border: 1px solid rgba(255,255,255,0.1); position: relative; padding: 2rem; display: flex; flex-direction: column; justify-content: space-between; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.5); transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94); transform: translate(-50%, -50%); }
+.ds-card::before, .ds-card::after { content: ''; position: absolute; width: 10px; height: 10px; border: 1px solid transparent; transition: 0.3s; pointer-events: none; }
+.ds-card::before { top: -1px; left: -1px; border-top-color: rgba(255,255,255,0.6); border-left-color: rgba(255,255,255,0.6); }
+.ds-card::after { bottom: -1px; right: -1px; border-bottom-color: rgba(255,255,255,0.6); border-right-color: rgba(255,255,255,0.6); }
+.ds-card:hover { border-color: #ff003c; box-shadow: 0 0 30px rgba(255,0,60,0.2); background: rgba(20,20,20,0.8); }
+.ds-card:hover::before, .ds-card:hover::after { width: 100%; height: 100%; border-color: #ff003c; }
+.ds-card-header { border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+.ds-card-id { font-family: 'JetBrains Mono', monospace; color: #ff003c; font-size: 0.8rem; }
+.ds-card h2 { font-size: 2.5rem; line-height: 0.9; margin: 0; text-transform: uppercase; font-weight: 700; color: #fff; mix-blend-mode: hard-light; }
+.ds-card-footer { margin-top: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between; }
+.ds-card-num { position: absolute; bottom: 2rem; right: 2rem; font-size: 4rem; opacity: 0.1; font-weight: 900; }
+.ds-big-text { font-size: 15vw; font-weight: 800; color: transparent; -webkit-text-stroke: 2px rgba(255,255,255,0.15); text-transform: uppercase; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; letter-spacing: -0.5rem; mix-blend-mode: overlay; font-family: 'Syncopate', sans-serif; }
+.ds-star { position: absolute; width: 2px; height: 2px; background: white; transform: translate(-50%, -50%); }
+.ds-scroll-proxy { height: 10000vh; position: absolute; width: 100%; z-index: -1; }
+.ds-lang-btn { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 50; padding: 0.5rem 1rem; border: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: white; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); cursor: pointer; transition: all 0.2s; }
 .ds-lang-btn:hover { border-color: #00f3ff; color: #00f3ff; }
-.ds-cta {
-  position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-  z-index: 50; display: flex; gap: 1rem;
-}
-.ds-btn-primary {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0.75rem 2rem; background: #ff003c; color: white;
-  font-weight: 700; font-size: 0.875rem; letter-spacing: 0.1em;
-  border: 1px solid #ff003c; cursor: pointer; transition: background 0.2s;
-  font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
-}
+.ds-cta { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; gap: 1rem; }
+.ds-btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 2rem; background: #ff003c; color: white; font-weight: 700; font-size: 0.875rem; letter-spacing: 0.1em; border: 1px solid #ff003c; cursor: pointer; transition: background 0.2s; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
 .ds-btn-primary:hover { background: #cc0030; }
-.ds-btn-secondary {
-  padding: 0.75rem 2rem; border: 1px solid rgba(255,255,255,0.3);
-  color: white; font-weight: 700; font-size: 0.875rem; letter-spacing: 0.1em;
-  background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
-  cursor: pointer; transition: all 0.2s;
-  font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
-}
+.ds-btn-secondary { padding: 0.75rem 2rem; border: 1px solid rgba(255,255,255,0.3); color: white; font-weight: 700; font-size: 0.875rem; letter-spacing: 0.1em; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); cursor: pointer; transition: all 0.2s; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
 .ds-btn-secondary:hover { border-color: #00f3ff; color: #00f3ff; }
-.ds-btn-download {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0.75rem 1.5rem; border: 1px solid rgba(255,255,255,0.3);
-  color: #00f3ff; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em;
-  background: rgba(0,243,255,0.08); backdrop-filter: blur(8px);
-  cursor: pointer; transition: all 0.2s; text-decoration: none;
-  font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
-}
-.ds-btn-download:hover {
-  border-color: #00f3ff; background: rgba(0,243,255,0.15);
-  box-shadow: 0 0 20px rgba(0,243,255,0.2);
-}
+.ds-btn-download { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: 1px solid rgba(255,255,255,0.3); color: #00f3ff; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em; background: rgba(0,243,255,0.08); backdrop-filter: blur(8px); cursor: pointer; transition: all 0.2s; text-decoration: none; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
+.ds-btn-download:hover { border-color: #00f3ff; background: rgba(0,243,255,0.15); box-shadow: 0 0 20px rgba(0,243,255,0.2); }
+.ds-light-overlay { position: fixed; inset: 0; z-index: 2; background: white; pointer-events: none; transition: opacity 0.05s; }
+.ds-light-beam { position: fixed; inset: -200vh; z-index: 3; background: radial-gradient(circle at center, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 25%, transparent 70%); pointer-events: none; transition: opacity 0.05s, transform 0.05s; }
+.ds-welcome { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+.ds-welcome-inner { text-align: center; animation: dsReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.ds-welcome-ar { display: block; font-family: 'Tajawal', system-ui, sans-serif; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 600; color: rgba(0,0,0,0.6); letter-spacing: 0.1em; margin-bottom: 0.25rem; }
+.ds-welcome-brand { display: block; font-family: 'Syncopate', sans-serif; font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; color: #000; letter-spacing: 0.15em; }
+@keyframes dsReveal { 0% { opacity: 0; transform: translateY(40px) scale(0.9); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
 @media (max-width: 640px) {
   .ds-cta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; bottom: 1rem; width: calc(100% - 2rem); max-width: 400px; }
   .ds-cta button, .ds-cta a { width: 100%; justify-content: center; padding: 0.6rem 0.5rem; font-size: 0.7rem; }
@@ -419,7 +350,7 @@ export default function LandingPage() {
   .ds-hud { inset: 0.75rem; font-size: 7px; }
   .ds-hud-side { display: none; }
   .ds-lang-btn { top: 1.5rem !important; left: 0.75rem !important; right: auto !important; padding: 0.35rem 0.6rem; font-size: 0.6rem; }
-  .ds-card { width: 75vw; max-width: 260px; height: auto; min-height: 280px; padding: 1.25rem; }
+  .ds-card { width: 75vw; max-width: 260px; height: auto; min-height: 280px; padding: 1.25rem; backdrop-filter: none; -webkit-backdrop-filter: none; }
   .ds-card h2 { font-size: 1.5rem; }
   .ds-card-num { font-size: 2.5rem; bottom: 1rem; right: 1rem; }
   .ds-big-text { font-size: 12vw; letter-spacing: -0.15rem; }
