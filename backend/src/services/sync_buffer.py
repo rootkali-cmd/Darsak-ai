@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone, timedelta
@@ -22,8 +23,10 @@ class SyncBuffer:
                 settings.REDIS_URL,
                 decode_responses=True,
                 max_connections=20,
+                socket_connect_timeout=3,
+                socket_timeout=3,
             )
-            await self.redis.ping()
+            await asyncio.wait_for(self.redis.ping(), timeout=5)
             self._connected = True
             logger.info("Connected to Redis at %s", settings.REDIS_URL)
         except Exception as e:

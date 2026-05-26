@@ -1,29 +1,25 @@
-name: Keep Backend Warm
+name: Health Check
 on:
   schedule:
-    - cron: '*/4 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
-  ping:
+  health:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Backend Health
+      - name: Check Backend Health
         run: |
-          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-ai-o8cs.vercel.app/health)
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-backend.fly.dev/health)
           echo "Backend health: $CODE"
           [ "$CODE" = "200" ] || exit 1
-      - name: Ping Website
+      - name: Check Website
         run: |
           CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-ai.vercel.app)
           echo "Website: $CODE"
           [ "$CODE" = "200" ] || exit 1
-      - name: Ping Download Page
+      - name: Check Telegram Bot
         run: |
-          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-ai.vercel.app/download)
-          echo "Download page: $CODE"
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-backend.fly.dev/api/telegram-status)
+          echo "Telegram status: $CODE"
           [ "$CODE" = "200" ] || exit 1
-      - name: Ping Telegram Webhook
-        run: |
-          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 -X POST https://darsak-ai-o8cs.vercel.app/api/setup-telegram-webhook)
-          echo "Telegram webhook: $CODE"

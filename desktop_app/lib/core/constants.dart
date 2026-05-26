@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String apiBaseUrl = 'https://darsak-ai-o8cs.vercel.app/api';
+  static const String apiBaseUrl = 'https://darsak-backend.fly.dev/api';
   static const String appName = 'DarsakAI Desktop';
   static const String appVersion = '1.2.0';
 
@@ -8,7 +8,7 @@ class AppConstants {
     return 'windows';
   }
 
-  static const String downloadBaseUrl = 'https://darsak-ai-o8cs.vercel.app/api/download';
+  static const String downloadBaseUrl = 'https://darsak-backend.fly.dev/api/download';
   static const String repositoryUrl = 'https://github.com/rootkali-cmd/Darsak-ai';
 }
 
