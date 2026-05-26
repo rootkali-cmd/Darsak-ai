@@ -4,14 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Build version tag'
-        required: false
-        default: 'v1.0.0'
-
-permissions:
-  contents: write
 
 jobs:
   build-windows:
