@@ -203,7 +203,7 @@ async def create_payment_request(
     # Notify admin via Telegram bot
     try:
         from src.api.webhook import notify_admin_payment_request
-        await notify_admin_payment_request(request, plan)
+        await notify_admin_payment_request(request, plan, user=current_user)
     except Exception:
         pass
 

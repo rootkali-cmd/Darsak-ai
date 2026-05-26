@@ -334,22 +334,26 @@ async def telegram_status(admin: dict = Depends(get_current_admin)):
     }
 
 
-async def notify_admin_payment_request(payment_request: dict, plan: dict):
+async def notify_admin_payment_request(payment_request: dict, plan: dict, user: dict | None = None):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
     chat_id = int(TELEGRAM_CHAT_ID)
     payment_id = payment_request["id"]
     payment_id_str = payment_id.hex if hasattr(payment_id, "hex") else str(payment_id)
 
-    teacher = payment_request.get("teacher_id", "-")
-    teacher_str = teacher.hex[:8] if hasattr(teacher, "hex") else str(teacher)[:8]
+    teacher_id = payment_request.get("teacher_id", "-")
+    teacher_id_str = teacher_id.hex if hasattr(teacher_id, "hex") else str(teacher_id)
+    teacher_name = user.get("full_name", "-") if user else "-"
+    teacher_email = user.get("email", "-") if user else "-"
 
     text = (
         f"💰 طلب اشتراك جديد\n\n"
+        f"👤 الاسم: {teacher_name}\n"
+        f"📧 البريد: {teacher_email}\n"
+        f"🆔 المعرف: {teacher_id_str}\n"
         f"📌 الباقة: {plan['name']}\n"
         f"💵 المبلغ: {payment_request['amount']} ج.م\n"
         f"📱 رقم المحول: {payment_request['phone_number']}\n"
-        f"🆔 المعلم: {teacher_str}\n"
         f"🆔 الطلب: {payment_id_str}\n"
     )
 

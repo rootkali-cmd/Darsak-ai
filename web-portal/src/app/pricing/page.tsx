@@ -194,7 +194,7 @@ export default function PricingPage() {
 
                 {/* CTA */}
                 <a
-                  href={`https://wa.me/201234567890?text=${encodeURIComponent(isAr ? `أريد الاشتراك في ${plan.nameAr}` : `I want to subscribe to ${plan.nameEn}`)}`}
+                  href={`https://wa.me/201031524947?text=${encodeURIComponent(isAr ? `أريد الاشتراك في ${plan.nameAr}` : `I want to subscribe to ${plan.nameEn}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 py-3 text-xs font-bold hud-text uppercase tracking-wider transition-all text-center"

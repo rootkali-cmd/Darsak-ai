@@ -18,10 +18,12 @@ import {
   MessageSquare,
   X,
   Smartphone,
+  Copy,
+  Fingerprint,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { GlassCard, Section } from '@/components/ui'
-import { subscriptionsApi } from '@/lib/api'
+import { subscriptionsApi, authApi } from '@/lib/api'
 import axios from 'axios'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
@@ -78,6 +80,11 @@ export default function SubscriptionPage() {
   const { data: subscription, isLoading } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => subscriptionsApi.my().then((r) => r.data),
+  })
+
+  const { data: userData } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => authApi.getMe().then((r) => r.data),
   })
 
   const { data: notifications } = useQuery({
@@ -274,6 +281,31 @@ export default function SubscriptionPage() {
           )}
         </GlassCard>
       </Section>
+
+      {/* Unique ID */}
+      {userData && (
+        <Section delay={0.15}>
+          <GlassCard>
+            <div className="flex items-center gap-3 mb-4">
+              <Fingerprint className="w-5 h-5 text-[var(--accent-2)]" />
+              <h2 className="text-xl font-bold">معرف الحساب</h2>
+            </div>
+            <p className="text-xs text-text-muted mb-2">استخدم هذا المعرف عند التواصل مع الدعم الفني</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-4 py-3 border border-[var(--border)] text-sm font-mono" dir="ltr" style={{ background: 'rgba(255,255,255,0.02)', letterSpacing: '1px' }}>
+                {userData.id}
+              </code>
+              <button
+                onClick={() => { navigator.clipboard.writeText(userData.id); toast.success('تم نسخ المعرف') }}
+                className="p-3 border border-[var(--border)] hover:border-[var(--accent-2)] transition-colors"
+                title="نسخ المعرف"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+          </GlassCard>
+        </Section>
+      )}
 
       {/* Activate Code */}
       <Section delay={0.2}>
