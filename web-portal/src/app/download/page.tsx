@@ -47,13 +47,16 @@ const apps: {
 ]
 
 const features = [
+  { ar: 'مساعد AI ذكي (5 أسئلة/يوم) - you.com', en: 'Smart AI assistant (5 questions/day) - you.com' },
   { ar: 'نظام التحديث التلقائي (Auto-update مع شريط التقدم)', en: 'Auto-update system with progress bar' },
+  { ar: 'معرف حساب مميز (UUID) للتواصل مع الدعم', en: 'Unique account ID (UUID) for support' },
+  { ar: 'قفل الميزات لحين الاشتراك في باقة', en: 'Feature gating until subscription activated' },
+  { ar: 'دفع عبر فودافون كاش + صورة الإيصال + تأكيد', en: 'Vodafone Cash payment + receipt upload + confirm' },
+  { ar: 'إشعارات التفعيل والرفض (بوت تليجرام)', en: 'Activation/rejection notifications (Telegram bot)' },
+  { ar: 'توليد كود اشتراك عبر بوت تليجرام', en: 'Subscription code generation via Telegram bot' },
   { ar: 'نظام الاختبارات الذكي (AI + PDF ← أسئلة)', en: 'Smart exam system (AI + PDF → questions)' },
   { ar: 'تقييم ذكي: تصحيح + تحليل نقاط القوة/الضعف', en: 'AI grading: auto-correct + strengths/weaknesses' },
   { ar: 'نظام الاشتراكات (Basic 199 / Pro 499 / Unlimited 999)', en: 'Subscription system (Basic 199 / Pro 499 / Unlimited 999)' },
-  { ar: 'دفع عبر فودافون كاش + تحميل الإيصال', en: 'Vodafone Cash payment + receipt upload' },
-  { ar: 'إشعارات التفعيل والرفض (بوت تليجرام)', en: 'Activation/rejection notifications (Telegram bot)' },
-  { ar: 'توليد كود اشتراك عبر بوت تليجرام', en: 'Subscription code generation via Telegram bot' },
   { ar: 'QR Code المسح الضوئي للحضور', en: 'QR code attendance scanning' },
   { ar: 'إدارة PIN للطلاب', en: 'Student PIN management' },
   { ar: 'Offline-first مع كشف الانترنت', en: 'Offline-first with internet detection' },
@@ -218,7 +221,7 @@ export default function DownloadPage() {
             }}
           >
             <h3 className="text-sm font-bold mb-4 hud-text" style={{ fontFamily: 'var(--font-display)' }}>
-              {isAr ? 'الميزات في v1.1.0' : 'v1.1.0 FEATURES'}
+              {isAr ? 'الميزات في v1.2.0' : 'v1.2.0 FEATURES'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (
