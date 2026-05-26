@@ -8,12 +8,12 @@ import { Smartphone, Monitor, Download, Sparkles } from 'lucide-react'
 const apps = [
   {
     id: 'mobile',
-    title: 'DarsakAI Student v1.2.0',
+    title: 'DarsakAI Student v1.2.1',
     description: 'تطبيق الهاتف للطلاب — متابعة الدرجات والحضور والاختبارات',
     icon: Smartphone,
     color: '#00f3ff',
     files: [
-      { name: 'DarsakAI-Student-v1.2.0+3-universal.apk', label: 'Android APK (Universal)', size: '82 MB' },
+      { name: 'DarsakAI-Student-v1.2.1+4-universal.apk', label: 'Android APK (Universal)', size: '82 MB' },
     ],
     platform: 'Android',
   },
