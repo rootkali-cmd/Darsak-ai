@@ -10,6 +10,7 @@ import 'attendance_screen.dart';
 import 'profile_screen.dart';
 import 'subscription_screen.dart';
 import 'exam_list_screen.dart';
+import 'ai_chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -431,6 +432,22 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.auto_awesome,
+            label: 'مساعد AI',
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text('جديد', style: TextStyle(color: AppTheme.accent, fontSize: 10)),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AiChatScreen()));
             },
           ),
           const Divider(color: Color(0xFF2A2A2A), height: 1),
