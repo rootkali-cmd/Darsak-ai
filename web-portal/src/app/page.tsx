@@ -6,8 +6,8 @@ import Lenis from 'lenis'
 import { auth } from '@/lib/auth'
 
 const CONFIG = {
-  itemCount: 10,
-  starCount: 60,
+  itemCount: 4,
+  starCount: 20,
   zGap: 1000,
   loopSize: 0,
   camSpeed: 2.5,
@@ -216,7 +216,7 @@ export default function LandingPage() {
         <div className="ds-hud-bottom">
           <span>COORD: <strong id="ds-coord">000.000</strong></span>
           <div className="ds-hud-line" />
-          <span>VER 2.0.4 [BETA]</span>
+          <span>VER 2.0.4 [RELEASE]</span>
         </div>
       </div>
 
@@ -385,6 +385,7 @@ export default function LandingPage() {
   z-index: 50; display: flex; gap: 1rem;
 }
 .ds-btn-primary {
+  display: inline-flex; align-items: center; gap: 0.5rem;
   padding: 0.75rem 2rem; background: #ff003c; color: white;
   font-weight: 700; font-size: 0.875rem; letter-spacing: 0.1em;
   border: 1px solid #ff003c; cursor: pointer; transition: background 0.2s;

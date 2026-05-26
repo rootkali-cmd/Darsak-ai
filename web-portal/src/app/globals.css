@@ -121,14 +121,7 @@ body {
   pointer-events: none;
 }
 
-.global-noise {
-  position: fixed;
-  inset: 0;
-  z-index: 98;
-  opacity: 0.03;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
+.global-noise { display: none; }
 
 /* ============================================
    BRUTAL CARDS
@@ -447,9 +440,8 @@ body {
   body {
     cursor: auto;
   }
-  .global-scanlines { opacity: 0.04; }
-  .global-vignette  { opacity: 0.15; }
-  .global-noise     { display: none; }
+  .global-scanlines { display: none; }
+  .global-vignette  { display: none; }
 }
 
 @media (max-width: 640px) {

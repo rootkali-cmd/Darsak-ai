@@ -29,4 +29,11 @@ export const auth = {
     }
   },
   isAuthenticated: () => typeof window !== 'undefined' ? !!localStorage.getItem('access_token') : false,
+  syncCookies: () => {
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('access_token')
+    const refresh = localStorage.getItem('refresh_token')
+    if (token) setCookie('access_token', token, 1)
+    if (refresh) setCookie('refresh_token', refresh, 30)
+  },
 }

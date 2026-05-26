@@ -39,23 +39,11 @@ const apps: {
     color: '#ccff00',
     files: [
       { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '14 MB' },
-      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable', size: '15 MB' },
-      { name: 'DarsakAI-Linux.tar.gz', label: 'Linux Bundle', size: '13 MB' },
     ],
-    platform: 'Windows ✓ / Linux ✓',
+    platform: 'Windows ✓',
     note: 'Build 1.2.0 • Installer بـ GUI + Desktop Shortcut • Portable ZIP • Linux tar.gz',
   },
-  {
-    id: 'accounts',
-    title: 'DarsakAI Accounts v1.0.0',
-    description: 'نظام الحسابات والمالية للفصل',
-    descriptionEn: 'Finance & accounts management',
-    icon: Monitor,
-    color: '#ff003c',
-    size: '—',
-    platform: 'Windows / Linux',
-    note: 'يحتاج بناء',
-  },
+
 ]
 
 const features = [
