@@ -19,16 +19,16 @@ const apps: {
 }[] = [
   {
     id: 'mobile',
-      title: 'DarsakAI Student v1.1.0',
+      title: 'DarsakAI Student v1.2.0',
     description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
     descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,
     color: '#00f3ff',
     files: [
-      { name: 'DarsakAI-Student-v1.1.0+2-universal.apk', label: 'Android APK (Universal)', size: '82 MB' },
+      { name: 'DarsakAI-Student-v1.2.0+3-universal.apk', label: 'Android APK (Universal)', size: '82 MB' },
     ],
     platform: 'Android ✓',
-    note: 'Signed release • com.darsak.ai • Camera only permission',
+    note: 'إصدار 1.2.0 • مساعد AI ذكي • Camera only permission',
   },
   {
     id: 'desktop',
