@@ -6,7 +6,6 @@ import { useState, useEffect, useRef } from 'react'
 import { QrCode, Download, Loader2, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { GlassCard, NeonButton, Section } from '@/components/ui'
-import { FloatingOrb, OrbScene } from '@/components/3d'
 import { qrApi, authApi } from '@/lib/api'
 
 export default function QRPage() {
@@ -58,9 +57,6 @@ export default function QRPage() {
           <Section>
             <GlassCard className="flex flex-col items-center">
               <div className="relative">
-                <div className="absolute inset-0 -z-10 opacity-30">
-                  <OrbScene><FloatingOrb color="#ff003c" size={2} distort={0.3} speed={1} /></OrbScene>
-                </div>
                 <div className="bg-white p-6 rounded-2xl shadow-[0_0_40px_rgba(139,92,246,0.3)]">
                   <canvas ref={canvasRef} className="w-64 h-64" />
                 </div>

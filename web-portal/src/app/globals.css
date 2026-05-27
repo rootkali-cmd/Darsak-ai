@@ -83,7 +83,6 @@ body {
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
-  cursor: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -94,34 +93,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ============================================
-   GLOBAL OVERLAYS
-   ============================================ */
-.global-scanlines {
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(to bottom,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0) 50%,
-    var(--overlay-color) 50%,
-    var(--overlay-color) 100%);
-  background-size: 100% 4px;
-  opacity: 0.15;
-  pointer-events: none;
-  z-index: 100;
-  mix-blend-mode: overlay;
-}
 
-.global-vignette {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle, transparent 40%, var(--overlay-color) 120%);
-  z-index: 99;
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-.global-noise { display: none; }
 
 /* ============================================
    BRUTAL CARDS
@@ -437,11 +409,6 @@ body {
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
-  body {
-    cursor: auto;
-  }
-  .global-scanlines { display: none; }
-  .global-vignette  { display: none; }
 }
 
 @media (max-width: 640px) {

@@ -17,9 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import confetti from 'canvas-confetti'
 import { GlassCard, NeonButton, Section, ProgressRing } from '@/components/ui'
-import { FloatingOrb, OrbScene } from '@/components/3d'
 import { studentsApi, gradesApi } from '@/lib/api'
 
 export default function StudentReportPage() {
@@ -28,7 +26,6 @@ export default function StudentReportPage() {
   const studentId = params.id as string
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiReport, setAiReport] = useState<any>(null)
-  const [showConfetti, setShowConfetti] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: student, isLoading: studentLoading } = useQuery({
@@ -58,15 +55,7 @@ export default function StudentReportPage() {
     },
     onSuccess: (data) => {
       setAiReport(data)
-      setShowConfetti(true)
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#ff003c', '#00f3ff', '#ccff00', '#10B981'],
-      })
       toast.success('تم تحليل البيانات بنجاح! 🎉')
-      setTimeout(() => setShowConfetti(false), 3000)
     },
     onError: (error: any) => {
       toast.error(error.message || 'فشل التحليل')
@@ -176,12 +165,6 @@ export default function StudentReportPage() {
             </NeonButton>
           </div>
 
-          {/* 3D Decoration */}
-          <div className="absolute -left-20 -top-20 w-40 h-40 opacity-20 pointer-events-none">
-            <OrbScene>
-              <FloatingOrb color="#ff003c" size={1.5} distort={0.6} />
-            </OrbScene>
-          </div>
         </GlassCard>
       </Section>
 

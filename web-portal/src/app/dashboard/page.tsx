@@ -15,7 +15,6 @@ import {
   Target,
 } from 'lucide-react'
 import { GlassCard, CountUp, Section } from '@/components/ui'
-import { FloatingOrb, OrbScene } from '@/components/3d'
 import { studentsApi, gradesApi, attendanceApi } from '@/lib/api'
 import {
   AreaChart,
@@ -123,14 +122,6 @@ export default function DashboardPage() {
                 نظرة شاملة على أداء طلابك وفصولك مع تحليلات ذكية بالـ AI
               </p>
             </motion.div>
-          </div>
-
-          {/* 3D Orbs */}
-          <div className="absolute left-0 top-0 w-72 h-full opacity-30 pointer-events-none">
-            <OrbScene>
-              <FloatingOrb position={[0, 0, 0]} color="#ff003c" size={1.5} distort={0.5} />
-              <FloatingOrb position={[3, 1, -1]} color="#00f3ff" size={0.8} distort={0.3} speed={2} />
-            </OrbScene>
           </div>
 
           {/* Decorative gradient */}
