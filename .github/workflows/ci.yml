@@ -66,6 +66,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsqlite3-dev
+
+      - name: Flutter pub get
+        working-directory: desktop_app
+        run: flutter pub get
+
       - name: Flutter analyze
         working-directory: desktop_app
         run: flutter analyze --no-fatal-infos

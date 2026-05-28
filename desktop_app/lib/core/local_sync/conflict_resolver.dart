@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../local_db.dart';
+import '../db/database_service.dart';
 
 class ConflictResolver {
   static const String conflictLogBox = 'conflict_logs';
@@ -10,6 +11,14 @@ class ConflictResolver {
   static const Set<String> serverAuthoritativeTables = {'invoices', 'payments'};
   static const Set<String> fieldMergeTables = {'students', 'groups'};
   static const Set<String> immutableFields = {'id', 'code', 'created_at', 'teacher_id'};
+
+  static bool get _isMigrated {
+    try {
+      return DatabaseService.instance.isInitialized;
+    } catch (_) {
+      return false;
+    }
+  }
 
   static Future<void> resolve({
     required Map<String, dynamic> localData,
@@ -143,18 +152,35 @@ class ConflictResolver {
     required String remoteDeviceId,
   }) async {
     try {
-      final box = await Hive.openBox<Map>(conflictLogBox);
-      await box.add({
-        'box': boxName,
-        'key': key,
-        'winner': winner,
-        'resolver': resolver,
-        'local_device': localDeviceId,
-        'remote_device': remoteDeviceId,
-        'local_data': localData,
-        'remote_data': remoteData,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
+      if (_isMigrated) {
+        DatabaseService.instance.db.execute(
+          'INSERT INTO conflict_logs (box, key, winner, resolver, local_device, remote_device, local_data, remote_data, timestamp) VALUES (?,?,?,?,?,?,?,?,?)',
+          [
+            boxName,
+            key,
+            winner,
+            resolver,
+            localDeviceId,
+            remoteDeviceId,
+            jsonEncode(localData),
+            jsonEncode(remoteData),
+            DateTime.now().toIso8601String(),
+          ],
+        );
+      } else {
+        final box = await Hive.openBox<Map>(conflictLogBox);
+        await box.add({
+          'box': boxName,
+          'key': key,
+          'winner': winner,
+          'resolver': resolver,
+          'local_device': localDeviceId,
+          'remote_device': remoteDeviceId,
+          'local_data': localData,
+          'remote_data': remoteData,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
     } catch (_) {}
   }
 
@@ -165,6 +191,20 @@ class ConflictResolver {
 
   static Future<List<Map<String, dynamic>>> getConflictLogs() async {
     try {
+      if (_isMigrated) {
+        final rows = DatabaseService.instance.db.select('SELECT * FROM conflict_logs ORDER BY id DESC LIMIT 200');
+        return rows.map((r) => {
+          'box': r['box'] as String?,
+          'key': r['key'] as String?,
+          'winner': r['winner'] as String?,
+          'resolver': r['resolver'] as String?,
+          'local_device': r['local_device'] as String?,
+          'remote_device': r['remote_device'] as String?,
+          'local_data': r['local_data'] != null ? jsonDecode(r['local_data'] as String) : null,
+          'remote_data': r['remote_data'] != null ? jsonDecode(r['remote_data'] as String) : null,
+          'timestamp': r['timestamp'] as String?,
+        }).toList();
+      }
       final box = await Hive.openBox<Map>(conflictLogBox);
       return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
     } catch (_) {

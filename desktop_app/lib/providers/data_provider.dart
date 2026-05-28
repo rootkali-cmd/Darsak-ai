@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../core/api_service.dart';
 import '../core/local_db.dart';
 import '../core/sync_service.dart';
+import '../core/db/database_service.dart';
 import '../models/student.dart';
 import '../models/group.dart';
 
@@ -11,6 +12,7 @@ class DataProvider extends ChangeNotifier {
   List<StudentModel> _students = [];
   List<GroupModel> _groups = [];
   bool _isLoading = false;
+  bool _useDb = false;
 
   final Map<String, bool> _pendingChanges = {};
 
@@ -42,6 +44,7 @@ class DataProvider extends ChangeNotifier {
   Future<void> loadData() async {
     _isLoading = true;
     notifyListeners();
+    _useDb = true;
     _loadFromLocal();
     _isLoading = false;
     notifyListeners();
@@ -49,10 +52,15 @@ class DataProvider extends ChangeNotifier {
   }
 
   void _loadFromLocal() {
-    LocalDB.deduplicateBox(LocalDB.studentsBox, 'code');
-    LocalDB.deduplicateBox(LocalDB.groupsBox, 'id');
-    _students = LocalDB.getAllData(LocalDB.studentsBox).map((s) => StudentModel.fromJson(s)).toList();
-    _groups = LocalDB.getAllData(LocalDB.groupsBox).map((g) => GroupModel.fromJson(g)).toList();
+    if (DatabaseService.instance.isInitialized) {
+      _students = DatabaseService.instance.getAllStudents();
+      _groups = DatabaseService.instance.getAllGroups();
+    } else {
+      LocalDB.deduplicateBox(LocalDB.studentsBox, 'code');
+      LocalDB.deduplicateBox(LocalDB.groupsBox, 'id');
+      _students = LocalDB.getAllData(LocalDB.studentsBox).map((s) => StudentModel.fromJson(s)).toList();
+      _groups = LocalDB.getAllData(LocalDB.groupsBox).map((g) => GroupModel.fromJson(g)).toList();
+    }
   }
 
   Future<void> _syncFromApi() async {
@@ -80,7 +88,11 @@ class DataProvider extends ChangeNotifier {
         final apiStudents = studentsData.map((s) => StudentModel.fromJson(s)).toList();
         for (final s in apiStudents) {
           if (!pendingIds.contains(s.id) && !pendingIds.contains(s.code)) {
-            LocalDB.saveData(LocalDB.studentsBox, s.code, s.toJson());
+            if (DatabaseService.instance.isInitialized) {
+              DatabaseService.instance.saveStudent(s);
+            } else {
+              LocalDB.saveData(LocalDB.studentsBox, s.code, s.toJson());
+            }
           }
         }
         _students = apiStudents
@@ -90,7 +102,13 @@ class DataProvider extends ChangeNotifier {
 
       if (groupsData.isNotEmpty) {
         final apiGroups = groupsData.map((g) => GroupModel.fromJson(g)).toList();
-        for (final g in apiGroups) LocalDB.saveData(LocalDB.groupsBox, g.id, g.toJson());
+        for (final g in apiGroups) {
+          if (DatabaseService.instance.isInitialized) {
+            DatabaseService.instance.saveGroup(g);
+          } else {
+            LocalDB.saveData(LocalDB.groupsBox, g.id, g.toJson());
+          }
+        }
         _groups = apiGroups;
       }
 
@@ -101,7 +119,11 @@ class DataProvider extends ChangeNotifier {
 
   void addStudentLocally(StudentModel student) {
     _students.add(student);
-    LocalDB.saveData(LocalDB.studentsBox, student.code, student.toJson());
+    if (DatabaseService.instance.isInitialized) {
+      DatabaseService.instance.saveStudent(student);
+    } else {
+      LocalDB.saveData(LocalDB.studentsBox, student.code, student.toJson());
+    }
     _pendingChanges[student.code] = true;
     notifyListeners();
     _sync.immediatePush('student', student.code, student.toJson());
@@ -109,7 +131,11 @@ class DataProvider extends ChangeNotifier {
 
   void addGroupLocally(GroupModel group) {
     _groups.add(group);
-    LocalDB.saveData(LocalDB.groupsBox, group.id, group.toJson());
+    if (DatabaseService.instance.isInitialized) {
+      DatabaseService.instance.saveGroup(group);
+    } else {
+      LocalDB.saveData(LocalDB.groupsBox, group.id, group.toJson());
+    }
     _sync.immediatePush('group', group.id, group.toJson());
     notifyListeners();
   }
@@ -125,14 +151,23 @@ class DataProvider extends ChangeNotifier {
       isPaid: _students[idx].isPaid, hasPin: hasPin,
       createdAt: _students[idx].createdAt,
     );
-    LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, _students[idx].toJson());
+    if (DatabaseService.instance.isInitialized) {
+      DatabaseService.instance.saveStudent(_students[idx]);
+    } else {
+      LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, _students[idx].toJson());
+    }
     notifyListeners();
   }
 
   void removeStudent(String studentId, String studentCode) {
     _students.removeWhere((s) => s.id == studentId);
-    LocalDB.deleteData(LocalDB.studentsBox, studentCode);
-    if (studentId != studentCode) LocalDB.deleteData(LocalDB.studentsBox, studentId);
+    if (DatabaseService.instance.isInitialized) {
+      DatabaseService.instance.deleteStudent(studentCode);
+      if (studentId != studentCode) DatabaseService.instance.deleteStudentById(studentId);
+    } else {
+      LocalDB.deleteData(LocalDB.studentsBox, studentCode);
+      if (studentId != studentCode) LocalDB.deleteData(LocalDB.studentsBox, studentId);
+    }
     _sync.immediatePush('delete_student', studentId, {'id': studentId, 'code': studentCode});
     notifyListeners();
   }
@@ -148,11 +183,21 @@ class DataProvider extends ChangeNotifier {
       groupId: _students[idx].groupId, isPaid: _students[idx].isPaid,
       hasPin: _students[idx].hasPin, createdAt: _students[idx].createdAt,
     );
-    if (oldData != null) { oldData['id'] = newId; LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, oldData); }
+    if (oldData != null) {
+      oldData['id'] = newId;
+      if (DatabaseService.instance.isInitialized) {
+        DatabaseService.instance.saveStudent(_students[idx]);
+      } else {
+        LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, oldData);
+      }
+    }
     notifyListeners();
   }
 
   List<StudentModel> filterStudents({String? search, String? groupId}) {
+    if (DatabaseService.instance.isInitialized && (search != null || groupId != null)) {
+      return DatabaseService.instance.searchStudents(search: search, groupId: groupId);
+    }
     var filtered = _students;
     if (groupId != null && groupId.isNotEmpty) filtered = filtered.where((s) => s.groupId == groupId).toList();
     if (search != null && search.isNotEmpty) {

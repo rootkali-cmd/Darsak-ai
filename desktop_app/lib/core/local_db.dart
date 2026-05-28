@@ -2,10 +2,13 @@ import 'dart:io';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'db/database_service.dart';
+import 'db/migration_helper.dart';
 
 class LocalDB {
   static late final String _sharedPath;
   static late final String _backupPath;
+  static bool _migrated = false;
 
   static const String studentsBox = 'students';
   static const String groupsBox = 'groups';
@@ -24,17 +27,35 @@ class LocalDB {
     _backupPath = '${appDir.path}/darsak_db_backups';
     final dbDir = Directory(_sharedPath);
     if (!await dbDir.exists()) await dbDir.create(recursive: true);
+
+    // Initialize SQLite database
+    final dbPath = '$_sharedPath/darsak.db';
+    await DatabaseService.instance.init(dbPath);
+
+    // Open Hive boxes for migration source
     await Hive.initFlutter(_sharedPath);
-    await Hive.openBox<Map>(studentsBox);
-    await Hive.openBox<Map>(groupsBox);
-    await Hive.openBox<Map>(attendanceBox);
-    await Hive.openBox<Map>(gradesBox);
-    await Hive.openBox<Map>(invoicesBox);
-    await Hive.openBox<Map>(paymentsBox);
-    await Hive.openBox<Map>(syncQueueBox);
-    await Hive.openBox<Map>(deadLetterBox);
-    await Hive.openBox(syncCursorsBox);
-    await Hive.openBox(settingsBox);
+
+    final alreadyMigrated = MigrationHelper.isMigrated();
+    final isLocked = MigrationHelper.isMigrationLocked();
+
+    if (alreadyMigrated) {
+      _migrated = true;
+    } else {
+      // Open Hive boxes for migration source / fallback
+      for (final boxName in [studentsBox, groupsBox, attendanceBox, gradesBox, invoicesBox, paymentsBox, syncQueueBox, deadLetterBox, syncCursorsBox, settingsBox]) {
+        if (!Hive.isBoxOpen(boxName)) {
+          await Hive.openBox<Map>(boxName).catchError((_) => null);
+        }
+      }
+      // If migration was interrupted (lock stuck), retry
+      if (isLocked) {
+        DatabaseService.instance.setSetting('migration_retry', '1');
+      }
+      final result = await MigrationHelper.runMigration();
+      if (result.success) {
+        _migrated = true;
+      }
+    }
   }
 
   static Box getBox(String boxName) {
@@ -44,21 +65,28 @@ class LocalDB {
   static const int _maxBackups = 10;
   static const int _backupRetentionDays = 14;
 
-  static Future<void> createBackup() async {
-    final backupDir = Directory(_backupPath);
-    if (!await backupDir.exists()) await backupDir.create(recursive: true);
-    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final destDir = Directory('$_backupPath/backup_$timestamp');
-    await destDir.create(recursive: true);
-    final srcDir = Directory(_sharedPath);
-    if (await srcDir.exists()) {
-      await for (final entity in srcDir.list()) {
-        if (entity is File) {
-          await entity.copy('${destDir.path}/${entity.uri.pathSegments.last}');
+  static Future<String?> createBackup() async {
+    try {
+      final backupDir = Directory(_backupPath);
+      if (!await backupDir.exists()) await backupDir.create(recursive: true);
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      final destDir = Directory('$_backupPath/backup_$timestamp');
+      await destDir.create(recursive: true);
+
+      // Copy Hive files
+      final srcDir = Directory(_sharedPath);
+      if (await srcDir.exists()) {
+        await for (final entity in srcDir.list()) {
+          if (entity is File && !entity.path.endsWith('.db-wal') && !entity.path.endsWith('.db-shm')) {
+            await entity.copy('${destDir.path}/${entity.uri.pathSegments.last}');
+          }
         }
       }
+      await _rotateBackups();
+      return 'backup_$timestamp';
+    } catch (_) {
+      return null;
     }
-    await _rotateBackups();
   }
 
   static Future<void> _rotateBackups() async {
@@ -101,7 +129,7 @@ class LocalDB {
       final destDir = Directory(_sharedPath);
       if (!await destDir.exists()) await destDir.create(recursive: true);
 
-      // Close all boxes before restore
+      // Close all boxes
       for (final boxName in [studentsBox, groupsBox, attendanceBox, gradesBox, invoicesBox, paymentsBox, syncQueueBox, deadLetterBox, syncCursorsBox]) {
         if (Hive.isBoxOpen(boxName)) {
           await Hive.box(boxName).close();
@@ -114,16 +142,15 @@ class LocalDB {
         }
       }
 
-      // Reopen boxes
-      await Hive.openBox<Map>(studentsBox);
-      await Hive.openBox<Map>(groupsBox);
-      await Hive.openBox<Map>(attendanceBox);
-      await Hive.openBox<Map>(gradesBox);
-      await Hive.openBox<Map>(invoicesBox);
-      await Hive.openBox<Map>(paymentsBox);
-      await Hive.openBox<Map>(syncQueueBox);
-      await Hive.openBox<Map>(deadLetterBox);
-      await Hive.openBox(syncCursorsBox);
+      await Hive.openBox<Map>(studentsBox).catchError((_) => null);
+      await Hive.openBox<Map>(groupsBox).catchError((_) => null);
+      await Hive.openBox<Map>(attendanceBox).catchError((_) => null);
+      await Hive.openBox<Map>(gradesBox).catchError((_) => null);
+      await Hive.openBox<Map>(invoicesBox).catchError((_) => null);
+      await Hive.openBox<Map>(paymentsBox).catchError((_) => null);
+      await Hive.openBox<Map>(syncQueueBox).catchError((_) => null);
+      await Hive.openBox<Map>(deadLetterBox).catchError((_) => null);
+      await Hive.openBox(syncCursorsBox).catchError((_) => null);
 
       return true;
     } catch (_) {
@@ -150,29 +177,51 @@ class LocalDB {
   }
 
   static void saveData(String boxName, String key, Map<String, dynamic> data) {
-    Hive.box<Map>(boxName).put(key, Map<String, dynamic>.from(data));
+    if (_migrated) {
+      DatabaseService.instance.saveGenericData(boxName, key, data);
+    } else {
+      Hive.box<Map>(boxName).put(key, Map<String, dynamic>.from(data));
+    }
   }
 
   static Map<String, dynamic>? getData(String boxName, String key) {
+    if (_migrated) {
+      return DatabaseService.instance.getGenericData(boxName, key);
+    }
     final data = Hive.box<Map>(boxName).get(key);
     if (data == null) return null;
     return Map<String, dynamic>.from(data);
   }
 
   static List<Map<String, dynamic>> getAllData(String boxName) {
+    if (_migrated) {
+      return DatabaseService.instance.getAllGenericData(boxName);
+    }
     final box = Hive.box<Map>(boxName);
     return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   static void deleteData(String boxName, String key) {
-    Hive.box<Map>(boxName).delete(key);
+    if (_migrated) {
+      DatabaseService.instance.deleteGenericData(boxName, key);
+    } else {
+      Hive.box<Map>(boxName).delete(key);
+    }
   }
 
   static void clearBox(String boxName) {
-    Hive.box<Map>(boxName).clear();
+    if (_migrated) {
+      final db = DatabaseService.instance.db;
+      final table = _boxToTable(boxName);
+      if (table != null) db.execute('DELETE FROM $table');
+    } else {
+      Hive.box<Map>(boxName).clear();
+    }
   }
 
   static void deduplicateBox(String boxName, String field) {
+    // SQLite tables have UNIQUE constraints; deduplication is automatic
+    if (_migrated) return;
     final box = Hive.box<Map>(boxName);
     final seen = <String>{};
     final toRemove = <dynamic>[];
@@ -193,19 +242,26 @@ class LocalDB {
   }
 
   static void addToSyncQueue(String type, Map<String, dynamic> data, {String? operationId}) {
-    final box = Hive.box<Map>(syncQueueBox);
-    box.add(Map<String, dynamic>.from({
-      'type': type,
-      'data': data,
-      'operation_id': operationId ?? const Uuid().v4(),
-      'timestamp': DateTime.now().toIso8601String(),
-      'synced': false,
-      'retry_count': 0,
-    }));
-    box.flush();
+    if (_migrated) {
+      DatabaseService.instance.addToSyncQueue(type, data, operationId: operationId);
+    } else {
+      final box = Hive.box<Map>(syncQueueBox);
+      box.add(Map<String, dynamic>.from({
+        'type': type,
+        'data': data,
+        'operation_id': operationId ?? const Uuid().v4(),
+        'timestamp': DateTime.now().toIso8601String(),
+        'synced': false,
+        'retry_count': 0,
+      }));
+      box.flush();
+    }
   }
 
   static List<Map<String, dynamic>> getUnsyncedItems() {
+    if (_migrated) {
+      return DatabaseService.instance.getUnsyncedItems();
+    }
     final box = Hive.box<Map>(syncQueueBox);
     return box.values
         .map((e) => Map<String, dynamic>.from(e))
@@ -214,6 +270,7 @@ class LocalDB {
   }
 
   static void markSynced(int index) {
+    if (_migrated) return;
     final box = Hive.box<Map>(syncQueueBox);
     final item = box.getAt(index);
     if (item != null) {
@@ -224,6 +281,10 @@ class LocalDB {
   }
 
   static void markSyncItemSynced(Map<String, dynamic> targetData) {
+    if (_migrated) {
+      DatabaseService.instance.markSyncedByData(targetData);
+      return;
+    }
     final box = Hive.box<Map>(syncQueueBox);
     for (int i = 0; i < box.length; i++) {
       final item = box.getAt(i);
@@ -250,6 +311,10 @@ class LocalDB {
   }
 
   static void clearSyncedItems() {
+    if (_migrated) {
+      DatabaseService.instance.clearSyncedItems();
+      return;
+    }
     final box = Hive.box<Map>(syncQueueBox);
     final keysToRemove = <int>[];
     for (int i = 0; i < box.length; i++) {
@@ -265,6 +330,10 @@ class LocalDB {
   }
 
   static void addToDeadLetter(Map<String, dynamic> item, {String? error}) {
+    if (_migrated) {
+      DatabaseService.instance.addToDeadLetter(item, error: error);
+      return;
+    }
     final box = Hive.box<Map>(deadLetterBox);
     box.add(Map<String, dynamic>.from({
       ...item,
@@ -275,11 +344,21 @@ class LocalDB {
   }
 
   static List<Map<String, dynamic>> getAllDeadLetters() {
+    if (_migrated) {
+      return DatabaseService.instance.getAllDeadLetters();
+    }
     final box = Hive.box<Map>(deadLetterBox);
     return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   static void removeDeadLetter(Map<String, dynamic> item) {
+    if (_migrated) {
+      final opId = item['operation_id']?.toString();
+      if (opId != null) {
+        DatabaseService.instance.removeDeadLetter(opId);
+      }
+      return;
+    }
     final box = Hive.box<Map>(deadLetterBox);
     final opId = item['operation_id']?.toString();
     for (int i = 0; i < box.length; i++) {
@@ -296,6 +375,10 @@ class LocalDB {
   }
 
   static void recoverDeadLetters() {
+    if (_migrated) {
+      DatabaseService.instance.recoverDeadLetters();
+      return;
+    }
     final deadItems = getAllDeadLetters();
     for (final item in deadItems) {
       addToSyncQueue(
@@ -310,14 +393,17 @@ class LocalDB {
   }
 
   static int get deadLetterCount {
+    if (_migrated) return DatabaseService.instance.deadLetterCount;
     return Hive.box<Map>(deadLetterBox).length;
   }
 
   static int get syncQueueLength {
+    if (_migrated) return DatabaseService.instance.syncQueueLength;
     return Hive.box<Map>(syncQueueBox).length;
   }
 
   static DateTime? getLastSyncTime() {
+    if (_migrated) return DatabaseService.instance.getLastSyncTime();
     final box = Hive.box(settingsBox);
     final time = box.get('last_sync_time');
     if (time != null) return DateTime.parse(time.toString());
@@ -325,6 +411,26 @@ class LocalDB {
   }
 
   static void setLastSyncTime(DateTime time) {
-    Hive.box(settingsBox).put('last_sync_time', time.toIso8601String());
+    if (_migrated) {
+      DatabaseService.instance.setLastSyncTime(time);
+    } else {
+      Hive.box(settingsBox).put('last_sync_time', time.toIso8601String());
+    }
+  }
+
+  static String? _boxToTable(String boxName) {
+    switch (boxName) {
+      case 'students': return 'students';
+      case 'groups': return 'groups_tbl';
+      case 'attendance': return 'attendance';
+      case 'grades': return 'grades';
+      case 'invoices': return 'invoices';
+      case 'payments': return 'payments';
+      case 'sync_queue': return 'sync_queue';
+      case 'dead_letter': return 'dead_letter';
+      case 'sync_cursors': return 'sync_cursors';
+      case 'settings': return 'settings';
+      default: return null;
+    }
   }
 }

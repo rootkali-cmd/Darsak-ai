@@ -17,9 +17,14 @@ dependencies:
   # HTTP
   dio: ^5.7.0
 
-  # Local storage
+  # Local storage (Hive kept for migration compatibility)
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+
+  # SQLite (production database replacing Hive)
+  sqlite3: ^2.4.0
+  sqlite3_flutter_libs: ^0.5.0
+  path: ^1.9.0
 
   # Connectivity
   connectivity_plus: ^6.1.0
