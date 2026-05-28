@@ -777,30 +777,21 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
 
     if (confirmed != true || !context.mounted) return;
 
-    // Try to delete from backend first
-    String? errorMsg;
-    try {
-      await data.api.deleteStudent(student.id);
-    } catch (e) {
-      errorMsg = e.toString().contains('404') ? 'الطالب غير موجود على الخادم' : 'فشل حذف الطالب من الخادم';
-    }
-
-    if (!context.mounted) return;
-
-    // Remove locally regardless of backend result
+    // Remove locally first (offline-first)
+    LocalDB.addToSyncQueue('delete_student', student.toJson());
     data.removeStudent(student.id, student.code);
 
-    if (errorMsg != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(errorMsg),
-        backgroundColor: AppTheme.warning,
-      ));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('تم حذف الطالب ${student.fullName}'),
-        backgroundColor: AppTheme.success,
-      ));
-    }
+    // Try server silently — never show error to user
+    try {
+      await data.api.deleteStudent(student.id);
+      LocalDB.markSyncItemSynced(student.toJson());
+    } catch (_) {}
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('تم حذف الطالب ${student.fullName}'),
+      backgroundColor: AppTheme.success,
+    ));
   }
 
   void _showStudentBarcode(BuildContext context, StudentModel student) async {

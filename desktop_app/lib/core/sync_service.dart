@@ -13,8 +13,8 @@ class SyncService {
   final ApiService _api = ApiService();
   final Dio _dio = Dio(BaseOptions(
     baseUrl: AppConstants.apiBaseUrl,
-    connectTimeout: const Duration(seconds: 5),
-    receiveTimeout: const Duration(seconds: 5),
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
   ));
   final Connectivity _connectivity = Connectivity();
   final LocalSyncService? _localSync;
@@ -123,8 +123,7 @@ class SyncService {
 
     try {
       final unsynced = LocalDB.getUnsyncedItems();
-      for (int i = 0; i < unsynced.length; i++) {
-        final item = unsynced[i];
+      for (final item in unsynced) {
         final type = item['type'] as String;
         final data = Map<String, dynamic>.from(item['data'] as Map);
 
@@ -147,7 +146,17 @@ class SyncService {
                 await _api.createInvoice(data);
                 break;
               case 'student':
-                await _api.createStudent(data);
+                final created = await _api.createStudent(data);
+                final serverId = created['id']?.toString();
+                if (serverId != null && serverId.isNotEmpty) {
+                  data['id'] = serverId;
+                }
+                break;
+              case 'delete_student':
+                final id = data['id']?.toString() ?? '';
+                if (id.isNotEmpty) {
+                  await _api.deleteStudent(id);
+                }
                 break;
             }
             synced = true;
@@ -157,7 +166,7 @@ class SyncService {
         }
 
         if (synced) {
-          LocalDB.markSynced(i);
+          LocalDB.markSyncItemSynced(data);
         }
       }
       LocalDB.clearSyncedItems();

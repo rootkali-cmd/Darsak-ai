@@ -32,7 +32,7 @@ const apps: {
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop v1.2.0',
+    title: 'DarsakAI Desktop v1.3.0',
     description: 'نظام إدارة السنتر - طلاب، درجات، حضور، امتحانات، فواتير',
     descriptionEn: 'Learning center management — students, grades, attendance, exams',
     icon: Monitor,
@@ -41,7 +41,7 @@ const apps: {
       { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '14 MB' },
     ],
     platform: 'Windows ✓',
-    note: 'Build 1.2.0 • Installer بـ GUI + Desktop Shortcut • يدعم QR Code',
+    note: 'Build 1.3.0 • Installer بـ GUI + Desktop Shortcut • يدعم QR Code',
   },
 ]
 
@@ -165,7 +165,7 @@ export default function DownloadPage() {
         >
           <div className="card p-6">
             <h3 className="text-sm font-bold mb-4">
-              {isAr ? 'الميزات في v1.2.0' : 'v1.2.0 FEATURES'}
+              {isAr ? 'الميزات في v1.3.0' : 'v1.3.0 FEATURES'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (

@@ -51,13 +51,26 @@ class DataProvider extends ChangeNotifier {
 
   Future<void> _syncFromApi() async {
     try {
+      final pendingIds = <String>{};
+      for (final item in LocalDB.getUnsyncedItems()) {
+        final data = item['data'] as Map?;
+        if (data != null) {
+          final id = data['id']?.toString();
+          if (id != null && id.isNotEmpty) pendingIds.add(id);
+          final code = data['code']?.toString();
+          if (code != null && code.isNotEmpty) pendingIds.add(code);
+        }
+      }
+
       final studentsData = await _api.getStudents();
       final groupsData = await _api.getGroups();
 
       if (studentsData.isNotEmpty) {
         final apiStudents = studentsData.map((s) => StudentModel.fromJson(s)).toList();
         for (final s in apiStudents) {
-          LocalDB.saveData(LocalDB.studentsBox, s.id, s.toJson());
+          if (!pendingIds.contains(s.id) && !pendingIds.contains(s.code)) {
+            LocalDB.saveData(LocalDB.studentsBox, s.id, s.toJson());
+          }
         }
         _students = apiStudents;
       }
@@ -70,6 +83,7 @@ class DataProvider extends ChangeNotifier {
         _groups = apiGroups;
       }
 
+      _loadFromLocal();
       notifyListeners();
     } catch (_) {
       // Don't set offline here — use SyncService.isOnline instead

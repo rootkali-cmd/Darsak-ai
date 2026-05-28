@@ -106,13 +106,12 @@ class LocalDB {
       if (item != null && item['synced'] == false) {
         final itemData = item['data'] as Map?;
         if (itemData != null) {
-          // Match by common fields: code or id
           final targetId = targetData['id']?.toString();
           final targetCode = targetData['code']?.toString();
           final itemId = itemData['id']?.toString();
           final itemCode = itemData['code']?.toString();
           if ((targetId != null && targetId == itemId) ||
-              (targetCode != null && targetCode == itemCode)) {
+              (targetCode != null && targetCode == itemCode && targetCode == itemCode)) {
             item['synced'] = true;
             box.putAt(i, item);
             break;
