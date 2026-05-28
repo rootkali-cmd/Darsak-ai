@@ -110,7 +110,7 @@ export default function GradesPage() {
                 <tbody>
                   {grades?.map((grade: any, index: number) => {
                     const student = students?.find((s: any) => s.id === grade.student_id)
-                    const percentage = (grade.score / grade.max_score) * 100
+                    const percentage = grade.max_score > 0 ? (grade.score / grade.max_score) * 100 : 0
                     const color = percentage >= 85 ? 'text-green-500' : percentage >= 50 ? 'text-yellow-500' : 'text-red-500'
                     return (
                       <motion.tr key={grade.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: index * 0.05 }} className="border-b border-black/5 hover:bg-[rgba(0,0,0,0.02)] transition-colors">

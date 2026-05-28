@@ -11,3 +11,4 @@ public/DarsakAI-Windows.zip
 public/DarsakAI-Linux.tar.gz
 public/bundle/
 .vercel
+.env.vercel

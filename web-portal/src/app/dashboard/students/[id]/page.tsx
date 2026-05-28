@@ -40,6 +40,7 @@ export default function StudentReportPage() {
 
   const analyzeMutation = useMutation({
     mutationFn: async () => {
+      if (!grades || grades.length === 0) throw new Error('لا توجد درجات للتحليل')
       const subject = grades[0]?.subject || 'math'
       const gradesData = grades.map((g: any) => ({
         exam: g.exam_name,
@@ -58,7 +59,7 @@ export default function StudentReportPage() {
       toast.success('تم تحليل البيانات بنجاح! 🎉')
     },
     onError: (error: any) => {
-      toast.error(error.message || 'فشل التحليل')
+      toast.error(error?.response?.data?.detail || error.message || 'فشل التحليل')
     },
   })
 
@@ -96,7 +97,7 @@ export default function StudentReportPage() {
   }
 
   const averageGrade = grades?.length
-    ? Math.round(grades.reduce((acc: number, g: any) => acc + (g.score / g.max_score) * 100, 0) / grades.length)
+    ? Math.round(grades.reduce((acc: number, g: any) => acc + (g.max_score > 0 ? (g.score / g.max_score) * 100 : 0), 0) / grades.length)
     : 0
 
   return (
@@ -220,7 +221,7 @@ export default function StudentReportPage() {
                     <h3 className="text-lg font-bold text-green-500">نقاط القوة</h3>
                   </div>
                   <ul className="space-y-3">
-                    {aiReport.strengths.map((item: string, i: number) => (
+                    {(aiReport.strengths || []).map((item: string, i: number) => (
                       <motion.li
                         key={i}
                         initial={{ opacity: 0, x: -30 }}
@@ -245,7 +246,7 @@ export default function StudentReportPage() {
                     <h3 className="text-lg font-bold text-red-500">نقاط الضعف</h3>
                   </div>
                   <ul className="space-y-3">
-                    {aiReport.weaknesses.map((item: string, i: number) => (
+                    {(aiReport.weaknesses || []).map((item: string, i: number) => (
                       <motion.li
                         key={i}
                         initial={{ opacity: 0, x: 30 }}
@@ -273,7 +274,7 @@ export default function StudentReportPage() {
                     <h3 className="text-lg font-bold text-yellow-500">التركيز المطلوب</h3>
                   </div>
                   <ul className="space-y-3">
-                    {aiReport.recommended_focus.map((item: string, i: number) => (
+                    {(aiReport.recommended_focus || []).map((item: string, i: number) => (
                       <motion.li
                         key={i}
                         initial={{ opacity: 0, y: 10 }}
@@ -303,7 +304,7 @@ export default function StudentReportPage() {
                     transition={{ delay: 0.5 }}
                     className="text-sm leading-relaxed p-4 rounded-lg bg-primary/5"
                   >
-                    {aiReport.next_exercise_suggestion}
+                    {aiReport.next_exercise_suggestion || ''}
                   </motion.p>
                 </GlassCard>
               </Section>
@@ -340,7 +341,7 @@ export default function StudentReportPage() {
                 </thead>
                 <tbody>
                   {grades?.map((grade: any, index: number) => {
-                    const percentage = (grade.score / grade.max_score) * 100
+                    const percentage = grade.max_score > 0 ? (grade.score / grade.max_score) * 100 : 0
                     const color = percentage >= 85 ? 'text-green-500' : percentage >= 50 ? 'text-yellow-500' : 'text-red-500'
                     return (
                       <motion.tr

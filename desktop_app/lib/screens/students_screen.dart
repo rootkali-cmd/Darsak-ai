@@ -599,16 +599,23 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
       }).toList();
 
       avgPercentage = percentages.fold(0.0, (a, b) => a + b) / percentages.length;
-      highest = percentages.reduce((a, b) => a > b ? a : b);
-      lowest = percentages.reduce((a, b) => a < b ? a : b);
+      if (percentages.length >= 2) {
+        highest = percentages.reduce((a, b) => a > b ? a : b);
+        lowest = percentages.reduce((a, b) => a < b ? a : b);
+      } else if (percentages.length == 1) {
+        highest = percentages[0];
+        lowest = percentages[0];
+      }
 
+      final subjectScores = <String, List<double>>{};
       for (final g in grades) {
         final subj = g['subject']?.toString() ?? 'عام';
         final score = (g['score'] ?? 0).toDouble();
         final max = (g['max_score'] ?? 100).toDouble();
         final pct = max > 0 ? (score / max) * 100 : 0;
-        subjectAverages.update(subj, (v) => (v + pct) / 2, ifAbsent: () => pct);
+        subjectScores.putIfAbsent(subj, () => []).add(pct);
       }
+      subjectAverages = subjectScores.map((k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
 
       if (percentages.length >= 2) {
         final firstHalf = percentages.sublist(0, percentages.length ~/ 2);

@@ -1,14 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Bell, Search, ChevronDown, User, LogOut } from 'lucide-react'
 import { authApi } from '@/lib/api'
+
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
+  const savedHandler = useRef(handler)
+  savedHandler.current = handler
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        savedHandler.current()
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [ref])
+}
 
 export function Header() {
   const [userName, setUserName] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+
+  const notifRef = useRef<HTMLDivElement>(null)
+  const profileRef = useRef<HTMLDivElement>(null)
+
+  useClickOutside(notifRef, () => setShowNotifications(false))
+  useClickOutside(profileRef, () => setShowProfile(false))
 
   useEffect(() => {
     authApi.getMe().then((res) => {
@@ -33,19 +53,22 @@ export function Header() {
             />
           </div>
 
-          <div className="relative">
+          <div className="relative" ref={notifRef}>
             <button
               onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false) }}
               className="relative p-2 border border-[var(--card-border)] hover:border-[var(--accent)] transition-colors"
+              aria-label="الإشعارات"
             >
               <Bell size={16} className="text-[var(--text-muted)]" />
-              <span className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-[var(--accent)] text-[7px] flex items-center justify-center text-white font-bold">
-                3
-              </span>
+              {showNotifications && (
+                <span className="absolute -top-1 -left-1 w-3.5 h-3.3 bg-[var(--accent)] text-[7px] flex items-center justify-center text-white font-bold">
+                  3
+                </span>
+              )}
             </button>
 
             {showNotifications && (
-              <div className="absolute left-0 top-full mt-2 w-64 z-50 card p-3">
+              <div className="absolute left-0 top-full mt-2 w-64 z-50 bg-[var(--card-bg)] border border-[var(--card-border)] shadow-lg rounded-sm p-3">
                 <h3 className="text-xs font-bold mb-3 text-[var(--text-muted)]">الإشعارات</h3>
                 {[
                   { text: 'تم إضافة طالب جديد', time: 'منذ 5 دقائق' },
@@ -61,10 +84,11 @@ export function Header() {
             )}
           </div>
 
-          <div className="relative">
+          <div className="relative" ref={profileRef}>
             <button
               onClick={() => { setShowProfile(!showProfile); setShowNotifications(false) }}
               className="flex items-center gap-2 px-3 py-1.5 border border-[var(--card-border)] hover:border-[var(--accent)] transition-colors"
+              aria-label="القائمة الشخصية"
             >
               <div className="w-6 h-6 bg-[var(--accent)] flex items-center justify-center">
                 <span className="text-white text-xs font-bold">
@@ -72,11 +96,11 @@ export function Header() {
                 </span>
               </div>
               <span className="text-xs hidden md:inline text-[var(--text-muted)]">{userName || 'المعلم'}</span>
-              <ChevronDown size={12} className="text-[var(--text-muted)]" />
+              <ChevronDown size={12} className={`text-[var(--text-muted)] transition-transform ${showProfile ? 'rotate-180' : ''}`} />
             </button>
 
             {showProfile && (
-              <div className="absolute left-0 top-full mt-2 w-48 z-50 card p-2">
+              <div className="absolute left-0 top-full mt-2 w-48 z-50 bg-[var(--card-bg)] border border-[var(--card-border)] shadow-lg rounded-sm p-2">
                 <div className="p-2 border-b border-[var(--card-border)] mb-1">
                   <p className="text-sm font-bold">{userName || 'المعلم'}</p>
                   <p className="text-[10px] text-[var(--text-muted)]">معلم</p>

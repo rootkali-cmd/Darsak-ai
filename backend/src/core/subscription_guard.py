@@ -13,6 +13,8 @@ from src.services import (
 
 logger = logging.getLogger("darsak")
 
+_ai_usage: dict[str, int] = {}
+
 
 async def get_teacher_subscription(teacher_id: str) -> dict | None:
     sub = await teacher_subscription_service.get_active_subscription(teacher_id)
@@ -23,7 +25,19 @@ async def get_teacher_subscription(teacher_id: str) -> dict | None:
         return None
     code_id = sub.get("code_id", "")
     is_trial = isinstance(code_id, str) and code_id.startswith("trial-")
-    return {"subscription": sub, "plan": plan, "is_trial": is_trial, "trial_end_date": sub.get("expires_at")}
+    expires_at = sub.get("expires_at")
+    if expires_at and is_trial:
+        try:
+            expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            if expiry < datetime.now(timezone.utc):
+                logger.info("Trial expired for teacher %s, deactivating", teacher_id)
+                await teacher_subscription_service.repo.update(
+                    {"teacher_id": teacher_id}, {"is_active": False}
+                )
+                return None
+        except (ValueError, TypeError):
+            pass
+    return {"subscription": sub, "plan": plan, "is_trial": is_trial, "trial_end_date": expires_at}
 
 
 async def check_subscription_limit(teacher_id: str, feature: str) -> bool:
@@ -64,9 +78,9 @@ async def get_remaining_limit(teacher_id: str, feature: str) -> dict:
         limit = plan.get("max_ai_requests", 100)
         if limit == -1:
             return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
-        current = 0
+        current = _ai_usage.get(teacher_id, 0)
         remaining = limit - current
-        return {"allowed": True, "current_usage": current, "limit": limit, "remaining": remaining}
+        return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
 
     if feature == "max_grades":
         limit = plan.get("max_grades")
@@ -108,6 +122,10 @@ async def enforce_ai_request_limit(teacher_id: str) -> bool:
             detail=f"AI request limit reached ({result['current_usage']}/{result['limit']}). Upgrade your plan.",
         )
     return True
+
+
+async def increment_ai_usage(teacher_id: str) -> None:
+    _ai_usage[teacher_id] = _ai_usage.get(teacher_id, 0) + 1
 
 
 async def require_active_subscription(teacher_id: str) -> dict:

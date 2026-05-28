@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 import 'api_service.dart';
 import 'analytics_service.dart';
 import 'structured_logger.dart';
@@ -28,6 +29,12 @@ class SyncService {
   int _reconnectAttempts = 0;
   static const int _maxReconnectDelay = 120;
 
+  static const String _cursorBox = 'sync_cursors';
+  static const String _deadLetterBox = 'dead_letter';
+
+  final Map<String, String> _cursorMap = {};
+  bool _cursorsLoaded = false;
+
   bool get isOnline => _isOnline;
   bool get isSyncing => _isSyncing;
   String get lastSyncStatus => _lastSyncStatus;
@@ -35,6 +42,7 @@ class SyncService {
   SyncService({LocalSyncService? localSync}) : _localSync = localSync;
 
   void init() {
+    _loadCursors();
     _checkConnectivity();
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen((results) {
@@ -46,6 +54,29 @@ class SyncService {
         await fullSync();
       }
     });
+  }
+
+  void _loadCursors() {
+    try {
+      final box = LocalDB.getBox(_cursorBox);
+      for (final key in box.keys) {
+        _cursorMap[key.toString()] = box.get(key).toString();
+      }
+      _cursorsLoaded = true;
+    } catch (_) {
+      _cursorsLoaded = true;
+    }
+  }
+
+  void _saveCursor(String table, String cursor) {
+    _cursorMap[table] = cursor;
+    try {
+      LocalDB.getBox(_cursorBox).put(table, cursor);
+    } catch (_) {}
+  }
+
+  String? _getCursor(String table) {
+    return _cursorMap[table];
   }
 
   void addListener(Function(String, String) listener) {
@@ -74,13 +105,15 @@ class SyncService {
     final hasNetworkInterface = results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
 
     if (hasNetworkInterface) {
-      _isOnline = true;
-      _reconnectAttempts = 0;
-    } else {
       _isOnline = await _pingApi();
-      if (!_isOnline) {
+      if (_isOnline) {
+        _reconnectAttempts = 0;
+      } else {
         _scheduleReconnect();
       }
+    } else {
+      _isOnline = false;
+      _scheduleReconnect();
     }
 
     if (_isOnline && !wasOnline) {
@@ -122,13 +155,17 @@ class SyncService {
 
     try {
       final unsynced = LocalDB.getUnsyncedItems();
+      final ackIds = <String>[];
+
       for (final item in unsynced) {
         final type = item['type'] as String;
         final data = Map<String, dynamic>.from(item['data'] as Map);
+        final operationId = item['operation_id'] as String? ?? const Uuid().v4();
 
         bool synced = false;
 
         if (_localSync != null) {
+          item['operation_id'] = operationId;
           synced = await _localSync.trySendToPeer(item);
         }
 
@@ -154,7 +191,11 @@ class SyncService {
               case 'delete_student':
                 final id = data['id']?.toString() ?? '';
                 if (id.isNotEmpty) {
-                  await _api.deleteStudent(id);
+                  try {
+                    await _api.deleteStudent(id);
+                  } on DioException catch (e) {
+                    if (e.response?.statusCode != 404) rethrow;
+                  }
                 }
                 break;
             }
@@ -165,10 +206,21 @@ class SyncService {
         }
 
         if (synced) {
+          ackIds.add(operationId);
           LocalDB.markSyncItemSynced(data);
         }
+
+        if (!synced) {
+          LocalDB.addToDeadLetter(item, error: 'Sync failed after retry');
+        }
       }
-      LocalDB.clearSyncedItems();
+
+      if (ackIds.isNotEmpty && _isOnline) {
+        try {
+          await _api.post('/sync/ack', data: {'acked_ids': ackIds});
+        } catch (_) {}
+      }
+
       _lastSyncStatus = 'تم رفع التغييرات';
       _notifyListeners(_lastSyncStatus, 'synced');
     } catch (e) {
@@ -176,6 +228,7 @@ class SyncService {
       _lastSyncStatus = 'فشل في المزامنة';
       _notifyListeners(_lastSyncStatus, 'error');
     } finally {
+      LocalDB.clearSyncedItems();
       _isSyncing = false;
     }
   }
@@ -186,46 +239,19 @@ class SyncService {
     _notifyListeners('جاري تحميل البيانات...', 'syncing');
 
     try {
-      await LocalDB.createBackup();
+      try { await LocalDB.createBackup(); } catch (_) {}
 
-      List<dynamic> students = [];
-      List<dynamic> groups = [];
-      List<dynamic> grades = [];
-      List<dynamic> invoices = [];
-      List<dynamic> attendance = [];
-
-      try { students = await _api.getStudents(); } catch (_) {}
-      try { groups = await _api.getGroups(); } catch (_) {}
-      try { grades = await _api.getGrades(); } catch (_) {}
-      try { invoices = await _api.getInvoices(); } catch (_) {}
+      await _syncTableIncremental('students', _api.getStudents(), LocalDB.studentsBox, 'code', fallbackField: 'id');
+      await _syncTableIncremental('groups', _api.getGroups(), LocalDB.groupsBox, 'id');
+      await _syncTableIncremental('grades', _api.getGrades(), LocalDB.gradesBox, 'id');
+      await _syncTableIncremental('invoices', _api.getInvoices(), LocalDB.invoicesBox, 'id');
 
       try {
-        final lastSync = LocalDB.getLastSyncTime() ?? DateTime.now().subtract(const Duration(days: 30));
-        attendance = await _api.getAttendance(date: lastSync.toIso8601String());
+        final lastSync = _getCursor('attendance') ?? LocalDB.getLastSyncTime()?.toIso8601String() ?? DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
+        final attendance = await _api.getAttendance(date: lastSync);
+        await _processBatch('attendance', attendance, LocalDB.attendanceBox, 'id');
+        _saveCursor('attendance', DateTime.now().toIso8601String());
       } catch (_) {}
-
-      // Merge server data: update existing, add new — never delete local-only items
-      void mergeData(String boxName, List<dynamic> serverItems, String keyField, {String? fallbackField}) {
-        final localItems = LocalDB.getAllData(boxName);
-        final localKeys = localItems.map((e) => e[keyField]?.toString() ?? '').toSet();
-        for (final item in serverItems) {
-          final itemMap = item as Map;
-          var key = itemMap[keyField]?.toString() ?? '';
-          if (key.isEmpty && fallbackField != null) {
-            key = itemMap[fallbackField]?.toString() ?? '';
-          }
-          if (key.isNotEmpty) {
-            LocalDB.saveData(boxName, key, Map<String, dynamic>.from(itemMap));
-            localKeys.remove(key);
-          }
-        }
-      }
-
-      mergeData(LocalDB.studentsBox, students, 'code', fallbackField: 'id');
-      mergeData(LocalDB.groupsBox, groups, 'id');
-      mergeData(LocalDB.gradesBox, grades, 'id');
-      mergeData(LocalDB.invoicesBox, invoices, 'id');
-      mergeData(LocalDB.attendanceBox, attendance, 'id');
 
       LocalDB.deduplicateBox(LocalDB.studentsBox, 'code');
 
@@ -233,7 +259,7 @@ class SyncService {
       _lastSyncStatus = 'تم المزامنة بنجاح';
       _notifyListeners(_lastSyncStatus, 'synced');
       AnalyticsService.instance.syncSuccess();
-      StructuredLogger.instance.info('sync_success', data: { 'new_students': students.length });
+      StructuredLogger.instance.info('sync_success', data: {});
     } catch (e) {
       AnalyticsService.instance.syncFailed(error: e.toString());
       StructuredLogger.instance.error('sync_failed', data: { 'error': e.toString() });
@@ -244,7 +270,66 @@ class SyncService {
     }
   }
 
+  Future<void> _syncTableIncremental(
+    String tableName,
+    Future<List<dynamic>> Function() fetchAll,
+    String boxName,
+    String keyField, {
+    String? fallbackField,
+  }) async {
+    try {
+      final data = await fetchAll();
+      await _processBatch(tableName, data, boxName, keyField, fallbackField: fallbackField);
+    } catch (_) {}
+  }
+
+  Future<void> _processBatch(
+    String tableName,
+    List<dynamic> serverItems,
+    String boxName,
+    String keyField, {
+    String? fallbackField,
+  }) async {
+    if (serverItems.isEmpty) return;
+
+    final localItems = LocalDB.getAllData(boxName);
+    final localKeys = localItems.map((e) => e[keyField]?.toString() ?? '').toSet();
+
+    for (final item in serverItems) {
+      final itemMap = item as Map;
+      var key = itemMap[keyField]?.toString() ?? '';
+      if (key.isEmpty && fallbackField != null) {
+        key = itemMap[fallbackField]?.toString() ?? '';
+      }
+      if (key.isNotEmpty) {
+        LocalDB.saveData(boxName, key, Map<String, dynamic>.from(itemMap));
+        localKeys.remove(key);
+      }
+    }
+
+    if (serverItems.isNotEmpty) {
+      final lastItem = serverItems.last as Map;
+      final cursor = lastItem['updated_at']?.toString() ?? lastItem['created_at']?.toString() ?? DateTime.now().toIso8601String();
+      _saveCursor(tableName, cursor);
+    }
+  }
+
+  Future<void> _recoverDeadLetters() async {
+    final deadItems = LocalDB.getAllDeadLetters();
+    for (final item in deadItems) {
+      LocalDB.addToSyncQueue(
+        item['type'] as String? ?? 'unknown',
+        Map<String, dynamic>.from(item['data'] as Map? ?? {}),
+      );
+      LocalDB.removeDeadLetter(item);
+    }
+    if (deadItems.isNotEmpty) {
+      StructuredLogger.instance.info('dead_letter_recovered', data: { 'count': deadItems.length });
+    }
+  }
+
   Future<void> fullSync() async {
+    await _recoverDeadLetters();
     await syncToServer();
     await syncFromServer();
   }

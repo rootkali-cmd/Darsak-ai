@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_service.dart';
@@ -31,15 +32,15 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final tokens = await _api.login(email, password);
+      final userData = await _api.getMe();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('access_token', tokens['access_token']);
       await prefs.setString('refresh_token', tokens['refresh_token']);
 
-      final userData = await _api.getMe();
       _user = UserModel.fromJson(userData);
       _onboardingCompleted = userData['onboarding_completed'] == true;
-      _subjects = (userData['subjects'] as List?)?.cast<String>() ?? [];
-      _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
+      _subjects = (userData['subjects'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      _levels = (userData['levels'] as List?)?.map((e) => e.toString()).toList() ?? [];
       await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
       _isLoading = false;
       AnalyticsService.instance.loginSuccess();
@@ -47,7 +48,10 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString().contains('401')
+      // Clear partial tokens if getMe failed
+      (await SharedPreferences.getInstance()).remove('access_token');
+      (await SharedPreferences.getInstance()).remove('refresh_token');
+      _error = e is DioException && e.response?.statusCode == 401
           ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
           : 'فشل تسجيل الدخول';
       AnalyticsService.instance.loginFailed(reason: _error);
@@ -106,6 +110,7 @@ class AuthProvider extends ChangeNotifier {
     _onboardingCompleted = false;
     _subjects = [];
     _levels = [];
+    _initialLoadComplete = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
@@ -116,6 +121,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove('cached_user_code');
     await prefs.remove('cached_user_is_active');
     await prefs.remove('cached_user_created_at');
+    await prefs.remove('subscription_data');
     notifyListeners();
   }
 

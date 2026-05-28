@@ -4,9 +4,17 @@ import '../core/constants.dart';
 
 class ApiService {
   late final Dio _dio;
+  late final Dio _refreshDio;
 
   ApiService() {
     _dio = Dio(BaseOptions(
+      baseUrl: AppConstants.apiBaseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {'Content-Type': 'application/json'},
+    ));
+
+    _refreshDio = Dio(BaseOptions(
       baseUrl: AppConstants.apiBaseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
@@ -23,12 +31,12 @@ class ApiService {
         handler.next(options);
       },
       onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
+        if (error.response?.statusCode == 401 && !error.requestOptions.path.contains('/auth/refresh')) {
           final prefs = await SharedPreferences.getInstance();
           final refreshToken = prefs.getString('refresh_token');
           if (refreshToken != null) {
             try {
-              final response = await _dio.post('/auth/refresh',
+              final response = await _refreshDio.post('/auth/refresh',
                   data: {'refresh_token': refreshToken});
               final newToken = response.data['access_token'];
               final newRefresh = response.data['refresh_token'];

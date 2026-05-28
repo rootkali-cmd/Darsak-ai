@@ -17,12 +17,12 @@ class GroupModel {
 
   factory GroupModel.fromJson(Map<String, dynamic> json) {
     return GroupModel(
-      id: json['id'],
-      name: json['name'],
-      subject: json['subject'],
-      level: json['level'],
-      dayOfWeek: json['day_of_week'],
-      timeSlot: json['time_slot'],
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      subject: json['subject']?.toString() ?? '',
+      level: json['level']?.toString() ?? '',
+      dayOfWeek: json['day_of_week']?.toString() ?? '',
+      timeSlot: json['time_slot']?.toString() ?? '',
     );
   }
 

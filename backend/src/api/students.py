@@ -10,7 +10,7 @@ from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
 from src.core.security.auth import create_access_token, verify_password
 from src.core.security.sanitizer import sanitize_text, sanitize_student_code, sanitize_pin, sanitize_teacher_code
 from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service
-from src.core.subscription_guard import enforce_student_limit, enforce_ai_request_limit
+from src.core.subscription_guard import enforce_student_limit, enforce_ai_request_limit, increment_ai_usage
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -225,6 +225,7 @@ async def analyze_student(
         grades=analyze_request.grades,
     )
 
+    await increment_ai_usage(current_user["id"])
     await audit_service.log(
         actor_type=current_user.get("role", "teacher"),
         action="ai_analysis",

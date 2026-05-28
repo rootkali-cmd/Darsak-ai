@@ -164,7 +164,7 @@ export default function LandingPage() {
                   )}
                 </motion.div>
 
-                {/* Trust bar */}
+                {/* Trust bar — real, honest stats */}
                 <motion.div
                   className="grid grid-cols-2 sm:grid-cols-4 gap-4"
                   initial="initial"
@@ -172,10 +172,10 @@ export default function LandingPage() {
                   variants={{ initial: {}, animate: { transition: { staggerChildren: 0.07, delayChildren: 0.6 } } }}
                 >
                   {[
-                    { num: '١٥٠٠٠+', label: 'مستخدم نشط' },
-                    { num: '٢٠٠٠٠٠+', label: 'طالب مسجل' },
-                    { num: '٩٨%', label: 'رضا العملاء' },
-                    { num: '٤.٨/٥', label: 'تقييم المنصة' },
+                    { num: 'beta', label: 'مرحلة التجربة' },
+                    { num: 'مجاني', label: 'أول ٣٠ يوم' },
+                    { num: 'مباشر', label: 'دعم فني بشري' },
+                    { num: 'تطوّر', label: 'تحديثات أسبوعية' },
                   ].map((s) => (
                     <motion.div key={s.label} variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}>
                       <div className="text-lg font-black text-[var(--accent)]">{s.num}</div>
@@ -269,15 +269,19 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ─── Stats ─── */}
+        {/* ─── Stats (real, not inflated) ─── */}
         <section className="py-16 px-6" style={{ background: 'var(--bg-secondary)' }}>
           <div className="max-w-4xl mx-auto">
+            <motion.div className="text-center mb-8" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+              <h2 className="text-xl font-bold">منصة في نمو — مش بنكذب</h2>
+              <p className="text-sm text-[var(--text-muted)] mt-1">الموقع لسّه في البداية، والأرقام الحقيقية هي اللي هنا</p>
+            </motion.div>
             <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-8" variants={{ ...stagger, whileInView: { transition: { staggerChildren: 0.08 } } }} initial="initial" whileInView="whileInView" viewport={{ once: true }}>
               {[
-                { num: '١٥,٠٠٠+', label: 'مستخدم نشط' },
-                { num: '٢٠٠,٠٠٠+', label: 'طالب مسجل' },
-                { num: '٩٨%', label: 'رضا العملاء' },
-                { num: '٤.٨/٥', label: 'تقييم المنصة' },
+                { num: '< 50', label: 'مستخدم حالياً' },
+                { num: '< 100', label: 'طالب مسجل' },
+                { num: '٣٠ يوم', label: 'فترة تجربة مجانية' },
+                { num: 'بيتا', label: 'النسخة الحالية' },
               ].map((s) => (
                 <motion.div
                   key={s.label}

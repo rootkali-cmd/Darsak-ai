@@ -27,17 +27,17 @@ class StudentModel {
 
   factory StudentModel.fromJson(Map<String, dynamic> json) {
     return StudentModel(
-      id: json['id'],
-      code: json['code'] ?? '',
-      fullName: json['full_name'] ?? '',
-      phone: json['phone'],
-      parentPhone: json['parent_phone'],
-      parentPhone2: json['parent_phone2'],
-      gradeLevel: json['grade_level'],
-      groupId: json['group_id'],
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      fullName: json['full_name']?.toString() ?? '',
+      phone: json['phone']?.toString(),
+      parentPhone: json['parent_phone']?.toString(),
+      parentPhone2: json['parent_phone2']?.toString(),
+      gradeLevel: json['grade_level']?.toString(),
+      groupId: json['group_id']?.toString(),
       isPaid: json['is_paid'] ?? false,
       hasPin: json['has_pin'] ?? false,
-      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 

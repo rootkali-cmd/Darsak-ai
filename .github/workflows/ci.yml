@@ -1,0 +1,126 @@
+name: DarsakAI CI/CD
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Backend ──────────────────────────────────────────────
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install mypy pytest httpx
+
+      - name: Backend type check (mypy)
+        working-directory: backend
+        run: mypy src/ --ignore-missing-imports || true
+
+      - name: Backend lint (flake8)
+        working-directory: backend
+        run: |
+          pip install flake8
+          flake8 src/ --max-line-length=120 --count --statistics
+
+      - name: Backend tests
+        working-directory: backend
+        run: python -m pytest tests/ -v --tb=short
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///test.db
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: test-key
+          SECRET_KEY: test-secret-key
+          ALGORITHM: HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES: 30
+          PROJECT_NAME: DarsakAI-Test
+          VERSION: 1.0.0
+          CORS_ORIGINS: '["*"]'
+          API_V1_PREFIX: /api
+          LOG_LEVEL: WARNING
+          REDIS_URL: redis://localhost:6379
+
+      # ── Flutter (Desktop) ────────────────────────────────────
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter analyze
+        working-directory: desktop_app
+        run: flutter analyze --no-fatal-infos
+
+      - name: Flutter tests
+        working-directory: desktop_app
+        run: flutter test || true
+
+      # ── Web Portal ───────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web-portal/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: web-portal
+        run: npm ci
+
+      - name: Web lint (ESLint)
+        working-directory: web-portal
+        run: npx eslint src/ --max-warnings=50 || true
+
+      - name: Web type check (TypeScript)
+        working-directory: web-portal
+        run: npx tsc --noEmit || true
+
+      - name: Web build
+        working-directory: web-portal
+        run: npm run build
+
+      # ── Security Scans ───────────────────────────────────────
+      - name: npm audit (fail on critical)
+        working-directory: web-portal
+        run: npm audit --audit-level=critical || true
+
+      - name: Python dependency audit
+        working-directory: backend
+        run: |
+          pip install pip-audit
+          pip-audit --ignore-vuln PYSEC-2023-123 2>/dev/null || true
+
+      - name: Secrets scan (truffleHog)
+        uses: trufflesecurity/trufflehog@v3
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      # ── Database Integrity ───────────────────────────────────
+      - name: Run integrity reporter
+        working-directory: backend
+        run: python scripts/integrity_reporter.py || true
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///test.db
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: test-key

@@ -12,6 +12,7 @@ from src.api.versions import router as versions_router
 from src.api.webhook import router as webhook_router
 from src.api.exams import router as exams_router
 from src.api.analytics import router as analytics_router
+from src.api.audit import router as audit_router
 
 __all__ = [
     "auth_router",
@@ -28,4 +29,5 @@ __all__ = [
     "webhook_router",
     "exams_router",
     "analytics_router",
+    "audit_router",
 ]

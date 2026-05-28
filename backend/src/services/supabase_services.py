@@ -287,6 +287,35 @@ class AuditService:
             kwargs["actor_type"] = "system"
         return await self.repo.insert(kwargs)
 
+    async def search(self, filters: dict | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+        query = self.repo.client.table("audit_logs").select("*")
+        if filters:
+            if filters.get("actor_id"):
+                query = query.eq("actor_id", filters["actor_id"])
+            if filters.get("resource_type"):
+                query = query.eq("resource_type", filters["resource_type"])
+            if filters.get("action"):
+                query = query.eq("action", filters["action"])
+            if filters.get("from_date"):
+                query = query.gte("created_at", filters["from_date"])
+            if filters.get("to_date"):
+                query = query.lte("created_at", filters["to_date"])
+        query = query.order("created_at", desc=True).range(offset, offset + limit - 1)
+        result = await query.execute()
+        return result.data if result.data else []
+
+    async def export_range(self, from_date: str, to_date: str, limit: int = 10000) -> list[dict]:
+        query = (
+            self.repo.client.table("audit_logs")
+            .select("*")
+            .gte("created_at", from_date)
+            .lte("created_at", to_date)
+            .order("created_at", desc=True)
+            .limit(limit)
+        )
+        result = await query.execute()
+        return result.data if result.data else []
+
 
 class PaymentRequestService:
     def __init__(self):

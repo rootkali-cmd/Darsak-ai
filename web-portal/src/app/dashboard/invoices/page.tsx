@@ -74,7 +74,13 @@ export default function InvoicesPage() {
   })
 
   const togglePaid = (invoice: any) => {
-    updateMutation.mutate({ id: invoice.id, data: { paid: !invoice.paid, payment_date: !invoice.paid ? new Date().toISOString().split('T')[0] : null } })
+    const data: any = { paid: !invoice.paid }
+    if (!invoice.paid) data.payment_date = new Date().toISOString().split('T')[0]
+    // Optimistic update
+    queryClient.setQueryData(['invoices'], (old: any[] | undefined) =>
+      old ? old.map((i: any) => i.id === invoice.id ? { ...i, ...data } : i) : [],
+    )
+    updateMutation.mutate({ id: invoice.id, data })
   }
 
   return (

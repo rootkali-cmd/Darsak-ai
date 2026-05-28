@@ -24,7 +24,7 @@ from src.api import (
     auth_router, students_router, groups_router, attendance_router,
     grades_router, invoices_router, qr_router, sync_router,
     student_me_router, subscriptions_router, versions_router,
-    webhook_router, exams_router, analytics_router,
+    webhook_router, exams_router, analytics_router, audit_router,
 )
 
 settings = get_settings()
@@ -295,3 +295,4 @@ app.include_router(versions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(webhook_router, prefix=settings.API_V1_PREFIX)
 app.include_router(exams_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
+app.include_router(audit_router, prefix=settings.API_V1_PREFIX)

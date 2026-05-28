@@ -30,7 +30,7 @@ class SyncProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _sync.dispose();
+    _sync.removeListener(_onSyncChange);
     super.dispose();
   }
 }

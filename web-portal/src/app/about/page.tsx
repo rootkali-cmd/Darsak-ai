@@ -1,28 +1,16 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
-import { Shield, Target, Users, Lightbulb, Award, HeartHandshake } from 'lucide-react'
+import { Shield, Target, Lightbulb, HeartHandshake } from 'lucide-react'
 
 const values = [
-  { icon: Target, title: 'رسالتنا', desc: 'تمكين أصحاب السناتر ومدرسيها بأدوات ذكية تجعل إدارة السناتر أكثر فعالية، وتوفر وقتهم ليركزوا على ما يجيدونه: التدريس والإلهام.' },
-  { icon: Lightbulb, title: 'رؤيتنا', desc: 'الريادة في التحول الرقمي لإدارة السناتر التعليمية في العالم العربي، من خلال منصة ذكية تجمع بين أحدث تقنيات AI وأبسط واجهات الاستخدام.' },
-  { icon: Users, title: 'المجتمع', desc: 'نبني مجتمعاً تعليمياً متفاعلاً يضم آلاف أصحاب السناتر والمدرسين الذين يشاركون الخبرات ويتطورون معاً.' },
-  { icon: Award, title: 'الجودة', desc: 'نلتزم بأعلى معايير الجودة في كل ميزة نطلقها، مع اختبارات دقيقة وملاحظات مستمرة من المعلمين.' },
-  { icon: Shield, title: 'الخصوصية', desc: 'بيانات طلابك آمنة ومشفرة. لا نشارك معلوماتك مع أي طرف ثالث. الخصوصية هي أساس ثقتنا.' },
-  { icon: HeartHandshake, title: 'الدعم', desc: 'فريق دعم فني متكامل يجيب على استفساراتك خلال ساعات. لأن نجاحك هو نجاحنا.' },
-]
-
-const timeline = [
-  { year: '2023', title: 'الفكرة', desc: 'انطلقت فكرة درسك AI من فصل دراسي حقيقي، حيث لاحظ مؤسسونا التحديات اليومية التي يواجهها المعلمون.' },
-  { year: '2024', title: 'الإطلاق', desc: 'أطلقنا النسخة الأولى من المنصة وبدأنا مع 50 معلماً في المرحلة التجريبية، وتلقينا أكثر من 2000 اقتراح للتطوير.' },
-  { year: '2025', title: 'النمو', desc: 'وصلنا إلى أكثر من 5000 معلم مسجل، وأضفنا ميزات AI المتقدمة: التحليل الذكي، التصحيح الآلي، والاختبارات الذكية.' },
-  { year: '2026', title: 'التميز', desc: 'نخدم اليوم أكثر من 15,000 معلم عبر 3 تطبيقات (ويب، موبايل، ديسكتوب) مع تقييم 4.8/5 من المستخدمين.' },
+  { icon: Target, title: 'رسالتنا', desc: 'بناء أداة بسيطة وعملية تخلّص أصحاب السناتر من الفوضى الورقية وتديها وقت تركز على التدريس.' },
+  { icon: Lightbulb, title: 'قصة البداية', desc: 'اتولدت الفكرة من معاناة حقيقية في إدارة سنتر — ورق، متابعة، مصاريف، حضور. قلنا لازم يبقى فيه حل وما ينفعش نستنى.' },
+  { icon: HeartHandshake, title: 'الوضع دلوقتي', desc: 'لسه في البداية. بنشتغل حاجة بحاجة، بنسمع للمدرسين اللي بيستخدموا المنصة، وبنطور على قد الإمكانيات.' },
+  { icon: Shield, title: 'الشفافية', desc: 'مش بنحط أرقام وهمية عشان نظهر كبار. احنا ناس صغيرة لسة بنحاول نبنى حاجة مفيدة. لو عايز تعرف حقيقة المنصة، جربها بنفسك.' },
 ]
 
 export default function AboutPage() {
-  const router = useRouter()
-
   return (
     <div>
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--card-border)' }}>
@@ -40,61 +28,68 @@ export default function AboutPage() {
 
       <main>
         {/* Hero */}
-        <section className="pt-32 pb-20 px-6 text-center" style={{ background: 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg) 100%)' }}>
+        <section className="pt-32 pb-16 px-6 text-center" style={{ background: 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg) 100%)' }}>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-block px-3 py-1 text-xs font-bold tracking-widest mb-4 border" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>من نحن</span>
-            <h1 className="text-4xl md:text-5xl font-black mb-4">نبني مستقبل السناتر</h1>
-            <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto leading-relaxed">
-              درسك AI منصة ذكية لإدارة السناتر التعليمية، ولدت من رحم الفصول الدراسية الحقيقية. 
-              هدفنا: تحويل طريقة إدارة السناتر باستخدام الذكاء الاصطناعي.
+            <h1 className="text-3xl md:text-4xl font-black mb-4">منصة لسة في أول الطريق</h1>
+            <p className="text-base text-[var(--text-muted)] max-w-2xl mx-auto leading-relaxed">
+              درسك AI مش شركة ضخمة ولا عندها ملايين المستخدمين. احنا مشروع صغير بنحاول نقدم أداة مفيدة لمدرسين السناتر.
+              مبنكترش أرقام وهمية — اللي تشوفه هو اللي موجود.
             </p>
           </motion.div>
         </section>
 
-        {/* Story */}
+        {/* What we actually are */}
         <section className="page-section">
           <motion.div className="max-w-3xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
-            <h2 className="text-2xl font-bold mb-6 text-center">قصتنا</h2>
-            <div className="prose mx-auto">
+            <h2 className="text-2xl font-bold mb-6">إحنا مين فعلاً؟</h2>
+            <div className="space-y-4 text-[var(--text-secondary)] leading-relaxed">
               <p>
-                في عام 2023، كان مؤسسو درسك AI يديرون سناتر تعليمية حقيقية. كل يوم، كانوا يواجهون تحديات: 
-                متابعة حضور الطلاب في سناتر متعددة، تحصيل المصاريف، تصحيح الامتحانات، وإعداد التقارير لكل ولي أمر.
+                درسك AI منصة إلكترونية لإدارة السناتر التعليمية. حالياً في مرحلة البيتا — بنختبر المنتج مع مجموعة صغيرة من المعلمين
+                عشان نضبط الأمور قبل الإطلاق الرسمي.
               </p>
               <p>
-                أدركنا أن التكنولوجيا يمكن أن تكون الحل. ليس فقط لأتمتة المهام المتكررة، بل لتقديم رؤى وتحليلات 
-                عميقة كان من المستحيل الحصول عليها يدوياً. هكذا ولدت درسك AI — أول منصة متكاملة لإدارة السناتر.
+                <strong>دي حقيقة المنصة النهارده:</strong>
               </p>
+              <ul className="list-disc pr-6 space-y-2">
+                <li>عدد المستخدمين النشطين: أقل من 50 معلم — لسة في البداية.</li>
+                <li>عدد الطلاب المسجلين على المنصة: أقل من 100 طالب — كلهم في مرحلة الاختبار.</li>
+                <li>التقييم والتغذية الراجعة: بنجمعها من المستخدمين الأوائل وبنشتغل عليها.</li>
+                <li>المنصة لسة بتتطور — بنضيف ميزات جديدة كل أسبوع.</li>
+              </ul>
               <p>
-                اليوم، بعد 3 سنوات من التطوير المستمر، يثق بنا أكثر من 15,000 مستخدم في جميع أنحاء العالم العربي. 
-                نحن لسنا مجرد منصة تقنية — نحن شريك في نجاح سنترك.
+                إحنا مش بنحاول نبان أكبر من واقعنا. المنصة لسه صغيرة، بس بنشتغل بجد عشان نقدم حاجة مفيدة.
+                لو عايز تجرب بنفسك، سجل مجاناً وادينا رأيك — هنسمع لك.
               </p>
             </div>
           </motion.div>
         </section>
 
-        {/* Timeline */}
+        {/* What we offer */}
         <section className="page-section" style={{ background: 'var(--bg-secondary)' }}>
-          <h2 className="text-2xl font-bold mb-10 text-center">رحلتنا</h2>
-          <div className="max-w-3xl mx-auto space-y-8">
-            {timeline.map((item, i) => (
-              <motion.div key={item.year} className="flex gap-6 items-start" initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                <div className="flex-shrink-0 w-16 text-center">
-                  <span className="text-sm font-bold text-[var(--accent)]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{item.year}</span>
-                  <div className="w-px h-full mx-auto mt-2" style={{ background: 'var(--card-border)' }} />
-                </div>
-                <div className="card card-hover p-5 flex-1">
-                  <h3 className="font-bold mb-1">{item.title}</h3>
-                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <motion.div className="max-w-3xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+            <h2 className="text-2xl font-bold mb-6">إيه اللي موجود فعلاً؟</h2>
+            <div className="space-y-4 text-[var(--text-secondary)] leading-relaxed">
+              <p>المنصة فيها دلوقتي:</p>
+              <ul className="list-disc pr-6 space-y-2">
+                <li><strong>إدارة الطلاب:</strong> تضيف طلاب، تعدل، تحذف. كل طالب ليه كود QR.</li>
+                <li><strong>الحضور والغياب:</strong> تسجيل حضور يدوي أو بالباركود.</li>
+                <li><strong>الدرجات والامتحانات:</strong> تسجيل درجات ومتابعة الأداء.</li>
+                <li><strong>المجموعات:</strong> تقسيم الطلاب حسب المستوى والمادة.</li>
+                <li><strong>الفواتير:</strong> تحصيل المصاريف ومتابعة المدفوع.</li>
+                <li><strong>تحليلات AI:</strong> تحليل أداء الطالب واقتراح نقاط الضعف والقوة.</li>
+              </ul>
+              <p>
+                كل الميزات دي شغالة فعلاً — مش promises. تقدر تجربها كلها مجاناً 30 يوماً.
+              </p>
+            </div>
+          </motion.div>
         </section>
 
         {/* Values */}
         <section className="page-section">
-          <h2 className="text-2xl font-bold mb-10 text-center">قيمنا</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <h2 className="text-2xl font-bold mb-10 text-center">اللي بنؤمن بيه</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {values.map((v, i) => {
               const Icon = v.icon
               return (
@@ -108,28 +103,11 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Stats */}
-        <section className="page-section text-center" style={{ background: 'var(--bg-secondary)' }}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
-            {[
-              { num: '15,000+', label: 'معلم يستخدمون المنصة' },
-              { num: '200,000+', label: 'طالب مسجلين' },
-              { num: '98%', label: 'رضا المستخدمين' },
-              { num: '4.8/5', label: 'تقييم المتجر' },
-            ].map((s, i) => (
-              <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                <div className="text-3xl font-black text-[var(--accent)]">{s.num}</div>
-                <p className="text-sm text-[var(--text-muted)] mt-1">{s.label}</p>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
         {/* CTA */}
-        <section className="page-section text-center">
+        <section className="page-section text-center" style={{ background: 'var(--bg-secondary)' }}>
           <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <h2 className="text-2xl font-bold mb-3">انضم إلى آلاف المعلمين</h2>
-            <p className="text-[var(--text-muted)] mb-6">حوّل سنترك إلى نظام متكامل — ابدأ مجاناً</p>
+            <h2 className="text-2xl font-bold mb-3">جرب بنفسك — مجاناً</h2>
+            <p className="text-[var(--text-muted)] mb-6">مفيش حاجة تخسرها. أول 30 يوم مجاناً، وفي أي وقت تقدر تسحب.</p>
             <a href="/register" className="btn btn-primary btn-lg">→ ابدأ مجاناً</a>
           </motion.div>
         </section>

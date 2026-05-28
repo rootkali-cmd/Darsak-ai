@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check, X, Minus, Loader2, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Section } from '@/components/ui'
@@ -30,11 +30,38 @@ export default function AttendancePage() {
       return data.filter((g: any) => { const k = g.id || g.name; if (seen.has(k)) return false; seen.add(k); return true })
     },
   })
-  const { data: attendanceStats } = useQuery({ queryKey: ['attendance-stats', selectedDate], queryFn: () => attendanceApi.stats({ date: selectedDate }).then((r) => r.data) })
+  const { data: existingAttendance } = useQuery({
+    queryKey: ['attendance', selectedDate, selectedGroup],
+    queryFn: () => attendanceApi.list({ group_id: selectedGroup || undefined, from_date: selectedDate, to_date: selectedDate }).then((r) => r.data),
+    enabled: !!selectedDate,
+  })
+  const { data: attendanceStats } = useQuery({
+    queryKey: ['attendance-stats', selectedDate, selectedGroup],
+    queryFn: () => attendanceApi.stats({ date: selectedDate, group_id: selectedGroup || undefined }).then((r) => r.data),
+  })
+
+  // Reset attendance records on date/group change, then load existing
+  useEffect(() => {
+    setAttendanceRecords({})
+  }, [selectedDate, selectedGroup])
+
+  useEffect(() => {
+    if (existingAttendance && existingAttendance.length > 0) {
+      const records: Record<string, string> = {}
+      for (const rec of existingAttendance) {
+        records[rec.student_id] = rec.status
+      }
+      setAttendanceRecords(records)
+    }
+  }, [existingAttendance])
 
   const markMutation = useMutation({
     mutationFn: (data: { student_id: string; status: string; group_id?: string; date?: string }) => attendanceApi.mark(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['attendance-stats'] }); toast.success('تم تسجيل الحضور ') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance-stats', selectedDate, selectedGroup] })
+      queryClient.invalidateQueries({ queryKey: ['attendance', selectedDate, selectedGroup] })
+      toast.success('تم تسجيل الحضور ')
+    },
     onError: () => toast.error('فشل تسجيل الحضور'),
   })
 

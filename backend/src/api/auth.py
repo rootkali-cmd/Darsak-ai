@@ -1,11 +1,11 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, TokenRefresh, UserUpdate, OnboardingUpdate
 from src.core.security.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from src.core.security.sanitizer import sanitize_text, sanitize_email
 from src.core.security.supabase_repo import SupabaseError
-from src.services import user_service, audit_service
+from src.services import user_service, audit_service, subscription_plan_service, teacher_subscription_service
 
 logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -85,7 +85,7 @@ async def register(user_data: UserCreate, request: Request):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: UserLogin, request: Request):
+async def login(credentials: UserLogin, request: Request, response: Response):
     user = await user_service.get_by_email(credentials.email.lower().strip())
     if not user or not verify_password(credentials.password, user["hashed_password"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
@@ -99,14 +99,39 @@ async def login(credentials: UserLogin, request: Request):
         ip_address=get_client_ip(request),
     )
 
-    return TokenResponse(
-        access_token=create_access_token(user["id"]),
-        refresh_token=create_refresh_token(user["id"]),
+    access_token = create_access_token(user["id"])
+    refresh_token = create_refresh_token(user["id"])
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=3600,
+        path="/",
     )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=2592000,
+        path="/",
+    )
+
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+_used_refresh_tokens: set[str] = set()
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token_endpoint(token_data: TokenRefresh):
+async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
+    if token_data.refresh_token in _used_refresh_tokens:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has already been used")
+
     decoded = decode_token(token_data.refresh_token)
     if not decoded or decoded.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -116,10 +141,31 @@ async def refresh_token_endpoint(token_data: TokenRefresh):
     if not user or not user.get("is_active", True):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 
-    return TokenResponse(
-        access_token=create_access_token(user["id"]),
-        refresh_token=create_refresh_token(user["id"]),
+    _used_refresh_tokens.add(token_data.refresh_token)
+
+    new_access = create_access_token(user["id"])
+    new_refresh = create_refresh_token(user["id"])
+
+    response.set_cookie(
+        key="access_token",
+        value=new_access,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=3600,
+        path="/",
     )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=2592000,
+        path="/",
+    )
+
+    return TokenResponse(access_token=new_access, refresh_token=new_refresh)
 
 
 @router.get("/me", response_model=UserResponse)
