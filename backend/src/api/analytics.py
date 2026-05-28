@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from collections import defaultdict, Counter
@@ -159,7 +160,6 @@ async def analytics_channels(admin: dict = Depends(get_current_admin)):
                 except json.JSONDecodeError:
                     continue
     except Exception:
-        import logging
         logging.getLogger("darsak").debug("Failed to read analytics channels")
 
     channel_counts: dict[str, int] = {}
