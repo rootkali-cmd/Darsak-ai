@@ -109,4 +109,6 @@ class AnalyticsService {
   void offlineModeEnabled() => _track('offline_mode_enabled');
   void reconnectSuccess() => _track('reconnect_success');
   void crashDetected(String error) => _track('crash_detected', properties: {'error': error});
+  void syncSuccess() => _track('sync_success');
+  void syncFailed({String? error}) => _track('sync_failed', properties: {'error': error});
 }

@@ -43,6 +43,9 @@ class DataProvider extends ChangeNotifier {
   }
 
   void _loadFromLocal() {
+    LocalDB.deduplicateBox(LocalDB.studentsBox, 'code');
+    LocalDB.deduplicateBox(LocalDB.groupsBox, 'id');
+
     final localStudents = LocalDB.getAllData(LocalDB.studentsBox);
     _students = localStudents.map((s) => StudentModel.fromJson(s)).toList();
 

@@ -71,6 +71,26 @@ class LocalDB {
     Hive.box<Map>(boxName).clear();
   }
 
+  static void deduplicateBox(String boxName, String field) {
+    final box = Hive.box<Map>(boxName);
+    final seen = <String>{};
+    final toRemove = <dynamic>[];
+    for (final key in box.keys) {
+      final data = box.get(key);
+      if (data == null) continue;
+      final val = data[field]?.toString() ?? '';
+      if (val.isEmpty) continue;
+      if (seen.contains(val)) {
+        toRemove.add(key);
+      } else {
+        seen.add(val);
+      }
+    }
+    for (final key in toRemove) {
+      box.delete(key);
+    }
+  }
+
   static void addToSyncQueue(String type, Map<String, dynamic> data) {
     final box = Hive.box<Map>(syncQueueBox);
     box.add(Map<String, dynamic>.from({

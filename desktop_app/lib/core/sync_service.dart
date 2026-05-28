@@ -41,10 +41,9 @@ class SyncService {
       _handleConnectivityChange(results);
     });
 
-    _syncTimer = Timer.periodic(const Duration(minutes: 3), (_) {
+    _syncTimer = Timer.periodic(const Duration(minutes: 3), (_) async {
       if (_isOnline && !_isSyncing) {
-        syncToServer();
-        syncFromServer();
+        await fullSync();
       }
     });
   }
@@ -173,6 +172,7 @@ class SyncService {
       _lastSyncStatus = 'تم رفع التغييرات';
       _notifyListeners(_lastSyncStatus, 'synced');
     } catch (e) {
+      AnalyticsService.instance.syncFailed(error: e.toString());
       _lastSyncStatus = 'فشل في المزامنة';
       _notifyListeners(_lastSyncStatus, 'error');
     } finally {
@@ -188,37 +188,55 @@ class SyncService {
     try {
       await LocalDB.createBackup();
 
-      final students = await _api.getStudents();
-      final groups = await _api.getGroups();
-      final grades = await _api.getGrades();
-      final invoices = await _api.getInvoices();
-      final lastSync = LocalDB.getLastSyncTime() ?? DateTime.now().subtract(const Duration(days: 30));
-      final attendance = await _api.getAttendance(date: lastSync.toIso8601String());
+      List<dynamic> students = [];
+      List<dynamic> groups = [];
+      List<dynamic> grades = [];
+      List<dynamic> invoices = [];
+      List<dynamic> attendance = [];
+
+      try { students = await _api.getStudents(); } catch (_) {}
+      try { groups = await _api.getGroups(); } catch (_) {}
+      try { grades = await _api.getGrades(); } catch (_) {}
+      try { invoices = await _api.getInvoices(); } catch (_) {}
+
+      try {
+        final lastSync = LocalDB.getLastSyncTime() ?? DateTime.now().subtract(const Duration(days: 30));
+        attendance = await _api.getAttendance(date: lastSync.toIso8601String());
+      } catch (_) {}
 
       // Merge server data: update existing, add new — never delete local-only items
-      void mergeData(String boxName, List<dynamic> serverItems, String keyField) {
+      void mergeData(String boxName, List<dynamic> serverItems, String keyField, {String? fallbackField}) {
         final localItems = LocalDB.getAllData(boxName);
         final localKeys = localItems.map((e) => e[keyField]?.toString() ?? '').toSet();
         for (final item in serverItems) {
-          final key = (item as Map)[keyField]?.toString() ?? '';
+          final itemMap = item as Map;
+          var key = itemMap[keyField]?.toString() ?? '';
+          if (key.isEmpty && fallbackField != null) {
+            key = itemMap[fallbackField]?.toString() ?? '';
+          }
           if (key.isNotEmpty) {
-            LocalDB.saveData(boxName, key, Map<String, dynamic>.from(item));
+            LocalDB.saveData(boxName, key, Map<String, dynamic>.from(itemMap));
             localKeys.remove(key);
           }
         }
-        // localKeys now contains items only in local, not in server — keep them
       }
 
-      mergeData(LocalDB.studentsBox, students, 'id');
+      mergeData(LocalDB.studentsBox, students, 'code', fallbackField: 'id');
       mergeData(LocalDB.groupsBox, groups, 'id');
       mergeData(LocalDB.gradesBox, grades, 'id');
       mergeData(LocalDB.invoicesBox, invoices, 'id');
       mergeData(LocalDB.attendanceBox, attendance, 'id');
 
+      LocalDB.deduplicateBox(LocalDB.studentsBox, 'code');
+
       LocalDB.setLastSyncTime(DateTime.now());
       _lastSyncStatus = 'تم المزامنة بنجاح';
       _notifyListeners(_lastSyncStatus, 'synced');
+      AnalyticsService.instance.syncSuccess();
+      StructuredLogger.instance.info('sync_success', data: { 'new_students': students.length });
     } catch (e) {
+      AnalyticsService.instance.syncFailed(error: e.toString());
+      StructuredLogger.instance.error('sync_failed', data: { 'error': e.toString() });
       _lastSyncStatus = 'فشل في تحميل البيانات';
       _notifyListeners(_lastSyncStatus, 'error');
     } finally {
