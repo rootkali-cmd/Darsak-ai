@@ -25,7 +25,7 @@ class SyncProvider extends ChangeNotifier {
   }
 
   Future<void> syncNow() async {
-    await _sync.fullSync();
+    await _sync.syncNow();
   }
 
   @override

@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime
 
 
-PIN_PATTERN = r'^[A-Z0-9]{6,8}$'
+PIN_PATTERN = r'^[A-Za-z0-9]{6,8}$'
 
 
 class StudentCreate(BaseModel):
@@ -56,7 +56,7 @@ class TeacherVerifyResponse(BaseModel):
 
 class StudentLogin(BaseModel):
     code: str
-    pin: str
+    pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
     teacher_code: str | None = None
 
 

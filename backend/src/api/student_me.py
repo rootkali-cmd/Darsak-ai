@@ -8,14 +8,16 @@ from src.schemas.grade import GradeResponse
 from src.schemas.attendance import AttendanceResponse
 from src.schemas.invoice import InvoiceResponse
 from src.core.security.auth import verify_password
+from src.core.security.sanitizer import sanitize_pin
+from src.schemas.student import PIN_PATTERN
 from src.services import grade_service, attendance_service, invoice_service, student_service, audit_service
 
 router = APIRouter(prefix="/students/me", tags=["Student - Self Service"])
 
 
 class StudentPinUpdate(BaseModel):
-    old_pin: str = Field(..., min_length=4, max_length=8)
-    new_pin: str = Field(..., min_length=6, max_length=8)
+    old_pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
+    new_pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
 
 
 def get_client_ip(request: Request) -> str:
@@ -79,10 +81,10 @@ async def change_my_pin(
 ):
     if not current_student.get("pin_hash"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PIN not set")
-    if not verify_password(pin_data.old_pin, current_student["pin_hash"]):
+    if not verify_password(sanitize_pin(pin_data.old_pin), current_student["pin_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Old PIN is incorrect")
 
-    await student_service.update(current_student["id"], {"pin": pin_data.new_pin})
+    await student_service.update(current_student["id"], {"pin": sanitize_pin(pin_data.new_pin)})
 
     await audit_service.log(
         actor_type="student",

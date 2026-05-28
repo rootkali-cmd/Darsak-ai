@@ -21,8 +21,6 @@ from src.services.qr_service import qr_service
 from src.services.pdf_generator import pdf_generator
 from src.services.conflict_resolver import ConflictResolver
 from src.services.scheduler import start_scheduler, stop_scheduler
-from src.services.audit_service import log_audit
-
 user_service = UserService()
 student_service = StudentService()
 group_service = GroupService()
@@ -60,5 +58,4 @@ __all__ = [
     "ConflictResolver",
     "start_scheduler",
     "stop_scheduler",
-    "log_audit",
 ]

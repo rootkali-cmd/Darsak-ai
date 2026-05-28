@@ -7,7 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../providers/sync_provider.dart';
 import '../widgets/sidebar.dart';
-import '../widgets/sync_indicator.dart';
+import '../widgets/sync_status_indicator.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/quick_action.dart';
 import '../widgets/subscription_overlay.dart';
@@ -155,12 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                             style: TextStyle(color: textMuted, fontSize: 13),
                           ),
                           const Spacer(),
-                          SyncIndicator(
-                            isOnline: sync.isOnline,
-                            isSyncing: sync.isSyncing,
-                            status: sync.status,
-                            onSync: () => context.read<SyncProvider>().syncNow(),
-                          ),
+                          const SyncStatusIndicator(),
                           const SizedBox(width: 8),
                           Consumer<UpdateService>(
                             builder: (context, update, _) {

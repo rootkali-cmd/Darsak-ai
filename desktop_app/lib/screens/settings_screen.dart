@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants.dart';
 import '../core/theme.dart';
 import '../core/update_service.dart';
+import '../core/sync_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/sync_provider.dart';
 
@@ -109,6 +111,8 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 24),
+          _SyncDebugCard(),
           const SizedBox(height: 24),
           Card(
             child: Padding(
@@ -385,6 +389,118 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
+
+class _SyncDebugCard extends StatefulWidget {
+  @override
+  State<_SyncDebugCard> createState() => _SyncDebugCardState();
+}
+
+class _SyncDebugCardState extends State<_SyncDebugCard> {
+  Timer? _timer;
+
+  @override
+  void initState() { super.initState(); _timer = Timer.periodic(const Duration(seconds: 2), (_) { if (mounted) setState(() {}); }); }
+
+  @override
+  void dispose() { _timer?.cancel(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = context.watch<SyncService>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textMuted = isDark ? AppTheme.darkTextMuted : AppTheme.lightTextMuted;
+    final ops = sync.recentOps.take(15).toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('سجل المزامنة', style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          Row(children: [
+            _badge('في الانتظار', sync.pendingCount, Colors.amber, isDark),
+            const SizedBox(width: 8),
+            _badge('جاري', sync.syncingCount, Colors.blue, isDark),
+            const SizedBox(width: 8),
+            _badge('فشل', sync.failedCount, Colors.red, isDark),
+            const SizedBox(width: 8),
+            _badge('تم', ops.where((o) => o.status == SyncOpStatus.synced).length, Colors.green, isDark),
+          ]),
+          const SizedBox(height: 8),
+          Text('آخر مزامنة: ${_fmtTime(sync.lastSyncTime)}', style: TextStyle(fontSize: 12, color: textMuted)),
+          Text('الشبكة: ${sync.isOnline ? "متصل" : "غير متصل"} | متوسط الزمن: ${_avgLatency(ops)}ms', style: TextStyle(fontSize: 12, color: textMuted)),
+          const SizedBox(height: 8),
+          if (ops.isEmpty)
+            Text('لا توجد عمليات', style: TextStyle(color: textMuted, fontSize: 13))
+          else
+            SizedBox(
+              height: 250,
+              child: ListView.builder(
+                itemCount: ops.length,
+                itemBuilder: (_, i) {
+                  final op = ops[i];
+                  final icon = op.status == SyncOpStatus.synced ? Icons.check_circle :
+                              op.status == SyncOpStatus.failed ? Icons.error :
+                              op.status == SyncOpStatus.syncing ? Icons.sync : Icons.hourglass_empty;
+                  final color = op.status == SyncOpStatus.synced ? Colors.green :
+                                op.status == SyncOpStatus.failed ? Colors.red :
+                                op.status == SyncOpStatus.syncing ? Colors.blue : Colors.amber;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(children: [
+                      Icon(icon, size: 14, color: color),
+                      const SizedBox(width: 6),
+                      Text(op.label, style: TextStyle(fontSize: 12, color: textSecondary)),
+                      const Spacer(),
+                      Text(
+                        op.status == SyncOpStatus.synced ? '${op.latencyMs}ms' :
+                        op.status == SyncOpStatus.syncing ? 'جاري...' :
+                        op.status == SyncOpStatus.failed ? (op.lastError ?? 'خطأ') :
+                        'محاولة ${op.retryCount + 1}',
+                        style: TextStyle(fontSize: 10, color: textMuted),
+                      ),
+                    ]),
+                  );
+                },
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _badge(String label, int count, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('$count', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87)),
+      ]),
+    );
+  }
+
+  String _fmtTime(DateTime? t) {
+    if (t == null) return 'لم تتم بعد';
+    final d = DateTime.now().difference(t);
+    if (d.inSeconds < 60) return 'منذ ${d.inSeconds}ث';
+    if (d.inMinutes < 60) return 'منذ ${d.inMinutes}د';
+    return 'منذ ${d.inHours}س';
+  }
+
+  int _avgLatency(List<SyncOp> ops) {
+    final synced = ops.where((o) => o.status == SyncOpStatus.synced && o.latencyMs > 0).toList();
+    if (synced.isEmpty) return 0;
+    return synced.fold(0, (s, o) => s + o.latencyMs) ~/ synced.length;
+  }
+}
+
 
 class _InfoRow extends StatelessWidget {
   final String label;

@@ -129,14 +129,31 @@ class AppEntryPoint extends StatefulWidget {
   State<AppEntryPoint> createState() => _AppEntryPointState();
 }
 
-class _AppEntryPointState extends State<AppEntryPoint> {
+class _AppEntryPointState extends State<AppEntryPoint> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().loadUser();
       context.read<UpdateService>().checkForUpdate();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final syncService = context.read<SyncService>();
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      syncService.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      syncService.resume();
+    }
   }
 
   @override

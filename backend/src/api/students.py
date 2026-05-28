@@ -129,25 +129,6 @@ async def reset_student_pin(
     return {"message": "PIN updated successfully", "has_pin": True}
 
 
-@router.get("/{student_id}/pin")
-async def get_student_pin(
-    student_id: str,
-    current_user: dict = Depends(get_current_teacher),
-):
-    student = await student_service.get_by_id(student_id)
-    if not student or student["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
-
-    if not student.get("pin_hash"):
-        return {"has_pin": False, "pin": None, "hint": "لم يتم تعيين رمز سري بعد"}
-
-    return {
-        "has_pin": True,
-        "pin": None,
-        "hint": "الرمز السري موجود. يمكنك إعادة تعيينه من خلال هذا الرابط أو الاتصال بالمدرس.",
-    }
-
-
 @router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_student(
     student_id: str,

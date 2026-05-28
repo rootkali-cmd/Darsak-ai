@@ -3,13 +3,13 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AiService {
-  static const String _apiKey = 'ydc-sk-f5e0a57bdac0f542-Wsky9guXdqGprP0Sk7FNWpH7XbN7iKxQ-5ad8efee';
+  static String get _apiKey => const String.fromEnvironment('AI_API_KEY', defaultValue: '');
   static const int _dailyLimit = 5;
   static const String _prefCount = 'ai_chat_count';
   static const String _prefDate = 'ai_chat_date';
 
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://api.you.com',
+    baseUrl: const String.fromEnvironment('AI_API_BASE_URL', defaultValue: 'https://api.you.com'),
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 60),
   ));

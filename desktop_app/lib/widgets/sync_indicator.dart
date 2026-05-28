@@ -1,81 +1,58 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import 'package:provider/provider.dart';
+import '../core/sync_service.dart';
 
 class SyncIndicator extends StatelessWidget {
-  final bool isOnline;
-  final bool isSyncing;
-  final String status;
-  final VoidCallback onSync;
-
-  const SyncIndicator({
-    super.key,
-    required this.isOnline,
-    required this.isSyncing,
-    required this.status,
-    required this.onSync,
-  });
+  const SyncIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final sync = context.watch<SyncService>();
+
+    String text;
+    Color color;
+    IconData icon;
+
+    if (sync.isSyncing) {
+      text = 'جاري المزامنة...';
+      color = const Color(0xFF3B82F6);
+      icon = Icons.sync;
+    } else if (!sync.isOnline) {
+      text = 'غير متصل';
+      color = const Color(0xFFF59E0B);
+      icon = Icons.cloud_off;
+    } else if (sync.failedCount > 0) {
+      text = 'خطأ في المزامنة';
+      color = const Color(0xFFEF4444);
+      icon = Icons.error_outline;
+    } else if (sync.pendingCount > 0) {
+      text = 'في الانتظار: ${sync.pendingCount}';
+      color = const Color(0xFFF59E0B);
+      icon = Icons.cloud_upload;
+    } else {
+      text = 'تمت المزامنة';
+      color = const Color(0xFF22C55E);
+      icon = Icons.cloud_done;
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: (isOnline ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: (isOnline ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.3),
-        ),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isSyncing)
-            SizedBox(
-              width: 12,
-              height: 12,
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(fontSize: 11, color: color)),
+          if (sync.isSyncing) ...[
+            const SizedBox(width: 6),
+            SizedBox(width: 12, height: 12,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppTheme.accent2,
-              ),
-            )
-          else
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isOnline ? AppTheme.success : AppTheme.danger,
-                boxShadow: [
-                  BoxShadow(
-                    color: (isOnline ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.5),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(width: 8),
-          Text(
-            status,
-            style: TextStyle(
-              color: isOnline ? AppTheme.success : AppTheme.danger,
-              fontSize: 10,
-              fontFamily: 'monospace',
-            ),
-          ),
-          if (isOnline && !isSyncing) ...[
-            const SizedBox(width: 8),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: onSync,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppTheme.accent2.withValues(alpha: 0.3)),
-                  ),
-                  child: const Icon(Icons.sync, size: 12, color: AppTheme.accent2),
-                ),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
           ],

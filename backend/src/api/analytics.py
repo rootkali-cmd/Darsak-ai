@@ -128,7 +128,8 @@ async def analytics_events(
                 except json.JSONDecodeError:
                     continue
     except Exception:
-        pass
+        logger = logging.getLogger("darsak")
+        logger.debug("Failed to read analytics events")
 
     return {"events": results}
 
@@ -158,7 +159,8 @@ async def analytics_channels(admin: dict = Depends(get_current_admin)):
                 except json.JSONDecodeError:
                     continue
     except Exception:
-        pass
+        import logging
+        logging.getLogger("darsak").debug("Failed to read analytics channels")
 
     channel_counts: dict[str, int] = {}
     for de in data_entries:

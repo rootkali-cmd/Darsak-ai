@@ -211,7 +211,8 @@ async def create_payment_request(
         from src.api.webhook import notify_admin_payment_request
         await notify_admin_payment_request(request, plan, user=current_user)
     except Exception:
-        pass
+        import logging
+        logging.getLogger("darsak").debug("Telegram notification skipped")
 
     return {"ok": True, "payment_id": request["id"]}
 

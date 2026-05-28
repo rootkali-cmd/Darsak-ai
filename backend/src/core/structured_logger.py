@@ -99,8 +99,8 @@ def count_events(event: str | None = None, since: str | None = None) -> int:
                     count += 1
                 except json.JSONDecodeError:
                     continue
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to count events: %s", e)
 
     return count
 
@@ -127,8 +127,8 @@ def aggregate_events(
                     counts[key] = counts.get(key, 0) + 1
                 except json.JSONDecodeError:
                     continue
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to aggregate events: %s", e)
 
     sorted_items = sorted(counts.items(), key=lambda x: -x[1])
     return [{"key": k, "count": v} for k, v in sorted_items[:limit]]
