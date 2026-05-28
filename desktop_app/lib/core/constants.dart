@@ -1,7 +1,7 @@
 class AppConstants {
   static const String apiBaseUrl = 'https://darsak-backend.fly.dev/api';
   static const String appName = 'DarsakAI Desktop';
-  static const String appVersion = '1.2.0';
+  static const String appVersion = '1.3.0';
 
   static String get platformName {
     if (const bool.fromEnvironment('is_linux', defaultValue: false)) return 'linux';
