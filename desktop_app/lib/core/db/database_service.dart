@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import '../../models/student.dart';
@@ -24,7 +23,6 @@ class DatabaseService {
 
   Future<void> init(String dbPath) async {
     if (_initialized) return;
-    await applyWorkaroundToOpenSqlite3OnDesktop();
     final dir = p.dirname(dbPath);
     final dirFile = io.Directory(dir);
     if (!await dirFile.exists()) {
@@ -639,7 +637,7 @@ class DatabaseService {
   Map<String, dynamic> _rowToMap(Row r, List<String> columns) {
     final map = <String, dynamic>{};
     for (final c in columns) {
-      final v = r.columnNameToIndex.containsKey(c) ? r[c] : null;
+      final v = r.containsKey(c) ? r[c] : null;
       if (v is int) {
         if (c == 'paid' || c == 'is_paid') {
           map[c] = v == 1;

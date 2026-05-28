@@ -148,7 +148,7 @@ class MigrationHelper {
       if (item == null) continue;
       try {
         DatabaseService.instance.addToDeadLetter(
-          item,
+          Map<String, dynamic>.from(item),
           error: item['error']?.toString(),
         );
       } catch (_) {}
