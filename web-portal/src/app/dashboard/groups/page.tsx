@@ -2,11 +2,11 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Plus, Trash2, Edit2, Loader2, X, BookOpen } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, Trash2, Edit2, Loader2, X, BookOpen, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { GlassCard, NeonButton, Section } from '@/components/ui'
-import { groupsApi } from '@/lib/api'
+import { groupsApi, studentsApi } from '@/lib/api'
 
 export default function GroupsPage() {
   const [showAddModal, setShowAddModal] = useState(false)
@@ -23,6 +23,27 @@ export default function GroupsPage() {
     queryKey: ['groups'],
     queryFn: () => groupsApi.list().then((r) => r.data),
   })
+
+  const { data: students } = useQuery({
+    queryKey: ['students'],
+    queryFn: () => studentsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((s: any) => { const k = s.code || s.id; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
+
+  const studentCountByGroup = useMemo(() => {
+    const map: Record<string, number> = {}
+    if (students) {
+      for (const s of students) {
+        if (s.group_id) {
+          map[s.group_id] = (map[s.group_id] || 0) + 1
+        }
+      }
+    }
+    return map
+  }, [students])
 
   const createMutation = useMutation({
     mutationFn: (data: any) => groupsApi.create(data),
@@ -107,6 +128,10 @@ export default function GroupsPage() {
                   <div className="flex justify-between"><span className="text-[var(--text-muted)]">المستوى:</span><span>{levelLabels[group.level]}</span></div>
                   <div className="flex justify-between"><span className="text-[var(--text-muted)]">اليوم:</span><span>{dayLabels[group.day_of_week]}</span></div>
                   <div className="flex justify-between"><span className="text-[var(--text-muted)]">الوقت:</span><span className="font-mono" dir="ltr">{group.time_slot}</span></div>
+                  <div className="flex justify-between items-center pt-1 border-t border-[var(--border-color)] mt-2">
+                    <span className="text-[var(--text-muted)]">عدد الطلاب:</span>
+                    <span className="font-bold text-[var(--accent)] flex items-center gap-1"><Users className="w-3.5 h-3.5" />{studentCountByGroup[group.id] || 0}</span>
+                  </div>
                 </div>
               </GlassCard>
             </Section>
