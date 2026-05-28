@@ -143,6 +143,11 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
+        if (!auth.initialLoadComplete) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
         if (auth.isAuthenticated) {
           if (auth.onboardingCompleted) {
             return DashboardScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);

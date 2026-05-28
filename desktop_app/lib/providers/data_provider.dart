@@ -24,7 +24,8 @@ class DataProvider extends ChangeNotifier {
 
   void _onSyncChange(String status, String type) {
     if (type == 'synced' || type == 'connected') {
-      _syncFromApi();
+      _loadFromLocal();
+      notifyListeners();
     }
   }
 
@@ -52,13 +53,18 @@ class DataProvider extends ChangeNotifier {
   Future<void> _syncFromApi() async {
     try {
       final pendingIds = <String>{};
+      final pendingDeleteIds = <String>{};
       for (final item in LocalDB.getUnsyncedItems()) {
         final data = item['data'] as Map?;
         if (data != null) {
           final id = data['id']?.toString();
-          if (id != null && id.isNotEmpty) pendingIds.add(id);
           final code = data['code']?.toString();
+          if (id != null && id.isNotEmpty) pendingIds.add(id);
           if (code != null && code.isNotEmpty) pendingIds.add(code);
+          if (item['type'] == 'delete_student') {
+            if (id != null && id.isNotEmpty) pendingDeleteIds.add(id);
+            if (code != null && code.isNotEmpty) pendingDeleteIds.add(code);
+          }
         }
       }
 
@@ -69,10 +75,12 @@ class DataProvider extends ChangeNotifier {
         final apiStudents = studentsData.map((s) => StudentModel.fromJson(s)).toList();
         for (final s in apiStudents) {
           if (!pendingIds.contains(s.id) && !pendingIds.contains(s.code)) {
-            LocalDB.saveData(LocalDB.studentsBox, s.id, s.toJson());
+            LocalDB.saveData(LocalDB.studentsBox, s.code, s.toJson());
           }
         }
-        _students = apiStudents;
+        _students = apiStudents
+            .where((s) => !pendingDeleteIds.contains(s.id) && !pendingDeleteIds.contains(s.code))
+            .toList();
       }
 
       if (groupsData.isNotEmpty) {
@@ -127,6 +135,9 @@ class DataProvider extends ChangeNotifier {
   void removeStudent(String studentId, String studentCode) {
     _students.removeWhere((s) => s.id == studentId);
     LocalDB.deleteData(LocalDB.studentsBox, studentCode);
+    if (studentId != studentCode) {
+      LocalDB.deleteData(LocalDB.studentsBox, studentId);
+    }
     notifyListeners();
   }
 

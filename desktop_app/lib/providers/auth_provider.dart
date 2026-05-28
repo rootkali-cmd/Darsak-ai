@@ -9,6 +9,7 @@ class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   UserModel? _user;
   bool _isLoading = false;
+  bool _initialLoadComplete = false;
   String? _error;
   bool _onboardingCompleted = false;
   List<String> _subjects = [];
@@ -17,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
+  bool get initialLoadComplete => _initialLoadComplete;
   bool get onboardingCompleted => _onboardingCompleted;
   List<String> get subjects => _subjects;
   List<String> get levels => _levels;
@@ -59,8 +61,18 @@ class AuthProvider extends ChangeNotifier {
   Future<void> loadUser() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token');
-    if (token == null) return;
+    if (token == null) {
+      // Try cache anyway — maybe user was logged in before but token expired
+      await _loadCachedUser();
+      _initialLoadComplete = true;
+      return;
+    }
 
+    // Load cached user immediately (instant, no internet needed)
+    await _loadCachedUser();
+    _initialLoadComplete = true;
+
+    // Then refresh from server in background (silent update)
     try {
       final userData = await _api.getMe();
       _user = UserModel.fromJson(userData);
@@ -70,7 +82,7 @@ class AuthProvider extends ChangeNotifier {
       await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
       notifyListeners();
     } catch (_) {
-      await _loadCachedUser();
+      // Server offline — cached data already loaded above, keep it
     }
   }
 
