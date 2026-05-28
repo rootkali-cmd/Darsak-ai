@@ -37,11 +37,26 @@ export default function GroupsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => groupsApi.delete(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['groups'] })
+      const previous = queryClient.getQueryData(['groups'])
+      queryClient.setQueryData(['groups'], (old: any[] | undefined) =>
+        old ? old.filter((g: any) => g.id !== id) : [],
+      )
+      return { previous }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
       toast.success('تم حذف المجموعة بنجاح')
     },
-    onError: () => toast.error('فشل حذف المجموعة'),
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['groups'], context.previous)
+      }
+      toast.error('فشل حذف المجموعة')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+    },
   })
 
   const levelLabels: Record<string, string> = { preparatory: 'إعدادي', secondary: 'ثانوي' }

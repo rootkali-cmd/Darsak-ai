@@ -14,8 +14,22 @@ export default function AttendancePage() {
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, string>>({})
   const queryClient = useQueryClient()
 
-  const { data: students } = useQuery({ queryKey: ['students'], queryFn: () => studentsApi.list().then((r) => r.data) })
-  const { data: groups } = useQuery({ queryKey: ['groups'], queryFn: () => groupsApi.list().then((r) => r.data) })
+  const { data: students } = useQuery({
+    queryKey: ['students'],
+    queryFn: () => studentsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((s: any) => { const k = s.code || s.id; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
+  const { data: groups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => groupsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((g: any) => { const k = g.id || g.name; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
   const { data: attendanceStats } = useQuery({ queryKey: ['attendance-stats', selectedDate], queryFn: () => attendanceApi.stats({ date: selectedDate }).then((r) => r.data) })
 
   const markMutation = useMutation({

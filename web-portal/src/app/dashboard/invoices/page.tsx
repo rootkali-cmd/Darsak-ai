@@ -18,8 +18,22 @@ export default function InvoicesPage() {
   const queryClient = useQueryClient()
 
   const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => invoicesApi.list().then((r) => r.data) })
-  const { data: students } = useQuery({ queryKey: ['students'], queryFn: () => studentsApi.list().then((r) => r.data) })
-  const { data: groups } = useQuery({ queryKey: ['groups'], queryFn: () => groupsApi.list().then((r) => r.data) })
+  const { data: students } = useQuery({
+    queryKey: ['students'],
+    queryFn: () => studentsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((s: any) => { const k = s.code || s.id; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
+  const { data: groups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => groupsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((g: any) => { const k = g.id || g.name; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
   const { data: invoiceStats } = useQuery({ queryKey: ['invoice-stats'], queryFn: () => invoicesApi.stats().then((r) => r.data) })
 
   const filteredStudents = students?.filter((s: any) => {
@@ -43,8 +57,20 @@ export default function InvoicesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => invoicesApi.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['invoices', 'invoice-stats'] }); toast.success('تم حذف الفاتورة') },
-    onError: () => toast.error('فشل حذف الفاتورة'),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['invoices'] })
+      const previous = queryClient.getQueryData(['invoices'])
+      queryClient.setQueryData(['invoices'], (old: any[] | undefined) =>
+        old ? old.filter((i: any) => i.id !== id) : [],
+      )
+      return { previous }
+    },
+    onSuccess: () => { toast.success('تم حذف الفاتورة') },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['invoices'], context.previous)
+      toast.error('فشل حذف الفاتورة')
+    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ['invoices', 'invoice-stats'] }) },
   })
 
   const togglePaid = (invoice: any) => {

@@ -17,8 +17,22 @@ export default function GradesPage() {
   const queryClient = useQueryClient()
 
   const { data: grades, isLoading } = useQuery({ queryKey: ['grades'], queryFn: () => gradesApi.list().then((r) => r.data) })
-  const { data: students } = useQuery({ queryKey: ['students'], queryFn: () => studentsApi.list().then((r) => r.data) })
-  const { data: groups } = useQuery({ queryKey: ['groups'], queryFn: () => groupsApi.list().then((r) => r.data) })
+  const { data: students } = useQuery({
+    queryKey: ['students'],
+    queryFn: () => studentsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((s: any) => { const k = s.code || s.id; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
+  const { data: groups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => groupsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((g: any) => { const k = g.id || g.name; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
   const { data: gradeStats } = useQuery({ queryKey: ['grade-stats'], queryFn: () => gradesApi.stats().then((r) => r.data) })
 
   const filteredStudents = students?.filter((s: any) => {
@@ -36,8 +50,20 @@ export default function GradesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => gradesApi.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['grades', 'grade-stats'] }); toast.success('تم حذف الدرجة') },
-    onError: () => toast.error('فشل حذف الدرجة'),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['grades'] })
+      const previous = queryClient.getQueryData(['grades'])
+      queryClient.setQueryData(['grades'], (old: any[] | undefined) =>
+        old ? old.filter((g: any) => g.id !== id) : [],
+      )
+      return { previous }
+    },
+    onSuccess: () => { toast.success('تم حذف الدرجة') },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(['grades'], context.previous)
+      toast.error('فشل حذف الدرجة')
+    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ['grades', 'grade-stats'] }) },
   })
 
   return (

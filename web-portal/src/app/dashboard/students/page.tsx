@@ -24,15 +24,39 @@ export default function StudentsPage() {
   const { data: students, isLoading } = useQuery({
     queryKey: ['students', search],
     queryFn: () => studentsApi.list({ search: search || undefined }).then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((s: any) => {
+        const key = s.code || s.id
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+    },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => studentsApi.delete(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['students', search] })
+      const previous = queryClient.getQueryData(['students', search])
+      queryClient.setQueryData(['students', search], (old: any[] | undefined) =>
+        old ? old.filter((s: any) => s.id !== id) : [],
+      )
+      return { previous }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] })
       toast.success('تم حذف الطالب بنجاح')
     },
-    onError: () => toast.error('فشل حذف الطالب'),
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['students', search], context.previous)
+      }
+      toast.error('فشل حذف الطالب')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+    },
   })
 
   const createMutation = useMutation({
