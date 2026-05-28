@@ -241,10 +241,10 @@ class SyncService {
     try {
       try { await LocalDB.createBackup(); } catch (_) {}
 
-      await _syncTableIncremental('students', _api.getStudents(), LocalDB.studentsBox, 'code', fallbackField: 'id');
-      await _syncTableIncremental('groups', _api.getGroups(), LocalDB.groupsBox, 'id');
-      await _syncTableIncremental('grades', _api.getGrades(), LocalDB.gradesBox, 'id');
-      await _syncTableIncremental('invoices', _api.getInvoices(), LocalDB.invoicesBox, 'id');
+      await _syncTableIncremental('students', () => _api.getStudents(), LocalDB.studentsBox, 'code', fallbackField: 'id');
+      await _syncTableIncremental('groups', () => _api.getGroups(), LocalDB.groupsBox, 'id');
+      await _syncTableIncremental('grades', () => _api.getGrades(), LocalDB.gradesBox, 'id');
+      await _syncTableIncremental('invoices', () => _api.getInvoices(), LocalDB.invoicesBox, 'id');
 
       try {
         final lastSync = _getCursor('attendance') ?? LocalDB.getLastSyncTime()?.toIso8601String() ?? DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
