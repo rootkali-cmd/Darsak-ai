@@ -30,8 +30,8 @@ class ActivateCodeResponse(BaseModel):
 
 
 class TeacherSubscriptionResponse(BaseModel):
-    id: UUID
-    plan_id: UUID
+    id: UUID | str
+    plan_id: UUID | str
     plan_name: str
     plan: SubscriptionPlanResponse | None = None
     activated_at: datetime
@@ -40,6 +40,8 @@ class TeacherSubscriptionResponse(BaseModel):
     auto_renew: bool
     days_remaining: int = 0
     is_expired: bool = False
+    is_trial: bool = False
+    trial_end_date: datetime | None = None
 
     model_config = {"from_attributes": True}
 

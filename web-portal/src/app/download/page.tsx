@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { Smartphone, Monitor, ArrowLeft, Download, Sparkles } from 'lucide-react'
+import { Smartphone, Monitor, Download } from 'lucide-react'
 
 const apps: {
   id: string;
@@ -19,7 +19,7 @@ const apps: {
 }[] = [
   {
     id: 'mobile',
-      title: 'DarsakAI Student v1.2.1',
+    title: 'DarsakAI Student v1.2.1',
     description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
     descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,
@@ -32,9 +32,9 @@ const apps: {
   },
   {
     id: 'desktop',
-      title: 'DarsakAI Desktop v1.2.0',
-    description: 'نظام إدارة الفصل للمعلم - students, grades, attendance, exams',
-    descriptionEn: 'Teacher desktop app — full classroom & exam management',
+    title: 'DarsakAI Desktop v1.2.0',
+    description: 'نظام إدارة السنتر - طلاب، درجات، حضور، امتحانات، فواتير',
+    descriptionEn: 'Learning center management — students, grades, attendance, exams',
     icon: Monitor,
     color: '#ccff00',
     files: [
@@ -43,7 +43,6 @@ const apps: {
     platform: 'Windows ✓',
     note: 'Build 1.2.0 • Installer بـ GUI + Desktop Shortcut • يدعم QR Code',
   },
-
 ]
 
 const features = [
@@ -72,160 +71,105 @@ export default function DownloadPage() {
   }, [])
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative px-4 py-12">
-      {/* Corner decoration */}
-      <div className="fixed top-4 left-4 z-50 hud-text flex items-center gap-2">
-        <span className="text-[var(--accent)]">●</span>
-        <span>DARSAK AI</span>
-        <span className="text-[rgba(255,255,255,0.2)]">/</span>
-        <span>DOWNLOADS</span>
-      </div>
-
-      {/* Back button */}
+    <div className="min-h-screen py-16 px-4">
       <button
         onClick={() => router.push('/')}
-        className="fixed top-4 ltr:left-4 rtl:right-4 z-50 px-4 py-2 border border-[var(--border)] hover:border-[var(--accent-2)] text-xs hud-text transition-colors"
-        style={{ background: 'var(--card-bg)' }}
+        className="fixed top-4 left-4 z-50 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
       >
         ← {isAr ? 'رجوع' : 'BACK'}
       </button>
 
-      <div className="relative z-10 w-full max-w-5xl">
-        {/* Header */}
+      <div className="w-full max-w-5xl mx-auto mt-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold mb-3" style={{ fontFamily: 'var(--font-display)' }}>
-            DOWNLOADS
-          </h1>
-          <p className="text-sm hud-text text-[var(--text-muted)]">
+          <h1 className="text-3xl font-bold mb-2">DOWNLOADS</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {isAr ? 'حمّل تطبيقات درسك أي' : 'Download DarsakAI apps'}
           </p>
         </motion.div>
 
-        {/* Apps grid */}
         <div className="grid md:grid-cols-3 gap-6">
           {apps.map((app, i) => (
             <motion.div
               key={app.id}
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 * (i + 1) }}
+              transition={{ delay: 0.1 * (i + 1) }}
+              className="card p-6 flex flex-col h-full"
+              style={{ borderColor: `color-mix(in srgb, ${app.color} 25%, transparent)` }}
             >
-              <div
-                className="brutal-card p-6 flex flex-col h-full relative"
-                style={{ background: 'var(--card-bg)', position: 'relative' }}
-              >
-                {/* Corner brackets */}
-                <div className="absolute top-0 left-0 w-4 h-4 border-t border-l" style={{ borderColor: app.color }} />
-                <div className="absolute top-0 right-0 w-4 h-4 border-t border-r" style={{ borderColor: app.color }} />
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l" style={{ borderColor: app.color }} />
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r" style={{ borderColor: app.color }} />
+              <div className="w-12 h-12 flex items-center justify-center mb-4" style={{ border: `1px solid ${app.color}` }}>
+                <app.icon className="w-6 h-6" style={{ color: app.color }} />
+              </div>
 
-                {/* Icon */}
-                <div
-                  className="w-12 h-12 flex items-center justify-center mb-4"
-                  style={{ border: `1px solid ${app.color}` }}
-                >
-                  <app.icon className="w-6 h-6" style={{ color: app.color }} />
+              <h2 className="text-lg font-bold mb-1">{app.title}</h2>
+
+              <p className="text-xs text-[var(--text-muted)] mb-4 leading-relaxed">
+                {isAr ? app.description : app.descriptionEn}
+              </p>
+
+              <div className="mt-auto space-y-3">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-muted)]">{isAr ? 'المنصة' : 'Platform'}</span>
+                  <span style={{ color: app.color }}>{app.platform}</span>
                 </div>
-
-                {/* Title */}
-                <h2 className="text-lg font-bold mb-1" style={{ fontFamily: 'var(--font-display)' }}>
-                  {app.title}
-                </h2>
-
-                {/* Description */}
-                <p className="text-xs hud-text text-[var(--text-muted)] mb-4 leading-relaxed" style={{ fontFamily: 'var(--font-arabic)' }}>
-                  {isAr ? app.description : app.descriptionEn}
-                </p>
-
-                {/* Meta info */}
-                <div className="mt-auto space-y-3">
-                  <div className="flex justify-between text-[10px] hud-text">
-                    <span className="text-[var(--text-muted)]">{isAr ? 'المنصة' : 'Platform'}</span>
-                    <span style={{ color: app.color }}>{app.platform}</span>
+                {app.size && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[var(--text-muted)]">{isAr ? 'الحجم' : 'Size'}</span>
+                    <span>{app.size}</span>
                   </div>
-                  {app.size && (
-                    <div className="flex justify-between text-[10px] hud-text">
-                      <span className="text-[var(--text-muted)]">{isAr ? 'الحجم' : 'Size'}</span>
-                      <span>{app.size}</span>
-                    </div>
-                  )}
-                  {app.note && (
-                    <p className="text-[10px] hud-text text-[var(--text-muted)] opacity-60 pt-2 border-t border-[var(--border)]">
-                      {app.note}
-                    </p>
-                  )}
+                )}
+                {app.note && (
+                  <p className="text-[10px] text-[var(--text-muted)] opacity-60 pt-2 border-t border-[var(--card-border)]">
+                    {app.note}
+                  </p>
+                )}
 
-                  {/* Download button(s) */}
-                  {'files' in app && app.files ? (
-                    <div className="space-y-2">
-                      {app.files.map((f: any) => (
-                        <a
-                          key={f.name}
-                          href={`https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/${f.name}`}
-                          download
-                          className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold hud-text uppercase tracking-wider transition-all"
-                          style={{
-                            background: app.color,
-                            color: '#000',
-                            border: `1px solid ${app.color}`,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.opacity = '0.8'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.opacity = '1'
-                          }}
-                        >
-                          <Download className="w-3 h-3" />
-                          {isAr ? f.label : f.label} ({f.size})
-                        </a>
-                      ))}
-                    </div>
-                  ) : (
-                    <div
-                      className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold hud-text uppercase tracking-wider cursor-not-allowed"
-                      style={{
-                        border: `1px solid var(--border)`,
-                        color: 'var(--text-muted)',
-                        opacity: 0.5,
-                      }}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      {isAr ? 'قريباً' : 'COMING SOON'}
-                    </div>
-                  )}
-                </div>
+                {'files' in app && app.files ? (
+                  <div className="space-y-2">
+                    {app.files.map((f: any) => (
+                      <a
+                        key={f.name}
+                        href={`https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/${f.name}`}
+                        download
+                        className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold transition-opacity"
+                        style={{ background: app.color, color: '#000' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                      >
+                        <Download className="w-3 h-3" />
+                        {f.label} ({f.size})
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="w-full flex items-center justify-center gap-2 py-2.5 text-xs cursor-not-allowed"
+                    style={{ border: '1px solid var(--card-border)', color: 'var(--text-muted)', opacity: 0.5 }}
+                  >
+                    {isAr ? 'قريباً' : 'COMING SOON'}
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Features / Changelog */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
           className="mt-12 max-w-lg mx-auto"
         >
-          <div
-            className="p-6"
-            style={{
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <h3 className="text-sm font-bold mb-4 hud-text" style={{ fontFamily: 'var(--font-display)' }}>
+          <div className="card p-6">
+            <h3 className="text-sm font-bold mb-4">
               {isAr ? 'الميزات في v1.2.0' : 'v1.2.0 FEATURES'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 text-[10px] hud-text">
+                <div key={i} className="flex items-center gap-2 text-xs">
                   <span className="text-[var(--accent-2)]">▸</span>
                   <span className="text-[var(--text-muted)]">
                     {isAr ? f.ar : f.en}
@@ -236,24 +180,17 @@ export default function DownloadPage() {
           </div>
         </motion.div>
 
-        {/* Info note */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="text-center text-[10px] hud-text text-[var(--text-muted)] mt-8 opacity-50"
+          transition={{ delay: 0.8 }}
+          className="text-center text-xs text-[var(--text-muted)] mt-8 opacity-50"
         >
           {isAr
             ? 'التطبيقات تحت التطوير • للاستخدام الداخلي'
             : 'Apps are under active development • For internal use'}
         </motion.p>
       </div>
-      <style>{`
-        @media (max-width: 640px) {
-          .fixed.top-4.left-4, .fixed.top-4 { font-size: 7px; }
-          .hud-text { letter-spacing: 1px; }
-        }
-      `}</style>
     </div>
   )
 }

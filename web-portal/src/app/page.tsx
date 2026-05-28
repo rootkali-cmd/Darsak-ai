@@ -2,428 +2,365 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { auth } from '@/lib/auth'
 
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 24 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true },
+  transition: { delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+})
+
+const stagger = {
+  initial: {},
+  whileInView: { transition: { staggerChildren: 0.06 } },
+  viewport: { once: true },
+}
+
 const features = [
-  { icon: '◈', title: 'إدارة الطلاب', desc: 'إضافة وتنظيم ومتابعة الطلاب مع باركود وبينات كاملة' },
-  { icon: '◈', title: 'تحليل الأداء', desc: 'تحليل درجات الطلاب مع رسوم بيانية وتقارير ذكية' },
-  { icon: '◈', title: 'الحضور', desc: 'تسجيل الحضور بالباركود وإنشاء تقارير يومية' },
-  { icon: '◈', title: 'الاختبارات', desc: 'إنشاء اختبارات إلكترونية وتصحيح آلي وتحليل النتائج' },
-  { icon: '◈', title: 'المجموعات', desc: 'تقسيم الطلاب لمجموعات حسب المرحلة والمادة' },
-  { icon: '◈', title: 'PDF ذكي', desc: 'استخراج أسئلة من ملفات PDF باستخدام AI' },
+  { num: '01', title: 'إدارة الطلاب', desc: 'إضافة الطلاب بالباركود، متابعة بيناتهم، تواصل مع أولياء الأمور — كل طالب وله ملف كامل متكامل.' },
+  { num: '02', title: 'الحضور والغياب', desc: 'سجل حضور الطلاب بالباركود أو يدوياً. تقارير يومية وشهرية بنسبة حضور كل طالب.' },
+  { num: '03', title: 'الدرجات والامتحانات', desc: 'إنشاء امتحانات، تصحيح آلي، تحليل النتائج، وإشعار أولياء الأمور بالنتائج.' },
+  { num: '04', title: 'المجموعات والفصول', desc: 'قسم الطلاب حسب المرحلة والمادة والوقت. كل مجموعة لها جدول منفصل.' },
+  { num: '05', title: 'الفواتير والمصاريف', desc: 'تحصيل المصاريف إلكترونياً، فواتير مدفوعة وغير مدفوعة، تقارير مالية.' },
+  { num: '06', title: 'تحليلات AI', desc: 'تحليل أداء كل طالب بالذكاء الاصطناعي، اكتشف نقاط القوة والضعف.' },
+]
+
+const howItWorks = [
+  { step: '1', title: 'سجل حسابك', desc: 'أنشئ حساب مجاني في دقيقة. لا تحتاج بطاقة ائتمان.' },
+  { step: '2', title: 'أضف طلابك', desc: 'استورد الطلاب أو أضفهم واحداً واحداً. النظام يولد كود QR لكل طالب.' },
+  { step: '3', title: 'نظم مجموعاتك', desc: 'قسم الطلاب حسب المستوى والمادة والوقت. كل مجموعة بجدول مستقل.' },
+  { step: '4', title: 'تابع وأنجز', desc: 'سجل الحضور، اعمل امتحانات، حصّل المصاريف — كل حاجة من لوحة تحكم واحدة.' },
 ]
 
 export default function LandingPage() {
   const router = useRouter()
   const [loggedIn, setLoggedIn] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     setLoggedIn(auth.isAuthenticated())
   }, [])
 
+  const navLinks = (
+    <>
+      <a href="/about" className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors" onClick={() => setMobileMenuOpen(false)}>من نحن</a>
+      <a href="/pricing" className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors" onClick={() => setMobileMenuOpen(false)}>الباقات</a>
+      <a href="/download" className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors" onClick={() => setMobileMenuOpen(false)}>التطبيقات</a>
+      <a href="/faq" className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors" onClick={() => setMobileMenuOpen(false)}>الأسئلة الشائعة</a>
+      {loggedIn ? (
+        <motion.button className="btn btn-primary btn-sm w-full sm:w-auto" onClick={() => router.push('/dashboard')} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>لوحة التحكم</motion.button>
+      ) : (
+        <>
+          <motion.button className="btn btn-ghost btn-sm w-full sm:w-auto" onClick={() => router.push('/login')} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>دخول</motion.button>
+          <motion.button className="btn btn-primary btn-sm w-full sm:w-auto" onClick={() => router.push('/register')} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>ابدأ مجاناً</motion.button>
+        </>
+      )}
+    </>
+  )
+
   return (
-    <div className="landing">
-      <header className="landing-header">
-        <div className="landing-logo">
-          <span className="landing-logo-icon">◈</span>
-          <span className="landing-logo-text">DARSAK AI</span>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
+      <motion.header
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-10 py-4"
+        style={{ background: 'var(--header-bg)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--card-border)' }}
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg text-[var(--accent)]">◈</span>
+          <span className="font-bold tracking-widest text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>DARSAK AI</span>
         </div>
-        <nav className="landing-nav">
-          <a href="/pricing">الباقات</a>
-          <a href="/download">التطبيقات</a>
-          {loggedIn ? (
-            <button className="landing-btn" onClick={() => router.push('/dashboard')}>
-              لوحة التحكم
-            </button>
-          ) : (
-            <>
-              <button className="landing-btn-outline" onClick={() => router.push('/login')}>
-                دخول
-              </button>
-              <button className="landing-btn" onClick={() => router.push('/register')}>
-                ابدأ مجاناً
-              </button>
-            </>
-          )}
+        <nav className="hidden md:flex items-center gap-4 md:gap-6">
+          {navLinks}
         </nav>
-      </header>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-2 text-[var(--text-muted)] hover:text-[var(--text)]"
+          aria-label="القائمة"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {mobileMenuOpen ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></> : <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>}
+          </svg>
+        </button>
+      </motion.header>
 
-      <main>
-        <section className="landing-hero">
-          <div className="landing-hero-grid" />
-          <motion.div
-            className="landing-hero-content"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <span className="landing-badge">AI-POWERED</span>
-            <h1>
-              <span className="landing-title-ar">منصة إدارة التعليم</span>
-              <span className="landing-title-en">DARSAK AI</span>
-            </h1>
-            <p className="landing-subtitle">
-              نظام متكامل لإدارة الفصول الدراسية، متابعة الطلاب، وتحليل الأداء باستخدام الذكاء الاصطناعي
-            </p>
-            <div className="landing-cta">
-              {loggedIn ? (
-                <button className="landing-btn landing-btn-lg" onClick={() => router.push('/dashboard')}>
-                  → لوحة التحكم
-                </button>
-              ) : (
-                <>
-                  <button className="landing-btn landing-btn-lg" onClick={() => router.push('/register')}>
-                    → ابدأ مجاناً
-                  </button>
-                  <button className="landing-btn-outline landing-btn-lg" onClick={() => router.push('/login')}>
-                    تسجيل الدخول
-                  </button>
-                </>
-              )}
-            </div>
-          </motion.div>
-        </section>
+      {mobileMenuOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="fixed top-16 left-0 right-0 z-40 flex flex-col items-center gap-4 p-6"
+          style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--card-border)' }}
+        >
+          {navLinks}
+        </motion.div>
+      )}
 
-        <section className="landing-features">
+      <main className="flex-1">
+        {/* ─── Hero ─── */}
+        <section className="relative min-h-[70vh] md:min-h-[85vh] flex items-center overflow-hidden">
           <motion.div
-            className="landing-section-header"
+            className="absolute inset-0"
+            style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px)', backgroundSize: '60px 60px' }}
             initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            <span className="landing-section-tag">FEATURES</span>
-            <h2>كل ما تحتاجه في منصة واحدة</h2>
-          </motion.div>
-          <div className="landing-features-grid">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                className="landing-feature-card"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <span className="landing-feature-icon">{f.icon}</span>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+          />
+          <div className="absolute top-20 left-10 w-80 h-80 rounded-full opacity-[0.04]" style={{ background: 'var(--accent)' }} />
+          <div className="absolute bottom-10 right-20 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'var(--accent-2)' }} />
+
+            <div className="relative z-10 w-full max-w-6xl mx-auto px-4 md:px-6 pt-24 md:pt-28 pb-16">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+
+              {/* Text side */}
+              <motion.div className="order-2 lg:order-2" initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
+                <motion.span
+                  className="inline-block px-3 py-1 text-xs tracking-widest mb-5 border"
+                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace" }}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15, duration: 0.4 }}
+                >AI-POWERED</motion.span>
+                <h1 className="mb-4">
+                  <motion.div
+                    className="text-4xl md:text-5xl lg:text-6xl font-black text-[var(--text)] leading-tight"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  >منصة إدارة السناتر</motion.div>
+                  <motion.div
+                    className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-[0.2em] mt-2"
+                    style={{ fontFamily: "'JetBrains Mono', monospace", background: 'linear-gradient(135deg, #dc2626, #ef4444)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  >DARSAK AI</motion.div>
+                </h1>
+                <motion.p
+                  className="text-base md:text-lg text-[var(--text-secondary)] leading-relaxed max-w-lg mb-8"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                >
+                  أول منصة متكاملة في مصر لإدارة السناتر التعليمية — طلاب، حضور، درجات، مصاريف، وتحليلات بالذكاء الاصطناعي.
+                </motion.p>
+                <motion.div
+                  className="flex gap-3 flex-wrap mb-12"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                >
+                  {loggedIn ? (
+                    <motion.button className="btn btn-primary btn-lg" onClick={() => router.push('/dashboard')} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>← لوحة التحكم</motion.button>
+                  ) : (
+                    <>
+                      <motion.button className="btn btn-primary btn-lg" onClick={() => router.push('/register')} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>← ابدأ مجاناً</motion.button>
+                      <motion.button className="btn btn-outline btn-lg" onClick={() => router.push('/login')} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>تسجيل الدخول</motion.button>
+                    </>
+                  )}
+                </motion.div>
+
+                {/* Trust bar */}
+                <motion.div
+                  className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+                  initial="initial"
+                  animate="animate"
+                  variants={{ initial: {}, animate: { transition: { staggerChildren: 0.07, delayChildren: 0.6 } } }}
+                >
+                  {[
+                    { num: '١٥٠٠٠+', label: 'مستخدم نشط' },
+                    { num: '٢٠٠٠٠٠+', label: 'طالب مسجل' },
+                    { num: '٩٨%', label: 'رضا العملاء' },
+                    { num: '٤.٨/٥', label: 'تقييم المنصة' },
+                  ].map((s) => (
+                    <motion.div key={s.label} variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}>
+                      <div className="text-lg font-black text-[var(--accent)]">{s.num}</div>
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
+                    </motion.div>
+                  ))}
+                </motion.div>
               </motion.div>
-            ))}
+
+              {/* Image side */}
+              <motion.div
+                className="order-1 lg:order-1 relative"
+                initial={{ opacity: 0, x: 40, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="relative">
+                  <motion.div
+                    className="absolute -inset-4 bg-gradient-to-br from-[var(--accent)]/10 to-transparent opacity-60"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.6 }}
+                    transition={{ delay: 0.5, duration: 0.6 }}
+                  />
+                  <Image
+                    src="/hero.png"
+                    alt="DARSAK AI platform"
+                    width={768}
+                    height={512}
+                    className="w-full h-auto relative"
+                    style={{ objectFit: 'cover' }}
+                    priority
+                  />
+                </div>
+              </motion.div>
+
+            </div>
           </div>
         </section>
 
-        <section className="landing-cta-section">
-          <motion.div
-            className="landing-cta-content"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2>استعد لتطوير أداء طلابك</h2>
-            <p>انضم إلى المدرسين الذين يستخدمون DARSAK AI لتحسين تجربة التعليم</p>
-            <button className="landing-btn landing-btn-lg" onClick={() => router.push('/register')}>
-              ← ابدأ مجاناً
-            </button>
+        {/* ─── Features ─── */}
+        <section className="py-20 px-6" style={{ background: 'var(--bg-secondary)' }}>
+          <div className="max-w-5xl mx-auto">
+            <motion.div className="text-center mb-14" {...fadeUp()}>
+              <span className="text-xs tracking-[0.2em] text-[var(--accent)]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>FEATURES</span>
+              <h2 className="text-3xl font-bold text-[var(--text)] mt-3">كل اللي تحتاجه لإدارة سنترك</h2>
+              <p className="text-[var(--text-muted)] mt-2 max-w-lg mx-auto">من الطالب الأول لباقي الشهر — كل حاجة في مكان واحد</p>
+            </motion.div>
+            <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" variants={stagger} initial="initial" whileInView="whileInView" viewport={{ once: true }}>
+              {features.map((f) => (
+                <motion.div
+                  key={f.title}
+                  className="card card-hover p-6"
+                  variants={{ initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 } }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <span className="text-xs font-bold tracking-wider text-[var(--accent)]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{f.num}</span>
+                  <h3 className="text-lg font-bold text-[var(--text)] mt-3 mb-2">{f.title}</h3>
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{f.desc}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ─── How It Works ─── */}
+        <section className="py-20 px-6">
+          <div className="max-w-4xl mx-auto">
+            <motion.div className="text-center mb-14" {...fadeUp()}>
+              <span className="text-xs tracking-[0.2em] text-[var(--accent)]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>HOW IT WORKS</span>
+              <h2 className="text-3xl font-bold text-[var(--text)] mt-3">ابدأ في ٤ خطوات بس</h2>
+              <p className="text-[var(--text-muted)] mt-2">من التسجيل لأول يوم دراسة — النظام جاهز في ١٠ دقائق</p>
+            </motion.div>
+            <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" variants={{ ...stagger, whileInView: { transition: { staggerChildren: 0.1 } } }} initial="initial" whileInView="whileInView" viewport={{ once: true }}>
+              {howItWorks.map((item) => (
+                <motion.div
+                  key={item.step}
+                  className="text-center"
+                  variants={{ initial: { opacity: 0, y: 20, scale: 0.95 }, whileInView: { opacity: 1, y: 0, scale: 1 } }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <motion.div
+                    className="w-12 h-12 flex items-center justify-center mx-auto mb-4 text-lg font-black text-white"
+                    style={{ background: 'var(--accent)' }}
+                    whileHover={{ scale: 1.1, rotate: -5 }}
+                  >{item.step}</motion.div>
+                  <h3 className="font-bold mb-2">{item.title}</h3>
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ─── Stats ─── */}
+        <section className="py-16 px-6" style={{ background: 'var(--bg-secondary)' }}>
+          <div className="max-w-4xl mx-auto">
+            <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-8" variants={{ ...stagger, whileInView: { transition: { staggerChildren: 0.08 } } }} initial="initial" whileInView="whileInView" viewport={{ once: true }}>
+              {[
+                { num: '١٥,٠٠٠+', label: 'مستخدم نشط' },
+                { num: '٢٠٠,٠٠٠+', label: 'طالب مسجل' },
+                { num: '٩٨%', label: 'رضا العملاء' },
+                { num: '٤.٨/٥', label: 'تقييم المنصة' },
+              ].map((s) => (
+                <motion.div
+                  key={s.label}
+                  className="text-center card p-6"
+                  variants={{ initial: { opacity: 0, y: 15, scale: 0.9 }, whileInView: { opacity: 1, y: 0, scale: 1 } }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="text-2xl font-black text-[var(--accent)]">{s.num}</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">{s.label}</div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ─── CTA ─── */}
+        <section className="py-24 px-6 text-center" style={{ background: 'var(--bg)' }}>
+          <motion.div className="max-w-xl mx-auto" initial={{ opacity: 0, y: 20, scale: 0.98 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
+            <h2 className="text-3xl font-bold text-[var(--text)] mb-3">جهز سنترك للموسم الجديد</h2>
+            <p className="text-[var(--text-secondary)] mb-3">أول ٣٠ يوم مجاناً — بدون بطاقة ائتمان — إلغاء في أي وقت</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)] mb-8">
+              <motion.span initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>✓ لا تحتاج بطاقة بنكية</motion.span>
+              <motion.span className="w-1 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.3 }} />
+              <motion.span initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.4 }}>✓ دعم فني مجاني</motion.span>
+              <motion.span className="w-1 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.5 }} />
+              <motion.span initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.6 }}>✓ إلغاء في أي وقت</motion.span>
+            </div>
+            <motion.button
+              className="btn btn-primary btn-lg"
+              onClick={() => router.push('/register')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >← ابدأ مجاناً — أول ٣٠ يوم</motion.button>
           </motion.div>
         </section>
       </main>
 
-      <footer className="landing-footer">
-        <div className="landing-footer-inner">
-          <span>© 2026 DARSAK AI</span>
-          <div className="landing-footer-links">
-            <a href="/pricing">الباقات</a>
-            <a href="/download">التطبيقات</a>
-            <a href="/login">دخول</a>
+      {/* ─── Footer ─── */}
+      <motion.footer
+        className="border-t py-8 px-6"
+        style={{ borderColor: 'var(--card-border)' }}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+            <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg text-[var(--accent)]">◈</span>
+                <span className="font-bold tracking-widest text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>DARSAK AI</span>
+              </div>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">أول منصة مصرية متكاملة لإدارة السناتر التعليمية بالذكاء الاصطناعي.</p>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+              <h4 className="font-bold text-sm mb-3">الروابط</h4>
+              <div className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+                <a href="/about" className="hover:text-[var(--text)] transition-colors">من نحن</a>
+                <a href="/pricing" className="hover:text-[var(--text)] transition-colors">الباقات</a>
+                <a href="/download" className="hover:text-[var(--text)] transition-colors">التطبيقات</a>
+                <a href="/faq" className="hover:text-[var(--text)] transition-colors">الأسئلة الشائعة</a>
+              </div>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
+              <h4 className="font-bold text-sm mb-3">القانوني</h4>
+              <div className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+                <a href="/privacy" className="hover:text-[var(--text)] transition-colors">سياسة الخصوصية</a>
+                <a href="/terms" className="hover:text-[var(--text)] transition-colors">شروط الخدمة</a>
+                <a href="/contact" className="hover:text-[var(--text)] transition-colors">اتصل بنا</a>
+              </div>
+            </motion.div>
           </div>
+          <motion.div
+            className="border-t text-center pt-6 text-xs text-[var(--text-muted)]"
+            style={{ borderColor: 'var(--card-border)' }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+          >© 2026 DARSAK AI. جميع الحقوق محفوظة.</motion.div>
         </div>
-      </footer>
-
-      <style dangerouslySetInnerHTML={{__html: `
-.landing {
-  min-height: 100vh;
-  background: var(--bg, #030303);
-  color: #e0e0e0;
-  font-family: 'Tajawal', system-ui, sans-serif;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── Header ── */
-.landing-header {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: rgba(3,3,3,0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.landing-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.landing-logo-icon {
-  font-size: 1.3rem;
-  color: #ff003c;
-}
-.landing-logo-text {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  color: #fff;
-}
-.landing-nav {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-.landing-nav a {
-  color: rgba(255,255,255,0.6);
-  text-decoration: none;
-  font-size: 0.85rem;
-  transition: color 0.2s;
-}
-.landing-nav a:hover { color: #fff; }
-
-/* ── Buttons ── */
-.landing-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.6rem 1.2rem;
-  background: #ff003c;
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  border: 1px solid #ff003c;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-family: 'Tajawal', system-ui, sans-serif;
-}
-.landing-btn:hover { background: #cc0030; }
-.landing-btn-outline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.6rem 1.2rem;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.8);
-  font-weight: 600;
-  font-size: 0.8rem;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: 'Tajawal', system-ui, sans-serif;
-}
-.landing-btn-outline:hover {
-  border-color: #ff003c;
-  color: #ff003c;
-}
-.landing-btn-lg {
-  padding: 0.9rem 2rem;
-  font-size: 0.95rem;
-}
-
-/* ── Hero ── */
-.landing-hero {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 6rem 2rem 4rem;
-  overflow: hidden;
-}
-.landing-hero-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  z-index: 0;
-}
-.landing-hero-content {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  max-width: 720px;
-}
-.landing-badge {
-  display: inline-block;
-  padding: 0.3rem 0.8rem;
-  border: 1px solid rgba(255,0,60,0.3);
-  color: #ff003c;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.15em;
-  margin-bottom: 1.5rem;
-}
-.landing-hero h1 {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 1.5rem;
-}
-.landing-title-ar {
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.1;
-}
-.landing-title-en {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(1.8rem, 4vw, 3rem);
-  font-weight: 700;
-  background: linear-gradient(135deg, #ff003c, #ff6b6b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: 0.2em;
-}
-.landing-subtitle {
-  font-size: clamp(1rem, 2vw, 1.2rem);
-  color: rgba(255,255,255,0.5);
-  line-height: 1.8;
-  max-width: 560px;
-  margin: 0 auto 2rem;
-}
-.landing-cta {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* ── Features ── */
-.landing-features {
-  padding: 6rem 2rem;
-  max-width: 1100px;
-  margin: 0 auto;
-  width: 100%;
-}
-.landing-section-header {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-.landing-section-tag {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
-  color: #ff003c;
-  margin-bottom: 0.75rem;
-}
-.landing-section-header h2 {
-  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
-  font-weight: 800;
-  color: #fff;
-}
-.landing-features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-}
-.landing-feature-card {
-  padding: 1.5rem;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.02);
-  transition: all 0.3s;
-}
-.landing-feature-card:hover {
-  border-color: rgba(255,0,60,0.3);
-  background: rgba(255,0,60,0.03);
-}
-.landing-feature-icon {
-  font-size: 1.5rem;
-  color: #ff003c;
-  display: block;
-  margin-bottom: 0.75rem;
-}
-.landing-feature-card h3 {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 0.5rem;
-}
-.landing-feature-card p {
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.5);
-  line-height: 1.7;
-}
-
-/* ── CTA Section ── */
-.landing-cta-section {
-  padding: 6rem 2rem;
-  text-align: center;
-}
-.landing-cta-content {
-  max-width: 500px;
-  margin: 0 auto;
-}
-.landing-cta-content h2 {
-  font-size: clamp(1.5rem, 3vw, 2.2rem);
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 1rem;
-}
-.landing-cta-content p {
-  color: rgba(255,255,255,0.5);
-  margin-bottom: 2rem;
-  line-height: 1.7;
-}
-
-/* ── Footer ── */
-.landing-footer {
-  margin-top: auto;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  padding: 1.5rem 2rem;
-}
-.landing-footer-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.4);
-}
-.landing-footer-links {
-  display: flex;
-  gap: 1.5rem;
-}
-.landing-footer-links a {
-  color: rgba(255,255,255,0.4);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-.landing-footer-links a:hover { color: #fff; }
-
-/* ── Mobile ── */
-@media (max-width: 640px) {
-  .landing-header { padding: 0.75rem 1rem; }
-  .landing-nav { gap: 0.75rem; }
-  .landing-nav a { font-size: 0.75rem; }
-  .landing-btn, .landing-btn-outline { padding: 0.5rem 0.8rem; font-size: 0.7rem; }
-  .landing-hero { padding: 5rem 1rem 3rem; }
-  .landing-features { padding: 4rem 1rem; }
-  .landing-features-grid { grid-template-columns: 1fr; }
-  .landing-cta-section { padding: 4rem 1rem; }
-  .landing-footer { padding: 1rem; }
-  .landing-footer-inner { flex-direction: column; gap: 0.5rem; text-align: center; }
-}
-      `}} />
+      </motion.footer>
     </div>
   )
 }

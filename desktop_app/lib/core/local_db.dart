@@ -98,6 +98,30 @@ class LocalDB {
     }
   }
 
+  /// Mark a specific item in the sync queue as synced (by matching data content)
+  static void markSyncItemSynced(Map<String, dynamic> targetData) {
+    final box = Hive.box<Map>(syncQueueBox);
+    for (int i = 0; i < box.length; i++) {
+      final item = box.getAt(i);
+      if (item != null && item['synced'] == false) {
+        final itemData = item['data'] as Map?;
+        if (itemData != null) {
+          // Match by common fields: code or id
+          final targetId = targetData['id']?.toString();
+          final targetCode = targetData['code']?.toString();
+          final itemId = itemData['id']?.toString();
+          final itemCode = itemData['code']?.toString();
+          if ((targetId != null && targetId == itemId) ||
+              (targetCode != null && targetCode == itemCode)) {
+            item['synced'] = true;
+            box.putAt(i, item);
+            break;
+          }
+        }
+      }
+    }
+  }
+
   static void clearSyncedItems() {
     final box = Hive.box<Map>(syncQueueBox);
     final keysToRemove = <int>[];

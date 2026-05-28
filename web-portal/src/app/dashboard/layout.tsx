@@ -16,9 +16,9 @@ export default function DashboardLayout({
     <ProtectedRoute>
       <div className="min-h-screen relative overflow-x-hidden">
         <Sidebar />
-        <div className="lg:mr-72">
+          <div className="lg:mr-64">
           <Header />
-          <main className="p-6 relative z-10 overflow-x-hidden">
+          <main className="p-3 md:p-6 relative z-10 overflow-x-hidden max-w-full">
             <PageTransition>
               {noGuard ? children : <SubscriptionGuard>{children}</SubscriptionGuard>}
             </PageTransition>

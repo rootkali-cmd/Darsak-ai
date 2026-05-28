@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Check, X, Sparkles, Users, Brain, Shield, CreditCard } from 'lucide-react'
+import { Check, X, Users, CreditCard } from 'lucide-react'
 
 const plans = [
   {
@@ -82,38 +82,23 @@ export default function PricingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative px-4 py-12">
-      {/* Corner decoration */}
-      <div className="fixed top-4 left-4 z-50 hud-text flex items-center gap-2">
-        <span className="text-[var(--accent)]">●</span>
-        <span>DARSAK AI</span>
-        <span className="text-[rgba(255,255,255,0.2)]">/</span>
-        <span>{isAr ? 'الباقات' : 'PRICING'}</span>
-      </div>
-
-      {/* Back button */}
+    <div className="min-h-screen py-16 px-4">
       <button
         onClick={() => router.push('/')}
-        className="fixed top-4 ltr:left-4 rtl:right-4 z-50 px-4 py-2 border border-[var(--border)] hover:border-[var(--accent-2)] text-xs hud-text transition-colors"
-        style={{ background: 'var(--card-bg)' }}
+        className="fixed top-4 left-4 z-50 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
       >
-        <ArrowLeft className="w-3 h-3 inline-block ltr:rotate-180 ml-1" />
-        {isAr ? 'العودة' : 'BACK'}
+        ← {isAr ? 'العودة' : 'BACK'}
       </button>
 
-      <div className="w-full max-w-6xl mx-auto mt-16">
+      <div className="w-full max-w-6xl mx-auto mt-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-3xl md:text-4xl font-bold hud-text mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-            {isAr ? 'اختر باقتك' : 'CHOOSE YOUR PLAN'}
-          </h1>
-          <p className="text-sm hud-text" style={{ color: 'var(--text-muted)' }}>
-            {isAr
-              ? 'اشتراكات شهرية مرنة • يمكنك الترقية في أي وقت'
-              : 'Flexible monthly subscriptions • Upgrade anytime'}
+          <h1 className="text-3xl font-bold mb-3">{isAr ? 'اختر باقتك' : 'Choose Your Plan'}</h1>
+          <p className="text-sm text-[var(--text-muted)]">
+            {isAr ? 'اشتراكات شهرية مرنة • يمكنك الترقية في أي وقت' : 'Flexible monthly subscriptions • Upgrade anytime'}
           </p>
         </motion.div>
 
@@ -121,66 +106,52 @@ export default function PricingPage() {
           {plans.map((plan, i) => (
             <motion.div
               key={plan.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 * i }}
+              transition={{ delay: 0.1 * i }}
               className="relative"
             >
               {plan.popular && (
                 <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1 text-[10px] font-bold hud-text uppercase tracking-widest"
-                  style={{
-                    background: plan.color,
-                    color: '#000',
-                  }}
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1 text-[10px] font-bold"
+                  style={{ background: plan.color, color: '#000' }}
                 >
                   {isAr ? 'الأكثر طلباً' : 'POPULAR'}
                 </div>
               )}
 
               <div
-                className="p-6 md:p-8 h-full flex flex-col"
+                className="card p-6 md:p-8 h-full flex flex-col"
                 style={{
-                  background: 'var(--card-bg)',
-                  border: `1px solid ${plan.popular ? plan.color : 'var(--border)'}`,
+                  borderColor: plan.popular ? plan.color : undefined,
                 }}
               >
-                {/* Header */}
                 <div className="text-center mb-6">
-                  <h3
-                    className="text-lg font-bold hud-text mb-2"
-                    style={{ color: plan.color, fontFamily: 'var(--font-display)' }}
-                  >
+                  <h3 className="text-lg font-bold mb-2" style={{ color: plan.color }}>
                     {isAr ? plan.nameAr : plan.nameEn}
                   </h3>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                      {plan.price}
-                    </span>
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {plan.currency}{plan.period}
-                    </span>
+                    <span className="text-3xl font-bold">{plan.price}</span>
+                    <span className="text-xs text-[var(--text-muted)]">{plan.currency}{plan.period}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-center gap-1 text-xs" style={{ color: plan.color }}>
-                    <Users className="w-3 h-3" />
+                    <Users size={12} />
                     <span>{plan.students}</span>
                   </div>
                 </div>
 
-                {/* Divider */}
-                <div style={{ height: 1, background: 'var(--border)', marginBottom: 24 }} />
+                <div className="divider" />
 
-                {/* Features */}
                 <div className="flex-1 space-y-3 mb-8">
                   {plan.features.map((f, fi) => (
                     <div key={fi} className="flex items-center gap-3">
                       {f.ok ? (
-                        <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: plan.color }} />
+                        <Check size={14} className="flex-shrink-0" style={{ color: plan.color }} />
                       ) : (
-                        <X className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+                        <X size={14} className="flex-shrink-0" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
                       )}
                       <span
-                        className="text-xs hud-text"
+                        className="text-xs"
                         style={{
                           color: f.ok ? 'var(--text-secondary)' : 'var(--text-muted)',
                           opacity: f.ok ? 1 : 0.4,
@@ -192,47 +163,24 @@ export default function PricingPage() {
                   ))}
                 </div>
 
-                {/* CTA */}
                 <button
                   onClick={() => router.push('/dashboard/subscription')}
-                  className="w-full flex items-center justify-center gap-2 py-3 text-xs font-bold hud-text uppercase tracking-wider transition-all text-center"
+                  className="btn w-full justify-center py-3 text-xs font-bold"
                   style={{
                     background: plan.color,
                     color: '#000',
-                    border: `1px solid ${plan.color}`,
+                    borderColor: plan.color,
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85' }}
                   onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
                 >
-                  <CreditCard className="w-3.5 h-3.5" />
+                  <CreditCard size={14} />
                   {isAr ? 'اشتراك الآن' : 'SUBSCRIBE'}
                 </button>
               </div>
             </motion.div>
           ))}
         </div>
-
-        {/* Info */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-12 text-center"
-        >
-          <div
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs hud-text"
-            style={{
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <Shield className="w-3 h-3" />
-            {isAr
-              ? 'جميع الباقات مدعومة بتشفير متقدم • أكواد تفعيل آمنة'
-              : 'All plans backed by advanced encryption • Secure activation codes'}
-          </div>
-        </motion.div>
       </div>
     </div>
   )

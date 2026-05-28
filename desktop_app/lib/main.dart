@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
+// import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/theme.dart';
 import 'core/constants.dart';
@@ -37,21 +37,22 @@ void main() async {
   });
   AnalyticsService.instance.appOpened();
 
-  await SentryFlutter.init(
-    (options) {
-      options.dsn = const String.fromEnvironment(
-        'SENTRY_DSN',
-        defaultValue: '',
-      );
-      options.tracesSampleRate = 1.0;
-      options.environment = const String.fromEnvironment(
-        'FLUTTER_ENV',
-        defaultValue: 'development',
-      );
-      options.release = 'darsak_desktop@${AppConstants.appVersion}';
-    },
-    appRunner: () => runApp(DarsakApp(localSync: localSync)),
-  );
+  // await SentryFlutter.init(
+  //   (options) {
+  //     options.dsn = const String.fromEnvironment(
+  //       'SENTRY_DSN',
+  //       defaultValue: '',
+  //     );
+  //     options.tracesSampleRate = 1.0;
+  //     options.environment = const String.fromEnvironment(
+  //       'FLUTTER_ENV',
+  //       defaultValue: 'development',
+  //     );
+  //     options.release = 'darsak_desktop@${AppConstants.appVersion}';
+  //   },
+  //   appRunner: () => runApp(DarsakApp(localSync: localSync)),
+  // );
+  runApp(DarsakApp(localSync: localSync));
 }
 
 class DarsakApp extends StatefulWidget {

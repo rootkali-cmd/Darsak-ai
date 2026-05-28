@@ -116,6 +116,30 @@ class DataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateStudentId(String oldCode, String newId) {
+    final idx = _students.indexWhere((s) => s.id == oldCode);
+    if (idx == -1) return;
+    final oldData = LocalDB.getData(LocalDB.studentsBox, _students[idx].code);
+    _students[idx] = StudentModel(
+      id: newId,
+      code: _students[idx].code,
+      fullName: _students[idx].fullName,
+      phone: _students[idx].phone,
+      parentPhone: _students[idx].parentPhone,
+      parentPhone2: _students[idx].parentPhone2,
+      gradeLevel: _students[idx].gradeLevel,
+      groupId: _students[idx].groupId,
+      isPaid: _students[idx].isPaid,
+      hasPin: _students[idx].hasPin,
+      createdAt: _students[idx].createdAt,
+    );
+    if (oldData != null) {
+      oldData['id'] = newId;
+      LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, oldData);
+    }
+    notifyListeners();
+  }
+
   List<StudentModel> filterStudents({String? search, String? groupId}) {
     var filtered = _students;
     if (groupId != null && groupId.isNotEmpty) {

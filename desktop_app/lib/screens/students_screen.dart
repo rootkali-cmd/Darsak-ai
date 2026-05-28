@@ -362,6 +362,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                   final rng = math.Random();
                   final chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
                   final code = 'ST${List.generate(7, (_) => chars[rng.nextInt(chars.length)]).join()}';
+                  final now = DateTime.now();
                   var student = StudentModel(
                     id: code,
                     code: code,
@@ -371,31 +372,34 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                     parentPhone2: parentPhone2Controller.text.isNotEmpty ? parentPhone2Controller.text : null,
                     gradeLevel: selectedGradeLevel,
                     groupId: selectedGroupId,
-                    createdAt: DateTime.now(),
+                    createdAt: now,
                   );
                   Navigator.pop(ctx);
                   final data = context.read<DataProvider>();
+                  // Add locally first (offline-first) — sync queue will push to server later
                   data.addStudentLocally(student);
-                  // Try to create on backend so PIN/detete work immediately
+                  // Also try server immediately; on success, update ID and mark sync queue synced
                   try {
                     final created = await data.api.createStudent(student.toJson());
                     final serverId = created['id']?.toString();
                     if (serverId != null && serverId != code) {
+                      data.updateStudentId(code, serverId);
                       student = StudentModel(
                         id: serverId,
-                        code: code,
+                        code: student.code,
                         fullName: student.fullName,
                         phone: student.phone,
                         parentPhone: student.parentPhone,
                         parentPhone2: student.parentPhone2,
                         gradeLevel: student.gradeLevel,
                         groupId: student.groupId,
-                        createdAt: student.createdAt,
+                        createdAt: now,
                       );
-                      data.removeStudent(code, code);
-                      data.addStudentLocally(student);
                     }
-                  } catch (_) {}
+                    LocalDB.markSyncItemSynced(student.toJson());
+                  } catch (_) {
+                    // Server unreachable — sync queue handles it later
+                  }
                   if (!context.mounted) return;
                   _showStudentBarcode(context, student);
                 } else {

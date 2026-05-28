@@ -52,12 +52,12 @@ export default function StudentsPage() {
       <Section>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">
-              الطلاب <span className="neon-text">{students?.length || 0}</span>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              الطلاب <span className="">{students?.length || 0}</span>
             </h1>
-            <p className="text-text-secondary mt-1">إدارة قائمة الطلاب</p>
+            <p className="text-[var(--text-muted)] mt-1">إدارة قائمة الطلاب</p>
           </div>
-          <NeonButton onClick={() => setShowAddModal(true)}>
+          <NeonButton onClick={() => setShowAddModal(true)} className="w-full sm:w-auto">
             <Plus className="w-5 h-5" />
             إضافة طالب
           </NeonButton>
@@ -68,13 +68,13 @@ export default function StudentsPage() {
       <Section delay={0.1}>
         <GlassCard className="p-4">
           <div className="relative">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
             <input
               type="text"
               placeholder="بحث بالاسم أو الكود..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input-glass w-full pr-12 pl-4 py-4 rounded-xl text-white placeholder:text-text-muted"
+              className="input w-full pr-12 pl-4 py-4 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]"
             />
           </div>
         </GlassCard>
@@ -83,7 +83,7 @@ export default function StudentsPage() {
       {/* Students Grid */}
       {isLoading ? (
         <div className="flex justify-center py-24">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          <Loader2 className="w-12 h-12 animate-spin text-[var(--accent)]" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -94,20 +94,20 @@ export default function StudentsPage() {
                   <div className="flex items-center gap-3">
                     <motion.div
                       whileHover={{ scale: 1.1, rotate: 10 }}
-                      className="w-12 h-12 rounded-xl bg-neon-gradient flex items-center justify-center shadow-neon"
+                      className="w-12 h-12 rounded-xl bg-[var(--accent)] flex items-center justify-center "
                     >
-                      <span className="text-white font-bold text-lg">{student.full_name.charAt(0)}</span>
+                      <span className="text-[var(--text)] font-bold text-lg">{student.full_name.charAt(0)}</span>
                     </motion.div>
                     <div>
                       <h3 className="font-bold">{student.full_name}</h3>
-                      <p className="text-sm text-text-muted font-mono">{student.code}</p>
+                      <p className="text-sm text-[var(--text-muted)] font-mono">{student.code}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
+                      className="p-2 rounded-lg bg-[rgba(255,0,60,0.1)] text-[var(--accent)] hover:bg-[rgba(255,0,60,0.2)]"
                       onClick={() => window.location.href = `/dashboard/students/${student.id}`}
                     >
                       <Eye className="w-4 h-4" />
@@ -115,7 +115,7 @@ export default function StudentsPage() {
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      className="p-2 rounded-lg bg-danger/10 text-danger hover:bg-danger/20"
+                      className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20"
                       onClick={() => {
                         if (confirm('هل أنت متأكد من حذف هذا الطالب؟')) {
                           deleteMutation.mutate(student.id)
@@ -129,18 +129,18 @@ export default function StudentsPage() {
                 <div className="space-y-2 text-sm">
                   {student.phone && (
                     <div className="flex justify-between">
-                      <span className="text-text-muted">الهاتف:</span>
+                      <span className="text-[var(--text-muted)]">الهاتف:</span>
                       <span className="font-mono" dir="ltr">{student.phone}</span>
                     </div>
                   )}
                   {student.grade_level && (
                     <div className="flex justify-between">
-                      <span className="text-text-muted">الصف:</span>
+                      <span className="text-[var(--text-muted)]">الصف:</span>
                       <span>{student.grade_level}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-text-muted">تاريخ الإضافة:</span>
+                    <span className="text-[var(--text-muted)]">تاريخ الإضافة:</span>
                     <span>{formatDate(student.created_at)}</span>
                   </div>
                 </div>
@@ -153,9 +153,9 @@ export default function StudentsPage() {
       {(!students || students.length === 0) && !isLoading && (
         <Section>
           <GlassCard className="text-center py-16">
-            <User className="w-16 h-16 text-text-muted mx-auto mb-4" />
-            <p className="text-text-secondary text-lg">لا يوجد طلاب</p>
-            <p className="text-text-muted text-sm mt-2">أضف طالبك الأول للبدء</p>
+            <User className="w-16 h-16 text-[var(--text-muted)] mx-auto mb-4" />
+            <p className="text-[var(--text-muted)] text-lg">لا يوجد طلاب</p>
+            <p className="text-[var(--text-muted)] text-sm mt-2">أضف طالبك الأول للبدء</p>
           </GlassCard>
         </Section>
       )}
@@ -175,7 +175,7 @@ export default function StudentsPage() {
               animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }}
               exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }}
               transition={{ type: 'spring', damping: 25 }}
-              className="glass-strong rounded-2xl p-6 w-full max-w-md border border-white/10"
+              className="card rounded-2xl p-6 w-full max-w-md border border-black/10"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
@@ -184,7 +184,7 @@ export default function StudentsPage() {
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowAddModal(false)}
-                  className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                  className="p-2 rounded-lg hover:bg-[rgba(0,0,0,0.02)] transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </motion.button>
@@ -201,42 +201,42 @@ export default function StudentsPage() {
                   placeholder="الاسم الكامل"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted"
+                  className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]"
                   required
                 />
                 <input
                   placeholder="رقم الهاتف"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted"
+                  className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]"
                   dir="ltr"
                 />
                 <input
                   placeholder="رقم ولي الأمر"
                   value={formData.parent_phone}
                   onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
-                  className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted"
+                  className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]"
                   dir="ltr"
                 />
                 <input
                   placeholder="الصف الدراسي"
                   value={formData.grade_level}
                   onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
-                  className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted"
+                  className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]"
                 />
                 <input
-                  placeholder="PIN (4 أرقام)"
+                  placeholder="PIN (6-8 أحرف وأرقام)"
                   value={formData.pin}
-                  onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
-                  className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted"
-                  maxLength={4}
+                  onChange={(e) => setFormData({ ...formData, pin: e.target.value.toUpperCase() })}
+                  className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]"
+                  maxLength={8}
                   dir="ltr"
                 />
                 <div className="flex gap-3 pt-2">
                   <NeonButton type="submit" className="flex-1" disabled={createMutation.isPending}>
                     {createMutation.isPending ? 'جاري الإضافة...' : 'إضافة'}
                   </NeonButton>
-                  <NeonButton variant="glass" type="button" className="flex-1" onClick={() => setShowAddModal(false)}>
+                  <NeonButton variant="outline" type="button" className="flex-1" onClick={() => setShowAddModal(false)}>
                     إلغاء
                   </NeonButton>
                 </div>

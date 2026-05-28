@@ -51,6 +51,36 @@ async def register(user_data: UserCreate, request: Request):
     except Exception as e:
         logger.warning("Audit log failed after registration: %s", e)
 
+    # Auto-activate 7-day trial on premium plan for new registered teachers
+    if user.get("role") in ("teacher", None):
+        try:
+            plans = await subscription_plan_service.list_active()
+            premium_plan = None
+            for p in plans:
+                if "متقدمة" in p.get("name", ""):
+                    premium_plan = p
+                    break
+            # Fallback: pick the first non-free plan
+            if not premium_plan and plans:
+                premium_plan = plans[0]
+
+            if premium_plan:
+                import uuid
+                from datetime import timedelta
+                trial_code_id = f"trial-{uuid.uuid4().hex[:12]}"
+                trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+                # Store trial end date in expires_at; code_id prefix "trial-" identifies trial subs
+                await teacher_subscription_service.repo.insert({
+                    "teacher_id": user["id"],
+                    "plan_id": premium_plan["id"],
+                    "code_id": trial_code_id,
+                    "expires_at": trial_expires,
+                    "is_active": True,
+                })
+                logger.info("Trial subscription activated for user %s on plan %s", user["id"], premium_plan["name"])
+        except Exception as e:
+            logger.warning("Failed to auto-activate trial for user %s: %s", user["id"], e)
+
     return UserResponse(**user)
 
 

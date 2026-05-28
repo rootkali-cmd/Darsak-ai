@@ -47,11 +47,11 @@ export default function QRPage() {
     <div className="space-y-6">
       <Section>
         <h1 className="text-3xl font-bold">QR Code</h1>
-        <p className="text-text-secondary mt-1">كود QR الخاص بك لتسجيل حضور الطلاب</p>
+        <p className="text-[var(--text-muted)] mt-1">كود QR الخاص بك لتسجيل حضور الطلاب</p>
       </Section>
 
       {isLoading ? (
-        <div className="flex justify-center py-24"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
+        <div className="flex justify-center py-24"><Loader2 className="w-12 h-12 animate-spin text-[var(--accent)]" /></div>
       ) : qrData ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Section>
@@ -63,7 +63,7 @@ export default function QRPage() {
               </div>
               <div className="mt-6 text-center">
                 <p className="text-lg font-bold">{qrData.teacher_code}</p>
-                <p className="text-text-muted text-sm">شارك هذا الكود مع طلابك</p>
+                <p className="text-[var(--text-muted)] text-sm">شارك هذا الكود مع طلابك</p>
               </div>
               <NeonButton onClick={handleDownload} className="mt-4">
                 <Download className="w-5 h-5" />
@@ -75,7 +75,7 @@ export default function QRPage() {
           <Section delay={0.2}>
             <GlassCard>
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <QrCode className="w-6 h-6 text-primary" />
+                <QrCode className="w-6 h-6 text-[var(--accent)]" />
                 كيفية الاستخدام
               </h2>
               <div className="space-y-4">
@@ -84,13 +84,13 @@ export default function QRPage() {
                   { step: '2', title: 'مسح الكود', desc: 'الطلاب يمسحون الكود من تطبيق الموبايل' },
                   { step: '3', title: 'تسجيل تلقائي', desc: 'يتم تسجيل الحضور تلقائياً في النظام' },
                 ].map((item, index) => (
-                  <motion.div key={item.step} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + index * 0.1 }} className="flex items-start gap-4 p-4 rounded-xl bg-bg-secondary/50 border border-white/5">
-                    <div className="w-8 h-8 rounded-full bg-neon-gradient flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-bold">{item.step}</span>
+                  <motion.div key={item.step} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + index * 0.1 }} className="flex items-start gap-4 p-4 rounded-xl bg-[rgba(0,0,0,0.03)] border border-black/5">
+                    <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
+                      <span className="text-[var(--text)] font-bold">{item.step}</span>
                     </div>
                     <div>
                       <h3 className="font-bold">{item.title}</h3>
-                      <p className="text-sm text-text-muted">{item.desc}</p>
+                      <p className="text-sm text-[var(--text-muted)]">{item.desc}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -99,7 +99,7 @@ export default function QRPage() {
           </Section>
         </div>
       ) : (
-        <Section><GlassCard className="text-center py-12"><p className="text-text-muted">فشل تحميل QR Code</p></GlassCard></Section>
+        <Section><GlassCard className="text-center py-12"><p className="text-[var(--text-muted)]">فشل تحميل QR Code</p></GlassCard></Section>
       )}
     </div>
   )

@@ -8,16 +8,11 @@ import {
   AlertTriangle,
   Monitor,
   Smartphone,
-  Wifi,
-  WifiOff,
-  GitBranch,
   Activity,
-  TrendingUp,
   Users,
   XCircle,
   CheckCircle,
 } from 'lucide-react'
-import { GlassCard } from '@/components/ui'
 import { api } from '@/lib/api'
 import {
   AreaChart,
@@ -39,21 +34,11 @@ import { useState, useEffect } from 'react'
 const COLORS = ['#ff003c', '#00f3ff', '#00ff88', '#f59e0b', '#8b5cf6', '#ec4899']
 
 function SkeletonCard() {
-  return (
-    <div className="rounded-2xl p-6 animate-pulse" style={{ background: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-      <div className="h-4 w-24 bg-gray-700 rounded mb-4" />
-      <div className="h-8 w-16 bg-gray-700 rounded" />
-    </div>
-  )
+  return <div className="card p-6 animate-pulse"><div className="h-4 w-24 bg-gray-700 mb-4" /><div className="h-8 w-16 bg-gray-700" /></div>
 }
 
 function SkeletonChart() {
-  return (
-    <div className="rounded-2xl p-6 animate-pulse" style={{ background: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-      <div className="h-4 w-32 bg-gray-700 rounded mb-4" />
-      <div className="h-64 bg-gray-700 rounded" />
-    </div>
-  )
+  return <div className="card p-6 animate-pulse"><div className="h-4 w-32 bg-gray-700 mb-4" /><div className="h-64 bg-gray-700" /></div>
 }
 
 export default function AdminAnalyticsPage() {
@@ -162,288 +147,166 @@ export default function AdminAnalyticsPage() {
   ]
 
   return (
-    <div className="space-y-8 rtl" dir="rtl">
+    <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-4">
-          <BarChart2 className="w-4 h-4 text-primary" />
-          <span className="text-sm text-primary">تحليلات الأداء</span>
-        </div>
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">
-          لوحة <span className="neon-text">المراقبة</span>
-        </h1>
-        <p className="text-text-secondary">إحصائيات وتحليلات شاملة لكل التطبيقات</p>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">لوحة المراقبة</h1>
+        <p className="text-[var(--text-muted)]">إحصائيات وتحليلات شاملة لكل التطبيقات</p>
       </motion.div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {statCards.map((stat, i) => {
           const Icon = stat.icon
           return (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              {stat.loading ? (
-                <SkeletonCard />
-              ) : (
-                <GlassCard className="relative overflow-hidden group">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-3 rounded-xl" style={{ background: `${stat.color}20` }}>
-                      <Icon className="w-6 h-6" style={{ color: stat.color }} />
+              {stat.loading ? <SkeletonCard /> : (
+                <div className="card p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2" style={{ background: `${stat.color}20` }}>
+                      <Icon size={20} style={{ color: stat.color }} />
                     </div>
                   </div>
-                  <div className="text-3xl font-black mb-1 neon-text">{stat.value}</div>
-                  <p className="text-text-secondary text-sm">{stat.label}</p>
-                </GlassCard>
+                  <div className="text-2xl font-bold mb-0.5" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stat.value}</div>
+                  <p className="text-xs text-[var(--text-muted)]">{stat.label}</p>
+                </div>
               )}
             </motion.div>
           )
         })}
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Update Funnel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          {loadingUpdates ? (
-            <SkeletonChart />
-          ) : (
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-accent-green/10">
-                  <Download className="w-5 h-5 text-accent-green" />
-                </div>
-                <h2 className="text-lg font-bold">مسار التحديثات</h2>
-              </div>
+          {loadingUpdates ? <SkeletonChart /> : (
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-[var(--text-muted)] mb-5">مسار التحديثات</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={updateSteps} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis type="number" stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" fontSize={12} width={80} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--card-bg)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '12px',
-                        color: 'var(--text)',
-                      }}
-                    />
-                    <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                      {updateSteps.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.fill} />
-                      ))}
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                    <XAxis type="number" stroke="var(--text-muted)" fontSize={11} />
+                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" fontSize={11} width={60} />
+                    <Tooltip contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)', fontSize: '12px' }} />
+                    <Bar dataKey="value" radius={[0, 2, 2, 0]}>
+                      {updateSteps.map((entry, idx) => <Cell key={idx} fill={entry.fill} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </GlassCard>
+            </div>
           )}
         </motion.div>
 
-        {/* Platform Distribution */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          {loadingPlatforms ? (
-            <SkeletonChart />
-          ) : (
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-accent-orange/10">
-                  <Monitor className="w-5 h-5 text-accent-orange" />
-                </div>
-                <h2 className="text-lg font-bold">توزيع المنصات</h2>
-              </div>
+          {loadingPlatforms ? <SkeletonChart /> : (
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-[var(--text-muted)] mb-5">توزيع المنصات</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={platformData.length > 0 ? platformData : [{ name: 'Windows', value: 1 }, { name: 'Android', value: 1 }]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {platformData.map((_: any, idx: number) => (
-                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                      ))}
+                    <Pie data={platformData.length > 0 ? platformData : [{ name: 'Windows', value: 1 }, { name: 'Android', value: 1 }]} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                      {platformData.map((_: any, idx: number) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--card-bg)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '12px',
-                        color: 'var(--text)',
-                      }}
-                    />
+                    <Tooltip contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)', fontSize: '12px' }} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-            </GlassCard>
+            </div>
           )}
         </motion.div>
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Version Usage */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          {loadingVersions ? (
-            <SkeletonChart />
-          ) : (
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-accent-cyan/10">
-                  <Activity className="w-5 h-5 text-accent-cyan" />
-                </div>
-                <h2 className="text-lg font-bold">الإصدارات الأكثر استخداماً</h2>
-              </div>
+          {loadingVersions ? <SkeletonChart /> : (
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-[var(--text-muted)] mb-5">الإصدارات الأكثر استخداماً</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={versionChartData.length > 0 ? versionChartData : [{ name: '1.2.0', count: 1 }]} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis type="number" stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" fontSize={11} width={80} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--card-bg)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '12px',
-                        color: 'var(--text)',
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#00f3ff" radius={[0, 8, 8, 0]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                    <XAxis type="number" stroke="var(--text-muted)" fontSize={11} />
+                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" fontSize={10} width={70} />
+                    <Tooltip contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)', fontSize: '12px' }} />
+                    <Bar dataKey="count" fill="#00f3ff" radius={[0, 2, 2, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </GlassCard>
+            </div>
           )}
         </motion.div>
 
-        {/* Channel Usage */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-          {loadingChannels ? (
-            <SkeletonChart />
-          ) : (
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-secondary/10">
-                  <GitBranch className="w-5 h-5 text-secondary" />
-                </div>
-                <h2 className="text-lg font-bold">قنوات التحديث</h2>
-              </div>
+          {loadingChannels ? <SkeletonChart /> : (
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-[var(--text-muted)] mb-5">قنوات التحديث</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={channelChartData.length > 0 ? channelChartData : [{ name: 'Stable', value: 1 }]}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {channelChartData.map((_: any, idx: number) => (
-                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                      ))}
+                    <Pie data={channelChartData.length > 0 ? channelChartData : [{ name: 'Stable', value: 1 }]} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                      {channelChartData.map((_: any, idx: number) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--card-bg)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '12px',
-                        color: 'var(--text)',
-                      }}
-                    />
+                    <Tooltip contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text)', fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-            </GlassCard>
+            </div>
           )}
         </motion.div>
 
-        {/* Crash Info */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-          {loadingCrashes ? (
-            <SkeletonChart />
-          ) : (
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-danger/10">
-                  <AlertTriangle className="w-5 h-5 text-danger" />
-                </div>
-                <h2 className="text-lg font-bold">حالة الأعطال</h2>
-              </div>
-              <div className="space-y-6">
+          {loadingCrashes ? <SkeletonChart /> : (
+            <div className="card p-5">
+              <h2 className="text-sm font-bold text-[var(--text-muted)] mb-5">حالة الأعطال</h2>
+              <div className="space-y-5">
                 <div>
-                  <p className="text-text-secondary text-sm mb-1">إجمالي الأعطال</p>
-                  <p className="text-3xl font-black neon-text">{crashes?.total_crashes ?? 0}</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-1">إجمالي الأعطال</p>
+                  <p className="text-2xl font-bold">{crashes?.total_crashes ?? 0}</p>
                 </div>
                 <div>
-                  <p className="text-text-secondary text-sm mb-1">نسبة الأعطال لكل جلسة</p>
-                  <p className={`text-3xl font-black ${(crashes?.crash_rate_per_session ?? 0) > 5 ? 'text-danger' : 'text-accent-green'}`}>
+                  <p className="text-xs text-[var(--text-muted)] mb-1">نسبة الأعطال لكل جلسة</p>
+                  <p className={`text-2xl font-bold ${(crashes?.crash_rate_per_session ?? 0) > 5 ? 'text-red-500' : 'text-green-500'}`}>
                     {crashes?.crash_rate_per_session ?? 0}%
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </div>
           )}
         </motion.div>
       </div>
 
-      {/* Recent Events */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
-        {loadingEvents ? (
-          <SkeletonChart />
-        ) : (
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-accent-cyan/10">
-                <Activity className="w-5 h-5 text-accent-cyan" />
-              </div>
-              <h2 className="text-lg font-bold">آخر الأحداث</h2>
-            </div>
+        {loadingEvents ? <SkeletonChart /> : (
+          <div className="card p-5">
+            <h2 className="text-sm font-bold text-[var(--text-muted)] mb-5">آخر الأحداث</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)]">
-                    <th className="text-right p-2 text-text-secondary">الحدث</th>
-                    <th className="text-right p-2 text-text-secondary">المنصة</th>
-                    <th className="text-right p-2 text-text-secondary">الإصدار</th>
-                    <th className="text-right p-2 text-text-secondary">التوقيت</th>
+                  <tr className="border-b" style={{ borderColor: 'var(--card-border)' }}>
+                    <th className="text-right p-2 text-[var(--text-muted)] font-medium">الحدث</th>
+                    <th className="text-right p-2 text-[var(--text-muted)] font-medium">المنصة</th>
+                    <th className="text-right p-2 text-[var(--text-muted)] font-medium">الإصدار</th>
+                    <th className="text-right p-2 text-[var(--text-muted)] font-medium">التوقيت</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(eventsData?.events ?? []).slice(0, 15).map((event: any, idx: number) => (
-                    <tr key={idx} className="border-b border-[var(--border)] hover:bg-white/5">
+                    <tr key={idx} className="border-b hover:bg-[rgba(0,0,0,0.02)]" style={{ borderColor: 'var(--card-border)' }}>
                       <td className="p-2">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                          event.event?.includes('fail') || event.event?.includes('error') || event.event?.includes('crash')
-                            ? 'bg-danger/10 text-danger'
-                            : event.event?.includes('installed') || event.event?.includes('success')
-                            ? 'bg-accent-green/10 text-accent-green'
-                            : 'bg-accent-cyan/10 text-accent-cyan'
-                        }`}>
-                          {event.event}
-                        </span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs ${
+                          event.event?.includes('fail') || event.event?.includes('error') || event.event?.includes('crash') ? 'bg-red-500/10 text-red-500' : event.event?.includes('installed') || event.event?.includes('success') ? 'bg-green-500/10 text-green-500' : 'bg-[rgba(0,243,255,0.1)] text-[var(--accent-2)]'
+                        }`}>{event.event}</span>
                       </td>
-                      <td className="p-2 text-text-secondary">{event.platform}</td>
-                      <td className="p-2 text-text-secondary">{event.version}</td>
-                      <td className="p-2 text-text-secondary text-xs">
-                        {event.timestamp ? new Date(event.timestamp).toLocaleString('ar-EG') : '-'}
-                      </td>
+                      <td className="p-2 text-[var(--text-muted)]">{event.platform}</td>
+                      <td className="p-2 text-[var(--text-muted)]">{event.version}</td>
+                      <td className="p-2 text-[var(--text-muted)] text-xs">{event.timestamp ? new Date(event.timestamp).toLocaleString('ar-EG') : '-'}</td>
                     </tr>
                   ))}
-                  {(!eventsData?.events || eventsData.events.length === 0) && (
-                    <tr>
-                      <td colSpan={4} className="p-4 text-center text-text-secondary">
-                        لا توجد أحداث بعد
-                      </td>
-                    </tr>
-                  )}
+                  {(!eventsData?.events || eventsData.events.length === 0) && <tr><td colSpan={4} className="p-4 text-center text-[var(--text-muted)]">لا توجد أحداث بعد</td></tr>}
                 </tbody>
               </table>
             </div>
-          </GlassCard>
+          </div>
         )}
       </motion.div>
     </div>

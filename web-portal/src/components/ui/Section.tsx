@@ -34,7 +34,6 @@ export default function Section({
       initial={{
         opacity: 0,
         ...directionVariants[direction],
-        filter: 'blur(10px)',
       }}
       animate={
         isInView
@@ -42,14 +41,13 @@ export default function Section({
               opacity: 1,
               y: 0,
               x: 0,
-              filter: 'blur(0px)',
             }
           : {}
       }
       transition={{
-        duration: 0.8,
+        duration: 0.6,
         delay,
-        ease: [0.22, 1, 0.36, 1],
+        ease: [0.16, 1, 0.3, 1],
       }}
     >
       {children}

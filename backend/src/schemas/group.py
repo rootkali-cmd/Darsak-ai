@@ -28,6 +28,7 @@ class GroupResponse(BaseModel):
     level: EducationLevel
     day_of_week: str
     time_slot: str
+    student_count: int = 0
     created_at: datetime
     updated_at: datetime
 

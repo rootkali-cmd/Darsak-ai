@@ -53,12 +53,12 @@ export default function GroupsPage() {
   return (
     <div className="space-y-6">
       <Section>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">المجموعات <span className="neon-text">{groups?.length || 0}</span></h1>
-            <p className="text-text-secondary mt-1">إدارة مجموعات الدراسة</p>
+            <h1 className="text-2xl md:text-3xl font-bold">المجموعات <span className="">{groups?.length || 0}</span></h1>
+            <p className="text-[var(--text-muted)] mt-1">إدارة مجموعات الدراسة</p>
           </div>
-          <NeonButton onClick={() => setShowAddModal(true)}>
+          <NeonButton onClick={() => setShowAddModal(true)} className="w-full sm:w-auto">
             <Plus className="w-5 h-5" />
             إضافة مجموعة
           </NeonButton>
@@ -66,7 +66,7 @@ export default function GroupsPage() {
       </Section>
 
       {isLoading ? (
-        <div className="flex justify-center py-24"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
+        <div className="flex justify-center py-24"><Loader2 className="w-12 h-12 animate-spin text-[var(--accent)]" /></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {groups?.map((group: any, index: number) => (
@@ -74,24 +74,24 @@ export default function GroupsPage() {
               <GlassCard delay={index * 0.1} className="group">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <motion.div whileHover={{ scale: 1.1, rotate: 10 }} className="w-12 h-12 rounded-xl bg-neon-gradient flex items-center justify-center shadow-neon">
-                      <BookOpen className="w-6 h-6 text-white" />
+                    <motion.div whileHover={{ scale: 1.1, rotate: 10 }} className="w-12 h-12 rounded-xl bg-[var(--accent)] flex items-center justify-center ">
+                      <BookOpen className="w-6 h-6 text-[var(--text)]" />
                     </motion.div>
                     <div>
                       <h3 className="font-bold">{group.name}</h3>
-                      <p className="text-sm text-primary">{group.subject}</p>
+                      <p className="text-sm text-[var(--accent)]">{group.subject}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-lg bg-danger/10 text-danger hover:bg-danger/20" onClick={() => { if (confirm('هل أنت متأكد؟')) deleteMutation.mutate(group.id) }}>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" onClick={() => { if (confirm('هل أنت متأكد؟')) deleteMutation.mutate(group.id) }}>
                       <Trash2 className="w-4 h-4" />
                     </motion.button>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-text-muted">المستوى:</span><span>{levelLabels[group.level]}</span></div>
-                  <div className="flex justify-between"><span className="text-text-muted">اليوم:</span><span>{dayLabels[group.day_of_week]}</span></div>
-                  <div className="flex justify-between"><span className="text-text-muted">الوقت:</span><span className="font-mono" dir="ltr">{group.time_slot}</span></div>
+                  <div className="flex justify-between"><span className="text-[var(--text-muted)]">المستوى:</span><span>{levelLabels[group.level]}</span></div>
+                  <div className="flex justify-between"><span className="text-[var(--text-muted)]">اليوم:</span><span>{dayLabels[group.day_of_week]}</span></div>
+                  <div className="flex justify-between"><span className="text-[var(--text-muted)]">الوقت:</span><span className="font-mono" dir="ltr">{group.time_slot}</span></div>
                 </div>
               </GlassCard>
             </Section>
@@ -100,32 +100,32 @@ export default function GroupsPage() {
       )}
 
       {(!groups || groups.length === 0) && !isLoading && (
-        <Section><GlassCard className="text-center py-16"><BookOpen className="w-16 h-16 text-text-muted mx-auto mb-4" /><p className="text-text-secondary text-lg">لا توجد مجموعات</p></GlassCard></Section>
+        <Section><GlassCard className="text-center py-16"><BookOpen className="w-16 h-16 text-[var(--text-muted)] mx-auto mb-4" /><p className="text-[var(--text-muted)] text-lg">لا توجد مجموعات</p></GlassCard></Section>
       )}
 
       <AnimatePresence>
         {showAddModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
-            <motion.div initial={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} transition={{ type: 'spring', damping: 25 }} className="glass-strong rounded-2xl p-6 w-full max-w-md border border-white/10" onClick={(e) => e.stopPropagation()}>
+            <motion.div initial={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} transition={{ type: 'spring', damping: 25 }} className="card rounded-2xl p-6 w-full max-w-md border border-black/10" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold">إضافة مجموعة جديدة</h2>
-                <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-white/5"><X className="w-5 h-5" /></motion.button>
+                <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-[rgba(0,0,0,0.02)]"><X className="w-5 h-5" /></motion.button>
               </div>
               <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData) }} className="space-y-4">
-                <input placeholder="اسم المجموعة" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted" required />
-                <input placeholder="المادة" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted" required />
-                <select value={formData.level} onChange={(e) => setFormData({ ...formData, level: e.target.value })} className="input-glass w-full px-4 py-3 rounded-xl text-white">
+                <input placeholder="اسم المجموعة" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]" required />
+                <input placeholder="المادة" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]" required />
+                <select value={formData.level} onChange={(e) => setFormData({ ...formData, level: e.target.value })} className="input w-full px-4 py-3 rounded-xl text-[var(--text)]">
                   <option value="preparatory">إعدادي</option>
                   <option value="secondary">ثانوي</option>
                 </select>
-                <select value={formData.day_of_week} onChange={(e) => setFormData({ ...formData, day_of_week: e.target.value })} className="input-glass w-full px-4 py-3 rounded-xl text-white" required>
+                <select value={formData.day_of_week} onChange={(e) => setFormData({ ...formData, day_of_week: e.target.value })} className="input w-full px-4 py-3 rounded-xl text-[var(--text)]" required>
                   <option value="">اختر اليوم</option>
                   <option value="Saturday">السبت</option><option value="Sunday">الأحد</option><option value="Monday">الاثنين</option><option value="Tuesday">الثلاثاء</option><option value="Wednesday">الأربعاء</option><option value="Thursday">الخميس</option>
                 </select>
-                <input placeholder="الوقت (مثال: 18:00-20:00)" value={formData.time_slot} onChange={(e) => setFormData({ ...formData, time_slot: e.target.value })} className="input-glass w-full px-4 py-3 rounded-xl text-white placeholder:text-text-muted" required />
+                <input placeholder="الوقت (مثال: 18:00-20:00)" value={formData.time_slot} onChange={(e) => setFormData({ ...formData, time_slot: e.target.value })} className="input w-full px-4 py-3 rounded-xl text-[var(--text)] placeholder:text-[var(--text-muted)]" required />
                 <div className="flex gap-3 pt-2">
                   <NeonButton type="submit" className="flex-1" disabled={createMutation.isPending}>{createMutation.isPending ? 'جاري...' : 'إضافة'}</NeonButton>
-                  <NeonButton variant="glass" type="button" className="flex-1" onClick={() => setShowAddModal(false)}>إلغاء</NeonButton>
+                  <NeonButton variant="outline" type="button" className="flex-1" onClick={() => setShowAddModal(false)}>إلغاء</NeonButton>
                 </div>
               </form>
             </motion.div>

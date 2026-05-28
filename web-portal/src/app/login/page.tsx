@@ -7,14 +7,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { Eye, EyeOff, Loader2, Mail, Lock, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authApi } from '@/lib/api'
 import { auth } from '@/lib/auth'
 
-
 const loginSchema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('البريد الإلكتروني غير صحيح'),
+  password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
 })
 
 type LoginForm = z.infer<typeof loginSchema>
@@ -38,159 +37,97 @@ export default function LoginPage() {
       const response = await authApi.login(data.email, data.password)
       const { access_token, refresh_token } = response.data
       auth.setTokens(access_token, refresh_token)
-      toast.success('ACCESS GRANTED')
+      toast.success('تم تسجيل الدخول بنجاح')
       router.push('/dashboard')
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'ACCESS DENIED')
+      toast.error(error.response?.data?.detail || 'فشل تسجيل الدخول')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative px-4">
-      {/* Corner decorations */}
-      <div className="fixed top-4 left-4 z-50 hud-text flex items-center gap-2">
-        <span className="text-[var(--accent)]">●</span>
-        <span>DARSAK AI</span>
-        <span className="text-[rgba(255,255,255,0.2)]">/</span>
-        <span>AUTH</span>
-      </div>
-
-      {/* Exit button */}
+    <div className="min-h-screen flex items-center justify-center px-4">
       <button
         onClick={() => router.push('/')}
-        className="fixed top-4 ltr:left-4 rtl:right-4 z-50 px-4 py-2 border border-[var(--border)] hover:border-[var(--accent-2)] text-xs hud-text transition-colors"
-        style={{ background: 'var(--card-bg)' }}
+        className="fixed top-4 left-4 z-50 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
       >
-        ← BACK
+        ← العودة
       </button>
 
-
-
-      {/* Login Card */}
       <motion.div
-        initial={{ opacity: 0, y: 50 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative z-10 w-full max-w-sm"
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-sm"
       >
-        {/* Card with brutal corners */}
-        <div className="brutal-card p-8" style={{ background: 'var(--card-bg)', position: 'relative' }}>
-          {/* Corner brackets */}
-          <div className="absolute top-0 left-0 w-4 h-4 border-t border-l border-[var(--accent)]" />
-          <div className="absolute top-0 right-0 w-4 h-4 border-t border-r border-[var(--accent-2)]" />
-          <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-[var(--accent-2)]" />
-          <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-[var(--accent)]" />
-
-          {/* Logo & Title */}
+        <div className="card p-8">
           <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="inline-flex items-center justify-center w-16 h-16 border border-[var(--accent)] mb-4"
-            >
-              <Sparkles className="w-8 h-8 text-[var(--accent)]" />
-            </motion.div>
-
-            <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'var(--font-display)' }}>
+            <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               DARSAK AI
             </h1>
-            <p className="text-xs hud-text">AUTHENTICATION REQUIRED</p>
+            <p className="text-sm text-[var(--text-muted)]">تسجيل الدخول إلى لوحة التحكم</p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Email */}
             <div>
-              <label className="block text-xs hud-text mb-2 text-[var(--text-muted)]">
-                EMAIL
-              </label>
-              <div className="relative">
-                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                <input
-                  type="email"
-                  {...register('email')}
-                  className={`brutal-input w-full pr-10 pl-3 py-3 text-sm ${errors.email ? 'border-[var(--accent)]' : ''}`}
-                  placeholder="teacher@darsak.ai"
-                  dir="ltr"
-                />
-              </div>
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5">البريد الإلكتروني</label>
+              <input
+                type="email"
+                dir="ltr"
+                {...register('email')}
+                className={`input ${errors.email ? '!border-[var(--accent)]' : ''}`}
+                placeholder="teacher@darsak.ai"
+              />
               {errors.email && (
-                <p className="text-[var(--accent)] text-[10px] hud-text mt-1">
-                  {errors.email.message}
-                </p>
+                <p className="text-[var(--accent)] text-xs mt-1">{errors.email.message}</p>
               )}
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-xs hud-text mb-2 text-[var(--text-muted)]">
-                PASSWORD
-              </label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5">كلمة المرور</label>
               <div className="relative">
-                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  {...register('password')}
-                  className={`brutal-input w-full pr-10 pl-10 py-3 text-sm ${errors.password ? 'border-[var(--accent)]' : ''}`}
-                  placeholder="••••••••"
                   dir="ltr"
+                  {...register('password')}
+                  className={`input ${errors.password ? '!border-[var(--accent)]' : ''}`}
+                  placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute ltr:left-3 rtl:right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-[var(--accent)] text-[10px] hud-text mt-1">
-                  {errors.password.message}
-                </p>
+                <p className="text-[var(--accent)] text-xs mt-1">{errors.password.message}</p>
               )}
             </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="brutal-btn w-full flex items-center justify-center gap-2 py-3"
-            >
+            <button type="submit" disabled={isLoading} className="btn btn-primary w-full py-3">
               {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  AUTHENTICATING...
-                </>
+                <><Loader2 size={16} className="animate-spin" /> جاري تسجيل الدخول...</>
               ) : (
-                'ACCESS SYSTEM'
+                'تسجيل الدخول'
               )}
             </button>
           </form>
 
-          {/* Register link */}
           <div className="mt-6 text-center space-y-2">
-            <p className="text-[10px] hud-text text-[var(--text-muted)]">
+            <p className="text-sm text-[var(--text-muted)]">
               ليس لديك حساب؟{' '}
-              <button
-                onClick={() => router.push('/register')}
-                className="text-[var(--accent)] hover:underline"
-              >
+              <button onClick={() => router.push('/register')} className="link">
                 إنشاء حساب
               </button>
             </p>
             <button
               onClick={() => router.push('/download')}
-              className="inline-flex items-center gap-1.5 text-[10px] hud-text text-[var(--accent-2)] hover:underline"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--accent-2)] transition-colors"
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              التطبيقات
+              تحميل التطبيقات
             </button>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Section } from '@/components/ui'
-import { Smartphone, Monitor, Download, Sparkles } from 'lucide-react'
+import { Smartphone, Monitor, Download } from 'lucide-react'
 
 const apps = [
   {
@@ -28,7 +28,6 @@ const apps = [
     ],
     platform: 'Windows',
   },
-
 ]
 
 export default function DownloadsPage() {
@@ -38,7 +37,7 @@ export default function DownloadsPage() {
     <div className="space-y-6">
       <Section>
         <h1 className="text-3xl font-bold">التطبيقات</h1>
-        <p className="text-text-secondary mt-1">حمّل التطبيقات الخاصة بنظام درسك أي</p>
+        <p className="text-[var(--text-muted)] mt-1">حمّل التطبيقات الخاصة بنظام درسك أي</p>
       </Section>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -48,24 +47,19 @@ export default function DownloadsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="brutal-card p-6 flex flex-col relative"
-            style={{ background: 'var(--card-bg)', position: 'relative' }}
+            className="card p-6 flex flex-col"
+            style={{ borderColor: `color-mix(in srgb, ${app.color} 30%, transparent)` }}
           >
-            <div className="absolute top-0 left-0 w-4 h-4 border-t border-l" style={{ borderColor: app.color }} />
-            <div className="absolute top-0 right-0 w-4 h-4 border-t border-r" style={{ borderColor: app.color }} />
-            <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l" style={{ borderColor: app.color }} />
-            <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r" style={{ borderColor: app.color }} />
-
             <div className="w-12 h-12 flex items-center justify-center mb-4" style={{ border: `1px solid ${app.color}` }}>
               <app.icon className="w-6 h-6" style={{ color: app.color }} />
             </div>
 
             <h2 className="text-lg font-bold mb-1">{app.title}</h2>
-            <p className="text-xs hud-text text-text-muted mb-4 leading-relaxed">{app.description}</p>
+            <p className="text-xs text-[var(--text-muted)] mb-4 leading-relaxed">{app.description}</p>
 
             <div className="mt-auto space-y-3">
-              <div className="flex justify-between text-[10px] hud-text">
-                <span className="text-text-muted">المنصة</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-[var(--text-muted)]">المنصة</span>
                 <span style={{ color: app.color }}>{app.platform}</span>
               </div>
 
@@ -76,8 +70,8 @@ export default function DownloadsPage() {
                       key={f.name}
                       href={`https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/${f.name}`}
                       download
-                      className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-bold hud-text uppercase tracking-wider transition-all"
-                      style={{ background: app.color, color: '#000', border: `1px solid ${app.color}` }}
+                      className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold transition-opacity"
+                      style={{ background: app.color, color: '#000' }}
                       onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
                       onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
                     >
@@ -87,10 +81,9 @@ export default function DownloadsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold hud-text uppercase tracking-wider cursor-not-allowed"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-muted)', opacity: 0.5 }}
+                <div className="w-full flex items-center justify-center gap-2 py-2.5 text-xs cursor-not-allowed"
+                  style={{ border: '1px solid var(--card-border)', color: 'var(--text-muted)', opacity: 0.5 }}
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
                   قريباً
                 </div>
               )}
@@ -100,7 +93,7 @@ export default function DownloadsPage() {
       </div>
 
       <Section className="text-center">
-        <p className="text-xs hud-text text-text-muted opacity-50">
+        <p className="text-xs text-[var(--text-muted)] opacity-50">
           التطبيقات تحت التطوير • للاستخدام الداخلي
         </p>
       </Section>

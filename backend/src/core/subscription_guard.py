@@ -21,7 +21,9 @@ async def get_teacher_subscription(teacher_id: str) -> dict | None:
     plan = await subscription_plan_service.get_by_id(sub["plan_id"])
     if not plan:
         return None
-    return {"subscription": sub, "plan": plan}
+    code_id = sub.get("code_id", "")
+    is_trial = isinstance(code_id, str) and code_id.startswith("trial-")
+    return {"subscription": sub, "plan": plan, "is_trial": is_trial, "trial_end_date": sub.get("expires_at")}
 
 
 async def check_subscription_limit(teacher_id: str, feature: str) -> bool:

@@ -90,7 +90,7 @@ export default function StudentReportPage() {
   if (studentLoading) {
     return (
       <div className="flex justify-center py-24">
-        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <Loader2 className="w-12 h-12 animate-spin text-[var(--accent)]" />
       </div>
     )
   }
@@ -108,21 +108,21 @@ export default function StudentReportPage() {
             whileHover={{ scale: 1.1, x: -5 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => router.back()}
-            className="p-3 rounded-xl glass text-text-muted hover:text-white transition-colors"
+            className="p-3 rounded-xl glass text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
           <div className="flex items-center gap-4">
             <motion.div
               whileHover={{ scale: 1.1, rotate: 10 }}
-              className="w-14 h-14 rounded-xl bg-neon-gradient flex items-center justify-center shadow-neon"
+              className="w-14 h-14 rounded-xl bg-[var(--accent)] flex items-center justify-center "
             >
-              <span className="text-white font-bold text-xl">{student?.full_name?.charAt(0)}</span>
+              <span className="text-[var(--text)] font-bold text-xl">{student?.full_name?.charAt(0)}</span>
             </motion.div>
             <div>
               <h1 className="text-2xl font-bold">{student?.full_name}</h1>
-              <p className="text-text-secondary">
-                كود الطالب: <span className="font-mono text-primary">{student?.code}</span>
+              <p className="text-[var(--text-muted)]">
+                كود الطالب: <span className="font-mono text-[var(--accent)]">{student?.code}</span>
               </p>
             </div>
           </div>
@@ -137,13 +137,13 @@ export default function StudentReportPage() {
               <motion.div
                 animate={isAnalyzing ? { rotate: 360 } : {}}
                 transition={{ duration: 2, repeat: isAnalyzing ? Infinity : 0, ease: 'linear' }}
-                className="p-4 rounded-2xl bg-primary/10"
+                className="p-4 rounded-2xl bg-[rgba(255,0,60,0.1)]"
               >
-                <Brain className="w-10 h-10 text-primary" />
+                <Brain className="w-10 h-10 text-[var(--accent)]" />
               </motion.div>
               <div>
                 <h2 className="text-xl font-bold">تحليل الذكاء الاصطناعي</h2>
-                <p className="text-text-secondary">
+                <p className="text-[var(--text-muted)]">
                   {!grades || grades.length === 0
                     ? 'يجب إضافة درجات أولاً للتحليل'
                     : 'تحليل شامل لأداء الطالب مع توصيات مخصصة'}
@@ -182,8 +182,8 @@ export default function StudentReportPage() {
               transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
               className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary mb-4"
             />
-            <p className="text-text-secondary">جاري تحليل بيانات الطالب...</p>
-            <p className="text-text-muted text-sm mt-1">قد يستغرق هذا بضع ثوانٍ</p>
+            <p className="text-[var(--text-muted)]">جاري تحليل بيانات الطالب...</p>
+            <p className="text-[var(--text-muted)] text-sm mt-1">قد يستغرق هذا بضع ثوانٍ</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -212,12 +212,12 @@ export default function StudentReportPage() {
             {/* Strengths & Weaknesses */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Section delay={0.1} direction="left">
-                <GlassCard className="border-accent-green/20 h-full">
+                <GlassCard className="border-green-500/20 h-full">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-accent-green/10">
-                      <TrendingUp className="w-5 h-5 text-accent-green" />
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <TrendingUp className="w-5 h-5 text-green-500" />
                     </div>
-                    <h3 className="text-lg font-bold text-accent-green">نقاط القوة</h3>
+                    <h3 className="text-lg font-bold text-green-500">نقاط القوة</h3>
                   </div>
                   <ul className="space-y-3">
                     {aiReport.strengths.map((item: string, i: number) => (
@@ -228,7 +228,7 @@ export default function StudentReportPage() {
                         transition={{ delay: 0.2 + i * 0.1 }}
                         className="flex items-start gap-3 p-3 rounded-lg bg-accent-green/5"
                       >
-                        <CheckCircle2 className="w-5 h-5 text-accent-green flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                         <span className="text-sm">{item}</span>
                       </motion.li>
                     ))}
@@ -237,12 +237,12 @@ export default function StudentReportPage() {
               </Section>
 
               <Section delay={0.2} direction="right">
-                <GlassCard className="border-danger/20 h-full">
+                <GlassCard className="border-red-500/20 h-full">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-danger/10">
-                      <TrendingDown className="w-5 h-5 text-danger" />
+                    <div className="p-2 rounded-lg bg-red-500/10">
+                      <TrendingDown className="w-5 h-5 text-red-500" />
                     </div>
-                    <h3 className="text-lg font-bold text-danger">نقاط الضعف</h3>
+                    <h3 className="text-lg font-bold text-red-500">نقاط الضعف</h3>
                   </div>
                   <ul className="space-y-3">
                     {aiReport.weaknesses.map((item: string, i: number) => (
@@ -253,7 +253,7 @@ export default function StudentReportPage() {
                         transition={{ delay: 0.3 + i * 0.1 }}
                         className="flex items-start gap-3 p-3 rounded-lg bg-danger/5"
                       >
-                        <AlertCircle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                         <span className="text-sm">{item}</span>
                       </motion.li>
                     ))}
@@ -265,12 +265,12 @@ export default function StudentReportPage() {
             {/* Recommendations & Exercise */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Section delay={0.3}>
-                <GlassCard className="border-warning/20">
+                <GlassCard className="border-yellow-500/20">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 rounded-lg bg-warning/10">
-                      <Target className="w-5 h-5 text-warning" />
+                      <Target className="w-5 h-5 text-yellow-500" />
                     </div>
-                    <h3 className="text-lg font-bold text-warning">التركيز المطلوب</h3>
+                    <h3 className="text-lg font-bold text-yellow-500">التركيز المطلوب</h3>
                   </div>
                   <ul className="space-y-3">
                     {aiReport.recommended_focus.map((item: string, i: number) => (
@@ -281,7 +281,7 @@ export default function StudentReportPage() {
                         transition={{ delay: 0.4 + i * 0.1 }}
                         className="flex items-start gap-3 p-3 rounded-lg bg-warning/5"
                       >
-                        <span className="text-warning mt-1">→</span>
+                        <span className="text-yellow-500 mt-1">→</span>
                         <span className="text-sm">{item}</span>
                       </motion.li>
                     ))}
@@ -292,10 +292,10 @@ export default function StudentReportPage() {
               <Section delay={0.4}>
                 <GlassCard className="border-primary/20">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Sparkles className="w-5 h-5 text-primary" />
+                    <div className="p-2 rounded-lg bg-[rgba(255,0,60,0.1)]">
+                      <Sparkles className="w-5 h-5 text-[var(--accent)]" />
                     </div>
-                    <h3 className="text-lg font-bold text-primary">التمرين المقترح</h3>
+                    <h3 className="text-lg font-bold text-[var(--accent)]">التمرين المقترح</h3>
                   </div>
                   <motion.p
                     initial={{ opacity: 0 }}
@@ -317,7 +317,7 @@ export default function StudentReportPage() {
         <GlassCard>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold">سجل الدرجات</h2>
-            <NeonButton variant="glass" size="sm" onClick={handleExportPdf}>
+            <NeonButton variant="outline" size="sm" onClick={handleExportPdf}>
               <Download className="w-4 h-4" />
               تصدير PDF
             </NeonButton>
@@ -325,33 +325,33 @@ export default function StudentReportPage() {
 
           {gradesLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-right py-3 px-4 text-text-muted font-medium">الامتحان</th>
-                    <th className="text-right py-3 px-4 text-text-muted font-medium">المادة</th>
-                    <th className="text-center py-3 px-4 text-text-muted font-medium">الدرجة</th>
-                    <th className="text-center py-3 px-4 text-text-muted font-medium">النسبة</th>
+                  <tr className="border-b border-black/5">
+                    <th className="text-right py-3 px-4 text-[var(--text-muted)] font-medium">الامتحان</th>
+                    <th className="text-right py-3 px-4 text-[var(--text-muted)] font-medium">المادة</th>
+                    <th className="text-center py-3 px-4 text-[var(--text-muted)] font-medium">الدرجة</th>
+                    <th className="text-center py-3 px-4 text-[var(--text-muted)] font-medium">النسبة</th>
                   </tr>
                 </thead>
                 <tbody>
                   {grades?.map((grade: any, index: number) => {
                     const percentage = (grade.score / grade.max_score) * 100
-                    const color = percentage >= 85 ? 'text-accent-green' : percentage >= 50 ? 'text-warning' : 'text-danger'
+                    const color = percentage >= 85 ? 'text-green-500' : percentage >= 50 ? 'text-yellow-500' : 'text-red-500'
                     return (
                       <motion.tr
                         key={grade.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                        className="border-b border-black/5 hover:bg-[rgba(0,0,0,0.02)] transition-colors"
                       >
                         <td className="py-3 px-4">{grade.exam_name}</td>
-                        <td className="py-3 px-4 text-text-secondary">{grade.subject}</td>
+                        <td className="py-3 px-4 text-[var(--text-muted)]">{grade.subject}</td>
                         <td className="py-3 px-4 text-center font-mono">{grade.score}/{grade.max_score}</td>
                         <td className={`py-3 px-4 text-center font-bold ${color}`}>{percentage.toFixed(1)}%</td>
                       </motion.tr>
@@ -360,7 +360,7 @@ export default function StudentReportPage() {
                 </tbody>
               </table>
               {(!grades || grades.length === 0) && (
-                <div className="text-center py-8 text-text-muted">
+                <div className="text-center py-8 text-[var(--text-muted)]">
                   لا توجد درجات مسجلة
                 </div>
               )}

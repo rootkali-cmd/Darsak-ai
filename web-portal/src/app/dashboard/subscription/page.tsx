@@ -134,7 +134,9 @@ export default function SubscriptionPage() {
     onError: (err: any) => toast.error('فشل إرسال الطلب'),
   })
 
-  const isActive = subscription?.active && !subscription?.expired
+  const isActive = subscription?.is_active === true && subscription?.is_expired !== true
+  const daysLeft = subscription?.days_remaining ?? 0
+  const isTrial = subscription?.is_trial === true
 
   const formatDate = (d: string) => {
     if (!d) return '-'
@@ -175,10 +177,10 @@ export default function SubscriptionPage() {
   return (
     <div className="space-y-6">
       <Section>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">الاشتراكات</h1>
-            <p className="text-text-secondary mt-1">إدارة اشتراكك وعرض الباقات المتاحة</p>
+            <h1 className="text-2xl md:text-3xl font-bold">الاشتراكات</h1>
+            <p className="text-[var(--text-muted)] mt-1">إدارة اشتراكك وعرض الباقات المتاحة</p>
           </div>
           {unreadCount > 0 && (
             <motion.div
@@ -224,8 +226,8 @@ export default function SubscriptionPage() {
                     : <MessageSquare className="w-5 h-5 text-[var(--accent-2)] mt-0.5" />
                   }
                   <div className="flex-1">
-                    <p className="font-bold text-sm text-white">{n.title}</p>
-                    <p className="text-sm text-text-secondary mt-1 whitespace-pre-wrap">{n.body}</p>
+                    <p className="font-bold text-sm text-[var(--text)]">{n.title}</p>
+                    <p className="text-sm text-[var(--text-muted)] mt-1 whitespace-pre-wrap">{n.body}</p>
                   </div>
                 </div>
               </motion.div>
@@ -250,7 +252,7 @@ export default function SubscriptionPage() {
             ) : (
               <span className="flex items-center gap-2 text-xs px-3 py-1.5 border border-[var(--danger)] text-[var(--danger)]">
                 <AlertCircle className="w-3.5 h-3.5" />
-                غير نشط
+                منتهي — اشترك في باقة
               </span>
             )}
           </div>
@@ -258,26 +260,36 @@ export default function SubscriptionPage() {
           {subscription ? (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="p-4 border border-[var(--border)]">
-                <p className="text-xs text-text-muted mb-1">الباقة</p>
+                <p className="text-xs text-[var(--text-muted)] mb-1">الباقة</p>
                 <p className="text-lg font-bold">{subscription.plan_name || '-'}</p>
+                {isTrial && (
+                  <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold border border-[var(--accent-2)] text-[var(--accent-2)]">
+                    نسخة تجريبية
+                  </span>
+                )}
               </div>
               <div className="p-4 border border-[var(--border)]">
-                <p className="text-xs text-text-muted mb-1">تاريخ البدء</p>
-                <p className="text-sm font-bold">{formatDate(subscription.start_date)}</p>
+                <p className="text-xs text-[var(--text-muted)] mb-1">تاريخ البدء</p>
+                <p className="text-sm font-bold">{formatDate(subscription.activated_at)}</p>
               </div>
               <div className="p-4 border border-[var(--border)]">
-                <p className="text-xs text-text-muted mb-1">تاريخ الانتهاء</p>
-                <p className="text-sm font-bold">{formatDate(subscription.end_date)}</p>
+                <p className="text-xs text-[var(--text-muted)] mb-1">تاريخ الانتهاء</p>
+                <p className="text-sm font-bold">{formatDate(subscription.expires_at)}</p>
+                {daysLeft > 0 && (
+                  <p className="text-xs mt-1" style={{ color: daysLeft < 3 ? 'var(--accent)' : 'var(--accent-3)' }}>
+                    {daysLeft} يوم متبقي
+                  </p>
+                )}
               </div>
               <div className="p-4 border border-[var(--border)]">
-                <p className="text-xs text-text-muted mb-1">الطلاب</p>
+                <p className="text-xs text-[var(--text-muted)] mb-1">الطلاب</p>
                 <p className="text-sm font-bold">
-                  {subscription.max_students === -1 ? 'غير محدود' : `${subscription.student_count || 0}/${subscription.max_students}`}
+                  {subscription.plan?.max_students === -1 ? 'غير محدود' : `${subscription.plan?.max_students || 0}`}
                 </p>
               </div>
             </div>
           ) : (
-            <p className="text-text-muted text-sm py-4">لا يوجد اشتراك نشط حالياً. اختر باقة للاشتراك.</p>
+            <p className="text-[var(--text-muted)] text-sm py-4">لا يوجد اشتراك نشط حالياً. اختر باقة للاشتراك أو استخدم كود تفعيل.</p>
           )}
         </GlassCard>
       </Section>
@@ -290,9 +302,9 @@ export default function SubscriptionPage() {
               <Fingerprint className="w-5 h-5 text-[var(--accent-2)]" />
               <h2 className="text-xl font-bold">معرف الحساب</h2>
             </div>
-            <p className="text-xs text-text-muted mb-2">استخدم هذا المعرف عند التواصل مع الدعم الفني</p>
+            <p className="text-xs text-[var(--text-muted)] mb-2">استخدم هذا المعرف عند التواصل مع الدعم الفني</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 px-4 py-3 border border-[var(--border)] text-sm font-mono" dir="ltr" style={{ background: 'rgba(255,255,255,0.02)', letterSpacing: '1px' }}>
+              <code className="flex-1 px-4 py-3 border border-[var(--border)] text-sm font-mono" dir="ltr" style={{ background: 'rgba(0,0,0,0.02)', letterSpacing: '1px' }}>
                 {userData.id}
               </code>
               <button
@@ -320,7 +332,7 @@ export default function SubscriptionPage() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="XXXX-XXXX-XXXX-XXXX"
-              className="flex-1 px-4 py-3 bg-transparent border border-[var(--border)] text-sm text-white placeholder:text-text-muted focus:outline-none focus:border-[var(--accent-2)] uppercase"
+              className="flex-1 px-4 py-3 bg-transparent border border-[var(--border)] text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-2)] uppercase"
               style={{ fontFamily: 'var(--font-mono, monospace)', letterSpacing: '2px' }}
             />
             <button
@@ -357,7 +369,7 @@ export default function SubscriptionPage() {
               <p className="text-2xl font-bold mb-4">{plan.label}</p>
               <div className="space-y-2 mb-6">
                 {plan.features.map((f, fi) => (
-                  <div key={fi} className="flex items-center gap-2 text-sm text-text-secondary">
+                  <div key={fi} className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
                     <Check className="w-3.5 h-3.5" style={{ color: plan.color }} />
                     <span>{f}</span>
                   </div>
@@ -388,11 +400,11 @@ export default function SubscriptionPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold">اختر طريقة الدفع</h3>
-              <button onClick={() => setShowMethodDialog(false)} className="text-text-muted hover:text-white">
+              <button onClick={() => setShowMethodDialog(false)} className="text-[var(--text-muted)] hover:text-[var(--text)]">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-text-secondary mb-4">
+            <p className="text-sm text-[var(--text-muted)] mb-4">
               {selectedPlan.name} - {selectedPlan.label}
             </p>
             <div className="space-y-3">
@@ -403,7 +415,7 @@ export default function SubscriptionPage() {
                 <MessageSquare className="w-6 h-6 text-[var(--accent-2)]" />
                 <div>
                   <p className="font-bold text-sm">دعم عبر واتساب</p>
-                  <p className="text-xs text-text-muted">{SUPPORT_PHONE}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{SUPPORT_PHONE}</p>
                 </div>
               </button>
               <button
@@ -413,7 +425,7 @@ export default function SubscriptionPage() {
                 <Smartphone className="w-6 h-6 text-[var(--accent)]" />
                 <div>
                   <p className="font-bold text-sm">دفع مباشر</p>
-                  <p className="text-xs text-text-muted">حول عبر فودافون كاش وأرسل الإيصال</p>
+                  <p className="text-xs text-[var(--text-muted)]">حول عبر فودافون كاش وأرسل الإيصال</p>
                 </div>
               </button>
             </div>
@@ -433,7 +445,7 @@ export default function SubscriptionPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold">دفع عبر فودافون كاش</h3>
-              <button onClick={() => { setShowPaymentDialog(false); setScreenshot(null); setPhoneNumber('') }} className="text-text-muted hover:text-white">
+              <button onClick={() => { setShowPaymentDialog(false); setScreenshot(null); setPhoneNumber('') }} className="text-[var(--text-muted)] hover:text-[var(--text)]">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -441,7 +453,7 @@ export default function SubscriptionPage() {
             <div className="space-y-4">
               {/* Vodafone Cash Number */}
               <div className="p-4 border border-[var(--accent-2)]" style={{ background: 'rgba(0,243,255,0.05)' }}>
-                <p className="text-xs text-text-muted mb-1">حول إلى رقم فودافون كاش</p>
+                <p className="text-xs text-[var(--text-muted)] mb-1">حول إلى رقم فودافون كاش</p>
                 <p className="text-xl font-bold text-[var(--accent-2)]" dir="ltr" style={{ fontFamily: 'var(--font-mono, monospace)', letterSpacing: '3px' }}>
                   {SUPPORT_PHONE}
                 </p>
@@ -449,15 +461,15 @@ export default function SubscriptionPage() {
 
               {/* Phone Number */}
               <div>
-                <label className="text-xs text-text-muted mb-1 block">رقم هاتفك المحول منه</label>
+                <label className="text-xs text-[var(--text-muted)] mb-1 block">رقم هاتفك المحول منه</label>
                 <div className="flex">
-                  <span className="flex items-center px-3 border border-l-0 border-[var(--border)] text-text-muted text-sm">+20</span>
+                  <span className="flex items-center px-3 border border-l-0 border-[var(--border)] text-[var(--text-muted)] text-sm">+20</span>
                   <input
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="10XXXXXXXX"
-                    className="flex-1 px-4 py-3 bg-transparent border border-[var(--border)] text-sm text-white placeholder:text-text-muted focus:outline-none focus:border-[var(--accent-2)]"
+                    className="flex-1 px-4 py-3 bg-transparent border border-[var(--border)] text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-2)]"
                     dir="ltr"
                   />
                 </div>
@@ -465,16 +477,16 @@ export default function SubscriptionPage() {
 
               {/* Amount */}
               <div>
-                <label className="text-xs text-text-muted mb-1 block">المبلغ</label>
-                <div className="flex items-center gap-2 px-4 py-3 border border-[var(--border)] cursor-not-allowed opacity-80" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <label className="text-xs text-[var(--text-muted)] mb-1 block">المبلغ</label>
+                <div className="flex items-center gap-2 px-4 py-3 border border-[var(--border)] cursor-not-allowed opacity-80" style={{ background: 'rgba(0,0,0,0.02)' }}>
                   <span className="text-lg font-bold">{selectedPlan.price}</span>
-                  <span className="text-text-muted text-sm">ج.م</span>
+                  <span className="text-[var(--text-muted)] text-sm">ج.م</span>
                 </div>
               </div>
 
               {/* Screenshot */}
               <div>
-                <label className="text-xs text-text-muted mb-1 block">صورة الإيصال (اختياري)</label>
+                <label className="text-xs text-[var(--text-muted)] mb-1 block">صورة الإيصال (اختياري)</label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -484,7 +496,7 @@ export default function SubscriptionPage() {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 p-4 border border-dashed border-[var(--border)] hover:border-[var(--accent-2)] transition-colors text-sm text-text-muted"
+                  className="w-full flex items-center justify-center gap-2 p-4 border border-dashed border-[var(--border)] hover:border-[var(--accent-2)] transition-colors text-sm text-[var(--text-muted)]"
                 >
                   {screenshot ? (
                     <>
@@ -546,7 +558,7 @@ export default function SubscriptionPage() {
               <CheckCircle className="w-8 h-8 text-[var(--success)]" />
             </div>
             <h3 className="text-xl font-bold mb-2">تم الإرسال بنجاح!</h3>
-            <div className="space-y-2 text-sm text-text-secondary mb-6">
+            <div className="space-y-2 text-sm text-[var(--text-muted)] mb-6">
               <p>سيتم التحقق من الدفع خلال 10 دقائق</p>
               <p>وبحد أقصى ساعتين</p>
               <div className="pt-3 border-t border-[var(--border)] mt-3">

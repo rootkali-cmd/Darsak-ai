@@ -186,51 +186,25 @@ class SyncService {
       final lastSync = LocalDB.getLastSyncTime() ?? DateTime.now().subtract(const Duration(days: 30));
       final attendance = await _api.getAttendance(date: lastSync.toIso8601String());
 
-      if (students.isNotEmpty) {
-        final localLen = LocalDB.getAllData(LocalDB.studentsBox).length;
-        if (localLen == 0 || students.length >= localLen) {
-          LocalDB.clearBox(LocalDB.studentsBox);
-          for (final s in students) {
-            LocalDB.saveData(LocalDB.studentsBox, s['id'], s);
+      // Merge server data: update existing, add new — never delete local-only items
+      void mergeData(String boxName, List<dynamic> serverItems, String keyField) {
+        final localItems = LocalDB.getAllData(boxName);
+        final localKeys = localItems.map((e) => e[keyField]?.toString() ?? '').toSet();
+        for (final item in serverItems) {
+          final key = (item as Map)[keyField]?.toString() ?? '';
+          if (key.isNotEmpty) {
+            LocalDB.saveData(boxName, key, Map<String, dynamic>.from(item));
+            localKeys.remove(key);
           }
         }
+        // localKeys now contains items only in local, not in server — keep them
       }
-      if (groups.isNotEmpty) {
-        final localLen = LocalDB.getAllData(LocalDB.groupsBox).length;
-        if (localLen == 0 || groups.length >= localLen) {
-          LocalDB.clearBox(LocalDB.groupsBox);
-          for (final g in groups) {
-            LocalDB.saveData(LocalDB.groupsBox, g['id'], g);
-          }
-        }
-      }
-      if (grades.isNotEmpty) {
-        final localLen = LocalDB.getAllData(LocalDB.gradesBox).length;
-        if (localLen == 0 || grades.length >= localLen) {
-          LocalDB.clearBox(LocalDB.gradesBox);
-          for (final g in grades) {
-            LocalDB.saveData(LocalDB.gradesBox, g['id'], g);
-          }
-        }
-      }
-      if (invoices.isNotEmpty) {
-        final localLen = LocalDB.getAllData(LocalDB.invoicesBox).length;
-        if (localLen == 0 || invoices.length >= localLen) {
-          LocalDB.clearBox(LocalDB.invoicesBox);
-          for (final i in invoices) {
-            LocalDB.saveData(LocalDB.invoicesBox, i['id'], i);
-          }
-        }
-      }
-      if (attendance.isNotEmpty) {
-        final localLen = LocalDB.getAllData(LocalDB.attendanceBox).length;
-        if (localLen == 0 || attendance.length >= localLen) {
-          LocalDB.clearBox(LocalDB.attendanceBox);
-          for (final a in attendance) {
-            LocalDB.saveData(LocalDB.attendanceBox, a['id'], a);
-          }
-        }
-      }
+
+      mergeData(LocalDB.studentsBox, students, 'id');
+      mergeData(LocalDB.groupsBox, groups, 'id');
+      mergeData(LocalDB.gradesBox, grades, 'id');
+      mergeData(LocalDB.invoicesBox, invoices, 'id');
+      mergeData(LocalDB.attendanceBox, attendance, 'id');
 
       LocalDB.setLastSyncTime(DateTime.now());
       _lastSyncStatus = 'تم المزامنة بنجاح';

@@ -117,6 +117,7 @@ async def my_subscription(
             auto_renew=False,
             days_remaining=0,
             is_expired=True,
+            is_trial=False,
         )
 
     plan = await subscription_plan_service.get_by_id(sub["plan_id"])
@@ -134,6 +135,9 @@ async def my_subscription(
 
     plan_resp = SubscriptionPlanResponse(**plan) if plan else None
 
+    code_id = sub.get("code_id", "")
+    is_trial = isinstance(code_id, str) and code_id.startswith("trial-")
+
     return TeacherSubscriptionResponse(
         id=sub["id"],
         plan_id=sub["plan_id"],
@@ -145,6 +149,8 @@ async def my_subscription(
         auto_renew=sub.get("auto_renew", False),
         days_remaining=days_remaining,
         is_expired=is_expired,
+        is_trial=is_trial,
+        trial_end_date=expires_dt if is_trial else None,
     )
 
 

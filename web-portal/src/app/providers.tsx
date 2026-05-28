@@ -31,10 +31,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         position="top-center"
         toastOptions={{
           style: {
-            background: '#1E293B',
-            color: '#F1F5F9',
-            border: '1px solid #334155',
-            fontFamily: 'Tajawal, system-ui, sans-serif',
+            background: '#fff',
+            color: '#1a1d23',
+            border: '1px solid #e8ecf0',
+            fontFamily: 'Cairo, system-ui, sans-serif',
           },
           success: {
             iconTheme: {

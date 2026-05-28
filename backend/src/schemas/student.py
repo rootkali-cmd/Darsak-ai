@@ -11,6 +11,7 @@ class StudentCreate(BaseModel):
     phone: str | None = None
     parent_phone: str | None = None
     grade_level: str | None = None
+    group_id: str | None = None
     pin: str | None = Field(None, min_length=6, max_length=8, pattern=PIN_PATTERN)
 
 
@@ -19,6 +20,7 @@ class StudentUpdate(BaseModel):
     phone: str | None = None
     parent_phone: str | None = None
     grade_level: str | None = None
+    group_id: str | None = None
     pin: str | None = Field(None, min_length=6, max_length=8, pattern=PIN_PATTERN)
 
 
@@ -33,6 +35,7 @@ class StudentResponse(BaseModel):
     phone: str | None = None
     parent_phone: str | None = None
     grade_level: str | None = None
+    group_id: str | None = None
     teacher_id: UUID
     has_pin: bool = False
     created_at: datetime

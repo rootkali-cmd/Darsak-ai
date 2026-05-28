@@ -97,12 +97,8 @@ class SubscriptionService {
 
   bool isSubscriptionActive(Map<String, dynamic>? subscription) {
     if (subscription == null) return false;
-    // Use backend-calculated fields first
-    if (subscription.containsKey('is_expired')) {
-      return subscription['is_expired'] != true;
-    }
-    final status = subscription['status']?.toString().toLowerCase();
-    if (status != null && status != 'active') return false;
+    if (subscription['is_expired'] == true) return false;
+    if (subscription['is_active'] == false) return false;
     final expiryStr = subscription['expires_at']?.toString();
     if (expiryStr != null) {
       final expiry = DateTime.tryParse(expiryStr);
@@ -115,14 +111,28 @@ class SubscriptionService {
 
   int getRemainingDays(Map<String, dynamic>? subscription) {
     if (subscription == null) return 0;
-    // Use backend-calculated field first
+    // Use backend-calculated field first (it's always fresh)
     if (subscription.containsKey('days_remaining')) {
-      return subscription['days_remaining'] as int;
+      return subscription['days_remaining'] as int? ?? 0;
     }
     final expiryStr = subscription['expires_at']?.toString();
     if (expiryStr == null) return 0;
     final expiry = DateTime.tryParse(expiryStr);
     if (expiry == null) return 0;
     return expiry.difference(DateTime.now()).inDays;
+  }
+
+  bool isTrial(Map<String, dynamic>? subscription) {
+    if (subscription == null) return false;
+    return subscription['is_trial'] == true;
+  }
+
+  bool hasTrialEnded(Map<String, dynamic>? subscription) {
+    if (subscription == null) return true;
+    final trialEnd = subscription['trial_end_date']?.toString();
+    if (trialEnd == null) return false;
+    final end = DateTime.tryParse(trialEnd);
+    if (end == null) return false;
+    return end.isBefore(DateTime.now());
   }
 }
