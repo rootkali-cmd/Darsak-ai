@@ -1,13 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../core/api_service.dart';
-import '../core/analytics_service.dart';
-import '../core/structured_logger.dart';
-import '../models/user.dart';
+import '../core/api/api_client.dart';
+import '../core/api/api_service.dart';
+import '../core/utils/constants.dart';
+import '../core/utils/logger.dart';
+import '../core/models/user.dart';
 
-class AuthProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+final class AuthProvider extends ChangeNotifier {
+  final ApiClient client;
+  late final ApiService _api;
+  final FlutterSecureStorage _secureStorage;
   UserModel? _user;
   bool _isLoading = false;
   bool _initialLoadComplete = false;
@@ -25,6 +29,10 @@ class AuthProvider extends ChangeNotifier {
   List<String> get levels => _levels;
   String? get error => _error;
 
+  AuthProvider(this.client)
+      : _api = ApiService(client),
+        _secureStorage = const FlutterSecureStorage();
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _error = null;
@@ -32,30 +40,26 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final tokens = await _api.login(email, password);
+      await _saveTokens(
+        tokens['access_token']?.toString() ?? '',
+        tokens['refresh_token']?.toString() ?? '',
+      );
       final userData = await _api.getMe();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('access_token', tokens['access_token']);
-      await prefs.setString('refresh_token', tokens['refresh_token']);
-
       _user = UserModel.fromJson(userData);
       _onboardingCompleted = userData['onboarding_completed'] == true;
       _subjects = (userData['subjects'] as List?)?.map((e) => e.toString()).toList() ?? [];
       _levels = (userData['levels'] as List?)?.map((e) => e.toString()).toList() ?? [];
-      await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
+      await _cacheUser(_user!);
       _isLoading = false;
-      AnalyticsService.instance.loginSuccess();
-      StructuredLogger.instance.info('login_success', data: { 'email': email });
+      AppLogger.instance.info('login_success', data: {'email': email});
       notifyListeners();
       return true;
     } catch (e) {
-      // Clear partial tokens if getMe failed
-      (await SharedPreferences.getInstance()).remove('access_token');
-      (await SharedPreferences.getInstance()).remove('refresh_token');
+      await _clearTokens();
       _error = e is DioException && e.response?.statusCode == 401
           ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
           : 'فشل تسجيل الدخول';
-      AnalyticsService.instance.loginFailed(reason: _error);
-      StructuredLogger.instance.warning('login_failed', data: { 'email': email, 'error': _error });
+      AppLogger.instance.warning('login_failed', data: {'email': email, 'error': _error});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -63,27 +67,32 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> loadUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
-    if (token == null) {
-      // Try cache anyway — maybe user was logged in before but token expired
+    String? token;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString(PrefKeys.accessToken);
+    } catch (_) {}
+    if (token == null || token.isEmpty) {
+      try {
+        token = await _secureStorage.read(key: PrefKeys.accessToken);
+      } catch (_) {}
+    }
+    if (token == null || token.isEmpty) {
       await _loadCachedUser();
       _initialLoadComplete = true;
+      notifyListeners();
       return;
     }
-
-    // Load cached user immediately (instant, no internet needed)
     await _loadCachedUser();
     _initialLoadComplete = true;
-
-    // Then refresh from server in background (silent update)
+    notifyListeners();
     try {
       final userData = await _api.getMe();
       _user = UserModel.fromJson(userData);
       _onboardingCompleted = userData['onboarding_completed'] == true;
       _subjects = (userData['subjects'] as List?)?.cast<String>() ?? [];
       _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
-      await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
+      await _cacheUser(_user!);
       notifyListeners();
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 401) {
@@ -92,18 +101,20 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> saveOnboarding({required String fullName, required List<String> subjects, required List<String> levels}) async {
+  Future<void> saveOnboarding({
+    required String fullName,
+    required List<String> subjects,
+    required List<String> levels,
+  }) async {
     await _api.saveOnboarding(fullName: fullName, subjects: subjects, levels: levels);
     _onboardingCompleted = true;
     _subjects = subjects;
     _levels = levels;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true);
-    await prefs.setStringList('onboarding_subjects', subjects);
-    await prefs.setStringList('onboarding_levels', levels);
-    if (_user != null) {
-      await _cacheUser(_user!, onboardingCompleted: true, subjects: subjects, levels: levels);
-    }
+    await prefs.setBool(PrefKeys.onboardingCompleted, true);
+    await prefs.setStringList(PrefKeys.onboardingSubjects, subjects);
+    await prefs.setStringList(PrefKeys.onboardingLevels, levels);
+    if (_user != null) await _cacheUser(_user!);
     notifyListeners();
   }
 
@@ -112,53 +123,79 @@ class AuthProvider extends ChangeNotifier {
     _onboardingCompleted = false;
     _subjects = [];
     _levels = [];
-    _initialLoadComplete = false;
+    // Keep _initialLoadComplete = true so UI shows LoginScreen immediately
+    // instead of getting stuck on loading spinner
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('access_token');
-    await prefs.remove('refresh_token');
-    await prefs.remove('cached_user_id');
-    await prefs.remove('cached_user_name');
-    await prefs.remove('cached_user_email');
-    await prefs.remove('cached_user_role');
-    await prefs.remove('cached_user_code');
-    await prefs.remove('cached_user_is_active');
-    await prefs.remove('cached_user_created_at');
-    await prefs.remove('subscription_data');
+    await prefs.remove(PrefKeys.cachedUserId);
+    await prefs.remove(PrefKeys.cachedUserName);
+    await prefs.remove(PrefKeys.cachedUserEmail);
+    await prefs.remove(PrefKeys.cachedUserRole);
+    await prefs.remove(PrefKeys.cachedUserCode);
+    await prefs.remove(PrefKeys.cachedUserIsActive);
+    await prefs.remove(PrefKeys.cachedUserCreatedAt);
+    await prefs.remove(PrefKeys.subscriptionData);
+    await _clearTokens();
     notifyListeners();
   }
 
-  Future<void> _cacheUser(UserModel user, {bool onboardingCompleted = false, List<String> subjects = const [], List<String> levels = const []}) async {
+  Future<void> _saveTokens(String accessToken, String refreshToken) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(PrefKeys.accessToken, accessToken);
+      if (refreshToken.isNotEmpty) {
+        await prefs.setString(PrefKeys.refreshToken, refreshToken);
+      }
+    } catch (_) {}
+    try {
+      await _secureStorage.write(key: PrefKeys.accessToken, value: accessToken);
+      if (refreshToken.isNotEmpty) {
+        await _secureStorage.write(key: PrefKeys.refreshToken, value: refreshToken);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _clearTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(PrefKeys.accessToken);
+      await prefs.remove(PrefKeys.refreshToken);
+    } catch (_) {}
+    try {
+      await _secureStorage.delete(key: PrefKeys.accessToken);
+      await _secureStorage.delete(key: PrefKeys.refreshToken);
+    } catch (_) {}
+  }
+
+  Future<void> _cacheUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('cached_user_id', user.id);
-    await prefs.setString('cached_user_name', user.fullName);
-    await prefs.setString('cached_user_email', user.email);
-    await prefs.setString('cached_user_role', user.role);
-    await prefs.setString('cached_user_code', user.teacherCode ?? '');
-    await prefs.setBool('cached_user_is_active', user.isActive);
-    await prefs.setString('cached_user_created_at', user.createdAt.toIso8601String());
-    await prefs.setBool('cached_onboarding_completed', onboardingCompleted);
-    await prefs.setStringList('cached_onboarding_subjects', subjects);
-    await prefs.setStringList('cached_onboarding_levels', levels);
+    await prefs.setString(PrefKeys.cachedUserId, user.id);
+    await prefs.setString(PrefKeys.cachedUserName, user.fullName);
+    await prefs.setString(PrefKeys.cachedUserEmail, user.email);
+    await prefs.setString(PrefKeys.cachedUserRole, user.role);
+    await prefs.setString(PrefKeys.cachedUserCode, user.teacherCode ?? '');
+    await prefs.setBool(PrefKeys.cachedUserIsActive, user.isActive);
+    await prefs.setString(PrefKeys.cachedUserCreatedAt, user.createdAt.toIso8601String());
   }
 
   Future<void> _loadCachedUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedId = prefs.getString('cached_user_id');
-    final cachedName = prefs.getString('cached_user_name');
-    final cachedEmail = prefs.getString('cached_user_email');
+    final cachedId = prefs.getString(PrefKeys.cachedUserId);
+    final cachedName = prefs.getString(PrefKeys.cachedUserName);
+    final cachedEmail = prefs.getString(PrefKeys.cachedUserEmail);
     if (cachedId != null && cachedName != null && cachedEmail != null) {
       _user = UserModel(
         id: cachedId,
         fullName: cachedName,
         email: cachedEmail,
-        role: prefs.getString('cached_user_role') ?? 'teacher',
-        teacherCode: prefs.getString('cached_user_code'),
-        isActive: prefs.getBool('cached_user_is_active') ?? true,
-        createdAt: DateTime.tryParse(prefs.getString('cached_user_created_at') ?? '') ?? DateTime.now(),
+        role: prefs.getString(PrefKeys.cachedUserRole) ?? 'teacher',
+        teacherCode: prefs.getString(PrefKeys.cachedUserCode),
+        isActive: prefs.getBool(PrefKeys.cachedUserIsActive) ?? true,
+        createdAt: DateTime.tryParse(prefs.getString(PrefKeys.cachedUserCreatedAt) ?? '') ??
+            DateTime.now(),
       );
-      _onboardingCompleted = prefs.getBool('cached_onboarding_completed') ?? false;
-      _subjects = prefs.getStringList('cached_onboarding_subjects') ?? [];
-      _levels = prefs.getStringList('cached_onboarding_levels') ?? [];
+      _onboardingCompleted = prefs.getBool(PrefKeys.onboardingCompleted) ?? false;
+      _subjects = prefs.getStringList(PrefKeys.onboardingSubjects) ?? [];
+      _levels = prefs.getStringList(PrefKeys.onboardingLevels) ?? [];
       notifyListeners();
     }
   }

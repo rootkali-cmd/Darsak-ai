@@ -1,11 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import '../constants.dart';
-import '../local_db.dart';
-import 'conflict_resolver.dart';
+import '../utils/constants.dart';
+import '../database/database_service.dart';
+import '../sync/conflict_resolver.dart';
+import '../models/student.dart';
+import '../models/group.dart';
 
-class LocalSyncServer {
+final class _ClientConnection {
+  final WebSocket ws;
+  String? deviceId;
+  _ClientConnection(this.ws);
+  void send(Map<String, dynamic> data) {
+    try {
+      ws.add(jsonEncode(data));
+    } catch (_) {}
+  }
+}
+
+final class LocalSyncServer {
   HttpServer? _server;
   final List<_ClientConnection> _clients = [];
   bool _isRunning = false;
@@ -23,11 +36,9 @@ class LocalSyncServer {
   Future<void> start({int? port}) async {
     if (_isRunning) return;
     _port = port ?? LocalSyncConfig.port;
-
     try {
       _server = await HttpServer.bind(InternetAddress.anyIPv4, _port);
       _isRunning = true;
-
       _server!.listen(
         (request) {
           if (request.uri.path == '/ws') {
@@ -50,7 +61,6 @@ class LocalSyncServer {
   void _handleClient(WebSocket ws) {
     final client = _ClientConnection(ws);
     _clients.add(client);
-
     ws.listen(
       (data) {
         try {
@@ -66,7 +76,6 @@ class LocalSyncServer {
   void _handleMessage(_ClientConnection client, Map<String, dynamic> message) {
     final type = message['type'] as String?;
     if (type == null) return;
-
     switch (type) {
       case 'handshake':
         client.deviceId = message['device_id'] as String?;
@@ -76,11 +85,9 @@ class LocalSyncServer {
           'server_time': DateTime.now().toIso8601String(),
         });
         break;
-
       case 'event':
         _handleEvent(client, message);
         break;
-
       case 'ping':
         client.send({'type': 'pong', 'ack_id': message['ack_id']});
         break;
@@ -98,30 +105,34 @@ class LocalSyncServer {
       client.send({
         'type': 'error',
         'ack_id': message['ack_id'],
-        'error': 'Missing required fields: box, key, data',
+        'error': 'Missing required fields',
       });
       return;
     }
 
     try {
-      final existing = LocalDB.getData(box, key);
-      if (existing != null) {
-        ConflictResolver.resolve(
-          localData: existing,
-          remoteData: data,
-          boxName: box,
-          key: key,
-          localDeviceId: LocalSyncConfig.deviceId,
-          remoteDeviceId: client.deviceId ?? 'unknown',
-          localTimestamp: existing['updated_at'] as String?,
-          remoteTimestamp: timestamp,
-        );
+      final db = DatabaseService.instance;
+      final isDelete = box == 'delete_student' || box == 'delete_group';
+      if (!isDelete) {
+        final existing = _getLocalData(db, box, key);
+        if (existing != null) {
+          ConflictResolver.resolve(
+            localData: existing,
+            remoteData: data,
+            boxName: box,
+            key: key,
+            localDeviceId: LocalSyncConfig.deviceId,
+            remoteDeviceId: client.deviceId ?? 'unknown',
+            localTimestamp: existing['updated_at'] as String?,
+            remoteTimestamp: timestamp,
+          );
+        } else {
+          _saveLocalData(db, box, key, data);
+        }
       } else {
-        LocalDB.saveData(box, key, data);
+        _saveLocalData(db, box, key, data);
       }
-
       _eventController.add(event);
-
       client.send({
         'type': 'ack',
         'ack_id': message['ack_id'],
@@ -134,6 +145,51 @@ class LocalSyncServer {
         'ack_id': message['ack_id'],
         'error': e.toString(),
       });
+    }
+  }
+
+  Map<String, dynamic>? _getLocalData(DatabaseService db, String box, String key) {
+    switch (box) {
+      case 'students':
+      case 'delete_student':
+        return db.getStudent(key)?.toJson() ?? db.getStudentById(key)?.toJson();
+      case 'groups':
+      case 'delete_group':
+        return db.getGroup(key)?.toJson();
+      case 'attendance':
+        return db.getAttendance(key);
+      case 'grades':
+        return db.getGrade(key);
+      case 'invoices':
+        return db.getInvoice(key);
+      default:
+        return null;
+    }
+  }
+
+  void _saveLocalData(DatabaseService db, String box, String key, Map<String, dynamic> data) {
+    switch (box) {
+      case 'students':
+        db.saveStudent(StudentModel.fromJson(data));
+        break;
+      case 'delete_student':
+        db.deleteStudent(data['code'] as String? ?? key);
+        break;
+      case 'groups':
+        db.saveGroup(GroupModel.fromJson(data));
+        break;
+      case 'delete_group':
+        db.deleteGroup(data['id'] as String? ?? key);
+        break;
+      case 'attendance':
+        db.saveAttendance(data);
+        break;
+      case 'grades':
+        db.saveGrade(data);
+        break;
+      case 'invoices':
+        db.saveInvoice(data);
+        break;
     }
   }
 
@@ -171,18 +227,5 @@ class LocalSyncServer {
     } catch (_) {}
     _server = null;
     _isRunning = false;
-  }
-}
-
-class _ClientConnection {
-  final WebSocket ws;
-  String? deviceId;
-
-  _ClientConnection(this.ws);
-
-  void send(Map<String, dynamic> data) {
-    try {
-      ws.add(jsonEncode(data));
-    } catch (_) {}
   }
 }

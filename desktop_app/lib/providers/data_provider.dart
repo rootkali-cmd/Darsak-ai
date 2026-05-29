@@ -1,92 +1,112 @@
 import 'package:flutter/foundation.dart';
-import '../core/api_service.dart';
-import '../core/local_db.dart';
-import '../core/sync_service.dart';
-import '../core/db/database_service.dart';
-import '../models/student.dart';
-import '../models/group.dart';
+import '../core/api/api_service.dart';
+import '../core/database/database_service.dart';
+import '../core/sync/sync_service.dart';
+import '../core/utils/logger.dart';
+import '../core/services/debug_tracker.dart';
+import '../core/models/student.dart';
+import '../core/models/group.dart';
 
-class DataProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+final class DataProvider extends ChangeNotifier {
+  final ApiService _api;
   final SyncService _sync;
+  final DatabaseService _db;
   List<StudentModel> _students = [];
   List<GroupModel> _groups = [];
   bool _isLoading = false;
-  bool _useDb = false;
-
-  final Map<String, bool> _pendingChanges = {};
+  bool _pendingNotify = false;
+  DateTime _lastServerFetch = DateTime(2000);
 
   List<StudentModel> get students => _students;
   List<GroupModel> get groups => _groups;
   bool get isLoading => _isLoading;
   bool get isOffline => !_sync.isOnline;
   ApiService get api => _api;
+  int get pendingChangesCount => _sync.pendingCount;
 
-  bool isPending(String id) => _pendingChanges[id] == true;
-  int get pendingChangesCount => _pendingChanges.length;
-
-  DataProvider(this._sync) {
+  DataProvider({
+    required ApiService api,
+    required SyncService sync,
+    required DatabaseService db,
+  })  : _api = api,
+        _sync = sync,
+        _db = db {
     _sync.addListener(_onSyncChange);
-    _sync.addOpListener(_onOpChange);
   }
 
   @override
   void dispose() {
     _sync.removeListener(_onSyncChange);
-    _sync.removeOpListener(_onOpChange);
     super.dispose();
   }
 
   void _onSyncChange(String status, String type) {
-    if (type == 'connected') { _loadFromLocal(); notifyListeners(); }
+    if (type == 'connected' || type == 'synced') {
+      if (DateTime.now().difference(_lastServerFetch) > const Duration(seconds: 15)) {
+        final prevStudents = _students.length;
+        final prevGroups = _groups.length;
+        _loadFromLocal();
+        if (_students.length != prevStudents || _groups.length != prevGroups) {
+          _scheduleNotify();
+        }
+      }
+    }
   }
-
-  bool _pendingNotify = false;
 
   void _scheduleNotify() {
     if (!_pendingNotify) {
       _pendingNotify = true;
       Future.microtask(() {
         _pendingNotify = false;
+        DebugTracker.instance.notifyListeners('DataProvider');
         notifyListeners();
       });
     }
   }
 
-  void _onOpChange(SyncOp op) {
-    if (op.status == SyncOpStatus.synced || op.status == SyncOpStatus.failed) {
-      _pendingChanges.remove(op.label);
-      _scheduleNotify();
+  Future<void> loadData() async {
+    // 1. Load local data IMMEDIATELY (never wait for API)
+    _loadFromLocal();
+    _isLoading = _students.isEmpty && _groups.isEmpty;
+    notifyListeners();
+
+    // 2. Sync from API in BACKGROUND (non-blocking) — but only if enough time passed
+    if (DateTime.now().difference(_lastServerFetch) > const Duration(seconds: 30)) {
+      _backgroundSync();
     }
   }
 
-  Future<void> loadData() async {
-    _isLoading = true;
-    notifyListeners();
-    _useDb = true;
-    _loadFromLocal();
-    _isLoading = false;
-    notifyListeners();
-    await _syncFromApi();
+  void _backgroundSync() {
+    final prevStudentCount = _students.length;
+    final prevGroupCount = _groups.length;
+
+    Future.any([
+      _syncFromApi(),
+      Future.delayed(const Duration(seconds: 8)),
+    ]).then((_) {
+      _loadFromLocal();
+      final changed = _students.length != prevStudentCount || _groups.length != prevGroupCount;
+      if (changed) {
+        notifyListeners();
+      }
+      DebugTracker.instance.log('SYNC', 'background sync complete');
+    }).catchError((e) {
+      DebugTracker.instance.appError('SYNC', e);
+    });
   }
 
   void _loadFromLocal() {
-    if (DatabaseService.instance.isInitialized) {
-      _students = DatabaseService.instance.getAllStudents();
-      _groups = DatabaseService.instance.getAllGroups();
-    } else {
-      LocalDB.deduplicateBox(LocalDB.studentsBox, 'code');
-      LocalDB.deduplicateBox(LocalDB.groupsBox, 'id');
-      _students = LocalDB.getAllData(LocalDB.studentsBox).map((s) => StudentModel.fromJson(s)).toList();
-      _groups = LocalDB.getAllData(LocalDB.groupsBox).map((g) => GroupModel.fromJson(g)).toList();
-    }
+    _students = _db.getAllStudents();
+    _groups = _db.getAllGroups();
   }
 
   Future<void> _syncFromApi() async {
     try {
+      DebugTracker.instance.log('SYNC', '_syncFromApi START');
       final pendingIds = <String>{};
       final pendingDeleteIds = <String>{};
-      for (final item in LocalDB.getUnsyncedItems()) {
+      final queueItems = _db.getUnsyncedItems();
+      for (final item in queueItems) {
         final data = item['data'] as Map?;
         if (data != null) {
           final id = data['id']?.toString();
@@ -104,14 +124,11 @@ class DataProvider extends ChangeNotifier {
       final groupsData = await _api.getGroups();
 
       if (studentsData.isNotEmpty) {
-        final apiStudents = studentsData.map((s) => StudentModel.fromJson(s)).toList();
+        final apiStudents =
+            studentsData.map((s) => StudentModel.fromJson(s as Map<String, dynamic>)).toList();
         for (final s in apiStudents) {
           if (!pendingIds.contains(s.id) && !pendingIds.contains(s.code)) {
-            if (DatabaseService.instance.isInitialized) {
-              DatabaseService.instance.saveStudent(s);
-            } else {
-              LocalDB.saveData(LocalDB.studentsBox, s.code, s.toJson());
-            }
+            _db.saveStudent(s);
           }
         }
         _students = apiStudents
@@ -120,41 +137,44 @@ class DataProvider extends ChangeNotifier {
       }
 
       if (groupsData.isNotEmpty) {
-        final apiGroups = groupsData.map((g) => GroupModel.fromJson(g)).toList();
+        final apiGroups =
+            groupsData.map((g) => GroupModel.fromJson(g as Map<String, dynamic>)).toList();
         for (final g in apiGroups) {
-          if (DatabaseService.instance.isInitialized) {
-            DatabaseService.instance.saveGroup(g);
-          } else {
-            LocalDB.saveData(LocalDB.groupsBox, g.id, g.toJson());
+          if (!pendingIds.contains(g.id)) {
+            _db.saveGroup(g);
           }
         }
         _groups = apiGroups;
       }
 
-      _loadFromLocal();
-      notifyListeners();
-    } catch (_) {}
+      _lastServerFetch = DateTime.now();
+      DebugTracker.instance.log('SYNC', '_syncFromApi DONE');
+    } catch (e) {
+      DebugTracker.instance.appError('SYNC', e);
+      AppLogger.instance.warning('sync_from_api_failed', error: e);
+    }
   }
 
   void addStudentLocally(StudentModel student) {
-    _students.add(student);
-    if (DatabaseService.instance.isInitialized) {
-      DatabaseService.instance.saveStudent(student);
+    final idx = _students.indexWhere((s) => s.code == student.code);
+    if (idx != -1) {
+      _students[idx] = student;
     } else {
-      LocalDB.saveData(LocalDB.studentsBox, student.code, student.toJson());
+      _students.add(student);
     }
-    _pendingChanges[student.code] = true;
+    _db.saveStudent(student);
     notifyListeners();
     _sync.immediatePush('student', student.code, student.toJson());
   }
 
   void addGroupLocally(GroupModel group) {
-    _groups.add(group);
-    if (DatabaseService.instance.isInitialized) {
-      DatabaseService.instance.saveGroup(group);
+    final idx = _groups.indexWhere((g) => g.id == group.id);
+    if (idx != -1) {
+      _groups[idx] = group;
     } else {
-      LocalDB.saveData(LocalDB.groupsBox, group.id, group.toJson());
+      _groups.add(group);
     }
+    _db.saveGroup(group);
     _sync.immediatePush('group', group.id, group.toJson());
     notifyListeners();
   }
@@ -162,68 +182,53 @@ class DataProvider extends ChangeNotifier {
   void updateStudentPinStatus(String studentId, bool hasPin) {
     final idx = _students.indexWhere((s) => s.id == studentId);
     if (idx == -1) return;
-    _students[idx] = StudentModel(
-      id: _students[idx].id, code: _students[idx].code,
-      fullName: _students[idx].fullName, phone: _students[idx].phone,
-      parentPhone: _students[idx].parentPhone, parentPhone2: _students[idx].parentPhone2,
-      gradeLevel: _students[idx].gradeLevel, groupId: _students[idx].groupId,
-      isPaid: _students[idx].isPaid, hasPin: hasPin,
-      createdAt: _students[idx].createdAt,
-    );
-    if (DatabaseService.instance.isInitialized) {
-      DatabaseService.instance.saveStudent(_students[idx]);
-    } else {
-      LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, _students[idx].toJson());
-    }
+    _students[idx] = _students[idx].copyWith(hasPin: hasPin);
+    _db.saveStudent(_students[idx]);
     notifyListeners();
+  }
+
+  /// Resets a student's PIN. Optimistically updates local state,
+  /// then tries API. On failure, queues for background retry.
+  Future<bool> resetStudentPin(String studentId, String pin) async {
+    updateStudentPinStatus(studentId, true);
+    try {
+      await _api.resetStudentPin(studentId, pin).timeout(const Duration(seconds: 10));
+      return true;
+    } catch (e) {
+      AppLogger.instance.warning('pin_reset_api_failed', error: e);
+      _sync.immediatePush('pin', studentId, {'student_id': studentId, 'pin': pin});
+      return false;
+    }
   }
 
   void removeStudent(String studentId, String studentCode) {
     _students.removeWhere((s) => s.id == studentId);
-    if (DatabaseService.instance.isInitialized) {
-      DatabaseService.instance.deleteStudent(studentCode);
-      if (studentId != studentCode) DatabaseService.instance.deleteStudentById(studentId);
-    } else {
-      LocalDB.deleteData(LocalDB.studentsBox, studentCode);
-      if (studentId != studentCode) LocalDB.deleteData(LocalDB.studentsBox, studentId);
-    }
-    _sync.immediatePush('delete_student', studentId, {'id': studentId, 'code': studentCode});
+    _db.deleteStudent(studentCode);
+    if (studentId != studentCode) _db.deleteStudentById(studentId);
+    // Queue silently — never block UI for background operations
+    _sync.queueOnly('delete_student', studentId, {'id': studentId, 'code': studentCode});
+    notifyListeners();
+  }
+
+  void removeGroup(String groupId) {
+    _groups.removeWhere((g) => g.id == groupId);
+    _db.deleteGroup(groupId);
+    _sync.immediatePush('delete_group', groupId, {'id': groupId});
     notifyListeners();
   }
 
   void updateStudentId(String oldCode, String newId) {
-    final idx = _students.indexWhere((s) => s.id == oldCode);
+    final idx = _students.indexWhere((s) => s.code == oldCode);
     if (idx == -1) return;
-    final oldData = LocalDB.getData(LocalDB.studentsBox, _students[idx].code);
-    _students[idx] = StudentModel(
-      id: newId, code: _students[idx].code, fullName: _students[idx].fullName,
-      phone: _students[idx].phone, parentPhone: _students[idx].parentPhone,
-      parentPhone2: _students[idx].parentPhone2, gradeLevel: _students[idx].gradeLevel,
-      groupId: _students[idx].groupId, isPaid: _students[idx].isPaid,
-      hasPin: _students[idx].hasPin, createdAt: _students[idx].createdAt,
-    );
-    if (oldData != null) {
-      oldData['id'] = newId;
-      if (DatabaseService.instance.isInitialized) {
-        DatabaseService.instance.saveStudent(_students[idx]);
-      } else {
-        LocalDB.saveData(LocalDB.studentsBox, _students[idx].code, oldData);
-      }
-    }
+    _students[idx] = _students[idx].copyWith(id: newId);
+    _db.saveStudent(_students[idx]);
     notifyListeners();
   }
 
   List<StudentModel> filterStudents({String? search, String? groupId}) {
-    if (DatabaseService.instance.isInitialized && (search != null || groupId != null)) {
-      return DatabaseService.instance.searchStudents(search: search, groupId: groupId);
-    }
-    var filtered = _students;
-    if (groupId != null && groupId.isNotEmpty) filtered = filtered.where((s) => s.groupId == groupId).toList();
-    if (search != null && search.isNotEmpty) {
-      filtered = filtered.where((s) =>
-          s.fullName.toLowerCase().contains(search.toLowerCase()) ||
-          s.code.toLowerCase().contains(search.toLowerCase())).toList();
-    }
-    return filtered;
+    return _db.searchStudents(search: search, groupId: groupId);
   }
+
+  List<StudentModel> get studentsInMemory => _students;
+  List<GroupModel> get groupsInMemory => _groups;
 }

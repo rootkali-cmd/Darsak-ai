@@ -24,3 +24,8 @@ target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+
+# Workaround for snap flutter linker issue with libsecret/glib mismatch.
+target_link_options(${BINARY_NAME} PRIVATE
+  -Wl,-rpath-link,/snap/flutter/current/usr/lib/x86_64-linux-gnu
+)

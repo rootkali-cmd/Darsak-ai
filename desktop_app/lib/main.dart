@@ -1,57 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:window_manager/window_manager.dart';
-import 'core/theme.dart';
-import 'core/constants.dart';
-import 'core/local_db.dart';
-import 'core/sync_service.dart';
-import 'core/update_service.dart';
-import 'core/analytics_service.dart';
-import 'core/structured_logger.dart';
-import 'core/remote_config_service.dart';
+import 'package:path_provider/path_provider.dart';
+import 'core/theme/app_theme.dart';
+import 'core/utils/constants.dart';
+import 'core/utils/logger.dart';
+import 'core/database/database_service.dart';
+import 'core/api/api_client.dart';
+import 'core/api/api_service.dart';
+import 'core/sync/sync_service.dart';
+import 'core/sync/sync_queue_manager.dart';
+import 'core/services/analytics_service.dart';
+import 'core/services/remote_config_service.dart';
 import 'core/local_sync/local_sync_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
 import 'providers/sync_provider.dart';
-import 'screens/login_screen.dart';
-import 'screens/dashboard_screen.dart';
-import 'screens/onboarding_screen.dart';
+import 'ui/screens/login/login_screen.dart';
+import 'ui/screens/dashboard/dashboard_screen.dart';
+import 'ui/screens/onboarding/onboarding_screen.dart';
 
-void main() async {
+late String _dbPath;
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await LocalDB.init();
   await windowManager.ensureInitialized();
 
-  await StructuredLogger.instance.init();
+  await AppLogger.instance.init();
   await AnalyticsService.instance.init();
   await RemoteConfigService.instance.init();
+
+  final appDir = await getApplicationSupportDirectory();
+  _dbPath = '${appDir.path}/darsak_db/darsak.db';
+  await DatabaseService.instance.init(_dbPath);
 
   final localSync = LocalSyncService();
   await localSync.start();
 
-  StructuredLogger.instance.info('app_started', data: {
+  AppLogger.instance.info('app_started', data: {
     'version': AppConstants.appVersion,
     'platform': AppConstants.platformName,
   });
   AnalyticsService.instance.appOpened();
 
-  // await SentryFlutter.init(
-  //   (options) {
-  //     options.dsn = const String.fromEnvironment(
-  //       'SENTRY_DSN',
-  //       defaultValue: '',
-  //     );
-  //     options.tracesSampleRate = 1.0;
-  //     options.environment = const String.fromEnvironment(
-  //       'FLUTTER_ENV',
-  //       defaultValue: 'development',
-  //     );
-  //     options.release = 'darsak_desktop@${AppConstants.appVersion}';
-  //   },
-  //   appRunner: () => runApp(DarsakApp(localSync: localSync)),
-  // );
   runApp(DarsakApp(localSync: localSync));
 }
 
@@ -65,13 +56,37 @@ class DarsakApp extends StatefulWidget {
 
 class _DarsakAppState extends State<DarsakApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+  late final ApiClient _apiClient;
+  late final ApiService _apiService;
+  late final SyncQueueManager _syncQueue;
   late final SyncService _syncService;
+  late final AuthProvider _authProvider;
+  late final DataProvider _dataProvider;
+  late final SyncProvider _syncProvider;
 
   @override
   void initState() {
     super.initState();
-    _syncService = SyncService(localSync: widget.localSync);
+    _apiClient = ApiClient();
+    _apiService = ApiService(_apiClient);
+    _authProvider = AuthProvider(_apiClient);
+    _apiClient.onUnauthorized = () {
+      _authProvider.logout();
+    };
+    _syncQueue = SyncQueueManager(DatabaseService.instance);
+    _syncService = SyncService(
+      api: _apiService,
+      queue: _syncQueue,
+      db: DatabaseService.instance,
+      dbPath: _dbPath,
+    );
     _syncService.init();
+    _dataProvider = DataProvider(
+      api: _apiService,
+      sync: _syncService,
+      db: DatabaseService.instance,
+    );
+    _syncProvider = SyncProvider(_syncService);
   }
 
   void toggleTheme() {
@@ -83,8 +98,10 @@ class _DarsakAppState extends State<DarsakApp> {
   @override
   void dispose() {
     _syncService.dispose();
+    _dataProvider.dispose();
+    _syncProvider.dispose();
     widget.localSync.dispose();
-    StructuredLogger.instance.dispose();
+    AppLogger.instance.dispose();
     super.dispose();
   }
 
@@ -92,10 +109,10 @@ class _DarsakAppState extends State<DarsakApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => DataProvider(_syncService)),
-        ChangeNotifierProvider(create: (_) => SyncProvider(_syncService)),
-        ChangeNotifierProvider(create: (_) => UpdateService()),
+        ChangeNotifierProvider.value(value: _authProvider),
+        ChangeNotifierProvider.value(value: _dataProvider),
+        ChangeNotifierProvider.value(value: _syncProvider),
+        Provider.value(value: _syncService),
       ],
       child: MaterialApp(
         title: 'DarsakAI Desktop',
@@ -136,7 +153,6 @@ class _AppEntryPointState extends State<AppEntryPoint> with WidgetsBindingObserv
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().loadUser();
-      context.read<UpdateService>().checkForUpdate();
     });
   }
 
@@ -172,11 +188,20 @@ class _AppEntryPointState extends State<AppEntryPoint> with WidgetsBindingObserv
         }
         if (auth.isAuthenticated) {
           if (auth.onboardingCompleted) {
-            return DashboardScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
+            return DashboardScreen(
+              toggleTheme: widget.toggleTheme,
+              themeMode: widget.themeMode,
+            );
           }
-          return OnboardingScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
+          return OnboardingScreen(
+            toggleTheme: widget.toggleTheme,
+            themeMode: widget.themeMode,
+          );
         }
-        return LoginScreen(toggleTheme: widget.toggleTheme, themeMode: widget.themeMode);
+        return LoginScreen(
+          toggleTheme: widget.toggleTheme,
+          themeMode: widget.themeMode,
+        );
       },
     );
   }

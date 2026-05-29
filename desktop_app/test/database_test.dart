@@ -1,8 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:uuid/uuid.dart';
-import 'package:darsak_desktop/models/student.dart';
-import 'package:darsak_desktop/models/group.dart';
 
 void main() {
   late Database _db;
