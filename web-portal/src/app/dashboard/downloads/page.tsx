@@ -19,12 +19,13 @@ const apps = [
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop v1.2.0',
-    description: 'نظام إدارة الفصل للمعلم — students, grades, attendance',
+    title: 'DarsakAI Desktop v1.4.0',
+    description: 'نظام إدارة الفصل للمعلم — students, grades, attendance, exams, invoices',
     icon: Monitor,
     color: '#ccff00',
     files: [
-      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '14 MB' },
+      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '~20 MB' },
+      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable (ZIP)', size: '~25 MB' },
     ],
     platform: 'Windows',
   },
