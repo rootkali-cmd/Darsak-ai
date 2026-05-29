@@ -76,13 +76,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final sub = await _subscriptionService.getMySubscription();
     if (sub != null) {
       await _subscriptionService.cacheSubscription(sub);
+      final expired = !_subscriptionService.isSubscriptionActive(sub);
+      if (!mounted) return;
+      setState(() {
+        _subscriptionExpired = expired;
+      });
+      return;
     }
-    final cached = sub ?? await _subscriptionService.getCachedSubscription();
-    final expired = !_subscriptionService.isSubscriptionActive(cached);
-    if (!mounted) return;
-    setState(() {
-      _subscriptionExpired = expired;
-    });
+    final cached = await _subscriptionService.getCachedSubscription();
+    if (cached != null) {
+      final expired = !_subscriptionService.isSubscriptionActive(cached);
+      if (!mounted) return;
+      setState(() {
+        _subscriptionExpired = expired;
+      });
+    }
   }
 
   @override
