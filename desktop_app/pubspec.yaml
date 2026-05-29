@@ -39,9 +39,6 @@ dependencies:
   # Local P2P sync
   web_socket_channel: ^3.0.1
 
-  # Fonts
-  google_fonts: ^6.2.1
-
   # Barcode
   barcode: ^2.2.8
   printing: ^5.13.1
@@ -62,3 +59,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo.ttf

@@ -399,7 +399,7 @@ class _SyncDebugCardState extends State<_SyncDebugCard> {
   Timer? _timer;
 
   @override
-  void initState() { super.initState(); _timer = Timer.periodic(const Duration(seconds: 2), (_) { if (mounted) setState(() {}); }); }
+  void initState() { super.initState(); _timer = Timer.periodic(const Duration(seconds: 30), (_) { if (mounted) setState(() {}); }); }
 
   @override
   void dispose() { _timer?.cancel(); super.dispose(); }

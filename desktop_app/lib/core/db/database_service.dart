@@ -181,6 +181,18 @@ class DatabaseService {
         timestamp TEXT
       )
     ''');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_students_name ON students(full_name)');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_students_code ON students(code)');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_groups_name ON groups_tbl(name)');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_grades_created ON grades(created_at)');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_queue_opid ON sync_queue(operation_id)');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_deadletter_opid ON dead_letter(operation_id)');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_conflict_id ON conflict_logs(id)');
+  }
+
+  void checkpointWal() {
+    db.execute('PRAGMA wal_checkpoint(TRUNCATE)');
   }
 
   // ── Migration state ──────────────────────────────────────────

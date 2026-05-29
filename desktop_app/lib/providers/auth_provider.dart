@@ -85,8 +85,10 @@ class AuthProvider extends ChangeNotifier {
       _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
       await _cacheUser(_user!, onboardingCompleted: _onboardingCompleted, subjects: _subjects, levels: _levels);
       notifyListeners();
-    } catch (_) {
-      // Server offline — cached data already loaded above, keep it
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 401) {
+        await logout();
+      }
     }
   }
 

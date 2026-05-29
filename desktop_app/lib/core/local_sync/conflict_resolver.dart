@@ -180,6 +180,7 @@ class ConflictResolver {
           'remote_data': remoteData,
           'timestamp': DateTime.now().toIso8601String(),
         });
+        await box.close();
       }
     } catch (_) {}
   }
@@ -206,7 +207,9 @@ class ConflictResolver {
         }).toList();
       }
       final box = await Hive.openBox<Map>(conflictLogBox);
-      return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
+      final result = box.values.map((e) => Map<String, dynamic>.from(e)).toList();
+      await box.close();
+      return result;
     } catch (_) {
       return [];
     }

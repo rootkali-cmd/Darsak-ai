@@ -51,6 +51,7 @@ class SyncService {
   DateTime _lastBackupTime = DateTime(2000);
   static const Duration _backupInterval = Duration(hours: 1);
   bool _paused = false;
+  int _retryAttempts = 0;
 
   final List<SyncOp> _ops = [];
   final List<Function(SyncOp)> _opListeners = [];
@@ -193,55 +194,63 @@ class SyncService {
 
   void _scheduleRetry() {
     _retryTimer?.cancel();
-    _retryTimer = Timer(const Duration(seconds: 10), () => _processQueue());
+    _retryAttempts++;
+    final delay = min(pow(2, _retryAttempts).toInt(), _maxReconnectDelay);
+    _retryTimer = Timer(Duration(seconds: delay), () {
+      _retryAttempts = 0;
+      _processQueue();
+    });
   }
 
   Future<void> _processQueue() async {
     if (!_isOnline || _isSyncing) return;
     _isSyncing = true;
-    final items = LocalDB.getUnsyncedItems();
-    if (items.isEmpty) { _isSyncing = false; return; }
+    try {
+      final items = LocalDB.getUnsyncedItems();
+      if (items.isEmpty) return;
 
-    for (final item in items) {
-      if (!_isOnline) break;
-      final type = item['type'] as String;
-      final data = Map<String, dynamic>.from(item['data'] as Map);
-      final opId = item['operation_id']?.toString();
-      final label = data['full_name']?.toString() ?? data['exam_name']?.toString() ?? data['id']?.toString() ?? type;
+      for (final item in items) {
+        if (!_isOnline) break;
+        final type = item['type'] as String;
+        final data = Map<String, dynamic>.from(item['data'] as Map);
+        final opId = item['operation_id']?.toString();
+        final label = data['full_name']?.toString() ?? data['exam_name']?.toString() ?? data['id']?.toString() ?? type;
 
-      _updateOpStatus(opId, type, label, SyncOpStatus.syncing);
-      _lastSyncStatus = 'جاري رفع التغييرات...';
-      _notify(_lastSyncStatus, 'syncing');
+        _updateOpStatus(opId, type, label, SyncOpStatus.syncing);
+        _lastSyncStatus = 'جاري رفع التغييرات...';
+        _notify(_lastSyncStatus, 'syncing');
 
-      final start = DateTime.now();
-      try {
-        await _sendToServer(type, data);
-        final ms = DateTime.now().difference(start).inMilliseconds;
-        _updateOpStatus(opId, type, label, SyncOpStatus.synced, latencyMs: ms);
-        LocalDB.markSyncItemSynced(data);
-      } catch (e) {
-        final ms = DateTime.now().difference(start).inMilliseconds;
-        final op = _findOp(opId, type, label);
-        if (op != null) {
-          op.retryCount++;
-          if (op.retryCount > 5) {
-            _updateOpStatus(opId, type, label, SyncOpStatus.failed, error: 'فشل بعد 5 محاولات', latencyMs: ms);
-            LocalDB.addToDeadLetter(item, error: 'Failed after 5 retries');
-          } else {
-            _updateOpStatus(opId, type, label, SyncOpStatus.pending, latencyMs: ms);
+        final start = DateTime.now();
+        try {
+          await _sendToServer(type, data);
+          final ms = DateTime.now().difference(start).inMilliseconds;
+          _updateOpStatus(opId, type, label, SyncOpStatus.synced, latencyMs: ms);
+          LocalDB.markSyncItemSynced(data);
+        } catch (e) {
+          final ms = DateTime.now().difference(start).inMilliseconds;
+          final op = _findOp(opId, type, label);
+          if (op != null) {
+            op.retryCount++;
+            if (op.retryCount > 5) {
+              _updateOpStatus(opId, type, label, SyncOpStatus.failed, error: 'فشل بعد 5 محاولات', latencyMs: ms);
+              LocalDB.addToDeadLetter(item, error: 'Failed after 5 retries');
+            } else {
+              _updateOpStatus(opId, type, label, SyncOpStatus.pending, latencyMs: ms);
+            }
           }
         }
       }
-    }
 
-    LocalDB.clearSyncedItems();
-    _isSyncing = false;
-    if (_ops.any((o) => o.status == SyncOpStatus.failed)) {
-      _lastSyncStatus = 'بعض التغييرات فشلت';
-      _notify(_lastSyncStatus, 'error');
-    } else {
-      _lastSyncStatus = 'تمت المزامنة';
-      _notify(_lastSyncStatus, 'synced');
+      LocalDB.clearSyncedItems();
+      if (_ops.any((o) => o.status == SyncOpStatus.failed)) {
+        _lastSyncStatus = 'بعض التغييرات فشلت';
+        _notify(_lastSyncStatus, 'error');
+      } else {
+        _lastSyncStatus = 'تمت المزامنة';
+        _notify(_lastSyncStatus, 'synced');
+      }
+    } finally {
+      _isSyncing = false;
     }
   }
 
@@ -369,5 +378,7 @@ class SyncService {
     _connectivitySubscription?.cancel();
     _reconnectTimer?.cancel();
     _retryTimer?.cancel();
+    _listeners.clear();
+    _opListeners.clear();
   }
 }

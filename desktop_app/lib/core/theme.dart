@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Dark mode colors
@@ -55,7 +54,7 @@ class AppTheme {
         scaffoldBackgroundColor: darkBg,
         primaryColor: accent,
         fontFamily: fontArabic,
-        textTheme: GoogleFonts.cairoTextTheme(const TextTheme(
+        textTheme: TextTheme(
           headlineLarge: TextStyle(color: darkTextPrimary, fontWeight: FontWeight.bold, fontSize: 28),
           headlineMedium: TextStyle(color: darkTextPrimary, fontWeight: FontWeight.bold, fontSize: 22),
           titleLarge: TextStyle(color: darkTextPrimary, fontWeight: FontWeight.w600, fontSize: 18),
@@ -63,7 +62,7 @@ class AppTheme {
           bodyLarge: TextStyle(color: darkTextPrimary, fontSize: 15),
           bodyMedium: TextStyle(color: darkTextSecondary, fontSize: 14),
           bodySmall: TextStyle(color: darkTextMuted, fontSize: 12),
-        )),
+        ),
         colorScheme: const ColorScheme.dark(
           primary: accent,
           secondary: accentLight,
@@ -76,7 +75,7 @@ class AppTheme {
           foregroundColor: darkTextPrimary,
           elevation: 0,
           centerTitle: true,
-          titleTextStyle: GoogleFonts.cairo(
+          titleTextStyle: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: darkTextPrimary,
@@ -105,8 +104,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: darkBorder),
           ),
-          labelStyle: GoogleFonts.cairo(color: darkTextSecondary, fontSize: 13),
-          hintStyle: GoogleFonts.cairo(color: darkTextMuted, fontSize: 13),
+          labelStyle: TextStyle(color: darkTextSecondary, fontSize: 13),
+          hintStyle: TextStyle(color: darkTextMuted, fontSize: 13),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
@@ -116,13 +115,13 @@ class AppTheme {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             elevation: 0,
-            textStyle: GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 14),
+            textStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: accentLight,
-            textStyle: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+            textStyle: TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
         dividerTheme: const DividerThemeData(color: darkBorder, thickness: 1),
@@ -134,7 +133,7 @@ class AppTheme {
         scaffoldBackgroundColor: lightBg,
         primaryColor: accent,
         fontFamily: fontArabic,
-        textTheme: GoogleFonts.cairoTextTheme(const TextTheme(
+        textTheme: TextTheme(
           headlineLarge: TextStyle(color: lightTextPrimary, fontWeight: FontWeight.bold, fontSize: 28),
           headlineMedium: TextStyle(color: lightTextPrimary, fontWeight: FontWeight.bold, fontSize: 22),
           titleLarge: TextStyle(color: lightTextPrimary, fontWeight: FontWeight.w600, fontSize: 18),
@@ -142,7 +141,7 @@ class AppTheme {
           bodyLarge: TextStyle(color: lightTextPrimary, fontSize: 15),
           bodyMedium: TextStyle(color: lightTextSecondary, fontSize: 14),
           bodySmall: TextStyle(color: lightTextMuted, fontSize: 12),
-        )),
+        ),
         colorScheme: const ColorScheme.light(
           primary: accent,
           secondary: accentLight,
@@ -155,7 +154,7 @@ class AppTheme {
           foregroundColor: lightTextPrimary,
           elevation: 0,
           centerTitle: true,
-          titleTextStyle: GoogleFonts.cairo(
+          titleTextStyle: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: lightTextPrimary,
@@ -185,8 +184,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: lightBorder),
           ),
-          labelStyle: GoogleFonts.cairo(color: lightTextSecondary, fontSize: 13),
-          hintStyle: GoogleFonts.cairo(color: lightTextMuted, fontSize: 13),
+          labelStyle: TextStyle(color: lightTextSecondary, fontSize: 13),
+          hintStyle: TextStyle(color: lightTextMuted, fontSize: 13),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
@@ -196,13 +195,13 @@ class AppTheme {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             elevation: 0,
-            textStyle: GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 14),
+            textStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: accent,
-            textStyle: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+            textStyle: TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
         dividerTheme: const DividerThemeData(color: lightBorder, thickness: 1),

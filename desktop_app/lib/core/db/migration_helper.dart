@@ -83,7 +83,7 @@ class MigrationHelper {
         durationMs: DateTime.now().difference(start).inMilliseconds,
       );
     } catch (e) {
-      DatabaseService.instance.setSetting(_migrationLockKey, '0');
+      await rollback();
       return MigrationResult(
         success: false,
         error: e.toString(),

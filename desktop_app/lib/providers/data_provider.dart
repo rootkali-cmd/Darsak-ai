@@ -30,14 +30,33 @@ class DataProvider extends ChangeNotifier {
     _sync.addOpListener(_onOpChange);
   }
 
+  @override
+  void dispose() {
+    _sync.removeListener(_onSyncChange);
+    _sync.removeOpListener(_onOpChange);
+    super.dispose();
+  }
+
   void _onSyncChange(String status, String type) {
     if (type == 'connected') { _loadFromLocal(); notifyListeners(); }
+  }
+
+  bool _pendingNotify = false;
+
+  void _scheduleNotify() {
+    if (!_pendingNotify) {
+      _pendingNotify = true;
+      Future.microtask(() {
+        _pendingNotify = false;
+        notifyListeners();
+      });
+    }
   }
 
   void _onOpChange(SyncOp op) {
     if (op.status == SyncOpStatus.synced || op.status == SyncOpStatus.failed) {
       _pendingChanges.remove(op.label);
-      notifyListeners();
+      _scheduleNotify();
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants.dart';
@@ -5,6 +6,8 @@ import '../core/constants.dart';
 class ApiService {
   late final Dio _dio;
   late final Dio _refreshDio;
+  bool _isRefreshing = false;
+  Completer<void>? _refreshCompleter;
 
   ApiService() {
     _dio = Dio(BaseOptions(
@@ -32,10 +35,28 @@ class ApiService {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401 && !error.requestOptions.path.contains('/auth/refresh')) {
-          final prefs = await SharedPreferences.getInstance();
-          final refreshToken = prefs.getString('refresh_token');
-          if (refreshToken != null) {
-            try {
+          if (_isRefreshing) {
+            await _refreshCompleter!.future;
+            final prefs = await SharedPreferences.getInstance();
+            final newToken = prefs.getString('access_token');
+            if (newToken != null) {
+              error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+              try {
+                final retry = await _dio.fetch(error.requestOptions);
+                handler.resolve(retry);
+                return;
+              } catch (_) {}
+            }
+            handler.next(error);
+            return;
+          }
+
+          _isRefreshing = true;
+          _refreshCompleter = Completer<void>();
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            final refreshToken = prefs.getString('refresh_token');
+            if (refreshToken != null) {
               final response = await _refreshDio.post('/auth/refresh',
                   data: {'refresh_token': refreshToken});
               final newToken = response.data['access_token'];
@@ -47,10 +68,15 @@ class ApiService {
               final retry = await _dio.fetch(error.requestOptions);
               handler.resolve(retry);
               return;
-            } catch (_) {}
+            }
+          } catch (_) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('access_token');
+            await prefs.remove('refresh_token');
+          } finally {
+            _isRefreshing = false;
+            _refreshCompleter?.complete();
           }
-          await prefs.remove('access_token');
-          await prefs.remove('refresh_token');
         }
         handler.next(error);
       },

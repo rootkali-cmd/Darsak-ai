@@ -24,6 +24,15 @@ void main() async {
   await LocalDB.init();
   await windowManager.ensureInitialized();
 
+  windowManager.waitUntilReadyToShow(
+    WindowOptions(
+      size: Size(1280, 720),
+      center: true,
+      backgroundColor: '#0A0A0A',
+      skipTaskbar: false,
+    ),
+  );
+
   await StructuredLogger.instance.init();
   await AnalyticsService.instance.init();
   await RemoteConfigService.instance.init();
@@ -161,8 +170,13 @@ class _AppEntryPointState extends State<AppEntryPoint> with WidgetsBindingObserv
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
         if (!auth.initialLoadComplete) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            backgroundColor: AppTheme.darkBg,
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent),
+              ),
+            ),
           );
         }
         if (auth.isAuthenticated) {

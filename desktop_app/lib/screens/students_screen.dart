@@ -784,8 +784,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
 
     if (confirmed != true || !context.mounted) return;
 
-    // Remove locally first (offline-first)
-    LocalDB.addToSyncQueue('delete_student', student.toJson());
+    // Remove locally first (offline-first) — removeStudent handles queueing
     data.removeStudent(student.id, student.code);
 
     // Try server silently — never show error to user

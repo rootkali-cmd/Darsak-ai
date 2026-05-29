@@ -73,6 +73,9 @@ class LocalDB {
       final destDir = Directory('$_backupPath/backup_$timestamp');
       await destDir.create(recursive: true);
 
+      // Flush WAL to main DB before copying
+      try { DatabaseService.instance.db.execute('PRAGMA wal_checkpoint(TRUNCATE)'); } catch (_) {}
+
       // Copy Hive files
       final srcDir = Directory(_sharedPath);
       if (await srcDir.exists()) {

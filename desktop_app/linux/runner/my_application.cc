@@ -62,8 +62,19 @@ static void my_application_activate(GApplication* application) {
   GdkRGBA background_color;
   // Background defaults to black, override it here if necessary, e.g. #00000000
   // for transparent.
-  gdk_rgba_parse(&background_color, "#000000");
+  gdk_rgba_parse(&background_color, "#0A0A0A");
   fl_view_set_background_color(view, &background_color);
+
+  // Set the window background to match app dark theme via CSS
+  GtkCssProvider* css = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(css,
+    "window { background-color: #0A0A0A; }", -1, NULL);
+  gtk_style_context_add_provider(
+    gtk_widget_get_style_context(GTK_WIDGET(window)),
+    GTK_STYLE_PROVIDER(css),
+    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(css);
+
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
 
