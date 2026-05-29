@@ -24,15 +24,6 @@ void main() async {
   await LocalDB.init();
   await windowManager.ensureInitialized();
 
-  windowManager.waitUntilReadyToShow(
-    WindowOptions(
-      size: Size(1280, 720),
-      center: true,
-      backgroundColor: const Color(0xFF0A0A0A),
-      skipTaskbar: false,
-    ),
-  );
-
   await StructuredLogger.instance.init();
   await AnalyticsService.instance.init();
   await RemoteConfigService.instance.init();
