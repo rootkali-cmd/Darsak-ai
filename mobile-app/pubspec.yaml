@@ -27,8 +27,9 @@ dependencies:
   # Charts
   fl_chart: ^0.70.2
 
-  # QR scanner
+  # QR scanner + generation
   mobile_scanner: ^6.0.7
+  qr_flutter: ^4.1.0
 
   # Skeleton loading
   shimmer: ^3.0.0

@@ -8,6 +8,7 @@ import '../../widgets/sidebar.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/quick_action.dart';
 import '../../widgets/sync_status_indicator.dart';
+import '../../widgets/glass_notification_overlay.dart';
 import '../students/students_screen.dart';
 import '../groups/groups_screen.dart';
 import '../attendance/attendance_screen.dart';
@@ -164,6 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         ],
       ),
     ),
+    const GlassNotificationOverlay(),
   ],
     );
   }

@@ -75,6 +75,13 @@ final class ApiService {
   Future<Map<String, dynamic>> markAttendance(Map<String, dynamic> data) =>
       _client.post('/attendance/', data: data);
 
+  /// Mark attendance via QR scan. Returns student info on success.
+  Future<Map<String, dynamic>> markAttendanceByQr(String qrData, {String? groupId}) =>
+      _client.post('/attendance/qr/', data: {
+        'qr_data': qrData,
+        if (groupId != null) 'group_id': groupId,
+      });
+
   Future<Map<String, dynamic>> getAttendanceStats({String? date}) =>
       _client.get('/attendance/stats', queryParameters: {'date': date});
 

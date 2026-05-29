@@ -5,6 +5,7 @@ import '../../../providers/sync_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/student.dart';
 import '../../../core/models/group.dart';
+import 'qr_camera_screen.dart';
 
 final class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -178,6 +179,8 @@ final class _AttendanceScreenState extends State<AttendanceScreen> {
                             Expanded(
                               child: _buildGroupFilter(data.groups, borderColor),
                             ),
+                            const SizedBox(width: 16),
+                            _buildQrButton(surfaceColor, borderColor),
                           ],
                         ),
                         const SizedBox(height: 20),
@@ -257,6 +260,45 @@ final class _AttendanceScreenState extends State<AttendanceScreen> {
           _loadExistingAttendance();
         }
       },
+    );
+  }
+
+  Widget _buildQrButton(Color surfaceColor, Color borderColor) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          if (_groupId.isEmpty) {
+            _showMessage('يرجى اختيار مجموعة أولاً', AppTheme.warning);
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => QrCameraScreen(groupId: _groupId),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppTheme.accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.qr_code_scanner, size: 18, color: AppTheme.accent),
+              const SizedBox(width: 8),
+              Text(
+                'مسح QR',
+                style: TextStyle(color: AppTheme.accent, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

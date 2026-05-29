@@ -11,6 +11,7 @@ import 'profile_screen.dart';
 import 'subscription_screen.dart';
 import 'exam_list_screen.dart';
 import 'ai_chat_screen.dart';
+import 'student_qr_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -401,6 +402,22 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.home,
             label: 'الرئيسية',
             onTap: () => Navigator.pop(context),
+          ),
+          _DrawerItem(
+            icon: Icons.qr_code,
+            label: 'كود الحضور (QR)',
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text('QR', style: TextStyle(color: AppTheme.accent, fontSize: 10)),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentQrScreen()));
+            },
           ),
           _DrawerItem(
             icon: Icons.assignment,

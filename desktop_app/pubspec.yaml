@@ -41,6 +41,7 @@ dependencies:
   # Barcode / QR / Export
   barcode: ^2.2.8
   flutter_svg: ^2.0.0
+  mobile_scanner: ^6.0.7
   printing: ^5.13.1
   file_picker: ^11.0.2
   csv: ^8.0.0
