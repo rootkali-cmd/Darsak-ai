@@ -28,7 +28,7 @@ void main() async {
     WindowOptions(
       size: Size(1280, 720),
       center: true,
-      backgroundColor: '#0A0A0A',
+      backgroundColor: const Color(0xFF0A0A0A),
       skipTaskbar: false,
     ),
   );
