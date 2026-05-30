@@ -69,7 +69,7 @@ const features = [
   { ar: 'توليد كود اشتراك عبر بوت تليجرام', en: 'Subscription code generation via Telegram bot' },
   { ar: 'نظام الاختبارات الذكي (AI + PDF ← أسئلة)', en: 'Smart exam system (AI + PDF → questions)' },
   { ar: 'تقييم ذكي: تصحيح + تحليل نقاط القوة/الضعف', en: 'AI grading: auto-correct + strengths/weaknesses' },
-  { ar: 'نظام الاشتراكات (Basic 199 / Pro 499 / Unlimited 999)', en: 'Subscription system (Basic 199 / Pro 499 / Unlimited 999)' },
+  { ar: 'نظام الاشتراكات (Basic 200 / Pro 600 / Enterprise 1100)', en: 'Subscription system (Basic 200 / Pro 600 / Enterprise 1100)' },
   { ar: 'QR Code المسح الضوئي للحضور', en: 'QR code attendance scanning' },
   { ar: 'إدارة PIN للطلاب', en: 'Student PIN management' },
   { ar: 'Offline-first مع كشف الانترنت', en: 'Offline-first with internet detection' },
