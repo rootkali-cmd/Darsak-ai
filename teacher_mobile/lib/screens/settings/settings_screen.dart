@@ -14,7 +14,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _version = '1.2.1';
+  String _version = '1.2.4';
   bool _notificationsEnabled = true;
 
   @override

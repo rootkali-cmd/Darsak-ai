@@ -19,12 +19,12 @@ const apps = [
   },
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v1.2.3',
+    title: 'DarsakAI Teacher v1.2.4',
     description: 'تطبيق المدرس — مسح باركود للحضور بدون نظام PC',
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher-v1.2.3.apk', label: 'Android APK v1.2.3', size: '~34 MB' },
+      { name: 'DarsakAI-Teacher-v1.2.4.apk', label: 'Android APK v1.2.4', size: '~34 MB' },
     ],
     platform: 'Android 10+',
   },
