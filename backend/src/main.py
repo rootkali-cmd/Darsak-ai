@@ -196,13 +196,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS: allow exact configured origins + any darsak* domain for flexibility
+_cors_origins = settings.CORS_ORIGINS.copy()
+# Normalize: remove trailing slashes
+_cors_origins = [o.rstrip("/") for o in _cors_origins]
+# Also accept any darsak-based domain automatically (e.g., darsakai.com, www.darsakai.com, etc.)
+_darsak_domains = ["https://darsakai.com", "https://www.darsakai.com", "https://darsak-ai.vercel.app", "https://darsak-web.vercel.app"]
+for d in _darsak_domains:
+    if d not in _cors_origins:
+        _cors_origins.append(d)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-CSRF-Token", "Cache-Control"],
+    expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
+    max_age=86400,
 )
+
+logger.info("CORS configured for origins: %s", _cors_origins)
 
 
 @app.middleware("http")
@@ -278,6 +292,17 @@ async def health_check():
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "database": "supabase",
+    }
+
+
+@app.get("/config/cors")
+async def cors_debug(request: Request):
+    """Debug endpoint to verify CORS headers are sent correctly."""
+    origin = request.headers.get("origin", "")
+    return {
+        "origin_received": origin,
+        "cors_origins_configured": _cors_origins,
+        "origin_allowed": origin in _cors_origins or "*" in _cors_origins,
     }
 
 

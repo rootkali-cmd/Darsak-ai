@@ -40,6 +40,17 @@ export default function LoginPage() {
       toast.success('تم تسجيل الدخول بنجاح')
       router.push('/dashboard')
     } catch (error: any) {
+      console.error('[Login Error]', error)
+      if (error.response) {
+        console.error('[Login Error] Status:', error.response.status)
+        console.error('[Login Error] Data:', error.response.data)
+        console.error('[Login Error] URL:', error.config?.url)
+        console.error('[Login Error] BaseURL:', error.config?.baseURL)
+      } else if (error.request) {
+        console.error('[Login Error] No response received. Request:', error.request)
+      } else {
+        console.error('[Login Error] Message:', error.message)
+      }
       toast.error(error.response?.data?.detail || 'فشل تسجيل الدخول')
     } finally {
       setIsLoading(false)

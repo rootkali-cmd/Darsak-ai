@@ -26,7 +26,10 @@ import { GlassCard, Section } from '@/components/ui'
 import { subscriptionsApi, authApi } from '@/lib/api'
 import axios from 'axios'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+const API_BASE = (() => {
+  const raw = (process.env.NEXT_PUBLIC_API_URL || 'https://darsak-backend.fly.dev').replace(/\/+$/, '')
+  return raw.includes('/api') ? raw : `${raw}/api`
+})()
 
 const SUPPORT_PHONE = '01031524947'
 const SUPPORT_PHONE_INTL = '201031524947'

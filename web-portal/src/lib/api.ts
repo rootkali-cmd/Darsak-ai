@@ -5,6 +5,11 @@ const API_BASE_URL = (() => {
   return raw.includes('/api') ? raw : `${raw}/api`
 })()
 
+// DEBUG: Log the actual API URL being used
+if (typeof window !== 'undefined') {
+  console.log('[DARSAK API] Base URL:', API_BASE_URL)
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
