@@ -7,14 +7,14 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api"
 
-    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/darsakdb"
-    DATABASE_URL_SYNC: str = "postgresql://user:password@localhost:5432/darsakdb"
+    DATABASE_URL: str = ""
+    DATABASE_URL_SYNC: str = ""
 
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
 
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = ""
 
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "google/gemini-2.0-flash-001"
     OPENROUTER_VISION_MODEL: str = "google/gemini-2.0-flash-001"
 
-    SECRET_KEY: str = ""
+    SECRET_KEY: str = "change-me-in-production-use-openssl-rand"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -46,5 +46,7 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     s = Settings()
     if not s.SECRET_KEY or s.SECRET_KEY == "change-me-in-production-use-openssl-rand":
-        raise ValueError("SECRET_KEY must be set in environment")
+        raise ValueError("SECRET_KEY must be set in environment. Use `openssl rand -hex 32` to generate one.")
+    if not s.SUPABASE_URL or not s.SUPABASE_SERVICE_ROLE_KEY:
+        raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in environment")
     return s

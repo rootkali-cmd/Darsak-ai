@@ -1,11 +1,16 @@
 import logging
+import hashlib
+import asyncio
+import time
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
-from src.utils.dependencies import get_current_user, get_current_teacher
+from src.utils.dependencies import get_current_user
 from src.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, TokenRefresh, UserUpdate, OnboardingUpdate
 from src.core.security.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from src.core.security.sanitizer import sanitize_text, sanitize_email
 from src.core.security.supabase_repo import SupabaseError
-from src.services import user_service, audit_service, subscription_plan_service, teacher_subscription_service
+from src.services import user_service, subscription_plan_service, teacher_subscription_service
+from src.infrastructure.audit_events import audit as audit_publisher, AuditEvent
 
 logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -13,6 +18,43 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
+
+
+# ── Token Blacklist (prevents refresh token replay) ──
+# Uses an in-memory set with TTL cleanup + lock for race-condition safety.
+# In multi-worker deployments, replace with Redis-backed implementation.
+
+_blacklist_lock = asyncio.Lock()
+_used_refresh_tokens: dict[str, float] = {}  # token_hash -> expiry_time
+_BLACKLIST_TTL = 3600 * 24 * 31  # 31 days (same as refresh token lifetime)
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+async def _is_token_blacklisted(token: str) -> bool:
+    token_hash = _hash_token(token)
+    async with _blacklist_lock:
+        # Cleanup expired entries
+        now = time.time()
+        expired = [h for h, exp in _used_refresh_tokens.items() if now >= exp]
+        for h in expired:
+            del _used_refresh_tokens[h]
+        return token_hash in _used_refresh_tokens
+
+
+async def _blacklist_token(token: str) -> bool:
+    """Atomically add token to blacklist. Returns True if it was already blacklisted (race loser)."""
+    token_hash = _hash_token(token)
+    async with _blacklist_lock:
+        if token_hash in _used_refresh_tokens:
+            return False  # Already blacklisted — another request used this token first
+        _used_refresh_tokens[token_hash] = time.time() + _BLACKLIST_TTL
+        return True
+
+
+# ── Endpoints ──
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -39,17 +81,15 @@ async def register(user_data: UserCreate, request: Request):
             detail="حدث خطأ غير متوقع أثناء إنشاء الحساب. حاول مرة أخرى",
         )
 
-    try:
-        await audit_service.log(
-            actor_type="system",
-            action="user_registered",
-            actor_id=user["id"],
-            resource_type="user",
-            resource_id=user["id"],
-            ip_address=get_client_ip(request),
-        )
-    except Exception as e:
-        logger.warning("Audit log failed after registration: %s", e)
+    # Fire-and-forget audit (non-blocking)
+    await audit_publisher.publish(AuditEvent(
+        actor_type="system",
+        action="user_registered",
+        actor_id=user["id"],
+        resource_type="user",
+        resource_id=user["id"],
+        ip_address=get_client_ip(request),
+    ))
 
     # Auto-activate 7-day trial on premium plan for new registered teachers
     if user.get("role") in ("teacher", None):
@@ -60,16 +100,15 @@ async def register(user_data: UserCreate, request: Request):
                 if "متقدمة" in p.get("name", ""):
                     premium_plan = p
                     break
-            # Fallback: pick the first non-free plan
             if not premium_plan and plans:
                 premium_plan = plans[0]
 
             if premium_plan:
                 import uuid
                 from datetime import timedelta
+                from datetime import timezone
                 trial_code_id = f"trial-{uuid.uuid4().hex[:12]}"
                 trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-                # Store trial end date in expires_at; code_id prefix "trial-" identifies trial subs
                 await teacher_subscription_service.repo.insert({
                     "teacher_id": user["id"],
                     "plan_id": premium_plan["id"],
@@ -92,12 +131,14 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     if not user.get("is_active", True):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
 
-    await audit_service.log(
+    await audit_publisher.publish(AuditEvent(
         actor_type=user.get("role", "teacher"),
         action="user_login",
         actor_id=user["id"],
+        resource_type="user",
+        resource_id=user["id"],
         ip_address=get_client_ip(request),
-    )
+    ))
 
     access_token = create_access_token(user["id"])
     refresh_token = create_refresh_token(user["id"])
@@ -124,25 +165,29 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
-_used_refresh_tokens: set[str] = set()
-
-
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
-    if token_data.refresh_token in _used_refresh_tokens:
+    # 1. Check blacklist atomically (race-safe with asyncio.Lock)
+    if await _is_token_blacklisted(token_data.refresh_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has already been used")
 
+    # 2. Decode the token
     decoded = decode_token(token_data.refresh_token)
     if not decoded or decoded.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
+    # 3. Atomic check-and-blacklist (prevent race condition)
+    if not await _blacklist_token(token_data.refresh_token):
+        # Another request already blacklisted this token
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has already been used")
+
+    # 4. Verify user still exists and is active
     user_id = decoded.get("sub")
     user = await user_service.get_by_id(user_id)
     if not user or not user.get("is_active", True):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 
-    _used_refresh_tokens.add(token_data.refresh_token)
-
+    # 5. Issue new tokens
     new_access = create_access_token(user["id"])
     new_refresh = create_refresh_token(user["id"])
 
@@ -199,7 +244,7 @@ async def save_onboarding(
         },
     )
 
-    await audit_service.log(
+    await audit_publisher.publish(AuditEvent(
         actor_type=current_user.get("role", "teacher"),
         action="onboarding_completed",
         actor_id=current_user["id"],
@@ -207,7 +252,7 @@ async def save_onboarding(
         resource_id=current_user["id"],
         ip_address=request.client.host if request.client else "unknown",
         metadata={"subjects": onboarding_data.subjects, "levels": onboarding_data.levels},
-    )
+    ))
 
     updated = await user_service.get_by_id(current_user["id"])
     return UserResponse(**updated)

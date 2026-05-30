@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from src.core.security.auth import decode_token, decode_supabase_token
 from src.services import user_service, student_service
+from src.infrastructure.cache import user_cache, student_cache
 
 security = HTTPBearer()
 
@@ -27,7 +28,14 @@ async def get_current_user(
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    user = await user_service.get_by_id(user_id)
+    # Try cache first
+    cache_key = f"user:{user_id}"
+    user = await user_cache.get(cache_key)
+    if user is None:
+        user = await user_service.get_by_id(user_id)
+        if user:
+            await user_cache.set(cache_key, user)
+
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if not user.get("is_active", True):
@@ -74,7 +82,14 @@ async def get_current_student(
     if not student_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    student = await student_service.get_by_id(student_id)
+    # Try cache first
+    cache_key = f"student:{student_id}"
+    student = await student_cache.get(cache_key)
+    if student is None:
+        student = await student_service.get_by_id(student_id)
+        if student:
+            await student_cache.set(cache_key, student)
+
     if not student:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student not found")
     return student

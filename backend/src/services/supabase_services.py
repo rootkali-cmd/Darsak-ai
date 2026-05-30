@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
@@ -64,9 +65,16 @@ class StudentService:
 
     async def list_by_teacher(self, teacher_id: str, search: str | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
         filters = {"teacher_id": teacher_id}
-        students = await self.repo.select(filters, limit=limit, offset=offset)
         if search:
-            students = [s for s in students if search.lower() in s["full_name"].lower() or search.lower() in s["code"].lower()]
+            # Use Supabase text search for efficiency
+            students = await self.repo.search(
+                filters,
+                text_search={"full_name": search, "code": search},
+                limit=limit,
+                offset=offset,
+            )
+        else:
+            students = await self.repo.select(filters, limit=limit, offset=offset)
         return students
 
     async def update(self, student_id: str, data: dict) -> dict:
@@ -288,33 +296,10 @@ class AuditService:
         return await self.repo.insert(kwargs)
 
     async def search(self, filters: dict | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
-        query = self.repo.client.table("audit_logs").select("*")
-        if filters:
-            if filters.get("actor_id"):
-                query = query.eq("actor_id", filters["actor_id"])
-            if filters.get("resource_type"):
-                query = query.eq("resource_type", filters["resource_type"])
-            if filters.get("action"):
-                query = query.eq("action", filters["action"])
-            if filters.get("from_date"):
-                query = query.gte("created_at", filters["from_date"])
-            if filters.get("to_date"):
-                query = query.lte("created_at", filters["to_date"])
-        query = query.order("created_at", desc=True).range(offset, offset + limit - 1)
-        result = await query.execute()
-        return result.data if result.data else []
+        return await self.repo.select(filters, limit=limit, offset=offset)
 
     async def export_range(self, from_date: str, to_date: str, limit: int = 10000) -> list[dict]:
-        query = (
-            self.repo.client.table("audit_logs")
-            .select("*")
-            .gte("created_at", from_date)
-            .lte("created_at", to_date)
-            .order("created_at", desc=True)
-            .limit(limit)
-        )
-        result = await query.execute()
-        return result.data if result.data else []
+        return await self.repo.select({}, limit=limit)
 
 
 class PaymentRequestService:
@@ -494,6 +479,7 @@ class StudentExamService:
         correct = 0
         wrong = 0
         essay_score = 0.0
+        batch_updates = []
         for a in answers:
             q = questions_map.get(a.get("question_id"))
             if not q:
@@ -504,12 +490,15 @@ class StudentExamService:
                 if a.get("answer") == q.get("correct_answer"):
                     total += pts
                     correct += 1
-                    self.answers_repo.update({"id": a["id"]}, {"is_correct": True, "score": pts})
+                    batch_updates.append(self.answers_repo.update({"id": a["id"]}, {"is_correct": True, "score": pts}))
                 else:
                     wrong += 1
-                    self.answers_repo.update({"id": a["id"]}, {"is_correct": False, "score": 0})
+                    batch_updates.append(self.answers_repo.update({"id": a["id"]}, {"is_correct": False, "score": 0}))
             else:
                 essay_score += pts
+        # Execute all answer updates concurrently
+        if batch_updates:
+            await asyncio.gather(*batch_updates, return_exceptions=True)
         total += essay_score
         await self.repo.update({"id": student_exam_id}, {
             "total_score": total,

@@ -1,12 +1,11 @@
 import os
 import time
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from collections import defaultdict
-from typing import Tuple
 
 import sentry_sdk
 
@@ -19,7 +18,11 @@ sentry_sdk.init(
 
 from src.core.config import get_settings
 from src.core.logging import setup_logging
-from src.services import sync_buffer, start_scheduler, stop_scheduler
+from src.core.security.supabase_repo import get_supabase
+from src.infrastructure.rate_limiter import rate_limiter
+from src.infrastructure.audit_events import audit as audit_publisher
+from src.infrastructure.cache import user_cache, student_cache, cache
+from src.services import sync_buffer, start_scheduler, stop_scheduler, audit_service
 from src.api import (
     auth_router, students_router, groups_router, attendance_router,
     grades_router, invoices_router, qr_router, sync_router,
@@ -30,21 +33,18 @@ from src.api import (
 settings = get_settings()
 logger = setup_logging(settings.LOG_LEVEL)
 
-_rate_limit_store: dict[Tuple[str, str], list[float]] = defaultdict(list)
 
+# ── Startup Tasks ──
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Starting DarsakAI Hub with Supabase...")
-
-    # Auto-migrate
+async def _run_schema_migrations():
+    """Run auto-migrations in background. Non-blocking startup."""
     try:
         from sqlalchemy import text
-        from src.utils.database import engine
+        from src.utils.database import get_engine
+        engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);"))
 
-            # Payment requests table
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS payment_requests (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -70,7 +70,6 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 );
             """))
-            # Exam system tables
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS exams (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -148,10 +147,36 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Schema migration skipped: %s", e)
 
+
+async def _init_services():
+    """Initialize Redis sync buffer and rate limiter."""
     if not os.environ.get("VERCEL"):
         await sync_buffer.connect()
         start_scheduler()
+    
+    # Initialize rate limiter (Redis-backed if available)
+    await rate_limiter.connect()
+    
+    # Wire audit publisher to the audit service repo
+    from src.services import audit_service
+    audit_publisher.set_repo(audit_service)
+    
+    # Start async audit publisher
+    await audit_publisher.start()
 
+
+# ── Lifecycle ──
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting DarsakAI Hub with Supabase...")
+    
+    # Init services (non-blocking on schema migrations)
+    await _init_services()
+    
+    # Run schema migrations in background (don't block startup)
+    asyncio.create_task(_run_schema_migrations())
+    
     # Set Telegram webhook on Vercel
     if os.environ.get("VERCEL"):
         try:
@@ -164,27 +189,25 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("Telegram webhook setup skipped: %s", e)
     else:
-        # Start Telegram bot (local polling)
         try:
-            from src.bot.telegram_bot import start_bot, stop_bot
+            from src.bot.telegram_bot import start_bot
             await start_bot()
         except Exception as e:
             logger.warning("Telegram bot startup skipped: %s", e)
-
+    
     logger.info("DarsakAI Hub started successfully")
     yield
-
+    
+    # Shutdown
+    await audit_publisher.stop()
     if not os.environ.get("VERCEL"):
         stop_scheduler()
-
-    # Stop Telegram bot (local only)
-    if not os.environ.get("VERCEL"):
+        from src.bot.telegram_bot import stop_bot
         try:
-            from src.bot.telegram_bot import stop_bot
             await stop_bot()
         except Exception as e:
             logger.warning("Telegram bot shutdown skipped: %s", e)
-
+    
     logger.info("Shutting down DarsakAI Hub...")
 
 
@@ -196,12 +219,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS: allow exact configured origins + any darsak* domain for flexibility
+# ── CORS ──
 _cors_origins = settings.CORS_ORIGINS.copy()
-# Normalize: remove trailing slashes
 _cors_origins = [o.rstrip("/") for o in _cors_origins]
-# Also accept any darsak-based domain automatically (e.g., darsakai.com, www.darsakai.com, etc.)
-_darsak_domains = ["https://darsakai.com", "https://www.darsakai.com", "https://darsak-ai.vercel.app", "https://darsak-web.vercel.app"]
+_darsak_domains = [
+    "https://darsakai.com", "https://www.darsakai.com",
+    "https://darsak-ai.vercel.app", "https://darsak-web.vercel.app",
+]
 for d in _darsak_domains:
     if d not in _cors_origins:
         _cors_origins.append(d)
@@ -218,6 +242,8 @@ app.add_middleware(
 
 logger.info("CORS configured for origins: %s", _cors_origins)
 
+
+# ── Middleware ──
 
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
@@ -241,22 +267,17 @@ async def rate_limit_middleware(request: Request, call_next):
     user_key = client_ip + auth_header[:20]
     key = (user_key, request.url.path)
 
-    now = time.time()
-    window = 60
     max_requests = 120
     if request.url.path in ("/api/auth/login", "/api/auth/register", "/api/students/login"):
         max_requests = 10
 
-    requests_in_window = [t for t in _rate_limit_store[key] if now - t < window]
-    _rate_limit_store[key] = requests_in_window
-
-    if len(requests_in_window) >= max_requests:
+    allowed = await rate_limiter.is_allowed(key, max_requests)
+    if not allowed:
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content={"detail": "Too many requests. Try again later."},
         )
 
-    _rate_limit_store[key].append(now)
     response = await call_next(request)
     return response
 
@@ -285,13 +306,64 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# ── Health & Monitoring ──
+
 @app.get("/health")
 async def health_check():
+    """Lightweight health check - returns immediately."""
     return {
         "status": "healthy",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "database": "supabase",
+    }
+
+
+@app.get("/health/deep")
+async def deep_health():
+    """Deep health check - verifies DB, cache, and circuit breaker states."""
+    checks = {
+        "app": True,
+        "database": False,
+        "cache": False,
+        "rate_limiter": rate_limiter._use_redis if hasattr(rate_limiter, '_use_redis') else "memory",
+    }
+    
+    # Check Supabase connectivity
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        await client.table("users").select("id", count="exact").limit(1).execute()
+        checks["database"] = True
+    except Exception as e:
+        checks["database_error"] = str(e)
+    
+    # Check cache stats
+    try:
+        stats = await cache.stats
+        checks["cache"] = stats
+    except Exception as e:
+        checks["cache_error"] = str(e)
+    
+    overall_healthy = all(v is True or isinstance(v, dict) for v in checks.values())
+    status_code = status.HTTP_200_OK if overall_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+    
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": "healthy" if overall_healthy else "degraded", "checks": checks},
+    )
+
+
+@app.get("/health/cache")
+async def cache_stats():
+    """Return cache hit rates and sizes."""
+    user_stats = await user_cache.stats
+    student_stats = await student_cache.stats
+    general_stats = await cache.stats
+    return {
+        "user_cache": user_stats,
+        "student_cache": student_stats,
+        "general_cache": general_stats,
     }
 
 
@@ -305,6 +377,8 @@ async def cors_debug(request: Request):
         "origin_allowed": origin in _cors_origins or "*" in _cors_origins,
     }
 
+
+# ── Router Registration ──
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(students_router, prefix=settings.API_V1_PREFIX)
