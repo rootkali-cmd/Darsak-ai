@@ -19,43 +19,43 @@ const apps: {
 }[] = [
   {
     id: 'mobile',
-    title: 'DarsakAI Student v1.3.0',
+    title: 'DarsakAI Student',
     description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
     descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,
     color: '#00f3ff',
     files: [
-      { name: 'DarsakAI-Student-v1.3.0+5-universal.apk', label: 'Android APK (Universal)', size: '~80 MB' },
+      { name: 'DarsakAI-Student.apk', label: 'Android APK (Universal)', size: '~80 MB' },
     ],
     platform: 'Android ✓',
-    note: 'إصدار 1.3.0 • مساعد AI ذكي • Camera only permission',
+    note: 'أحدث إصدار • مساعد AI ذكي • Camera only permission',
   },
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v1.1.0',
+    title: 'DarsakAI Teacher',
     description: 'تطبيق المدرس - مسح باركود للحضور بدون نظام PC',
     descriptionEn: 'Teacher mobile app — barcode attendance scanner without PC',
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher-v1.1.0+2.apk', label: 'Android APK (Teacher)', size: '~70 MB' },
+      { name: 'DarsakAI-Teacher.apk', label: 'Android APK (Teacher)', size: '~70 MB' },
     ],
     platform: 'Android ✓',
-    note: 'Build 1.1.0 • Barcode Scanner • Sound Effects • Recurring Sessions • Login system',
+    note: 'أحدث إصدار • Barcode Scanner • Sound Effects • Recurring Sessions • Login system',
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop v2.0.0',
+    title: 'DarsakAI Desktop',
     description: 'نظام إدارة السنتر - طلاب، درجات، حضور، امتحانات، فواتير',
     descriptionEn: 'Learning center management — students, grades, attendance, exams',
     icon: Monitor,
     color: '#ccff00',
     files: [
-      { name: 'DarsakAI-Setup-v2.0.0+1.exe', label: 'Windows Installer', size: '~15 MB' },
-      { name: 'DarsakAI-Windows-v2.0.0+1.zip', label: 'Windows Portable (ZIP)', size: '~18 MB' },
+      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '~15 MB' },
+      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable (ZIP)', size: '~18 MB' },
     ],
     platform: 'Windows ✓',
-    note: 'Build 2.0.0 • Offline-first • SQLite • Auto-sync • QR + PIN',
+    note: 'أحدث إصدار • Offline-first • SQLite • Auto-sync • QR + PIN',
   },
 ]
 
@@ -147,7 +147,7 @@ export default function DownloadPage() {
                     {app.files.map((f: any) => (
                       <a
                         key={f.name}
-                        href={`https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/${f.name}`}
+                        href={`/api/download/${f.name}`}
                         download
                         className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold transition-opacity"
                         style={{ background: app.color, color: '#000' }}
