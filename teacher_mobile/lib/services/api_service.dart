@@ -13,6 +13,9 @@ class ApiService {
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
+      followRedirects: true,
+      maxRedirects: 5,
+      validateStatus: (status) => status != null && status < 500,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -30,7 +33,10 @@ class ApiService {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
-          // Optionally refresh token here
+          // Token expired or invalid — clear it
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('access_token');
+          await prefs.remove('refresh_token');
         }
         return handler.next(error);
       },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../utils/error_utils.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/glass_card.dart';
@@ -71,7 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
             if (snapshot.hasError) {
               return AppErrorWidget(
-                message: 'فشل تحميل الإحصائيات: ${snapshot.error}',
+                message: 'فشل تحميل الإحصائيات: ${getFriendlyErrorMessage(snapshot.error)}',
                 onRetry: _refresh,
               );
             }

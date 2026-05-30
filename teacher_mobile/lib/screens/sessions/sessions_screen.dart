@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/app_theme.dart';
 import '../../models/lecture_session.dart';
 import '../../providers/sessions_provider.dart';
 import '../../providers/groups_provider.dart';
@@ -71,7 +72,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                         onPressed: () => _showEditSession(session),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                        icon: const Icon(Icons.delete, color: AppTheme.danger, size: 20),
                         onPressed: () => _deleteSession(session.id),
                       ),
                     ],
@@ -84,7 +85,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddSession,
-        backgroundColor: const Color(0xFFdc2626),
+        backgroundColor: AppTheme.accent,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -144,7 +145,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                     return ListTile(
                       title: Text('${sch.groupName} - ${sch.dayName} ${sch.timeSlot}', style: const TextStyle(color: Colors.white, fontSize: 13)),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                        icon: const Icon(Icons.delete, color: AppTheme.danger, size: 18),
                         onPressed: () {
                           setDialogState(() => schedules.removeAt(i));
                         },
@@ -154,7 +155,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () => _showAddSchedule(schedules, setDialogState),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFdc2626)),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
                     child: const Text('إضافة مجموعة + يوم'),
                   ),
                 ],
@@ -295,7 +296,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             child: const Text('حذف'),
           ),
         ],

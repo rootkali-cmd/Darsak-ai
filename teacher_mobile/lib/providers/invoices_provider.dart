@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../utils/error_utils.dart';
 
 class InvoicesProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -22,7 +23,7 @@ class InvoicesProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل الفواتير';
+      _error = 'فشل تحميل الفواتير: ${getFriendlyErrorMessage(e)}';
       _isLoading = false;
       notifyListeners();
     }
@@ -34,7 +35,7 @@ class InvoicesProvider extends ChangeNotifier {
       await loadInvoices();
       return true;
     } catch (e) {
-      _error = 'فشل إضافة الفاتورة';
+      _error = 'فشل إضافة الفاتورة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -46,7 +47,7 @@ class InvoicesProvider extends ChangeNotifier {
       await loadInvoices();
       return true;
     } catch (e) {
-      _error = 'فشل تحديث الفاتورة';
+      _error = 'فشل تحديث الفاتورة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -59,7 +60,7 @@ class InvoicesProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'فشل حذف الفاتورة';
+      _error = 'فشل حذف الفاتورة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }

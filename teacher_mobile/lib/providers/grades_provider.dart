@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../utils/error_utils.dart';
 
 class GradesProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -24,7 +25,7 @@ class GradesProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل الدرجات: ${e.toString()}';
+      _error = 'فشل تحميل الدرجات: ${getFriendlyErrorMessage(e)}';
       _isLoading = false;
       notifyListeners();
     }
@@ -36,7 +37,7 @@ class GradesProvider extends ChangeNotifier {
       await loadGrades(subject: _subjectFilter);
       return true;
     } catch (e) {
-      _error = 'فشل إضافة الدرجة: ${e.toString()}';
+      _error = 'فشل إضافة الدرجة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -48,7 +49,7 @@ class GradesProvider extends ChangeNotifier {
       await loadGrades(subject: _subjectFilter);
       return true;
     } catch (e) {
-      _error = 'فشل تحديث الدرجة: ${e.toString()}';
+      _error = 'فشل تحديث الدرجة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -61,7 +62,7 @@ class GradesProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'فشل حذف الدرجة: ${e.toString()}';
+      _error = 'فشل حذف الدرجة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }

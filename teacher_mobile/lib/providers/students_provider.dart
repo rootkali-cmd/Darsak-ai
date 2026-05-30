@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../utils/error_utils.dart';
 
 class StudentsProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -26,7 +27,7 @@ class StudentsProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل الطلاب: ${e.toString()}';
+      _error = 'فشل تحميل الطلاب: ${getFriendlyErrorMessage(e)}';
       _isLoading = false;
       notifyListeners();
     }
@@ -53,7 +54,7 @@ class StudentsProvider extends ChangeNotifier {
       await loadStudents();
       return true;
     } catch (e) {
-      _error = 'فشل إضافة الطالب: ${e.toString()}';
+      _error = 'فشل إضافة الطالب: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -65,7 +66,7 @@ class StudentsProvider extends ChangeNotifier {
       await loadStudents();
       return true;
     } catch (e) {
-      _error = 'فشل تحديث الطالب: ${e.toString()}';
+      _error = 'فشل تحديث الطالب: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -79,7 +80,7 @@ class StudentsProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'فشل حذف الطالب: ${e.toString()}';
+      _error = 'فشل حذف الطالب: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }

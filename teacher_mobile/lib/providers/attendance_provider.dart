@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../utils/error_utils.dart';
 import 'package:intl/intl.dart';
 
 class AttendanceProvider extends ChangeNotifier {
@@ -25,7 +26,7 @@ class AttendanceProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل الحضور: ${e.toString()}';
+      _error = 'فشل تحميل الحضور: ${getFriendlyErrorMessage(e)}';
       _isLoading = false;
       notifyListeners();
     }
@@ -41,7 +42,7 @@ class AttendanceProvider extends ChangeNotifier {
       await loadAttendance();
       return result;
     } catch (e) {
-      _error = 'فشل تسجيل الحضور: ${e.toString()}';
+      _error = 'فشل تسجيل الحضور: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return null;
     }
@@ -53,7 +54,7 @@ class AttendanceProvider extends ChangeNotifier {
       await loadAttendance();
       return result;
     } catch (e) {
-      _error = 'فشل مسح الباركود: ${e.toString()}';
+      _error = 'فشل مسح الباركود: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return null;
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../utils/error_utils.dart';
 
 class GroupsProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -22,7 +23,7 @@ class GroupsProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل المجموعات';
+      _error = 'فشل تحميل المجموعات: ${getFriendlyErrorMessage(e)}';
       _isLoading = false;
       notifyListeners();
     }
@@ -34,7 +35,7 @@ class GroupsProvider extends ChangeNotifier {
       await loadGroups();
       return true;
     } catch (e) {
-      _error = 'فشل إضافة المجموعة';
+      _error = 'فشل إضافة المجموعة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -46,7 +47,7 @@ class GroupsProvider extends ChangeNotifier {
       await loadGroups();
       return true;
     } catch (e) {
-      _error = 'فشل تحديث المجموعة';
+      _error = 'فشل تحديث المجموعة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -59,7 +60,7 @@ class GroupsProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'فشل حذف المجموعة';
+      _error = 'فشل حذف المجموعة: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }

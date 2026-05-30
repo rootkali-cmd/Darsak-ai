@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_theme.dart';
 import '../groups/groups_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../exams/exams_screen.dart';
@@ -55,7 +56,7 @@ class MoreScreen extends StatelessWidget {
         icon: Icons.person,
         title: 'الملف الشخصي',
         subtitle: 'بيانات الحساب',
-        color: const Color(0xFFdc2626),
+        color: AppTheme.accent,
         onTap: (ctx) => _navigate(ctx, const ProfileScreen()),
       ),
     ];
@@ -70,7 +71,6 @@ class MoreScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final item = items[index];
           return Card(
-            color: const Color(0xFF1a1a2e),
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ListTile(
@@ -86,13 +86,13 @@ class MoreScreen extends StatelessWidget {
               ),
               title: Text(
                 item.title,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
                 item.subtitle,
-                style: const TextStyle(color: Color(0xFF6b7280), fontSize: 12),
+                style: const TextStyle(fontSize: 12),
               ),
-              trailing: const Icon(Icons.arrow_back_ios, size: 16, color: Color(0xFF6b7280)),
+              trailing: const Icon(Icons.arrow_back_ios, size: 16),
             ),
           );
         },

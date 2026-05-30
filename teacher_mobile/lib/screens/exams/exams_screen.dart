@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/exams_provider.dart';
+import '../../core/app_theme.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/empty_state.dart';
@@ -40,14 +41,13 @@ class _ExamsScreenState extends State<ExamsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white)),
-        content: const Text('هل أنت متأكد من حذف هذا الاختبار؟', style: TextStyle(color: Colors.white70)),
+        title: const Text('تأكيد الحذف'),
+        content: const Text('هل أنت متأكد من حذف هذا الاختبار؟'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -87,7 +87,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
           }
           return RefreshIndicator(
             onRefresh: () => provider.loadExams(),
-            color: const Color(0xFFdc2626),
+            color: AppTheme.accent,
             backgroundColor: const Color(0xFF1a1a2e),
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -99,25 +99,24 @@ class _ExamsScreenState extends State<ExamsScreen> {
                 final status = exam['status']?.toString() ?? 'draft';
                 final duration = exam['duration']?.toString() ?? '';
                 return Card(
-                  color: const Color(0xFF1a1a2e),
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
                     onTap: () => _showEditExam(exam),
                     onLongPress: () => _deleteExam(exam),
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFf59e0b).withValues(alpha: 0.2),
-                      child: const Icon(Icons.quiz, color: Color(0xFFf59e0b)),
+                      backgroundColor: AppTheme.warning.withValues(alpha: 0.2),
+                      child: const Icon(Icons.quiz, color: AppTheme.warning),
                     ),
                     title: Text(
                       title,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(
                       'الحالة: $status ${duration.isNotEmpty ? '• المدة: $duration د' : ''}',
-                      style: const TextStyle(color: Color(0xFF6b7280), fontSize: 12),
+                      style: const TextStyle(fontSize: 12),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(Icons.delete, color: AppTheme.danger),
                       onPressed: () => _deleteExam(exam),
                     ),
                   ),
@@ -129,7 +128,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddExam,
-        backgroundColor: const Color(0xFFdc2626),
+        backgroundColor: AppTheme.accent,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

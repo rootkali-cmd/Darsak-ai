@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../utils/error_utils.dart';
 
 class ExamsProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -22,7 +23,7 @@ class ExamsProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل الاختبارات';
+      _error = 'فشل تحميل الاختبارات: ${getFriendlyErrorMessage(e)}';
       _isLoading = false;
       notifyListeners();
     }
@@ -34,7 +35,7 @@ class ExamsProvider extends ChangeNotifier {
       await loadExams();
       return true;
     } catch (e) {
-      _error = 'فشل إضافة الاختبار';
+      _error = 'فشل إضافة الاختبار: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -46,7 +47,7 @@ class ExamsProvider extends ChangeNotifier {
       await loadExams();
       return true;
     } catch (e) {
-      _error = 'فشل تحديث الاختبار';
+      _error = 'فشل تحديث الاختبار: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
@@ -59,7 +60,7 @@ class ExamsProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'فشل حذف الاختبار';
+      _error = 'فشل حذف الاختبار: ${getFriendlyErrorMessage(e)}';
       notifyListeners();
       return false;
     }
