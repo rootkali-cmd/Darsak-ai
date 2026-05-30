@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const RELEASE_TAG = 'v1.0.0'
 const REPO = 'rootkali-cmd/Darsak-ai'
-const GITHUB_BASE = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}`
 
 /**
- * Proxy download from GitHub releases.
- * This keeps the user on darsakai.com during download
- * instead of redirecting them to GitHub.
+ * Redirect to GitHub releases for direct download.
+ * GitHub sends the file with proper MIME type and Content-Disposition.
+ * This avoids Vercel serverless function timeout on large files (60+ MB).
  */
 export async function GET(
   request: NextRequest,
@@ -15,44 +14,12 @@ export async function GET(
 ) {
   const file = params.file
 
-  if (!file || !file.match(/^[\w\-\.]+$/)) {
+  if (!file || !file.match(/^[\w\-\.\+]+$/)) {
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
   }
 
-  const githubUrl = `${GITHUB_BASE}/${encodeURIComponent(file)}`
+  const githubUrl = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${encodeURIComponent(file)}`
 
-  try {
-    const response = await fetch(githubUrl, {
-      redirect: 'follow',
-    })
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'File not found on release' },
-        { status: 404 }
-      )
-    }
-
-    const contentType = response.headers.get('content-type') || 'application/octet-stream'
-    const contentLength = response.headers.get('content-length')
-
-    // Stream the response back with proper download headers
-    const headers = new Headers()
-    headers.set('Content-Type', contentType)
-    headers.set('Content-Disposition', `attachment; filename="${file}"`)
-    if (contentLength) {
-      headers.set('Content-Length', contentLength)
-    }
-
-    return new NextResponse(response.body, {
-      status: 200,
-      headers,
-    })
-  } catch (error) {
-    console.error('Download proxy error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch file' },
-      { status: 500 }
-    )
-  }
+  // 302 redirect - the browser will download directly from GitHub
+  return NextResponse.redirect(githubUrl, { status: 302 })
 }
