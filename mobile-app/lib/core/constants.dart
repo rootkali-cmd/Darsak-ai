@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String apiBaseUrl = 'https://darsakai.com/api';
+  static const String apiBaseUrl = 'https://darsak-backend.fly.dev/api';
   static const String appName = 'DarsakAI';
   static const String appVersion = '1.2.1';
   static const String storageKeyToken = 'student_access_token';

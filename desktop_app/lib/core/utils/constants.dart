@@ -1,8 +1,8 @@
 class AppConstants {
-  static const String apiBaseUrl = 'https://darsakai.com/api';
+  static const String apiBaseUrl = 'https://darsak-backend.fly.dev/api';
   static const String appVersion = '2.0.0';
   static const String platformName = 'desktop';
-  static const String downloadBaseUrl = 'https://darsakai.com/api/download';
+  static const String downloadBaseUrl = 'https://darsak-backend.fly.dev/api/download';
   static const String repositoryUrl = 'https://github.com/rootkali-cmd/Darsak-ai';
 
   static const int connectTimeoutSeconds = 10;
