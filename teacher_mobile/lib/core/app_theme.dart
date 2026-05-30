@@ -26,6 +26,10 @@ class AppTheme {
   static const Color textSecondaryLight = Color(0xFF3A3A3C);
   static const Color textMutedLight = Color(0xFF8E8E93);
 
+  // Backwards compatibility
+  static const Color textSecondary = Color(0xFF8E8E93);
+  static const Color textMuted = Color(0xFF636366);
+
   // Status
   static const Color success = Color(0xFF30D158);
   static const Color warning = Color(0xFFFF9F0A);

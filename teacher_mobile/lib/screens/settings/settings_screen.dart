@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -158,10 +159,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           Card(
             child: ListTile(
-              leading: const Icon(Icons.logout, color: AppTheme.danger),
+              leading: const Icon(Icons.logout, color: Color(0xFFFF453A)),
               title: const Text(
                 'تسجيل الخروج',
-                style: TextStyle(color: AppTheme.danger),
+                style: TextStyle(color: Color(0xFFFF453A)),
               ),
               onTap: () async {
                 final auth = Provider.of<AuthProvider>(context, listen: false);
