@@ -1,32 +1,34 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../api/api_client.dart';
-import '../api/api_service.dart';
-import '../utils/constants.dart';
-import '../models/user.dart';
 
-final class AuthProvider extends ChangeNotifier {
-  final ApiClient client;
-  late final ApiService _api;
-  UserModel? _user;
+class AuthProvider extends ChangeNotifier {
+  final Dio _dio = Dio(BaseOptions(
+    baseUrl: 'https://darsak-backend.fly.dev/api',
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 20),
+  ));
+
   bool _isLoading = false;
-  bool _initialLoadComplete = false;
   String? _error;
-  bool _onboardingCompleted = false;
-  List<String> _subjects = [];
-  List<String> _levels = [];
+  String? _token;
+  Map<String, dynamic>? _user;
 
-  UserModel? get user => _user;
   bool get isLoading => _isLoading;
-  bool get isAuthenticated => _user != null;
-  bool get initialLoadComplete => _initialLoadComplete;
-  bool get onboardingCompleted => _onboardingCompleted;
-  List<String> get subjects => _subjects;
-  List<String> get levels => _levels;
   String? get error => _error;
+  bool get isAuthenticated => _token != null;
+  Map<String, dynamic>? get user => _user;
 
-  AuthProvider(this.client) : _api = ApiService(client);
+  AuthProvider() {
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if (_token != null) {
+          options.headers['Authorization'] = 'Bearer $_token';
+        }
+        return handler.next(options);
+      },
+    ));
+  }
 
   Future<bool> login(String email, String password) async {
     _isLoading = true;
@@ -34,145 +36,63 @@ final class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final tokens = await _api.login(email, password);
-      await _saveTokens(
-        tokens['access_token']?.toString() ?? '',
-        tokens['refresh_token']?.toString() ?? '',
-      );
-      final userData = await _api.getMe();
-      _user = UserModel.fromJson(userData);
-      _onboardingCompleted = userData['onboarding_completed'] == true;
-      _subjects = (userData['subjects'] as List?)?.map((e) => e.toString()).toList() ?? [];
-      _levels = (userData['levels'] as List?)?.map((e) => e.toString()).toList() ?? [];
-      await _cacheUser(_user!);
+      final response = await _dio.post('/auth/login', data: {
+        'email': email,
+        'password': password,
+      });
+
+      final data = response.data;
+      _token = data['access_token'];
+      final refreshToken = data['refresh_token'];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', _token!);
+      if (refreshToken != null) {
+        await prefs.setString('refresh_token', refreshToken);
+      }
+
+      await _loadUser();
       _isLoading = false;
       notifyListeners();
       return true;
+    } on DioException catch (e) {
+      _error = e.response?.data?['detail'] ?? 'فشل تسجيل الدخول. تحقق من الاتصال.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      await _clearTokens();
-      _error = e is DioException && e.response?.statusCode == 401
-          ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
-          : 'فشل تسجيل الدخول';
+      _error = 'حدث خطأ غير متوقع';
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
-  Future<void> loadUser() async {
-    String? token;
+  Future<void> _loadUser() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      token = prefs.getString(PrefKeys.accessToken);
-    } catch (_) {}
-    if (token == null || token.isEmpty) {
-      await _loadCachedUser();
-      _initialLoadComplete = true;
-      notifyListeners();
-      return;
-    }
-    await _loadCachedUser();
-    _initialLoadComplete = true;
-    notifyListeners();
-    try {
-      final userData = await _api.getMe();
-      _user = UserModel.fromJson(userData);
-      _onboardingCompleted = userData['onboarding_completed'] == true;
-      _subjects = (userData['subjects'] as List?)?.cast<String>() ?? [];
-      _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
-      await _cacheUser(_user!);
+      final response = await _dio.get('/auth/me');
+      _user = response.data;
       notifyListeners();
     } catch (e) {
-      if (e is DioException && e.response?.statusCode == 401) {
-        await logout();
-      }
+      // Silent fail
     }
   }
 
-  Future<void> saveOnboarding({
-    required String fullName,
-    required List<String> subjects,
-    required List<String> levels,
-  }) async {
-    await _api.saveOnboarding(fullName: fullName, subjects: subjects, levels: levels);
-    _onboardingCompleted = true;
-    _subjects = subjects;
-    _levels = levels;
+  Future<void> checkAuth() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(PrefKeys.onboardingCompleted, true);
-    await prefs.setStringList(PrefKeys.onboardingSubjects, subjects);
-    await prefs.setStringList(PrefKeys.onboardingLevels, levels);
-    if (_user != null) await _cacheUser(_user!);
+    _token = prefs.getString('access_token');
+    if (_token != null) {
+      await _loadUser();
+    }
     notifyListeners();
   }
 
   Future<void> logout() async {
+    _token = null;
     _user = null;
-    _onboardingCompleted = false;
-    _subjects = [];
-    _levels = [];
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(PrefKeys.cachedUserId);
-    await prefs.remove(PrefKeys.cachedUserName);
-    await prefs.remove(PrefKeys.cachedUserEmail);
-    await prefs.remove(PrefKeys.cachedUserRole);
-    await prefs.remove(PrefKeys.cachedUserCode);
-    await prefs.remove(PrefKeys.cachedUserIsActive);
-    await prefs.remove(PrefKeys.cachedUserCreatedAt);
-    await prefs.remove(PrefKeys.subscriptionData);
-    await _clearTokens();
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
     notifyListeners();
-  }
-
-  Future<void> _saveTokens(String accessToken, String refreshToken) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(PrefKeys.accessToken, accessToken);
-      if (refreshToken.isNotEmpty) {
-        await prefs.setString(PrefKeys.refreshToken, refreshToken);
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _clearTokens() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(PrefKeys.accessToken);
-      await prefs.remove(PrefKeys.refreshToken);
-    } catch (_) {}
-  }
-
-  Future<void> _cacheUser(UserModel user) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(PrefKeys.cachedUserId, user.id);
-    await prefs.setString(PrefKeys.cachedUserName, user.fullName);
-    await prefs.setString(PrefKeys.cachedUserEmail, user.email);
-    await prefs.setString(PrefKeys.cachedUserRole, user.role);
-    await prefs.setString(PrefKeys.cachedUserCode, user.teacherCode ?? '');
-    await prefs.setBool(PrefKeys.cachedUserIsActive, user.isActive);
-    await prefs.setString(PrefKeys.cachedUserCreatedAt, user.createdAt.toIso8601String());
-  }
-
-  Future<void> _loadCachedUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final cachedId = prefs.getString(PrefKeys.cachedUserId);
-    final cachedName = prefs.getString(PrefKeys.cachedUserName);
-    final cachedEmail = prefs.getString(PrefKeys.cachedUserEmail);
-    if (cachedId != null && cachedName != null && cachedEmail != null) {
-      _user = UserModel(
-        id: cachedId,
-        fullName: cachedName,
-        email: cachedEmail,
-        role: prefs.getString(PrefKeys.cachedUserRole) ?? 'teacher',
-        teacherCode: prefs.getString(PrefKeys.cachedUserCode),
-        isActive: prefs.getBool(PrefKeys.cachedUserIsActive) ?? true,
-        createdAt: DateTime.tryParse(prefs.getString(PrefKeys.cachedUserCreatedAt) ?? '') ??
-            DateTime.now(),
-      );
-      _onboardingCompleted = prefs.getBool(PrefKeys.onboardingCompleted) ?? false;
-      _subjects = prefs.getStringList(PrefKeys.onboardingSubjects) ?? [];
-      _levels = prefs.getStringList(PrefKeys.onboardingLevels) ?? [];
-      notifyListeners();
-    }
   }
 }
