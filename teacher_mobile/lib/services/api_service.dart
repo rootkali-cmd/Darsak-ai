@@ -68,10 +68,16 @@ class ApiService {
 
   // Students
   Future<List<dynamic>> getStudents({String? search}) async {
-    final response = await _dio.get('/students', queryParameters: {
-      if (search != null && search.isNotEmpty) 'search': search,
-    });
-    return response.data as List<dynamic>;
+    final query = <String, dynamic>{};
+    if (search != null && search.isNotEmpty) query['search'] = search;
+    final response = await _dio.get('/students/', queryParameters: query.isNotEmpty ? query : null);
+    final data = response.data;
+    // Handle both wrapped {data: [...]} and plain [...] responses
+    if (data is Map && data.containsKey('data')) {
+      return data['data'] as List<dynamic>;
+    }
+    if (data is List) return data;
+    return [];
   }
 
   Future<Map<String, dynamic>> getStudent(int id) async {
