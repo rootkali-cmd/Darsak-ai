@@ -8,7 +8,7 @@ import { check, sleep, group } from 'k6';
 import { Rate, Trend, Counter } from 'k6/metrics';
 import { randomIntBetween, randomItem } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
-const BASE_URL = __ENV.BASE_URL || 'https://darsak-ai.vercel.app/api';
+const BASE_URL = __ENV.BASE_URL || 'https://darsakai.com/api';
 
 const FAILURE_RATE = new Rate('failed_requests');
 const API_LATENCY = new Trend('api_latency_ms');

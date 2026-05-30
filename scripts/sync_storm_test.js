@@ -7,7 +7,7 @@ import { check, sleep, group } from 'k6';
 import { Rate, Trend, Counter } from 'k6/metrics';
 import { randomIntBetween, randomItem } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
-const BASE_URL = __ENV.BASE_URL || 'https://darsak-ai.vercel.app/api';
+const BASE_URL = __ENV.BASE_URL || 'https://darsakai.com/api';
 
 const FAILURE_RATE = new Rate('sync_failures');
 const QUEUE_DEPTH = new Trend('sync_queue_depth');
