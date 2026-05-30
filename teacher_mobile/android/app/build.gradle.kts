@@ -6,8 +6,8 @@ plugins {
 
 android {
     namespace = "com.darsakai.teacher_mobile"
-    compileSdk = 34
-    ndkVersion = "27.0.12077973"
+    compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "com.darsakai.teacher_mobile"
         minSdk = 29
-        targetSdk = 34
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
