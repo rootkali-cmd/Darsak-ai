@@ -609,7 +609,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'يمكنك الاشتراك أيضاً عبر الموقع: darsak-ai.vercel.app',
+              'يمكنك الاشتراك أيضاً عبر الموقع: darsakai.com',
               style: TextStyle(color: Colors.grey[400], fontSize: 12),
             ),
           ),

@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const API_BASE_URL = (() => {
-  const raw = (process.env.NEXT_PUBLIC_API_URL || 'https://darsak-backend.fly.dev').replace(/\/+$/, '')
+  const raw = (process.env.NEXT_PUBLIC_API_URL || 'https://darsakai.com').replace(/\/+$/, '')
   return raw.includes('/api') ? raw : `${raw}/api`
 })()
 
