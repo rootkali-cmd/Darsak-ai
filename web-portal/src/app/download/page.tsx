@@ -179,7 +179,7 @@ export default function DownloadPage() {
         >
           <div className="card p-6">
             <h3 className="text-sm font-bold mb-4">
-              {isAr ? 'الميزات في v1.4.0' : 'v1.4.0 FEATURES'}
+              {isAr ? 'الميزات الجديدة v1.4.0' : 'NEW FEATURES v1.4.0'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((f, i) => (
