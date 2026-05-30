@@ -332,10 +332,10 @@ async def deep_health():
     # Check Supabase connectivity
     try:
         from src.core.security.supabase_repo import get_supabase
-        client = await get_supabase()
-        checks["database"] = client is not None
+        await get_supabase()
+        checks["database"] = True
     except Exception as e:
-        checks["database_error"] = str(e)
+        checks["database_error"] = str(e)[:200]
         checks["database"] = False
     
     # Check cache stats

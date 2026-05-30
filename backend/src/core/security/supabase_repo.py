@@ -41,7 +41,6 @@ async def get_supabase() -> AsyncClient:
                 create_async_client(
                     settings.SUPABASE_URL,
                     settings.SUPABASE_SERVICE_ROLE_KEY,
-                    options={"headers": {"X-Client-Info": "darsak-backend"}},
                 ),
                 timeout=10.0,
             )
