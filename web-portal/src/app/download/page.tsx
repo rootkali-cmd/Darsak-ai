@@ -19,29 +19,29 @@ const apps: {
 }[] = [
   {
     id: 'mobile',
-    title: 'DarsakAI Student v1.2.1',
+    title: 'DarsakAI Student v1.3.0',
     description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
     descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
     icon: Smartphone,
     color: '#00f3ff',
     files: [
-      { name: 'DarsakAI-Student-v1.2.1+4-universal.apk', label: 'Android APK (Universal)', size: '82 MB' },
+      { name: 'DarsakAI-Student-v1.3.0+5-universal.apk', label: 'Android APK (Universal)', size: '~80 MB' },
     ],
     platform: 'Android ✓',
-    note: 'إصدار 1.2.0 • مساعد AI ذكي • Camera only permission',
+    note: 'إصدار 1.3.0 • مساعد AI ذكي • Camera only permission',
   },
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v1.0.0',
+    title: 'DarsakAI Teacher v1.1.0',
     description: 'تطبيق المدرس - مسح باركود للحضور بدون نظام PC',
     descriptionEn: 'Teacher mobile app — barcode attendance scanner without PC',
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher-v1.0.0+1.apk', label: 'Android APK (Teacher)', size: '~60 MB' },
+      { name: 'DarsakAI-Teacher-v1.1.0+2.apk', label: 'Android APK (Teacher)', size: '~70 MB' },
     ],
     platform: 'Android ✓',
-    note: 'Build 1.0.0 • Barcode Scanner • Glass Notifications • Login system',
+    note: 'Build 1.1.0 • Barcode Scanner • Sound Effects • Recurring Sessions • Login system',
   },
   {
     id: 'desktop',
