@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../groups/groups_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../exams/exams_screen.dart';
+import '../sessions/sessions_screen.dart';
 import '../settings/settings_screen.dart';
 import '../profile/profile_screen.dart';
 
@@ -21,6 +22,13 @@ class MoreScreen extends StatelessWidget {
         subtitle: 'إدارة مجموعات الطلاب',
         color: const Color(0xFF3b82f6),
         onTap: (ctx) => _navigate(ctx, const GroupsScreen()),
+      ),
+      _MenuItem(
+        icon: Icons.event_repeat,
+        title: 'المحاضرات المتكررة',
+        subtitle: 'ربط مجموعات بمحاضرة واحدة',
+        color: const Color(0xFFec4899),
+        onTap: (ctx) => _navigate(ctx, const SessionsScreen()),
       ),
       _MenuItem(
         icon: Icons.receipt,

@@ -8,6 +8,7 @@ import 'providers/attendance_provider.dart';
 import 'providers/grades_provider.dart';
 import 'providers/invoices_provider.dart';
 import 'providers/exams_provider.dart';
+import 'providers/sessions_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -29,6 +30,7 @@ class DarsakTeacherApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GradesProvider()),
         ChangeNotifierProvider(create: (_) => InvoicesProvider()),
         ChangeNotifierProvider(create: (_) => ExamsProvider()),
+        ChangeNotifierProvider(create: (_) => SessionsProvider()),
       ],
       child: MaterialApp(
         title: 'DarsakAI Teacher',

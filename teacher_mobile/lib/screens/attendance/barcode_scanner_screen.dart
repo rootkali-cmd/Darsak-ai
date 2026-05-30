@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../../providers/attendance_provider.dart';
+import '../../utils/sound_effects.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -53,8 +54,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   Future<void> processScan(String code) async {
+    await SoundEffects.playScan();
+
     final already = scannedStudents.any((s) => s['code'] == code);
     if (already) {
+      await SoundEffects.playWarning();
       showNotification('تم المسح مسبقاً', 'الطالب: $code', Colors.orange);
       return;
     }
@@ -76,16 +80,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
       if (!mounted) return;
 
-      if (result != null) {
-        final studentName = result['student']?['full_name'] ?? result['student']?['name'] ?? 'طالب';
+      final resultData = result;
+      if (resultData != null) {
+        final studentName = resultData['student']?['full_name'] ?? resultData['student']?['name'] ?? 'طالب';
+        final status = resultData['status']?.toString().toLowerCase();
+
+        // Play sound based on attendance status
+        if (status == 'absent' || status == 'غائب') {
+          await SoundEffects.playError();
+          showNotification('الطالب غائب', studentName, Colors.red);
+        } else if (status == 'late' || status == 'متأخر') {
+          await SoundEffects.playWarning();
+          showNotification('الطالب متأخر', studentName, Colors.orange);
+        } else {
+          await SoundEffects.playSuccess();
+          showNotification('تم تسجيل الحضور', studentName, Colors.green);
+        }
+
         setState(() {
           scannedStudents.insert(0, {'code': code, 'name': studentName});
           if (scannedStudents.length > 50) scannedStudents.removeLast();
           isProcessing = false;
         });
-        showNotification('تم تسجيل الحضور', studentName, Colors.green);
       } else {
         setState(() => isProcessing = false);
+        await SoundEffects.playError();
         if (studentId == null) {
           showNotification('طالب غير معروف', 'لم يتم العثور على الطالب', Colors.red);
         } else {
@@ -95,6 +114,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => isProcessing = false);
+      await SoundEffects.playError();
       showNotification('خطأ', 'حدث خطأ أثناء المعالجة', Colors.red);
     }
   }
