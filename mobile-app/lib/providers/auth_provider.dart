@@ -25,6 +25,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   String? get teacherCode => _teacherCode;
   bool get isSubscriptionActive => _isSubscriptionActive;
+  bool get isOnline => true;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
 
   Future<void> tryAutoLogin() async {
