@@ -326,17 +326,18 @@ async def deep_health():
         "app": True,
         "database": False,
         "cache": False,
-        "rate_limiter": rate_limiter._use_redis if hasattr(rate_limiter, '_use_redis') else "memory",
+        "rate_limiter": "redis" if hasattr(rate_limiter, '_use_redis') and rate_limiter._use_redis else "memory",
     }
     
     # Check Supabase connectivity
     try:
-        from src.core.security.supabase_repo import get_supabase
-        client = await get_supabase()
-        await client.table("users").select("id", count="exact").limit(1).execute()
+        from src.core.security.supabase_repo import SupabaseRepository
+        repo = SupabaseRepository("users")
+        result = await repo.select({}, limit=1)
         checks["database"] = True
     except Exception as e:
         checks["database_error"] = str(e)
+        checks["database"] = False
     
     # Check cache stats
     try:
