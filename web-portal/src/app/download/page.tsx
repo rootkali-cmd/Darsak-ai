@@ -33,29 +33,29 @@ const apps: {
   {
     id: 'teacher',
     title: 'DarsakAI Teacher v1.0.0',
-    description: 'تطبيق المدرس - مسح QR للحضور بدون نظام PC',
-    descriptionEn: 'Teacher mobile app — QR attendance scanner without PC',
+    description: 'تطبيق المدرس - مسح باركود للحضور بدون نظام PC',
+    descriptionEn: 'Teacher mobile app — barcode attendance scanner without PC',
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher.apk', label: 'Android APK (Teacher)', size: '~15 MB' },
+      { name: 'DarsakAI-Teacher-v1.0.0+1.apk', label: 'Android APK (Teacher)', size: '~60 MB' },
     ],
     platform: 'Android ✓',
-    note: 'Build 1.0.0 • QR Scanner • Glass Notifications • Offline-ready',
+    note: 'Build 1.0.0 • Barcode Scanner • Glass Notifications • Login system',
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop v1.4.0',
+    title: 'DarsakAI Desktop v2.0.0',
     description: 'نظام إدارة السنتر - طلاب، درجات، حضور، امتحانات، فواتير',
     descriptionEn: 'Learning center management — students, grades, attendance, exams',
     icon: Monitor,
     color: '#ccff00',
     files: [
-      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '~20 MB' },
-      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable (ZIP)', size: '~25 MB' },
+      { name: 'DarsakAI-Setup-v2.0.0+1.exe', label: 'Windows Installer', size: '~15 MB' },
+      { name: 'DarsakAI-Windows-v2.0.0+1.zip', label: 'Windows Portable (ZIP)', size: '~18 MB' },
     ],
     platform: 'Windows ✓',
-    note: 'Build 1.4.0 • Offline-first • SQLite • Auto-sync • QR + PIN',
+    note: 'Build 2.0.0 • Offline-first • SQLite • Auto-sync • QR + PIN',
   },
 ]
 
