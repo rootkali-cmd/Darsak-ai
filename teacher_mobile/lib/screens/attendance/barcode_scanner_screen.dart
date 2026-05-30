@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
+import '../../providers/attendance_provider.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -29,6 +31,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         BarcodeFormat.ean13,
         BarcodeFormat.upcA,
         BarcodeFormat.upcE,
+        BarcodeFormat.qrCode,
       ],
     );
   }
@@ -49,7 +52,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     processScan(raw);
   }
 
-  void processScan(String code) {
+  Future<void> processScan(String code) async {
     final already = scannedStudents.any((s) => s['code'] == code);
     if (already) {
       showNotification('تم المسح مسبقاً', 'الطالب: $code', Colors.orange);
@@ -58,15 +61,42 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
     setState(() => isProcessing = true);
 
-    Future.delayed(const Duration(milliseconds: 300), () {
+    try {
+      // Parse barcode: darsak://student/{id}/{code}
+      int? studentId;
+      if (code.contains('darsak://student/')) {
+        final parts = code.split('/');
+        if (parts.length >= 4) {
+          studentId = int.tryParse(parts[3]);
+        }
+      }
+
+      final provider = Provider.of<AttendanceProvider>(context, listen: false);
+      final result = await provider.markAttendanceByBarcode(code);
+
       if (!mounted) return;
-      setState(() {
-        scannedStudents.insert(0, {'code': code, 'name': 'طالب $code'});
-        if (scannedStudents.length > 50) scannedStudents.removeLast();
-        isProcessing = false;
-      });
-      showNotification('تم تسجيل الحضور', 'الطالب: $code', Colors.green);
-    });
+
+      if (result != null) {
+        final studentName = result['student']?['full_name'] ?? result['student']?['name'] ?? 'طالب';
+        setState(() {
+          scannedStudents.insert(0, {'code': code, 'name': studentName});
+          if (scannedStudents.length > 50) scannedStudents.removeLast();
+          isProcessing = false;
+        });
+        showNotification('تم تسجيل الحضور', studentName, Colors.green);
+      } else {
+        setState(() => isProcessing = false);
+        if (studentId == null) {
+          showNotification('طالب غير معروف', 'لم يتم العثور على الطالب', Colors.red);
+        } else {
+          showNotification('خطأ', provider.error ?? 'فشل تسجيل الحضور', Colors.red);
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isProcessing = false);
+      showNotification('خطأ', 'حدث خطأ أثناء المعالجة', Colors.red);
+    }
   }
 
   void showNotification(String title, String subtitle, Color color) {

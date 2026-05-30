@@ -3,7 +3,7 @@ import 'dashboard/dashboard_screen.dart';
 import 'students/students_screen.dart';
 import 'attendance/attendance_screen.dart';
 import 'grades/grades_screen.dart';
-import 'profile/profile_screen.dart';
+import 'more/more_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     StudentsScreen(),
     AttendanceScreen(),
     GradesScreen(),
-    ProfileScreen(),
+    MoreScreen(),
   ];
 
   @override
@@ -58,9 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'الدرجات',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'حسابي',
+            icon: Icon(Icons.menu_outlined),
+            activeIcon: Icon(Icons.menu),
+            label: 'المزيد',
           ),
         ],
       ),

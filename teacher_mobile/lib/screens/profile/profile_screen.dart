@@ -13,7 +13,7 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('حسابي', style: TextStyle(color: Colors.white)),
+        title: const Text('حسابي'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

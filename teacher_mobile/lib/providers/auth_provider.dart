@@ -1,13 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://darsak-backend.fly.dev/api',
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 20),
-  ));
+  final ApiService _api = ApiService();
 
   bool _isLoading = false;
   String? _error;
@@ -20,14 +17,11 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? get user => _user;
 
   AuthProvider() {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (_token != null) {
-          options.headers['Authorization'] = 'Bearer $_token';
-        }
-        return handler.next(options);
-      },
-    ));
+    _init();
+  }
+
+  Future<void> _init() async {
+    await checkAuth();
   }
 
   Future<bool> login(String email, String password) async {
@@ -36,17 +30,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _dio.post('/auth/login', data: {
-        'email': email,
-        'password': password,
-      });
-
-      final data = response.data;
-      _token = data['access_token'];
-      final refreshToken = data['refresh_token'];
+      final data = await _api.login(email, password);
+      _token = data['access_token'] as String?;
+      final refreshToken = data['refresh_token'] as String?;
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('access_token', _token!);
+      if (_token != null) {
+        await prefs.setString('access_token', _token!);
+      }
       if (refreshToken != null) {
         await prefs.setString('refresh_token', refreshToken);
       }
@@ -70,8 +61,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _loadUser() async {
     try {
-      final response = await _dio.get('/auth/me');
-      _user = response.data;
+      final data = await _api.getMe();
+      _user = data;
       notifyListeners();
     } catch (e) {
       // Silent fail
@@ -82,7 +73,14 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('access_token');
     if (_token != null) {
-      await _loadUser();
+      try {
+        await _loadUser();
+      } catch (e) {
+        _token = null;
+        _user = null;
+        await prefs.remove('access_token');
+        await prefs.remove('refresh_token');
+      }
     }
     notifyListeners();
   }

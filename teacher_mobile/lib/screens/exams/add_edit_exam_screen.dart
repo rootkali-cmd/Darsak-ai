@@ -1,0 +1,139 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/exams_provider.dart';
+
+class AddEditExamScreen extends StatefulWidget {
+  final dynamic exam;
+
+  const AddEditExamScreen({super.key, this.exam});
+
+  @override
+  State<AddEditExamScreen> createState() => _AddEditExamScreenState();
+}
+
+class _AddEditExamScreenState extends State<AddEditExamScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
+  late final TextEditingController _durationController;
+  late final TextEditingController _statusController;
+  bool _isLoading = false;
+
+  bool get isEditing => widget.exam != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.exam;
+    _titleController = TextEditingController(text: e?['title']?.toString() ?? '');
+    _durationController = TextEditingController(text: e?['duration']?.toString() ?? '');
+    _statusController = TextEditingController(text: e?['status']?.toString() ?? 'draft');
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _durationController.dispose();
+    _statusController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final data = {
+      'title': _titleController.text.trim(),
+      'duration': int.tryParse(_durationController.text) ?? 0,
+      'status': _statusController.text.trim(),
+    };
+
+    final provider = Provider.of<ExamsProvider>(context, listen: false);
+    bool success;
+    if (isEditing) {
+      success = await provider.updateExam(widget.exam['id'] as int, data);
+    } else {
+      success = await provider.createExam(data);
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isEditing ? 'تم التحديث بنجاح' : 'تم الإضافة بنجاح')),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(provider.error ?? 'حدث خطأ')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEditing ? 'تعديل اختبار' : 'إضافة اختبار'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _titleController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'عنوان الاختبار',
+                  prefixIcon: Icon(Icons.title),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'الرجاء إدخال العنوان';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _durationController,
+                keyboardType: TextInputType.number,
+                textDirection: TextDirection.ltr,
+                textAlign: TextAlign.left,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'المدة (بالدقائق)',
+                  prefixIcon: Icon(Icons.timer),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _statusController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'الحالة (draft / published / closed)',
+                  prefixIcon: Icon(Icons.flag),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _save,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(isEditing ? 'حفظ التعديلات' : 'إضافة الاختبار'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
