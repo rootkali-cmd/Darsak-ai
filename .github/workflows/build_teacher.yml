@@ -40,13 +40,21 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Rename APK
+      - name: Get version from pubspec
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed "s/'//g")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Rename APK with version
         run: |
           APK_DIR="build/app/outputs/flutter-apk"
-          mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Teacher.apk"
+          VERSION="${{ steps.version.outputs.version }}"
+          mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Teacher-v${VERSION}.apk"
 
       - name: Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload v1.0.0 --clobber "build/app/outputs/flutter-apk/DarsakAI-Teacher.apk#DarsakAI-Teacher.apk"
+          VERSION="${{ steps.version.outputs.version }}"
+          gh release upload v1.0.0 --clobber "build/app/outputs/flutter-apk/DarsakAI-Teacher-v${VERSION}.apk#DarsakAI-Teacher-v${VERSION}.apk"

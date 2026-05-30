@@ -11,7 +11,6 @@ permissions:
 env:
   FLUTTER_VERSION: '3.44.0'
   RELEASE_TAG: 'v1.0.0'
-  APP_VERSION: '1.4.0'
 
 jobs:
   build:
@@ -30,6 +29,13 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Get version from pubspec
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed "s/'//g")
+          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+
       - run: flutter clean && flutter pub get
       - run: flutter build windows --release
 
@@ -39,18 +45,23 @@ jobs:
       - name: Build Installer
         run: iscc installer/setup.iss
 
-      - name: Create ZIP
+      - name: Rename assets with version
         shell: powershell
         run: |
+          $version = "${{ steps.version.outputs.app_version }}"
           $temp = "$env:RUNNER_TEMP".Replace('\', '/')
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "$temp/DarsakAI-Windows.zip" -Force
+          # Rename EXE
+          Rename-Item -Path "build\installer\DarsakAI-Setup.exe" -NewName "DarsakAI-Setup-v$version.exe"
+          # Create ZIP with versioned name
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "$temp/DarsakAI-Windows-v$version.zip" -Force
 
       - name: Verify assets
         shell: powershell
         run: |
+          $version = "${{ steps.version.outputs.app_version }}"
           $temp = "$env:RUNNER_TEMP".Replace('\', '/')
-          $exe = "build\installer\DarsakAI-Setup.exe"
-          $zip = "$temp/DarsakAI-Windows.zip"
+          $exe = "build\installer\DarsakAI-Setup-v$version.exe"
+          $zip = "$temp/DarsakAI-Windows-v$version.zip"
           if (-not (Test-Path $exe)) { throw "EXE not found at $exe" }
           if (-not (Test-Path $zip)) { throw "ZIP not found at $zip" }
           Write-Output "✅ EXE: $exe"
@@ -60,9 +71,10 @@ jobs:
         id: sha256
         shell: powershell
         run: |
+          $version = "${{ steps.version.outputs.app_version }}"
           $temp = "$env:RUNNER_TEMP".Replace('\', '/')
-          $exeHash = (Get-FileHash "build\installer\DarsakAI-Setup.exe" -Algorithm SHA256).Hash.ToLower()
-          $zipHash = (Get-FileHash "$temp/DarsakAI-Windows.zip" -Algorithm SHA256).Hash.ToLower()
+          $exeHash = (Get-FileHash "build\installer\DarsakAI-Setup-v$version.exe" -Algorithm SHA256).Hash.ToLower()
+          $zipHash = (Get-FileHash "$temp/DarsakAI-Windows-v$version.zip" -Algorithm SHA256).Hash.ToLower()
           echo "exe_sha256=$exeHash" >> $env:GITHUB_OUTPUT
           echo "zip_sha256=$zipHash" >> $env:GITHUB_OUTPUT
 
@@ -80,18 +92,19 @@ jobs:
         shell: bash
         run: |
           TEMP="${RUNNER_TEMP//\\//}"
-          gh release upload ${{ env.RELEASE_TAG }} --clobber "$TEMP/DarsakAI-Windows.zip"
-          gh release upload ${{ env.RELEASE_TAG }} --clobber "build/installer/DarsakAI-Setup.exe"
+          VERSION="${{ steps.version.outputs.app_version }}"
+          gh release upload ${{ env.RELEASE_TAG }} --clobber "$TEMP/DarsakAI-Windows-v${VERSION}.zip"
+          gh release upload ${{ env.RELEASE_TAG }} --clobber "build/installer/DarsakAI-Setup-v${VERSION}.exe"
 
       - name: latest-stable.json
         shell: bash
         run: |
           TEMP="${RUNNER_TEMP//\\//}"
-          VERSION="${{ env.APP_VERSION }}"
+          VERSION="${{ steps.version.outputs.app_version }}"
           BUILD=${{ github.run_number }}
           EXE_SHA256="${{ steps.sha256.outputs.exe_sha256 }}"
           cat > "$TEMP/latest-stable.json" << JSONEOF
-          {"channel":"stable","version":"${VERSION}","build":${BUILD},"sha256":"${EXE_SHA256}","download_url":"https://github.com/rootkali-cmd/Darsak-ai/releases/download/${{ env.RELEASE_TAG }}/DarsakAI-Setup.exe"}
+          {"channel":"stable","version":"${VERSION}","build":${BUILD},"sha256":"${EXE_SHA256}","download_url":"https://github.com/rootkali-cmd/Darsak-ai/releases/download/${{ env.RELEASE_TAG }}/DarsakAI-Setup-v${VERSION}.exe"}
           JSONEOF
           gh release upload ${{ env.RELEASE_TAG }} --clobber "$TEMP/latest-stable.json#latest-stable.json"
         env:
@@ -101,11 +114,11 @@ jobs:
         shell: bash
         run: |
           TEMP="${RUNNER_TEMP//\\//}"
-          VERSION="${{ env.APP_VERSION }}-beta.1"
+          VERSION="${{ steps.version.outputs.app_version }}-beta.1"
           BUILD=${{ github.run_number }}
           EXE_SHA256="${{ steps.sha256.outputs.exe_sha256 }}"
           cat > "$TEMP/latest-beta.json" << JSONEOF
-          {"channel":"beta","version":"${VERSION}","build":${BUILD},"sha256":"${EXE_SHA256}","download_url":"https://github.com/rootkali-cmd/Darsak-ai/releases/download/${{ env.RELEASE_TAG }}/DarsakAI-Setup.exe"}
+          {"channel":"beta","version":"${VERSION}","build":${BUILD},"sha256":"${EXE_SHA256}","download_url":"https://github.com/rootkali-cmd/Darsak-ai/releases/download/${{ env.RELEASE_TAG }}/DarsakAI-Setup-v${VERSION}.exe"}
           JSONEOF
           gh release upload ${{ env.RELEASE_TAG }} --clobber "$TEMP/latest-beta.json#latest-beta.json"
         env:
