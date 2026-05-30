@@ -43,18 +43,20 @@ jobs:
       - name: Get version from pubspec
         id: version
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed "s/'//g")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          FULL=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed "s/'//g")
+          SEMVER=$(echo "$FULL" | sed 's/+.*//')
+          echo "full=$FULL" >> $GITHUB_OUTPUT
+          echo "semver=$SEMVER" >> $GITHUB_OUTPUT
 
       - name: Rename APK with version
         run: |
           APK_DIR="build/app/outputs/flutter-apk"
-          VERSION="${{ steps.version.outputs.version }}"
-          mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Teacher-v${VERSION}.apk"
+          SEMVER="${{ steps.version.outputs.semver }}"
+          mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Teacher-v${SEMVER}.apk"
 
       - name: Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          gh release upload v1.0.0 --clobber "build/app/outputs/flutter-apk/DarsakAI-Teacher-v${VERSION}.apk#DarsakAI-Teacher-v${VERSION}.apk"
+          SEMVER="${{ steps.version.outputs.semver }}"
+          gh release upload v1.0.0 --clobber "build/app/outputs/flutter-apk/DarsakAI-Teacher-v${SEMVER}.apk#DarsakAI-Teacher-v${SEMVER}.apk"

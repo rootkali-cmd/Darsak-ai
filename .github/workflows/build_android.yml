@@ -68,17 +68,16 @@ jobs:
         run: |
           APK_DIR="build/app/outputs/flutter-apk"
           VERSION="${{ steps.version.outputs.version }}"
-          BUILD="${{ steps.version.outputs.build }}"
 
           # Rename universal
           if [ -f "$APK_DIR/app-release.apk" ]; then
-            mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Student-v${VERSION}+${BUILD}-universal.apk"
+            mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Student-v${VERSION}.apk"
           fi
 
           # Rename per-abi
           for abi in arm64-v8a armeabi-v7a x86_64; do
             if [ -f "$APK_DIR/app-${abi}-release.apk" ]; then
-              mv "$APK_DIR/app-${abi}-release.apk" "$APK_DIR/DarsakAI-Student-v${VERSION}+${BUILD}-${abi}.apk"
+              mv "$APK_DIR/app-${abi}-release.apk" "$APK_DIR/DarsakAI-Student-v${VERSION}-${abi}.apk"
             fi
           done
 
@@ -86,9 +85,9 @@ jobs:
         id: sha256
         run: |
           APK_DIR="build/app/outputs/flutter-apk"
-          UNIVERSAL=$(ls "$APK_DIR"/DarsakAI-Student-*-universal.apk 2>/dev/null | head -1)
-          ARM64=$(ls "$APK_DIR"/DarsakAI-Student-*-arm64-v8a.apk 2>/dev/null | head -1)
-          ARMV7=$(ls "$APK_DIR"/DarsakAI-Student-*-armeabi-v7a.apk 2>/dev/null | head -1)
+          UNIVERSAL=$(ls "$APK_DIR"/DarsakAI-Student-v*.apk 2>/dev/null | head -1)
+          ARM64=$(ls "$APK_DIR"/DarsakAI-Student-v*-arm64-v8a.apk 2>/dev/null | head -1)
+          ARMV7=$(ls "$APK_DIR"/DarsakAI-Student-v*-armeabi-v7a.apk 2>/dev/null | head -1)
 
           if [ -n "$UNIVERSAL" ]; then
             echo "universal_sha256=$(sha256sum "$UNIVERSAL" | cut -d' ' -f1)" >> $GITHUB_OUTPUT
@@ -118,8 +117,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           APK_DIR="build/app/outputs/flutter-apk"
-          UNIVERSAL=$(ls "$APK_DIR"/DarsakAI-Student-*-universal.apk 2>/dev/null | head -1)
+          UNIVERSAL=$(ls "$APK_DIR"/DarsakAI-Student-v*.apk 2>/dev/null | head -1)
           if [ -n "$UNIVERSAL" ]; then
-            cp "$UNIVERSAL" "$APK_DIR/DarsakAI-Student.apk"
-            gh release upload v1.0.0 --clobber "$APK_DIR/DarsakAI-Student.apk#DarsakAI-Student.apk"
+            gh release upload v1.0.0 --clobber "$UNIVERSAL#DarsakAI-Student.apk"
           fi

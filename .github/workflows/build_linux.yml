@@ -40,8 +40,9 @@ jobs:
       - name: Get version from pubspec
         id: version
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed "s/'//g")
-          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+          FULL=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | sed "s/'//g")
+          SEMVER=$(echo "$FULL" | sed 's/+.*//')
+          echo "app_version=$SEMVER" >> $GITHUB_OUTPUT
 
       - run: flutter build linux --release
 
