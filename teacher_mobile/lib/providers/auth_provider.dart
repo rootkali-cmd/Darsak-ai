@@ -34,10 +34,15 @@ class AuthProvider extends ChangeNotifier {
       _token = data['access_token'] as String?;
       final refreshToken = data['refresh_token'] as String?;
 
-      final prefs = await SharedPreferences.getInstance();
-      if (_token != null) {
-        await prefs.setString('access_token', _token!);
+      if (_token == null || _token!.isEmpty) {
+        _error = 'بيانات الدخول غير صحيحة.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
       }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', _token!);
       if (refreshToken != null) {
         await prefs.setString('refresh_token', refreshToken);
       }
@@ -47,12 +52,20 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      _error = e.response?.data?['detail'] ?? 'فشل تسجيل الدخول. تحقق من الاتصال.';
+      final detail = e.response?.data is Map
+          ? e.response?.data?['detail']?.toString()
+          : null;
+      if (e.type == DioExceptionType.connectionTimeout || 
+          e.type == DioExceptionType.receiveTimeout) {
+        _error = 'السيرفر بيصحى من النوم... حاول بعد 30 ثانية.';
+      } else {
+        _error = detail ?? 'فشل تسجيل الدخول. تحقق من البيانات.';
+      }
       _isLoading = false;
       notifyListeners();
       return false;
     } catch (e) {
-      _error = 'حدث خطأ غير متوقع';
+      _error = 'حدث خطأ غير متوقع. حاول مرة أخرى.';
       _isLoading = false;
       notifyListeners();
       return false;
