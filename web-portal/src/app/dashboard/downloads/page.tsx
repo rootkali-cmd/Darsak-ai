@@ -18,6 +18,17 @@ const apps = [
     platform: 'Android',
   },
   {
+    id: 'teacher',
+    title: 'DarsakAI Teacher v1.0.0',
+    description: 'تطبيق المدرس — مسح QR للحضور بدون نظام PC',
+    icon: Monitor,
+    color: '#FF6B00',
+    files: [
+      { name: 'DarsakAI-Teacher.apk', label: 'Android APK (Teacher)', size: '~15 MB' },
+    ],
+    platform: 'Android',
+  },
+  {
     id: 'desktop',
     title: 'DarsakAI Desktop v1.4.0',
     description: 'نظام إدارة الفصل للمعلم — students, grades, attendance, exams, invoices',

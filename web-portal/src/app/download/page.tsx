@@ -31,6 +31,19 @@ const apps: {
     note: 'إصدار 1.2.0 • مساعد AI ذكي • Camera only permission',
   },
   {
+    id: 'teacher',
+    title: 'DarsakAI Teacher v1.0.0',
+    description: 'تطبيق المدرس - مسح QR للحضور بدون نظام PC',
+    descriptionEn: 'Teacher mobile app — QR attendance scanner without PC',
+    icon: Monitor,
+    color: '#FF6B00',
+    files: [
+      { name: 'DarsakAI-Teacher.apk', label: 'Android APK (Teacher)', size: '~15 MB' },
+    ],
+    platform: 'Android ✓',
+    note: 'Build 1.0.0 • QR Scanner • Glass Notifications • Offline-ready',
+  },
+  {
     id: 'desktop',
     title: 'DarsakAI Desktop v1.4.0',
     description: 'نظام إدارة السنتر - طلاب، درجات، حضور، امتحانات، فواتير',
