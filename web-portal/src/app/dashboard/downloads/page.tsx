@@ -24,7 +24,7 @@ const apps = [
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher-v1.2.0.apk', label: 'Android APK (Teacher)', size: '~70 MB' },
+      { name: 'DarsakAI-Teacher.apk', label: 'Android APK v1.2.0', size: '~70 MB' },
     ],
     platform: 'Android',
   },
@@ -35,8 +35,8 @@ const apps = [
     icon: Monitor,
     color: '#ccff00',
     files: [
-      { name: 'DarsakAI-Setup-v2.0.0.exe', label: 'Windows Installer', size: '~15 MB' },
-      { name: 'DarsakAI-Windows-v2.0.0.zip', label: 'Windows Portable (ZIP)', size: '~18 MB' },
+      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer v2.0.0', size: '~15 MB' },
+      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable v2.0.0', size: '~18 MB' },
     ],
     platform: 'Windows',
   },
