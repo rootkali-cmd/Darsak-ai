@@ -52,12 +52,14 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      final detail = e.response?.data is Map
-          ? e.response?.data?['detail']?.toString()
-          : null;
+      String? detail;
+      final data = e.response?.data;
+      if (data is Map) {
+        detail = data['detail']?.toString();
+      }
       if (e.type == DioExceptionType.connectionTimeout || 
           e.type == DioExceptionType.receiveTimeout) {
-        _error = 'السيرفر بيصحى من النوم... حاول بعد 30 ثانية.';
+        _error = 'السيرفر بيصحى... حاول بعد 30 ثانية.';
       } else {
         _error = detail ?? 'فشل تسجيل الدخول. تحقق من البيانات.';
       }
