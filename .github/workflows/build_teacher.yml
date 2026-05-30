@@ -1,0 +1,52 @@
+name: Build Teacher Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'teacher_mobile/**'
+      - '.github/workflows/build_teacher.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-teacher:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: teacher_mobile
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: |
+          APK_DIR="build/app/outputs/flutter-apk"
+          mv "$APK_DIR/app-release.apk" "$APK_DIR/DarsakAI-Teacher.apk"
+
+      - name: Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload v1.0.0 --clobber "build/app/outputs/flutter-apk/DarsakAI-Teacher.apk#DarsakAI-Teacher.apk"
