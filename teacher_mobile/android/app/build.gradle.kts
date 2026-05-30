@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "com.darsakai.teacher_mobile"
-        minSdk = 21
+        minSdk = 29
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
