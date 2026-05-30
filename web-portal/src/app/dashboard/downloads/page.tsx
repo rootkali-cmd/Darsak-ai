@@ -13,7 +13,7 @@ const apps = [
     icon: Smartphone,
     color: '#00f3ff',
     files: [
-      { name: 'DarsakAI-Student-v1.3.0.apk', label: 'Android APK (Universal)', size: '~80 MB' },
+      { name: 'DarsakAI-Student.apk', label: 'Android APK v1.3.0', size: '~80 MB' },
     ],
     platform: 'Android',
   },

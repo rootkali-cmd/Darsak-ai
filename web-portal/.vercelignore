@@ -5,3 +5,5 @@ public/DarsakAI-Linux.tar.gz
 public/DarsakAI-Windows.zip
 node_modules/
 .next/
+node_modules/
+.next/
