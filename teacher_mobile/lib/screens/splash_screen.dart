@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
+import '../../core/app_theme.dart';
+import '../../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
@@ -49,8 +50,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0f0f1a),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       body: Center(
         child: FadeTransition(
           opacity: Tween<double>(begin: 0, end: 1).animate(
@@ -68,17 +72,17 @@ class _SplashScreenState extends State<SplashScreen>
                   height: 100,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFdc2626), Color(0xFFef4444)],
+                      colors: [AppTheme.accent, AppTheme.accentLight],
                     ),
                     borderRadius: BorderRadius.circular(28),
                   ),
                   child: const Icon(Icons.school, color: Colors.white, size: 48),
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'DarsakAI',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: theme.colorScheme.onSurface,
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
@@ -87,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
                 const Text(
                   'Teacher',
                   style: TextStyle(
-                    color: Color(0xFFdc2626),
+                    color: AppTheme.accent,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                   ),
@@ -96,8 +100,8 @@ class _SplashScreenState extends State<SplashScreen>
                 SizedBox(
                   width: 120,
                   child: LinearProgressIndicator(
-                    backgroundColor: const Color(0xFF1a1a2e),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFdc2626)),
+                    backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accent),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),

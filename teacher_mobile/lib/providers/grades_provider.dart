@@ -24,7 +24,7 @@ class GradesProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل الدرجات';
+      _error = 'فشل تحميل الدرجات: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
     }
@@ -36,7 +36,7 @@ class GradesProvider extends ChangeNotifier {
       await loadGrades(subject: _subjectFilter);
       return true;
     } catch (e) {
-      _error = 'فشل إضافة الدرجة';
+      _error = 'فشل إضافة الدرجة: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -48,7 +48,7 @@ class GradesProvider extends ChangeNotifier {
       await loadGrades(subject: _subjectFilter);
       return true;
     } catch (e) {
-      _error = 'فشل تحديث الدرجة';
+      _error = 'فشل تحديث الدرجة: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -61,7 +61,7 @@ class GradesProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'فشل حذف الدرجة';
+      _error = 'فشل حذف الدرجة: ${e.toString()}';
       notifyListeners();
       return false;
     }

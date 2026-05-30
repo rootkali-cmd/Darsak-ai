@@ -26,7 +26,7 @@ class StudentsProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل قائمة الطلاب';
+      _error = 'فشل تحميل الطلاب: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
     }
@@ -53,7 +53,7 @@ class StudentsProvider extends ChangeNotifier {
       await loadStudents();
       return true;
     } catch (e) {
-      _error = 'فشل إضافة الطالب';
+      _error = 'فشل إضافة الطالب: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -65,7 +65,7 @@ class StudentsProvider extends ChangeNotifier {
       await loadStudents();
       return true;
     } catch (e) {
-      _error = 'فشل تحديث بيانات الطالب';
+      _error = 'فشل تحديث الطالب: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -79,7 +79,7 @@ class StudentsProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'فشل حذف الطالب';
+      _error = 'فشل حذف الطالب: ${e.toString()}';
       notifyListeners();
       return false;
     }

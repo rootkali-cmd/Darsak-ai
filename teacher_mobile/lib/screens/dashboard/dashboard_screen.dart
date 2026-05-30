@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../core/app_theme.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/glass_card.dart';
@@ -51,14 +52,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('الرئيسية'),
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
-        color: const Color(0xFFdc2626),
-        backgroundColor: const Color(0xFF1a1a2e),
+        color: AppTheme.accent,
+        backgroundColor: colorScheme.surface,
         child: FutureBuilder<Map<String, dynamic>>(
           future: _statsFuture,
           builder: (context, snapshot) {
@@ -67,7 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
             if (snapshot.hasError) {
               return AppErrorWidget(
-                message: 'فشل تحميل الإحصائيات',
+                message: 'فشل تحميل الإحصائيات: ${snapshot.error}',
                 onRetry: _refresh,
               );
             }
@@ -78,10 +82,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'لوحة التحكم',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onSurface,
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
@@ -94,7 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           icon: Icons.people,
                           title: 'الطلاب',
                           value: '${stats['total_students'] ?? 0}',
-                          color: const Color(0xFF10b981),
+                          color: AppTheme.success,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -103,7 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           icon: Icons.groups,
                           title: 'المجموعات',
                           value: '${stats['total_groups'] ?? 0}',
-                          color: const Color(0xFF3b82f6),
+                          color: AppTheme.accent,
                         ),
                       ),
                     ],
@@ -116,7 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           icon: Icons.fact_check,
                           title: 'الحضور اليوم',
                           value: '${stats['today_attendance'] ?? 0}',
-                          color: const Color(0xFFf59e0b),
+                          color: AppTheme.warning,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -131,10 +135,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  const Text(
+                  Text(
                     'الإجراءات السريعة',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -200,6 +204,9 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,8 +223,8 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: colorScheme.onSurface,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -225,8 +232,10 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF6b7280),
+            style: TextStyle(
+              color: theme.brightness == Brightness.dark
+                  ? const Color(0xFF8E8E93)
+                  : const Color(0xFF636366),
               fontSize: 12,
             ),
           ),
@@ -251,6 +260,9 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GlassCard(
       onTap: onTap,
       child: Row(
@@ -259,10 +271,10 @@ class _QuickAction extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFFdc2626).withValues(alpha: 0.15),
+              color: AppTheme.accent.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: const Color(0xFFdc2626)),
+            child: Icon(icon, color: AppTheme.accent),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -271,22 +283,30 @@ class _QuickAction extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFF6b7280),
+                  style: TextStyle(
+                    color: theme.brightness == Brightness.dark
+                        ? const Color(0xFF8E8E93)
+                        : const Color(0xFF636366),
                     fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.arrow_back_ios, size: 16, color: Color(0xFF6b7280)),
+          Icon(
+            Icons.arrow_back_ios,
+            size: 16,
+            color: theme.brightness == Brightness.dark
+                ? const Color(0xFF8E8E93)
+                : const Color(0xFF636366),
+          ),
         ],
       ),
     );

@@ -25,7 +25,7 @@ class AttendanceProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'فشل تحميل سجل الحضور';
+      _error = 'فشل تحميل الحضور: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
     }
@@ -41,7 +41,7 @@ class AttendanceProvider extends ChangeNotifier {
       await loadAttendance();
       return result;
     } catch (e) {
-      _error = 'فشل تسجيل الحضور';
+      _error = 'فشل تسجيل الحضور: ${e.toString()}';
       notifyListeners();
       return null;
     }
@@ -53,7 +53,7 @@ class AttendanceProvider extends ChangeNotifier {
       await loadAttendance();
       return result;
     } catch (e) {
-      _error = 'فشل تسجيل الحضور بالباركود';
+      _error = 'فشل مسح الباركود: ${e.toString()}';
       notifyListeners();
       return null;
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
+import '../../core/app_theme.dart';
+import '../../providers/auth_provider.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -41,8 +42,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0f0f1a),
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -58,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 80,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFdc2626), Color(0xFFef4444)],
+                        colors: [AppTheme.accent, AppTheme.accentLight],
                       ),
                       borderRadius: BorderRadius.circular(24),
                     ),
@@ -66,22 +71,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Center(
+                Center(
                   child: Text(
                     'تسجيل الدخول',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onSurface,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Center(
+                Center(
                   child: Text(
                     'أهلاً بك في DarsakAI Teacher',
                     style: TextStyle(
-                      color: Color(0xFF6b7280),
+                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
                       fontSize: 14,
                     ),
                   ),
@@ -92,17 +97,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.left,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'البريد الإلكتروني',
-                    labelStyle: const TextStyle(color: Color(0xFF6b7280)),
-                    prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF6b7280)),
-                    filled: true,
-                    fillColor: const Color(0xFF1a1a2e),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
+                    labelStyle: TextStyle(color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
+                    prefixIcon: Icon(Icons.email_outlined, color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -120,23 +119,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: _obscurePassword,
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.left,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور',
-                    labelStyle: const TextStyle(color: Color(0xFF6b7280)),
-                    prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF6b7280)),
+                    labelStyle: TextStyle(color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
+                    prefixIcon: Icon(Icons.lock_outline, color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: const Color(0xFF6b7280),
+                        color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
                       ),
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFF1a1a2e),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
                     ),
                   ),
                   validator: (value) {
@@ -157,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: const EdgeInsets.only(bottom: 16),
                         child: Text(
                           auth.error!,
-                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                          style: const TextStyle(color: AppTheme.danger, fontSize: 13),
                           textAlign: TextAlign.center,
                         ),
                       );
@@ -171,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     return ElevatedButton(
                       onPressed: auth.isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFdc2626),
+                        backgroundColor: AppTheme.accent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -195,9 +188,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'ليس لديك حساب؟',
-                      style: TextStyle(color: Color(0xFF6b7280)),
+                      style: TextStyle(color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
                     ),
                     TextButton(
                       onPressed: () {},

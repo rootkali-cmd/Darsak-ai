@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/grades_provider.dart';
 import '../../providers/students_provider.dart';
+import '../../core/app_theme.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/empty_state.dart';
@@ -44,14 +45,13 @@ class _GradesScreenState extends State<GradesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white)),
-        content: const Text('هل أنت متأكد من حذف هذه الدرجة؟', style: TextStyle(color: Colors.white70)),
+        title: const Text('تأكيد الحذف'),
+        content: const Text('هل أنت متأكد من حذف هذه الدرجة؟'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -70,7 +70,6 @@ class _GradesScreenState extends State<GradesScreen> {
   }
 
   void _showFilterDialog() {
-    // Collect unique subjects from grades
     final gradesProvider = Provider.of<GradesProvider>(context, listen: false);
     final subjects = gradesProvider.grades
         .map((g) => g['subject']?.toString() ?? '')
@@ -81,13 +80,12 @@ class _GradesScreenState extends State<GradesScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('تصفية حسب المادة', style: TextStyle(color: Colors.white)),
+        title: const Text('تصفية حسب المادة'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('الكل', style: TextStyle(color: Colors.white)),
+              title: const Text('الكل'),
               onTap: () {
                 setState(() => _selectedSubject = null);
                 gradesProvider.loadGrades();
@@ -95,8 +93,8 @@ class _GradesScreenState extends State<GradesScreen> {
               },
             ),
             ...subjects.map((s) => ListTile(
-              title: Text(s, style: const TextStyle(color: Colors.white)),
-              trailing: _selectedSubject == s ? const Icon(Icons.check, color: Color(0xFFdc2626)) : null,
+              title: Text(s),
+              trailing: _selectedSubject == s ? const Icon(Icons.check, color: AppTheme.accent) : null,
               onTap: () {
                 setState(() => _selectedSubject = s);
                 gradesProvider.loadGrades(subject: s);
@@ -111,16 +109,20 @@ class _GradesScreenState extends State<GradesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('الدرجات'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list, color: Colors.white),
+            icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
+            icon: const Icon(Icons.add),
             onPressed: _showAddGrade,
           ),
         ],
@@ -141,8 +143,8 @@ class _GradesScreenState extends State<GradesScreen> {
           }
           return RefreshIndicator(
             onRefresh: () => provider.loadGrades(subject: _selectedSubject),
-            color: const Color(0xFFdc2626),
-            backgroundColor: const Color(0xFF1a1a2e),
+            color: AppTheme.accent,
+            backgroundColor: colorScheme.surface,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(12),
@@ -157,26 +159,28 @@ class _GradesScreenState extends State<GradesScreen> {
                 final maxScore = grade['max_score'] ?? 0;
 
                 return Card(
-                  color: const Color(0xFF1a1a2e),
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
                     onTap: () => _showEditGrade(grade),
                     onLongPress: () => _deleteGrade(grade),
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFdc2626).withValues(alpha: 0.2),
-                      child: const Icon(Icons.grade, color: Color(0xFFdc2626)),
+                      backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
+                      child: const Icon(Icons.grade, color: AppTheme.accent),
                     ),
                     title: Text(
                       studentName,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(
                       '$examName ${subject.isNotEmpty ? '• $subject' : ''}',
-                      style: const TextStyle(color: Color(0xFF6b7280), fontSize: 12),
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                        fontSize: 12,
+                      ),
                     ),
                     trailing: Text(
                       '$score / $maxScore',
-                      style: const TextStyle(color: Color(0xFFdc2626), fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   ),
                 );
@@ -187,8 +191,7 @@ class _GradesScreenState extends State<GradesScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddGrade,
-        backgroundColor: const Color(0xFFdc2626),
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
     );
   }

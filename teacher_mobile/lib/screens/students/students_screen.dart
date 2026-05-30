@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/students_provider.dart';
+import '../../core/app_theme.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/empty_state.dart';
@@ -49,14 +50,13 @@ class _StudentsScreenState extends State<StudentsScreen> {
   }
 
   Future<void> _deleteStudent(dynamic student) async {
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white)),
+        title: const Text('تأكيد الحذف'),
         content: Text(
           'هل أنت متأكد من حذف الطالب "${student['full_name'] ?? student['name'] ?? ''}"؟',
-          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -65,7 +65,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -92,7 +92,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
   void _showOptions(dynamic student) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1a1a2e),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -104,16 +103,16 @@ class _StudentsScreenState extends State<StudentsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
-                  leading: const Icon(Icons.edit, color: Colors.white),
-                  title: const Text('تعديل', style: TextStyle(color: Colors.white)),
+                  leading: const Icon(Icons.edit),
+                  title: const Text('تعديل'),
                   onTap: () {
                     Navigator.pop(ctx);
                     _showEditStudent(student);
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.delete, color: Colors.red),
-                  title: const Text('حذف', style: TextStyle(color: Colors.red)),
+                  leading: const Icon(Icons.delete, color: AppTheme.danger),
+                  title: const Text('حذف', style: TextStyle(color: AppTheme.danger)),
                   onTap: () {
                     Navigator.pop(ctx);
                     _deleteStudent(student);
@@ -129,16 +128,22 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: _isSearching
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
+                style: TextStyle(color: colorScheme.onSurface),
+                decoration: InputDecoration(
                   hintText: 'بحث بالاسم أو الهاتف...',
-                  hintStyle: TextStyle(color: Color(0xFF6b7280)),
+                  hintStyle: TextStyle(
+                    color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                  ),
                   border: InputBorder.none,
                 ),
                 onChanged: (value) {
@@ -148,7 +153,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
             : const Text('الطلاب'),
         actions: [
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
             onPressed: () {
               setState(() {
                 _isSearching = !_isSearching;
@@ -161,7 +166,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
           ),
           if (!_isSearching)
             IconButton(
-              icon: const Icon(Icons.person_add, color: Colors.white),
+              icon: const Icon(Icons.person_add),
               onPressed: _showAddStudent,
             ),
         ],
@@ -185,8 +190,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
           }
           return RefreshIndicator(
             onRefresh: () => provider.loadStudents(),
-            color: const Color(0xFFdc2626),
-            backgroundColor: const Color(0xFF1a1a2e),
+            color: AppTheme.accent,
+            backgroundColor: colorScheme.surface,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(12),
@@ -197,9 +202,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 final phone = student['phone']?.toString() ?? '';
                 final gradeLevel = student['grade_level']?.toString() ?? '';
                 return Card(
-                  color: const Color(0xFF1a1a2e),
                   margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
                     onTap: () {
                       Navigator.push(
@@ -211,19 +214,22 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     },
                     onLongPress: () => _showOptions(student),
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFdc2626).withValues(alpha: 0.2),
-                      child: const Icon(Icons.person, color: Color(0xFFdc2626)),
+                      backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
+                      child: const Icon(Icons.person, color: AppTheme.accent),
                     ),
                     title: Text(
                       name,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(
                       '$phone ${gradeLevel.isNotEmpty ? ' • $gradeLevel' : ''}',
-                      style: const TextStyle(color: Color(0xFF6b7280), fontSize: 12),
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                        fontSize: 12,
+                      ),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.more_vert, color: Color(0xFF6b7280)),
+                      icon: const Icon(Icons.more_vert),
                       onPressed: () => _showOptions(student),
                     ),
                   ),
@@ -235,8 +241,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddStudent,
-        backgroundColor: const Color(0xFFdc2626),
-        child: const Icon(Icons.person_add, color: Colors.white),
+        child: const Icon(Icons.person_add),
       ),
     );
   }

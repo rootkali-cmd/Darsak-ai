@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/app_theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/theme_provider.dart';
 import 'providers/students_provider.dart';
 import 'providers/groups_provider.dart';
 import 'providers/attendance_provider.dart';
@@ -23,6 +24,7 @@ class DarsakTeacherApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => StudentsProvider()),
         ChangeNotifierProvider(create: (_) => GroupsProvider()),
@@ -32,15 +34,21 @@ class DarsakTeacherApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ExamsProvider()),
         ChangeNotifierProvider(create: (_) => SessionsProvider()),
       ],
-      child: MaterialApp(
-        title: 'DarsakAI Teacher',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const SplashScreen(),
-        builder: (context, child) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: child!,
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'DarsakAI Teacher',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: const SplashScreen(),
+            builder: (context, child) {
+              return Directionality(
+                textDirection: TextDirection.rtl,
+                child: child!,
+              );
+            },
           );
         },
       ),

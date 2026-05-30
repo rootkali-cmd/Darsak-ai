@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/attendance_provider.dart';
+import '../../core/app_theme.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/empty_state.dart';
@@ -43,12 +44,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('الحضور'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+            icon: const Icon(Icons.qr_code_scanner),
             onPressed: () {
               final provider = Provider.of<AttendanceProvider>(context, listen: false);
               Navigator.push(
@@ -96,8 +101,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
           return RefreshIndicator(
             onRefresh: () => provider.loadAttendance(),
-            color: const Color(0xFFdc2626),
-            backgroundColor: const Color(0xFF1a1a2e),
+            color: AppTheme.accent,
+            backgroundColor: colorScheme.surface,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(12),
@@ -111,32 +116,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 final groupName = student['group']?['name']?.toString() ?? '';
 
                 return Card(
-                  color: const Color(0xFF1a1a2e),
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: isPresent ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
+                      backgroundColor: isPresent
+                          ? AppTheme.success.withValues(alpha: 0.2)
+                          : AppTheme.danger.withValues(alpha: 0.2),
                       child: Icon(
                         isPresent ? Icons.check : Icons.close,
-                        color: isPresent ? Colors.green : Colors.red,
+                        color: isPresent ? AppTheme.success : AppTheme.danger,
                       ),
                     ),
-                    title: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    title: Text(name, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600)),
                     subtitle: Text(
                       '${groupName.isNotEmpty ? '$groupName • ' : ''}${record['date'] ?? provider.today}',
-                      style: const TextStyle(color: Color(0xFF6b7280), fontSize: 12),
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                        fontSize: 12,
+                      ),
                     ),
                     trailing: isPresent
                         ? Chip(
                             label: const Text('حاضر', style: TextStyle(fontSize: 12)),
-                            backgroundColor: Colors.green.withValues(alpha: 0.2),
-                            labelStyle: const TextStyle(color: Colors.green),
+                            backgroundColor: AppTheme.success.withValues(alpha: 0.2),
+                            labelStyle: const TextStyle(color: AppTheme.success),
                             padding: EdgeInsets.zero,
                           )
                         : ElevatedButton(
                             onPressed: () => _markPresent(record),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFdc2626),
+                              backgroundColor: AppTheme.accent,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               minimumSize: const Size(60, 32),
                             ),
@@ -159,8 +168,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             if (mounted) provider.loadAttendance();
           });
         },
-        backgroundColor: const Color(0xFFdc2626),
-        child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+        child: const Icon(Icons.qr_code_scanner),
       ),
     );
   }

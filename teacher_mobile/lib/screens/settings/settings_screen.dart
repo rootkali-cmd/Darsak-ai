@@ -1,10 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/auth_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _version = '1.2.1';
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+    _loadNotificationSetting();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _version = packageInfo.version;
+        });
+      }
+    } catch (e) {
+      // fallback already set
+    }
+  }
+
+  Future<void> _loadNotificationSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      });
+    }
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', value);
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = value;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('الإعدادات'),
@@ -12,59 +68,108 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'عام',
-            style: TextStyle(color: Color(0xFF6b7280), fontSize: 12, fontWeight: FontWeight.w600),
+          Text(
+            'المظهر',
+            style: TextStyle(
+              color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Card(
-            color: const Color(0xFF1a1a2e),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.dark_mode, color: Colors.white),
-                  title: const Text('الوضع الداكن', style: TextStyle(color: Colors.white)),
-                  trailing: Switch(
-                    value: true,
-                    onChanged: (v) {},
-                    activeThumbColor: const Color(0xFFdc2626),
-                  ),
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, _) {
+                    return ListTile(
+                      leading: Icon(
+                        themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                        color: colorScheme.onSurface,
+                      ),
+                      title: Text(
+                        themeProvider.isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح',
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                      trailing: Switch(
+                        value: themeProvider.isDarkMode,
+                        onChanged: (v) => themeProvider.toggleTheme(),
+                        activeColor: AppTheme.accent,
+                      ),
+                    );
+                  },
                 ),
-                const Divider(height: 1, color: Color(0xFF2a2a3e)),
+                const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.notifications, color: Colors.white),
-                  title: const Text('الإشعارات', style: TextStyle(color: Colors.white)),
+                  leading: Icon(
+                    Icons.notifications,
+                    color: colorScheme.onSurface,
+                  ),
+                  title: Text(
+                    'الإشعارات',
+                    style: TextStyle(color: colorScheme.onSurface),
+                  ),
                   trailing: Switch(
-                    value: true,
-                    onChanged: (v) {},
-                    activeThumbColor: const Color(0xFFdc2626),
+                    value: _notificationsEnabled,
+                    onChanged: _toggleNotifications,
+                    activeColor: AppTheme.accent,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'حول التطبيق',
-            style: TextStyle(color: Color(0xFF6b7280), fontSize: 12, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Card(
-            color: const Color(0xFF1a1a2e),
             child: Column(
               children: [
-                const ListTile(
-                  leading: Icon(Icons.info, color: Colors.white),
-                  title: Text('الإصدار', style: TextStyle(color: Colors.white)),
-                  trailing: Text('1.0.0', style: TextStyle(color: Color(0xFF6b7280))),
-                ),
-                const Divider(height: 1, color: Color(0xFF2a2a3e)),
                 ListTile(
-                  leading: const Icon(Icons.language, color: Colors.white),
-                  title: const Text('اللغة', style: TextStyle(color: Colors.white)),
-                  trailing: const Text('العربية', style: TextStyle(color: Color(0xFF6b7280))),
+                  leading: Icon(Icons.info, color: colorScheme.onSurface),
+                  title: Text('الإصدار', style: TextStyle(color: colorScheme.onSurface)),
+                  trailing: Text(
+                    _version,
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: Icon(Icons.language, color: colorScheme.onSurface),
+                  title: Text('اللغة', style: TextStyle(color: colorScheme.onSurface)),
+                  trailing: Text(
+                    'العربية',
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                    ),
+                  ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: AppTheme.danger),
+              title: const Text(
+                'تسجيل الخروج',
+                style: TextStyle(color: AppTheme.danger),
+              ),
+              onTap: () async {
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                await auth.logout();
+                if (mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                }
+              },
             ),
           ),
         ],
