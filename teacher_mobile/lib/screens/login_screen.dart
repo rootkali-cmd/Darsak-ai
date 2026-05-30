@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,6 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isWakingUp = false;
+  String? _wakeStatus;
 
   @override
   void dispose() {
@@ -26,6 +29,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isWakingUp = true;
+      _wakeStatus = 'جاري إيقاظ السيرفر...';
+    });
+
+    // Wake up the server first
+    final api = ApiService();
+    final awake = await api.ping();
+    if (!awake) {
+      // Server might be cold starting, wait a moment
+      await Future.delayed(const Duration(seconds: 3));
+      await api.ping();
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isWakingUp = false;
+      _wakeStatus = null;
+    });
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final success = await auth.login(
@@ -92,6 +115,31 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
+                if (_wakeStatus != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppTheme.accent,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _wakeStatus!,
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -161,8 +209,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 Consumer<AuthProvider>(
                   builder: (context, auth, _) {
+                    final loading = auth.isLoading || _isWakingUp;
                     return ElevatedButton(
-                      onPressed: auth.isLoading ? null : _login,
+                      onPressed: loading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
                         foregroundColor: Colors.white,
@@ -171,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: auth.isLoading
+                      child: loading
                           ? const SizedBox(
                               height: 20,
                               width: 20,

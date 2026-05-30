@@ -6,7 +6,7 @@ String getFriendlyErrorMessage(dynamic error) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return 'انتهت مهلة الاتصال. تأكد من الإنترنت.';
+        return 'السيرفر نائم... اضغط تحديث أو حاول بعد 30 ثانية.';
       case DioExceptionType.connectionError:
         return 'لا يوجد اتصال بالإنترنت.';
       case DioExceptionType.badResponse:

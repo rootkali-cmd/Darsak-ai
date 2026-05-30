@@ -95,7 +95,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: Switch(
                         value: themeProvider.isDarkMode,
                         onChanged: (v) => themeProvider.toggleTheme(),
-                        activeColor: AppTheme.accent,
+                        activeTrackColor: AppTheme.accent.withAlpha(128),
+                        thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return AppTheme.accent;
+                          }
+                          return Colors.grey;
+                        }),
                       ),
                     );
                   },
@@ -113,7 +119,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: Switch(
                     value: _notificationsEnabled,
                     onChanged: _toggleNotifications,
-                    activeColor: AppTheme.accent,
+                    activeTrackColor: AppTheme.accent.withAlpha(128),
+                    thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return AppTheme.accent;
+                      }
+                      return Colors.grey;
+                    }),
                   ),
                 ),
               ],
@@ -165,10 +177,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(color: Color(0xFFFF453A)),
               ),
               onTap: () async {
+                final navigator = Navigator.of(context);
                 final auth = Provider.of<AuthProvider>(context, listen: false);
                 await auth.logout();
                 if (mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  navigator.pushNamedAndRemoveUntil('/', (route) => false);
                 }
               },
             ),

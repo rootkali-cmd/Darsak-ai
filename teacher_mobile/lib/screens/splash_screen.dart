@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
@@ -15,6 +16,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  String _status = 'جاري التحميل...';
 
   @override
   void initState() {
@@ -28,8 +30,26 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initialize() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
+
+    setState(() => _status = 'جاري إيقاظ السيرفر...');
+
+    // Wake up Fly.io server before doing auth
+    final api = ApiService();
+    final awake = await api.ping();
+
+    if (!mounted) return;
+
+    if (!awake) {
+      setState(() => _status = 'السيرفر نائم... جاري المحاولة');
+      // Wait a bit more and try once more
+      await Future.delayed(const Duration(seconds: 2));
+      await api.ping();
+    }
+
+    if (!mounted) return;
+    setState(() => _status = 'جاري التحقق...');
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     await auth.checkAuth();
@@ -96,7 +116,15 @@ class _SplashScreenState extends State<SplashScreen>
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
+                Text(
+                  _status,
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: 120,
                   child: LinearProgressIndicator(

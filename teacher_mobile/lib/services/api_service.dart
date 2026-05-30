@@ -25,17 +25,60 @@ class ApiService {
       onRequest: (options, handler) async {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('access_token');
-        if (token != null) {
+        if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         return handler.next(options);
       },
       onError: (error, handler) async {
+        // Only retry on 401, not on other errors
         if (error.response?.statusCode == 401) {
-          // Token expired or invalid — clear it
+          // Check if we have a refresh token
           final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('access_token');
-          await prefs.remove('refresh_token');
+          final refresh = prefs.getString('refresh_token');
+          
+          if (refresh != null && refresh.isNotEmpty) {
+            try {
+              // Use a plain Dio (no auth interceptor) to refresh
+              final plainDio = Dio(BaseOptions(
+                baseUrl: baseUrl,
+                connectTimeout: const Duration(seconds: 30),
+                receiveTimeout: const Duration(seconds: 30),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+              ));
+              
+              final refreshResponse = await plainDio.post('/auth/refresh', 
+                data: {'refresh_token': refresh},
+              );
+              
+              final newToken = refreshResponse.data['access_token'] as String?;
+              final newRefresh = refreshResponse.data['refresh_token'] as String?;
+              
+              if (newToken != null && newToken.isNotEmpty) {
+                // Store new tokens
+                await prefs.setString('access_token', newToken);
+                if (newRefresh != null) {
+                  await prefs.setString('refresh_token', newRefresh);
+                }
+                
+                // Retry the original request with new token
+                error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+                final retryResponse = await _dio.fetch(error.requestOptions);
+                return handler.resolve(retryResponse);
+              }
+            } catch (e) {
+              // Refresh failed — clear tokens and let the error propagate
+              await prefs.remove('access_token');
+              await prefs.remove('refresh_token');
+            }
+          } else {
+            // No refresh token — clear access token
+            await prefs.remove('access_token');
+            await prefs.remove('refresh_token');
+          }
         }
         return handler.next(error);
       },
@@ -43,6 +86,21 @@ class ApiService {
   }
 
   Dio get dio => _dio;
+
+  /// Wake up the Fly.io server (cold start) without auth
+  Future<bool> ping() async {
+    try {
+      final response = await _dio.get('/config/client',
+        options: Options(
+          sendTimeout: const Duration(seconds: 90),
+          receiveTimeout: const Duration(seconds: 90),
+        ),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 
   // Auth
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -77,7 +135,6 @@ class ApiService {
     if (search != null && search.isNotEmpty) query['search'] = search;
     final response = await _dio.get('/students/', queryParameters: query.isNotEmpty ? query : null);
     final data = response.data;
-    // Handle both wrapped {data: [...]} and plain [...] responses
     if (data is Map && data.containsKey('data')) {
       return data['data'] as List<dynamic>;
     }

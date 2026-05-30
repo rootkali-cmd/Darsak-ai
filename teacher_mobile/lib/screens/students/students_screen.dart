@@ -50,7 +50,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
   }
 
   Future<void> _deleteStudent(dynamic student) async {
-    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

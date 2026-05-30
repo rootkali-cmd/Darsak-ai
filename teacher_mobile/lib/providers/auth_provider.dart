@@ -13,7 +13,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get error => _error;
-  bool get isAuthenticated => _token != null;
+  bool get isAuthenticated => _token != null && _token!.isNotEmpty;
   Map<String, dynamic>? get user => _user;
 
   AuthProvider() {
@@ -43,7 +43,7 @@ class AuthProvider extends ChangeNotifier {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('access_token', _token!);
-      if (refreshToken != null) {
+      if (refreshToken != null && refreshToken.isNotEmpty) {
         await prefs.setString('refresh_token', refreshToken);
       }
 
@@ -58,8 +58,13 @@ class AuthProvider extends ChangeNotifier {
         detail = data['detail']?.toString();
       }
       if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout) {
-        _error = 'السيرفر بيصحى... حاول بعد 30 ثانية.';
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        _error = 'السيرفر نائم... حاول بعد 30 ثانية أو اضغط تسجيل الدخول مرة أخرى.';
+      } else if (e.response?.statusCode == 401) {
+        _error = detail ?? 'بيانات الدخول غير صحيحة.';
+      } else if (e.response?.statusCode == 307 || e.response?.statusCode == 302) {
+        _error = 'خطأ في الاتصال. حاول مرة أخرى.';
       } else {
         _error = detail ?? 'فشل تسجيل الدخول. تحقق من البيانات.';
       }
@@ -80,21 +85,21 @@ class AuthProvider extends ChangeNotifier {
       _user = data;
       notifyListeners();
     } catch (e) {
-      // Silent fail
+      // Silent fail — don't clear token here, let interceptor handle it
     }
   }
 
   Future<void> checkAuth() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('access_token');
-    if (_token != null) {
+    if (_token != null && _token!.isNotEmpty) {
       try {
         await _loadUser();
       } catch (e) {
-        _token = null;
+        // Interceptor may have cleared tokens on 401 refresh failure
+        // Re-read to stay in sync
+        _token = prefs.getString('access_token');
         _user = null;
-        await prefs.remove('access_token');
-        await prefs.remove('refresh_token');
       }
     }
     notifyListeners();
