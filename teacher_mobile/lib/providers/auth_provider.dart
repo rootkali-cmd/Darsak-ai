@@ -48,27 +48,29 @@ class AuthProvider extends ChangeNotifier {
         await prefs.setString('refresh_token', refreshToken);
       }
 
+      ApiService.clearLogoutFlag();
+
       try {
         await _loadUser();
-      } catch (_) {}
+      } catch (_) {
+        _user = {'id': '', 'full_name': ''};
+      }
 
       _isLoading = false;
       notifyListeners();
       return true;
     } on DioException catch (e) {
       String? detail;
-      final data = e.response?.data;
-      if (data is Map) {
-        detail = data['detail']?.toString();
+      final respData = e.response?.data;
+      if (respData is Map) {
+        detail = respData['detail']?.toString();
       }
-      if (e.type == DioExceptionType.connectionTimeout || 
+      if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
         _error = 'تعذر الاتصال بالخادم. تأكد من اتصالك وحاول مرة أخرى.';
       } else if (e.response?.statusCode == 401) {
         _error = detail ?? 'بيانات الدخول غير صحيحة.';
-      } else if (e.response?.statusCode == 307 || e.response?.statusCode == 302) {
-        _error = 'خطأ في الاتصال. حاول مرة أخرى.';
       } else {
         _error = detail ?? 'فشل تسجيل الدخول. تحقق من البيانات.';
       }
@@ -96,25 +98,14 @@ class AuthProvider extends ChangeNotifier {
     if (_token != null && _token!.isNotEmpty) {
       try {
         await _loadUser();
+        ApiService.clearLogoutFlag();
       } catch (e) {
-        // If getMe() failed, check if interceptor refreshed the token
-        final updatedToken = prefs.getString('access_token');
-        if (updatedToken != null && updatedToken != _token) {
-          _token = updatedToken;
-          try {
-            await _loadUser();
-            return;
-          } catch (_) {}
-        }
-
-        // If loadUser still fails with 401, tokens are stale — clear them
         if (e is DioException && e.response?.statusCode == 401) {
           _token = null;
+          _user = null;
           await prefs.remove('access_token');
           await prefs.remove('refresh_token');
         }
-        // Don't clear tokens on network errors — keep user authenticated
-        // User data will load on next screen
       }
     }
     notifyListeners();
