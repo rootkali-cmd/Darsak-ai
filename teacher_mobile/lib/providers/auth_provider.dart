@@ -128,17 +128,35 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
+    // Try to ping the server first to wake it up from cold start
     try {
-      await _loadUser();
-      ApiService.clearLogoutFlag();
-    } catch (e) {
-      if (e is DioException && e.response?.statusCode == 401) {
-        _user = _extractUserFromToken(_token!);
-        if (_user == null) {
-          _token = null;
-          await prefs.remove('access_token');
-          await prefs.remove('refresh_token');
+      await _api.ping();
+    } catch (_) {
+      // ignore ping failures, continue to try _loadUser
+    }
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        await _loadUser();
+        ApiService.clearLogoutFlag();
+        break;
+      } catch (e) {
+        if (e is DioException && e.response?.statusCode == 401) {
+          _user = _extractUserFromToken(_token!);
+          if (_user == null) {
+            _token = null;
+            await prefs.remove('access_token');
+            await prefs.remove('refresh_token');
+          }
+          break;
         }
+        // Connection error (cold start) — retry once after delay
+        if (attempt == 0) {
+          await Future.delayed(const Duration(seconds: 3));
+          continue;
+        }
+        // Second attempt failed too — extract from JWT as fallback
+        _user = _extractUserFromToken(_token!);
       }
     }
 

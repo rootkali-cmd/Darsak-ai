@@ -73,7 +73,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
     if (confirmed == true && mounted) {
       final provider = Provider.of<StudentsProvider>(context, listen: false);
-      final success = await provider.deleteStudent(student['id'] as int);
+      final success = await provider.deleteStudent(student['id']);
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(

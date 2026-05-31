@@ -60,7 +60,7 @@ class StudentsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateStudent(int id, Map<String, dynamic> data) async {
+  Future<bool> updateStudent(dynamic id, Map<String, dynamic> data) async {
     try {
       await _api.updateStudent(id, data);
       await loadStudents();

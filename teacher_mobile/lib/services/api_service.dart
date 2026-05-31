@@ -141,7 +141,7 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> updateStudent(int id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateStudent(dynamic id, Map<String, dynamic> data) async {
     final response = await _dio.put('/students/$id', data: data);
     return response.data as Map<String, dynamic>;
   }

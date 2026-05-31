@@ -59,7 +59,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
     final provider = Provider.of<StudentsProvider>(context, listen: false);
     bool success;
     if (isEditing) {
-      success = await provider.updateStudent(widget.student['id'] as int, data);
+      success = await provider.updateStudent(widget.student['id'], data);
     } else {
       success = await provider.createStudent(data);
     }

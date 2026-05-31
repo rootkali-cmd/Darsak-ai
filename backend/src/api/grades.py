@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_teacher
-from src.schemas.grade import GradeCreate, GradeBulkUpload, GradeResponse
+from src.schemas.grade import GradeCreate, GradeBulkUpload, GradeResponse, StudentBrief
 from src.services import grade_service, student_service, audit_service
 from src.core.subscription_guard import enforce_grade_limit
 
@@ -9,6 +9,47 @@ router = APIRouter(prefix="/grades", tags=["Grades"])
 
 def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
+
+
+async def _enrich_grade(g: dict) -> GradeResponse:
+    resp = GradeResponse(**g)
+    try:
+        s = await student_service.get_by_id(g["student_id"])
+        if s:
+            resp.student = StudentBrief(
+                id=s["id"],
+                full_name=s.get("full_name", ""),
+                code=s.get("code"),
+                phone=s.get("phone"),
+            )
+    except Exception:
+        pass
+    return resp
+
+
+async def _enrich_grades(grades: list[dict]) -> list[GradeResponse]:
+    student_ids = list({g["student_id"] for g in grades if g.get("student_id")})
+    students_map = {}
+    for sid in student_ids:
+        try:
+            s = await student_service.get_by_id(sid)
+            if s:
+                students_map[sid] = StudentBrief(
+                    id=s["id"],
+                    full_name=s.get("full_name", ""),
+                    code=s.get("code"),
+                    phone=s.get("phone"),
+                )
+        except Exception:
+            pass
+    result = []
+    for g in grades:
+        resp = GradeResponse(**g)
+        sid = str(g["student_id"])
+        if sid in students_map:
+            resp.student = students_map[sid]
+        result.append(resp)
+    return result
 
 
 @router.post("/", response_model=GradeResponse, status_code=status.HTTP_201_CREATED)
@@ -44,7 +85,7 @@ async def create_grade(
             ip_address=get_client_ip(request),
         )
 
-        return GradeResponse(**grade)
+        return await _enrich_grade(grade)
     except HTTPException:
         raise
     except Exception as exc:
@@ -73,7 +114,7 @@ async def bulk_upload_grades(
             score=row.score,
             max_score=row.max_score,
         )
-        results.append(GradeResponse(**grade))
+        results.append(await _enrich_grade(grade))
 
     await audit_service.log(
         actor_type=current_user.get("role", "teacher"),
@@ -102,7 +143,7 @@ async def list_grades(
         filters["subject"] = subject
 
     grades = await grade_service.list(filters, limit=limit, offset=skip)
-    return [GradeResponse(**g) for g in grades]
+    return await _enrich_grades(grades)
 
 
 @router.get("/stats")
@@ -123,7 +164,7 @@ async def get_grade(
     grade = next((g for g in grades if g["id"] == grade_id), None)
     if not grade:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grade not found")
-    return GradeResponse(**grade)
+    return await _enrich_grade(grade)
 
 
 @router.delete("/{grade_id}", status_code=status.HTTP_204_NO_CONTENT)

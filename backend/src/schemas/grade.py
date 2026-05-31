@@ -27,6 +27,13 @@ class GradeBulkUpload(BaseModel):
     grades: list[GradeCSVRow]
 
 
+class StudentBrief(BaseModel):
+    id: UUID
+    full_name: str
+    code: str | None = None
+    phone: str | None = None
+
+
 class GradeResponse(BaseModel):
     id: UUID
     student_id: UUID
@@ -38,6 +45,7 @@ class GradeResponse(BaseModel):
     wrong_questions: list[int] | None = None
     notes: str | None = None
     created_at: datetime
+    student: StudentBrief | None = None
 
     model_config = {"from_attributes": True}
 
