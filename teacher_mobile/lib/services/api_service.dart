@@ -91,12 +91,18 @@ class ApiService {
       'email': email,
       'password': password,
     });
-    return response.data as Map<String, dynamic>;
+    final data = response.data;
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw Exception('Invalid login response');
   }
 
   Future<Map<String, dynamic>> getMe() async {
     final response = await _dio.get('/auth/me');
-    return response.data as Map<String, dynamic>;
+    final data = response.data;
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw Exception('Invalid user data');
   }
 
   Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
@@ -184,7 +190,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> markAttendanceByBarcode(String barcode) async {
     final response = await _dio.post('/attendance/barcode', data: {'barcode': barcode});
-    return response.data as Map<String, dynamic>;
+    final data = response.data;
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw Exception('Invalid response from server');
   }
 
   Future<Map<String, dynamic>> markBulkAttendance(List<Map<String, dynamic>> records) async {

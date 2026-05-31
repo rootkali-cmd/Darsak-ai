@@ -144,9 +144,15 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                 textAlign: TextAlign.left,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  labelText: 'الرقم السري (PIN)',
+                  labelText: 'الرقم السري (6 أرقام على الأقل)',
                   prefixIcon: Icon(Icons.lock),
                 ),
+                validator: (value) {
+                  if (value != null && value.trim().isNotEmpty && value.trim().length < 6) {
+                    return 'الرقم السري يجب أن يكون 6 أرقام على الأقل';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
               SizedBox(

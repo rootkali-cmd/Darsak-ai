@@ -113,13 +113,24 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _levelController,
+              DropdownButtonFormField<String>(
+                value: _levelController.text.isNotEmpty ? _levelController.text : null,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'المستوى',
                   prefixIcon: Icon(Icons.school),
                 ),
+                items: const [
+                  DropdownMenuItem(value: 'preparatory', child: Text('إعدادي')),
+                  DropdownMenuItem(value: 'secondary', child: Text('ثانوي')),
+                ],
+                onChanged: (v) {
+                  if (v != null) _levelController.text = v;
+                },
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'الرجاء اختيار المستوى';
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(
