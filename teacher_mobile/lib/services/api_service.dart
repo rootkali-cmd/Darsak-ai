@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +8,8 @@ class ApiService {
   factory ApiService() => _instance;
 
   late final Dio _dio;
+  bool _isRefreshing = false;
+  Completer<bool>? _refreshCompleter;
 
   ApiService._internal() {
     _dio = Dio(BaseOptions(
@@ -31,47 +34,70 @@ class ApiService {
         return handler.next(options);
       },
       onError: (error, handler) async {
-        // Only retry on 401, not on other errors
+        // Only retry on 401
         if (error.response?.statusCode == 401) {
           final prefs = await SharedPreferences.getInstance();
           final refresh = prefs.getString('refresh_token');
-          
-          if (refresh != null && refresh.isNotEmpty) {
-            try {
-              final plainDio = Dio(BaseOptions(
-                baseUrl: baseUrl,
-                connectTimeout: const Duration(seconds: 60),
-                receiveTimeout: const Duration(seconds: 60),
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                },
-              ));
-              
-              final refreshResponse = await plainDio.post('/auth/refresh', 
-                data: {'refresh_token': refresh},
-              );
-              
-              final newToken = refreshResponse.data['access_token'] as String?;
-              final newRefresh = refreshResponse.data['refresh_token'] as String?;
-              
-              if (newToken != null && newToken.isNotEmpty) {
-                await prefs.setString('access_token', newToken);
-                if (newRefresh != null) {
-                  await prefs.setString('refresh_token', newRefresh);
-                }
-                
-                error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
-                final retryResponse = await _dio.fetch(error.requestOptions);
-                return handler.resolve(retryResponse);
-              }
-            } catch (_) {
-              // Refresh failed — DON'T clear tokens, just let error propagate
-              // User can retry manually
-            }
+
+          if (refresh == null || refresh.isEmpty) {
+            return handler.next(error);
           }
+
+          // Wait if another request is already refreshing
+          if (_isRefreshing && _refreshCompleter != null) {
+            final success = await _refreshCompleter!.future;
+            if (success) {
+              final token = prefs.getString('access_token') ?? '';
+              error.requestOptions.headers['Authorization'] = 'Bearer $token';
+              try {
+                final retry = await _dio.fetch(error.requestOptions);
+                return handler.resolve(retry);
+              } catch (_) {}
+            }
+            return handler.next(error);
+          }
+
+          // Try refresh with lock
+          _isRefreshing = true;
+          _refreshCompleter = Completer<bool>();
+
+          try {
+            final plainDio = Dio(BaseOptions(
+              baseUrl: baseUrl,
+              connectTimeout: const Duration(seconds: 60),
+              receiveTimeout: const Duration(seconds: 60),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+            ));
+
+            final refreshResponse = await plainDio.post('/auth/refresh',
+              data: {'refresh_token': refresh},
+            );
+
+            final newToken = refreshResponse.data['access_token'] as String?;
+            final newRefresh = refreshResponse.data['refresh_token'] as String?;
+
+            if (newToken != null && newToken.isNotEmpty) {
+              await prefs.setString('access_token', newToken);
+              if (newRefresh != null) {
+                await prefs.setString('refresh_token', newRefresh);
+              }
+
+              error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+              final retryResponse = await _dio.fetch(error.requestOptions);
+              _refreshCompleter!.complete(true);
+              _isRefreshing = false;
+              return handler.resolve(retryResponse);
+            }
+          } catch (_) {}
+
+          _refreshCompleter!.complete(false);
+          _isRefreshing = false;
         }
-        // Retry on connection timeout/server sleep (not 401)
+
+        // Retry on connection timeout (no response)
         if (error.response == null && error.type != DioExceptionType.cancel) {
           try {
             await Future.delayed(const Duration(seconds: 2));
@@ -79,6 +105,7 @@ class ApiService {
             return handler.resolve(retry);
           } catch (_) {}
         }
+
         return handler.next(error);
       },
     ));

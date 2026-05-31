@@ -15,7 +15,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _durationController;
-  late final TextEditingController _statusController;
+  String _status = 'draft';
   bool _isLoading = false;
 
   bool get isEditing => widget.exam != null;
@@ -26,14 +26,13 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
     final e = widget.exam;
     _titleController = TextEditingController(text: e?['title']?.toString() ?? '');
     _durationController = TextEditingController(text: e?['duration']?.toString() ?? '');
-    _statusController = TextEditingController(text: e?['status']?.toString() ?? 'draft');
+    _status = e?['status']?.toString() ?? 'draft';
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _durationController.dispose();
-    _statusController.dispose();
     super.dispose();
   }
 
@@ -42,10 +41,21 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
 
     setState(() => _isLoading = true);
 
-    final data = {
+    final duration = int.tryParse(_durationController.text) ?? 0;
+    if (duration < 1) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('المدة يجب أن تكون 1 دقيقة على الأقل')),
+        );
+      }
+      return;
+    }
+
+    final data = <String, dynamic>{
       'title': _titleController.text.trim(),
-      'duration': int.tryParse(_durationController.text) ?? 0,
-      'status': _statusController.text.trim(),
+      'duration': duration,
+      'status': _status,
     };
 
     final provider = Provider.of<ExamsProvider>(context, listen: false);
@@ -106,15 +116,29 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                   labelText: 'المدة (بالدقائق)',
                   prefixIcon: Icon(Icons.timer),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'الرجاء إدخال المدة';
+                  final n = int.tryParse(value);
+                  if (n == null || n < 1) return 'المدة يجب أن تكون رقماً أكبر من 0';
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _statusController,
+              DropdownButtonFormField<String>(
+                value: _status,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  labelText: 'الحالة (draft / published / closed)',
+                  labelText: 'الحالة',
                   prefixIcon: Icon(Icons.flag),
                 ),
+                items: const [
+                  DropdownMenuItem(value: 'draft', child: Text('مسودة (draft)')),
+                  DropdownMenuItem(value: 'published', child: Text('منشور (published)')),
+                  DropdownMenuItem(value: 'closed', child: Text('مغلق (closed)')),
+                ],
+                onChanged: (v) {
+                  if (v != null) setState(() => _status = v);
+                },
               ),
               const SizedBox(height: 24),
               SizedBox(

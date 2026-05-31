@@ -79,8 +79,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         );
       }
     } else {
-      // Denied but not permanently - user can try again
-      setState(() {});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('الكاميرا مطلوبة لمسح الباركود')),
@@ -140,7 +138,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       }
 
       final provider = Provider.of<AttendanceProvider>(context, listen: false);
-      final result = await provider.markAttendanceByBarcode(code);
+      final result = await provider.markAttendanceByBarcode(code)
+          .timeout(const Duration(seconds: 15));
 
       if (!mounted) return;
 

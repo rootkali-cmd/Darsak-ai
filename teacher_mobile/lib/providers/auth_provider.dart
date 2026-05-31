@@ -10,11 +10,10 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   String? _token;
   Map<String, dynamic>? _user;
-  bool _userLoaded = false;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
-  bool get isAuthenticated => _token != null && _token!.isNotEmpty && _userLoaded;
+  bool get isAuthenticated => _token != null && _token!.isNotEmpty && _user != null;
   bool get hasToken => _token != null && _token!.isNotEmpty;
   Map<String, dynamic>? get user => _user;
 
@@ -48,13 +47,11 @@ class AuthProvider extends ChangeNotifier {
       if (refreshToken != null && refreshToken.isNotEmpty) {
         await prefs.setString('refresh_token', refreshToken);
       }
-      _userLoaded = true; // Tokens saved = authenticated
 
       try {
         await _loadUser();
-      } catch (_) {
-        // Best-effort: tokens are valid, user data loads on next request
-      }
+      } catch (_) {}
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -89,7 +86,6 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadUser() async {
     final data = await _api.getMe();
     _user = data;
-    _userLoaded = true;
     notifyListeners();
   }
 
@@ -99,35 +95,18 @@ class AuthProvider extends ChangeNotifier {
 
     if (_token != null && _token!.isNotEmpty) {
       try {
-        // Interceptor handles 401 → refresh → retry transparently.
-        // If getMe() succeeds here, token is valid and user is loaded.
         await _loadUser();
       } catch (e) {
-        // getMe() failed even after interceptor's retry.
-        // Check if the interceptor updated the token in SharedPrefs.
+        // If getMe() failed, check if interceptor refreshed the token
         final updatedToken = prefs.getString('access_token');
         if (updatedToken != null && updatedToken != _token) {
-          // Interceptor refreshed successfully but getMe still failed.
-          // Try once more with the new token.
           _token = updatedToken;
           try {
             await _loadUser();
-          } catch (_) {
-            // Truly invalid — clear
-            _token = null;
-            _user = null;
-            _userLoaded = false;
-            await prefs.remove('access_token');
-            await prefs.remove('refresh_token');
-          }
-        } else {
-          // Token wasn't updated — it's expired/invalid with no refresh possible.
-          _token = null;
-          _user = null;
-          _userLoaded = false;
-          await prefs.remove('access_token');
-          await prefs.remove('refresh_token');
+          } catch (_) {}
         }
+        // Don't clear tokens on network errors — keep user authenticated
+        // User data will load on next screen
       }
     }
     notifyListeners();
@@ -136,7 +115,6 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _token = null;
     _user = null;
-    _userLoaded = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
