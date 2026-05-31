@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,22 @@ class ApiService {
   static bool _forceLogout = false;
   static bool get forceLogout => _forceLogout;
   static void clearLogoutFlag() => _forceLogout = false;
+
+  static bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(parts[1])),
+      );
+      final exp = payload['exp'] as int?;
+      if (exp == null) return true;
+      final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      return DateTime.now().isAfter(expiry);
+    } catch (_) {
+      return true;
+    }
+  }
 
   ApiService._internal() {
     _dio = Dio(BaseOptions(
@@ -36,12 +53,15 @@ class ApiService {
         return handler.next(options);
       },
       onError: (error, handler) async {
-        // 401 → token expired or invalid → clear all tokens → force login
         if (error.response?.statusCode == 401) {
+          // Only clear tokens if the JWT is actually expired
           final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('access_token');
-          await prefs.remove('refresh_token');
-          _forceLogout = true;
+          final token = prefs.getString('access_token');
+          if (token != null && _isTokenExpired(token)) {
+            await prefs.remove('access_token');
+            await prefs.remove('refresh_token');
+            _forceLogout = true;
+          }
         }
         return handler.next(error);
       },
@@ -236,7 +256,7 @@ class ApiService {
 
   // Exams
   Future<List<dynamic>> getExams() async {
-    final response = await _dio.get('/exams/');
+    final response = await _dio.get('/exams');
     return response.data as List<dynamic>;
   }
 
@@ -246,7 +266,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> createExam(Map<String, dynamic> data) async {
-    final response = await _dio.post('/exams/', data: data);
+    final response = await _dio.post('/exams', data: data);
     return response.data as Map<String, dynamic>;
   }
 

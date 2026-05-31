@@ -38,7 +38,6 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // Silent ping retries (up to 5 times, 2s apart)
     final api = ApiService();
     bool awake = false;
     for (int i = 0; i < 5; i++) {
@@ -60,11 +59,11 @@ class _SplashScreenState extends State<SplashScreen>
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else if (auth.hasToken) {
-      // Has token but couldn't load user — server issue, retry
-      _hasError = true;
-      if (mounted) setState(() {});
+      // Has token but couldn't load user — keep trying, don't force login
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     } else {
-      // No token at all — needs login
       _needsLogin = true;
       if (mounted) setState(() {});
     }
@@ -125,39 +124,13 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const SizedBox(height: 32),
-                if (!_hasError && !_needsLogin) ...[
+                if (!_needsLogin) ...[
                   SizedBox(
                     width: 120,
                     child: LinearProgressIndicator(
                       backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
                       valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accent),
                       borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ],
-                if (_hasError) ...[
-                  Icon(Icons.cloud_off, size: 48,
-                    color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
-                  const SizedBox(height: 12),
-                  Text(
-                    'تعذر الاتصال بالخادم',
-                    style: TextStyle(
-                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: _initialize,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('إعادة المحاولة'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
                   ),
                 ],

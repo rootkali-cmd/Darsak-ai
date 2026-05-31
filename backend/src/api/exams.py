@@ -1,7 +1,10 @@
 import json
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+
+logger = logging.getLogger("darsak")
 
 from src.utils.dependencies import get_current_teacher, get_current_student
 from src.schemas.exam import (
@@ -27,7 +30,11 @@ async def create_exam(
         duration_minutes=data.duration_minutes,
         description=data.description,
     )
-    return ExamResponse(**exam)
+    try:
+        return ExamResponse(**exam)
+    except Exception as exc:
+        logger.error("Failed to parse created exam: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to create exam")
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
@@ -77,19 +84,34 @@ async def ai_generate_exam(
         await exam_service.bulk_add_questions(exam["id"], questions_data)
 
     questions = await exam_service.get_questions(exam["id"])
-    return {
-        "exam": ExamResponse(**exam),
-        "questions": [QuestionResponse(**q) for q in questions],
-        "ai_generated": True,
-    }
+    try:
+        return {
+            "exam": ExamResponse(**exam),
+            "questions": [QuestionResponse(**q) for q in questions],
+            "ai_generated": True,
+        }
+    except Exception as exc:
+        logger.error("Failed to parse AI-generated exam: %s", exc)
+        raise HTTPException(status_code=500, detail="Generated exam data is invalid")
 
 
 @router.get("", response_model=list[ExamResponse])
 async def list_my_exams(
     current_user: dict = Depends(get_current_teacher),
 ):
-    exams = await exam_service.get_by_teacher(current_user["id"])
-    return [ExamResponse(**e) for e in exams]
+    try:
+        exams = await exam_service.get_by_teacher(current_user["id"])
+    except Exception as exc:
+        logger.error("Failed to fetch exams: %s", exc)
+        return []
+    results = []
+    for e in exams:
+        try:
+            results.append(ExamResponse(**e))
+        except Exception as exc:
+            logger.warning("Skipping invalid exam record %s: %s", e.get("id"), exc)
+            continue
+    return results
 
 
 @router.get("/{exam_id}", response_model=ExamResponse)
@@ -100,7 +122,11 @@ async def get_exam(
     exam = await exam_service.get_by_id(exam_id)
     if not exam or exam["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Exam not found")
-    return ExamResponse(**exam)
+    try:
+        return ExamResponse(**exam)
+    except Exception as exc:
+        logger.error("Failed to parse exam %s: %s", exam_id, exc)
+        raise HTTPException(status_code=500, detail="Exam data is corrupted")
 
 
 @router.put("/{exam_id}", response_model=ExamResponse)
@@ -113,7 +139,11 @@ async def update_exam(
     if not exam or exam["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Exam not found")
     updated = await exam_service.update(exam_id, data.model_dump(exclude_unset=True))
-    return ExamResponse(**updated)
+    try:
+        return ExamResponse(**updated)
+    except Exception as exc:
+        logger.error("Failed to parse updated exam %s: %s", exam_id, exc)
+        raise HTTPException(status_code=500, detail="Exam data is corrupted")
 
 
 @router.delete("/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -136,7 +166,11 @@ async def publish_exam(
     if not exam or exam["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Exam not found")
     published = await exam_service.publish(exam_id)
-    return ExamResponse(**published)
+    try:
+        return ExamResponse(**published)
+    except Exception as exc:
+        logger.error("Failed to parse published exam %s: %s", exam_id, exc)
+        raise HTTPException(status_code=500, detail="Exam data is corrupted")
 
 
 # ─── Teacher: Questions ──────────────────────────────────────────────
@@ -150,7 +184,14 @@ async def list_questions(
     if not exam or exam["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Exam not found")
     questions = await exam_service.get_questions(exam_id)
-    return [QuestionResponse(**q) for q in questions]
+    results = []
+    for q in questions:
+        try:
+            results.append(QuestionResponse(**q))
+        except Exception as exc:
+            logger.warning("Skipping invalid question %s: %s", q.get("id"), exc)
+            continue
+    return results
 
 
 @router.post("/{exam_id}/questions", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
@@ -208,7 +249,14 @@ async def get_available_exams(
     current_student: dict = Depends(get_current_student),
 ):
     exams = await exam_service.get_published_for_student(current_student["id"])
-    return [ExamResponse(**e) for e in exams]
+    results = []
+    for e in exams:
+        try:
+            results.append(ExamResponse(**e))
+        except Exception as exc:
+            logger.warning("Skipping invalid available exam %s: %s", e.get("id"), exc)
+            continue
+    return results
 
 
 @router.post("/{exam_id}/start", response_model=StudentExamResponse)
@@ -221,7 +269,11 @@ async def start_exam(
         raise HTTPException(status_code=404, detail="Exam not found or not available")
     se = await student_exam_service.start(exam_id, current_student["id"])
     se["exam"] = exam
-    return StudentExamResponse(**se)
+    try:
+        return StudentExamResponse(**se)
+    except Exception as exc:
+        logger.error("Failed to parse student exam start %s: %s", exam_id, exc)
+        raise HTTPException(status_code=500, detail="Failed to start exam")
 
 
 @router.get("/{exam_id}/questions-student", response_model=list[QuestionResponse])
@@ -237,7 +289,14 @@ async def get_exam_questions_student(
     for q in questions:
         q.pop("correct_answer", None)
         hidden.append(q)
-    return [QuestionResponse(**q) for q in hidden]
+    results = []
+    for q in hidden:
+        try:
+            results.append(QuestionResponse(**q))
+        except Exception as exc:
+            logger.warning("Skipping invalid student question %s: %s", q.get("id"), exc)
+            continue
+    return results
 
 
 @router.post("/{exam_id}/submit", response_model=StudentExamResponse)
@@ -253,7 +312,11 @@ async def submit_exam(
     await student_exam_service.submit(se["id"], [a.model_dump() for a in data.answers])
     await student_exam_service.grade_mc_questions(se["id"])
     updated = await student_exam_service.get_by_id(se["id"])
-    return StudentExamResponse(**updated)
+    try:
+        return StudentExamResponse(**updated)
+    except Exception as exc:
+        logger.error("Failed to parse submitted exam %s: %s", exam_id, exc)
+        raise HTTPException(status_code=500, detail="Failed to submit exam")
 
 
 @router.get("/my-results", response_model=list[StudentExamResponse])
@@ -265,7 +328,11 @@ async def get_my_results(
     for se in exams:
         exam = await exam_service.get_by_id(se["exam_id"])
         se["exam"] = exam
-        results.append(StudentExamResponse(**se))
+        try:
+            results.append(StudentExamResponse(**se))
+        except Exception as exc:
+            logger.warning("Skipping invalid student exam result %s: %s", se.get("id"), exc)
+            continue
     return results
 
 
@@ -283,7 +350,11 @@ async def get_exam_results(
     results = []
     for se in submissions:
         se["exam"] = exam
-        results.append(StudentExamResponse(**se))
+        try:
+            results.append(StudentExamResponse(**se))
+        except Exception as exc:
+            logger.warning("Skipping invalid class result %s: %s", se.get("id"), exc)
+            continue
     return results
 
 
@@ -295,7 +366,11 @@ async def get_student_exam_result(
     result = await student_exam_service.get_result(student_exam_id)
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
-    return ExamResultResponse(**result)
+    try:
+        return ExamResultResponse(**result)
+    except Exception as exc:
+        logger.error("Failed to parse exam result %s: %s", student_exam_id, exc)
+        raise HTTPException(status_code=500, detail="Result data is corrupted")
 
 
 @router.post("/analyze/{student_exam_id}")

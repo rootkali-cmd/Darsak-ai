@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,22 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _init() async {
     await checkAuth();
+  }
+
+  static bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(parts[1])),
+      );
+      final exp = payload['exp'] as int?;
+      if (exp == null) return true;
+      final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      return DateTime.now().isAfter(expiry);
+    } catch (_) {
+      return true;
+    }
   }
 
   Future<bool> login(String email, String password) async {
@@ -95,19 +112,32 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('access_token');
 
-    if (_token != null && _token!.isNotEmpty) {
+    if (_token == null || _token!.isEmpty) {
+      notifyListeners();
+      return;
+    }
+
+    // If token is not expired locally, try to load user
+    if (!_isTokenExpired(_token!)) {
       try {
         await _loadUser();
         ApiService.clearLogoutFlag();
+        return;
       } catch (e) {
         if (e is DioException && e.response?.statusCode == 401) {
-          _token = null;
-          _user = null;
-          await prefs.remove('access_token');
-          await prefs.remove('refresh_token');
+          // Token rejected by server but not expired locally
+          // Could be server-side revocation or secret key change
+          // Keep the token — user can still try to use the app
         }
       }
+    } else {
+      // Token is expired — clear it
+      _token = null;
+      _user = null;
+      await prefs.remove('access_token');
+      await prefs.remove('refresh_token');
     }
+
     notifyListeners();
   }
 

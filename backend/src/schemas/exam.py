@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class QuestionCreate(BaseModel):
@@ -25,6 +25,20 @@ class QuestionResponse(BaseModel):
     order_index: int
     page_number: int
     created_at: str | None = None
+
+    @field_validator('id', 'exam_id', mode='before')
+    @classmethod
+    def _coerce_str(cls, v):
+        return str(v) if v is not None else v
+
+    @field_validator('created_at', mode='before')
+    @classmethod
+    def _coerce_datetime(cls, v):
+        if v is None or isinstance(v, str):
+            return v
+        if hasattr(v, 'isoformat'):
+            return v.isoformat()
+        return str(v)
 
 
 class ExamCreate(BaseModel):
@@ -52,6 +66,30 @@ class ExamResponse(BaseModel):
     created_at: str | None = None
     updated_at: str | None = None
 
+    @field_validator('id', 'teacher_id', mode='before')
+    @classmethod
+    def _coerce_str(cls, v):
+        return str(v) if v is not None else v
+
+    @field_validator('total_points', 'duration_minutes', mode='before')
+    @classmethod
+    def _coerce_int(cls, v):
+        if v is None:
+            return v
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator('created_at', 'updated_at', mode='before')
+    @classmethod
+    def _coerce_datetime(cls, v):
+        if v is None or isinstance(v, str):
+            return v
+        if hasattr(v, 'isoformat'):
+            return v.isoformat()
+        return str(v)
+
 
 class StudentExamAnswer(BaseModel):
     question_id: str
@@ -75,6 +113,20 @@ class ExamResultResponse(BaseModel):
     recommendations: str | None = None
     created_at: str | None = None
 
+    @field_validator('id', 'student_exam_id', mode='before')
+    @classmethod
+    def _coerce_str(cls, v):
+        return str(v) if v is not None else v
+
+    @field_validator('created_at', mode='before')
+    @classmethod
+    def _coerce_datetime(cls, v):
+        if v is None or isinstance(v, str):
+            return v
+        if hasattr(v, 'isoformat'):
+            return v.isoformat()
+        return str(v)
+
 
 class StudentExamResponse(BaseModel):
     id: str
@@ -87,3 +139,17 @@ class StudentExamResponse(BaseModel):
     total_score: float | None = None
     max_score: float | None = None
     exam: ExamResponse | None = None
+
+    @field_validator('id', 'exam_id', 'student_id', mode='before')
+    @classmethod
+    def _coerce_str(cls, v):
+        return str(v) if v is not None else v
+
+    @field_validator('started_at', 'submitted_at', mode='before')
+    @classmethod
+    def _coerce_datetime(cls, v):
+        if v is None or isinstance(v, str):
+            return v
+        if hasattr(v, 'isoformat'):
+            return v.isoformat()
+        return str(v)
