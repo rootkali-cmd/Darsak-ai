@@ -150,14 +150,24 @@ async def _run_schema_migrations():
 
 async def _keep_alive():
     """Self-ping every 5 minutes to keep Fly.io machine warm."""
-    while True:
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=10.0) as client:
+    import httpx
+    external_url = None
+    try:
+        import os
+        fly_app = os.environ.get("FLY_APP_NAME", "")
+        external_url = f"https://{fly_app}.fly.dev/health" if fly_app else None
+    except Exception:
+        pass
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        while True:
+            try:
                 await client.get(f"http://localhost:{os.environ.get('PORT', '8000')}/health")
-        except Exception:
-            pass
-        await asyncio.sleep(300)  # 5 minutes
+                if external_url:
+                    await client.get(external_url)
+            except Exception:
+                pass
+            await asyncio.sleep(300)
 
 
 async def _init_services():
