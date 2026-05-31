@@ -13,21 +13,9 @@ from src.api.webhook import router as webhook_router
 from src.api.exams import router as exams_router
 from src.api.analytics import router as analytics_router
 from src.api.audit import router as audit_router
+from src.api.dashboard import router as dashboard_router
 
 __all__ = [
-    "auth_router",
-    "students_router",
-    "groups_router",
-    "attendance_router",
-    "grades_router",
-    "invoices_router",
-    "qr_router",
-    "sync_router",
-    "student_me_router",
-    "subscriptions_router",
-    "versions_router",
-    "webhook_router",
-    "exams_router",
-    "analytics_router",
     "audit_router",
+    "dashboard_router",
 ]

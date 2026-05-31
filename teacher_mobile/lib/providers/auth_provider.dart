@@ -67,7 +67,7 @@ class AuthProvider extends ChangeNotifier {
       if (e.type == DioExceptionType.connectionTimeout || 
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
-        _error = 'السيرفر نائم... حاول بعد 30 ثانية أو اضغط تسجيل الدخول مرة أخرى.';
+        _error = 'تعذر الاتصال بالخادم. تأكد من اتصالك وحاول مرة أخرى.';
       } else if (e.response?.statusCode == 401) {
         _error = detail ?? 'بيانات الدخول غير صحيحة.';
       } else if (e.response?.statusCode == 307 || e.response?.statusCode == 302) {
