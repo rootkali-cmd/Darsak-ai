@@ -32,17 +32,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() {
       _isWakingUp = true;
-      _wakeStatus = 'جاري إيقاظ السيرفر...';
+      _wakeStatus = 'جاري تسجيل الدخول...';
     });
 
-    // Wake up the server first
+    // Wake the server silently in background
     final api = ApiService();
-    final awake = await api.ping();
-    if (!awake) {
-      // Server might be cold starting, wait a moment
-      await Future.delayed(const Duration(seconds: 3));
-      await api.ping();
-    }
+    await api.ping();
 
     if (!mounted) return;
     setState(() {
