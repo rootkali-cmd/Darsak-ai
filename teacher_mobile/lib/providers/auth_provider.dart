@@ -10,10 +10,12 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   String? _token;
   Map<String, dynamic>? _user;
+  bool _userLoaded = false;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
-  bool get isAuthenticated => _token != null && _token!.isNotEmpty;
+  bool get isAuthenticated => _token != null && _token!.isNotEmpty && _userLoaded;
+  bool get hasToken => _token != null && _token!.isNotEmpty;
   Map<String, dynamic>? get user => _user;
 
   AuthProvider() {
@@ -46,8 +48,13 @@ class AuthProvider extends ChangeNotifier {
       if (refreshToken != null && refreshToken.isNotEmpty) {
         await prefs.setString('refresh_token', refreshToken);
       }
+      _userLoaded = true; // Tokens saved = authenticated
 
-      await _loadUser();
+      try {
+        await _loadUser();
+      } catch (_) {
+        // Best-effort: tokens are valid, user data loads on next request
+      }
       _isLoading = false;
       notifyListeners();
       return true;
@@ -80,55 +87,47 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _loadUser() async {
-    try {
-      final data = await _api.getMe();
-      _user = data;
-      notifyListeners();
-    } catch (e) {
-      // Silent fail — don't clear token here, let interceptor handle it
-    }
-  }
-
-  Future<void> _tryRefresh() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final refresh = prefs.getString('refresh_token');
-      if (refresh == null || refresh.isEmpty) return;
-
-      final data = await _api.refreshToken(refresh);
-      final newToken = data['access_token'] as String?;
-      final newRefresh = data['refresh_token'] as String?;
-      if (newToken != null && newToken.isNotEmpty) {
-        _token = newToken;
-        await prefs.setString('access_token', newToken);
-        if (newRefresh != null) {
-          await prefs.setString('refresh_token', newRefresh);
-        }
-      }
-    } catch (_) {}
+    final data = await _api.getMe();
+    _user = data;
+    _userLoaded = true;
+    notifyListeners();
   }
 
   Future<void> checkAuth() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('access_token');
+
     if (_token != null && _token!.isNotEmpty) {
       try {
+        // Interceptor handles 401 → refresh → retry transparently.
+        // If getMe() succeeds here, token is valid and user is loaded.
         await _loadUser();
-        return; // Success — user loaded
       } catch (e) {
-        // getMe failed — try refresh before giving up
-        await _tryRefresh();
-
-        if (_token != null && _token!.isNotEmpty) {
+        // getMe() failed even after interceptor's retry.
+        // Check if the interceptor updated the token in SharedPrefs.
+        final updatedToken = prefs.getString('access_token');
+        if (updatedToken != null && updatedToken != _token) {
+          // Interceptor refreshed successfully but getMe still failed.
+          // Try once more with the new token.
+          _token = updatedToken;
           try {
             await _loadUser();
-            return; // Success after refresh
-          } catch (_) {}
+          } catch (_) {
+            // Truly invalid — clear
+            _token = null;
+            _user = null;
+            _userLoaded = false;
+            await prefs.remove('access_token');
+            await prefs.remove('refresh_token');
+          }
+        } else {
+          // Token wasn't updated — it's expired/invalid with no refresh possible.
+          _token = null;
+          _user = null;
+          _userLoaded = false;
+          await prefs.remove('access_token');
+          await prefs.remove('refresh_token');
         }
-
-        // Re-read from prefs (interceptor didn't clear them)
-        _token = prefs.getString('access_token');
-        _user = null;
       }
     }
     notifyListeners();
@@ -137,6 +136,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _token = null;
     _user = null;
+    _userLoaded = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');

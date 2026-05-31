@@ -16,9 +16,8 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  String _status = '';
   bool _hasError = false;
-  bool _canEnterManually = false;
+  bool _needsLogin = false;
 
   @override
   void initState() {
@@ -33,13 +32,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initialize() async {
     _hasError = false;
-    _canEnterManually = false;
+    _needsLogin = false;
     if (mounted) setState(() {});
 
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // Retry ping up to 5 times silently
+    // Silent ping retries (up to 5 times, 2s apart)
     final api = ApiService();
     bool awake = false;
     for (int i = 0; i < 5; i++) {
@@ -51,7 +50,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    // If server didn't respond, still try auth (may have cached token)
     final auth = Provider.of<AuthProvider>(context, listen: false);
     await auth.checkAuth();
 
@@ -61,9 +59,14 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
+    } else if (auth.hasToken) {
+      // Has token but couldn't load user — server issue, retry
+      _hasError = true;
+      if (mounted) setState(() {});
     } else {
-      _canEnterManually = true;
-      setState(() => _hasError = !awake);
+      // No token at all — needs login
+      _needsLogin = true;
+      if (mounted) setState(() {});
     }
   }
 
@@ -122,7 +125,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const SizedBox(height: 32),
-                if (!_hasError && _status.isEmpty) ...[
+                if (!_hasError && !_needsLogin) ...[
                   SizedBox(
                     width: 120,
                     child: LinearProgressIndicator(
@@ -143,14 +146,6 @@ class _SplashScreenState extends State<SplashScreen>
                       fontSize: 15,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'تأكد من اتصالك بالإنترنت أو حاول مرة أخرى',
-                    style: TextStyle(
-                      color: isDark ? const Color(0xFF636366) : const Color(0xFF8E8E93),
-                      fontSize: 13,
-                    ),
-                  ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: _initialize,
@@ -166,7 +161,18 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                 ],
-                if (_canEnterManually && !_hasError) ...[
+                if (_needsLogin) ...[
+                  Icon(Icons.person, size: 48,
+                    color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'سجل دخولك للبدء',
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () {
                       Navigator.of(context).pushReplacement(
