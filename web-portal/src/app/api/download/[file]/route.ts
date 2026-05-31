@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const RELEASE_TAG = 'v1.0.0'
+const RELEASE_TAG = 'v1.2.6'
 const REPO = 'rootkali-cmd/Darsak-ai'
 
 /**
