@@ -6,6 +6,7 @@ const REPO = 'rootkali-cmd/Darsak-ai'
 // Update this map when adding new releases or files.
 const FILE_RELEASE_MAP: Record<string, string> = {
   // Teacher app
+  'DarsakAI-Teacher-v1.2.9.apk': 'v1.2.9',
   'DarsakAI-Teacher-v1.2.8.apk': 'v1.2.8',
   'DarsakAI-Teacher-v1.2.7.apk': 'v1.2.7',
   'DarsakAI-Teacher-v1.2.6.apk': 'v1.2.6',

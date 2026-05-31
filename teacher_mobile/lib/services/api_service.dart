@@ -111,7 +111,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> createStudent(Map<String, dynamic> data) async {
-    final response = await _dio.post('/students', data: data);
+    final response = await _dio.post('/students/', data: data);
     return response.data as Map<String, dynamic>;
   }
 
@@ -125,18 +125,18 @@ class ApiService {
   }
 
   Future<int> getStudentsCount() async {
-    final response = await _dio.get('/students/count');
+    final response = await _dio.get('/students/count/');
     return response.data['count'] as int? ?? 0;
   }
 
   // Groups
   Future<List<dynamic>> getGroups() async {
-    final response = await _dio.get('/groups');
+    final response = await _dio.get('/groups/');
     return response.data as List<dynamic>;
   }
 
   Future<Map<String, dynamic>> createGroup(Map<String, dynamic> data) async {
-    final response = await _dio.post('/groups', data: data);
+    final response = await _dio.post('/groups/', data: data);
     return response.data as Map<String, dynamic>;
   }
 
@@ -153,45 +153,45 @@ class ApiService {
   Future<List<dynamic>> getAttendance({String? date}) async {
     final query = <String, dynamic>{};
     if (date != null) query['date'] = date;
-    final response = await _dio.get('/attendance', queryParameters: query);
+    final response = await _dio.get('/attendance/', queryParameters: query);
     return response.data as List<dynamic>;
   }
 
   Future<Map<String, dynamic>> markAttendance(Map<String, dynamic> data) async {
-    final response = await _dio.post('/attendance', data: data);
+    final response = await _dio.post('/attendance/', data: data);
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> markAttendanceByBarcode(String barcode) async {
-    final response = await _dio.post('/attendance/barcode', data: {'barcode': barcode});
+    final response = await _dio.post('/attendance/barcode/', data: {'barcode': barcode});
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> markBulkAttendance(List<Map<String, dynamic>> records) async {
-    final response = await _dio.post('/attendance/bulk', data: {'records': records});
+    final response = await _dio.post('/attendance/bulk/', data: {'records': records});
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> getAttendanceStats() async {
-    final response = await _dio.get('/attendance/stats');
+    final response = await _dio.get('/attendance/stats/');
     return response.data as Map<String, dynamic>;
   }
 
   Future<List<dynamic>> getStudentAttendance(int studentId) async {
-    final response = await _dio.get('/students/$studentId/attendance');
+    final response = await _dio.get('/students/$studentId/attendance/');
     return response.data as List<dynamic>;
   }
 
   // Grades
   Future<List<dynamic>> getGrades({String? subject}) async {
-    final response = await _dio.get('/grades', queryParameters: {
+    final response = await _dio.get('/grades/', queryParameters: {
       if (subject != null && subject.isNotEmpty) 'subject': subject,
     });
     return response.data as List<dynamic>;
   }
 
   Future<Map<String, dynamic>> createGrade(Map<String, dynamic> data) async {
-    final response = await _dio.post('/grades', data: data);
+    final response = await _dio.post('/grades/', data: data);
     return response.data as Map<String, dynamic>;
   }
 
@@ -205,18 +205,18 @@ class ApiService {
   }
 
   Future<List<dynamic>> getStudentGrades(int studentId) async {
-    final response = await _dio.get('/students/$studentId/grades');
+    final response = await _dio.get('/students/$studentId/grades/');
     return response.data as List<dynamic>;
   }
 
   // Invoices
   Future<List<dynamic>> getInvoices() async {
-    final response = await _dio.get('/invoices');
+    final response = await _dio.get('/invoices/');
     return response.data as List<dynamic>;
   }
 
   Future<Map<String, dynamic>> createInvoice(Map<String, dynamic> data) async {
-    final response = await _dio.post('/invoices', data: data);
+    final response = await _dio.post('/invoices/', data: data);
     return response.data as Map<String, dynamic>;
   }
 
@@ -230,13 +230,13 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getInvoiceStats() async {
-    final response = await _dio.get('/invoices/stats');
+    final response = await _dio.get('/invoices/stats/');
     return response.data as Map<String, dynamic>;
   }
 
   // Exams
   Future<List<dynamic>> getExams() async {
-    final response = await _dio.get('/exams');
+    final response = await _dio.get('/exams/');
     return response.data as List<dynamic>;
   }
 
@@ -246,7 +246,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> createExam(Map<String, dynamic> data) async {
-    final response = await _dio.post('/exams', data: data);
+    final response = await _dio.post('/exams/', data: data);
     return response.data as Map<String, dynamic>;
   }
 
