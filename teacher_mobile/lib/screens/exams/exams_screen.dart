@@ -6,6 +6,7 @@ import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/empty_state.dart';
 import 'add_edit_exam_screen.dart';
+import 'ai_exam_screen.dart';
 
 class ExamsScreen extends StatefulWidget {
   const ExamsScreen({super.key});
@@ -27,6 +28,13 @@ class _ExamsScreenState extends State<ExamsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AddEditExamScreen()),
+    );
+  }
+
+  void _showAiExam() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AiExamScreen()),
     );
   }
 
@@ -126,10 +134,23 @@ class _ExamsScreenState extends State<ExamsScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddExam,
-        backgroundColor: AppTheme.accent,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            onPressed: _showAiExam,
+            heroTag: 'ai_exam',
+            backgroundColor: AppTheme.info,
+            child: const Icon(Icons.auto_awesome, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            onPressed: _showAddExam,
+            heroTag: 'add_exam',
+            backgroundColor: AppTheme.accent,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
