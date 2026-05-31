@@ -33,17 +33,15 @@ class ApiService {
       onError: (error, handler) async {
         // Only retry on 401, not on other errors
         if (error.response?.statusCode == 401) {
-          // Check if we have a refresh token
           final prefs = await SharedPreferences.getInstance();
           final refresh = prefs.getString('refresh_token');
           
           if (refresh != null && refresh.isNotEmpty) {
             try {
-              // Use a plain Dio (no auth interceptor) to refresh
               final plainDio = Dio(BaseOptions(
                 baseUrl: baseUrl,
-                connectTimeout: const Duration(seconds: 30),
-                receiveTimeout: const Duration(seconds: 30),
+                connectTimeout: const Duration(seconds: 60),
+                receiveTimeout: const Duration(seconds: 60),
                 headers: {
                   'Content-Type': 'application/json',
                   'Accept': 'application/json',
@@ -58,27 +56,28 @@ class ApiService {
               final newRefresh = refreshResponse.data['refresh_token'] as String?;
               
               if (newToken != null && newToken.isNotEmpty) {
-                // Store new tokens
                 await prefs.setString('access_token', newToken);
                 if (newRefresh != null) {
                   await prefs.setString('refresh_token', newRefresh);
                 }
                 
-                // Retry the original request with new token
                 error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
                 final retryResponse = await _dio.fetch(error.requestOptions);
                 return handler.resolve(retryResponse);
               }
-            } catch (e) {
-              // Refresh failed — clear tokens and let the error propagate
-              await prefs.remove('access_token');
-              await prefs.remove('refresh_token');
+            } catch (_) {
+              // Refresh failed — DON'T clear tokens, just let error propagate
+              // User can retry manually
             }
-          } else {
-            // No refresh token — clear access token
-            await prefs.remove('access_token');
-            await prefs.remove('refresh_token');
           }
+        }
+        // Retry on connection timeout/server sleep (not 401)
+        if (error.response == null && error.type != DioExceptionType.cancel) {
+          try {
+            await Future.delayed(const Duration(seconds: 2));
+            final retry = await _dio.fetch(error.requestOptions);
+            return handler.resolve(retry);
+          } catch (_) {}
         }
         return handler.next(error);
       },

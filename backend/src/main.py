@@ -148,6 +148,18 @@ async def _run_schema_migrations():
         logger.warning("Schema migration skipped: %s", e)
 
 
+async def _keep_alive():
+    """Self-ping every 5 minutes to keep Fly.io machine warm."""
+    while True:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.get(f"http://localhost:{os.environ.get('PORT', '8000')}/health")
+        except Exception:
+            pass
+        await asyncio.sleep(300)  # 5 minutes
+
+
 async def _init_services():
     """Initialize Redis sync buffer and rate limiter."""
     if not os.environ.get("VERCEL"):
@@ -176,6 +188,9 @@ async def lifespan(app: FastAPI):
     
     # Run schema migrations in background (don't block startup)
     asyncio.create_task(_run_schema_migrations())
+
+    # Start self-keepalive to prevent Fly.io from suspending
+    asyncio.create_task(_keep_alive())
     
     # Set Telegram webhook on Vercel
     if os.environ.get("VERCEL"):

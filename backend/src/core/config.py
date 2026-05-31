@@ -26,8 +26,8 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = "change-me-in-production-use-openssl-rand"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days — permanent login
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 365  # 1 year
 
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",

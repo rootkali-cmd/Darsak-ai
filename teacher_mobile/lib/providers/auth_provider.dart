@@ -89,15 +89,44 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _tryRefresh() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refresh = prefs.getString('refresh_token');
+      if (refresh == null || refresh.isEmpty) return;
+
+      final data = await _api.refreshToken(refresh);
+      final newToken = data['access_token'] as String?;
+      final newRefresh = data['refresh_token'] as String?;
+      if (newToken != null && newToken.isNotEmpty) {
+        _token = newToken;
+        await prefs.setString('access_token', newToken);
+        if (newRefresh != null) {
+          await prefs.setString('refresh_token', newRefresh);
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> checkAuth() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('access_token');
     if (_token != null && _token!.isNotEmpty) {
       try {
         await _loadUser();
+        return; // Success — user loaded
       } catch (e) {
-        // Interceptor may have cleared tokens on 401 refresh failure
-        // Re-read to stay in sync
+        // getMe failed — try refresh before giving up
+        await _tryRefresh();
+
+        if (_token != null && _token!.isNotEmpty) {
+          try {
+            await _loadUser();
+            return; // Success after refresh
+          } catch (_) {}
+        }
+
+        // Re-read from prefs (interceptor didn't clear them)
         _token = prefs.getString('access_token');
         _user = null;
       }

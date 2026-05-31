@@ -17,6 +17,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   String _status = 'جاري التحميل...';
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -30,12 +31,14 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initialize() async {
+    _hasError = false;
+    if (mounted) setState(() => _status = 'جاري التحميل...');
+
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
 
     setState(() => _status = 'جاري إيقاظ السيرفر...');
 
-    // Wake up Fly.io server before doing auth
     final api = ApiService();
     final awake = await api.ping();
 
@@ -43,23 +46,29 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!awake) {
       setState(() => _status = 'السيرفر نائم... جاري المحاولة');
-      // Wait a bit more and try once more
       await Future.delayed(const Duration(seconds: 2));
-      await api.ping();
+      final retry = await api.ping();
+      if (!retry && mounted) {
+        setState(() => _hasError = true);
+        return;
+      }
     }
 
     if (!mounted) return;
-    setState(() => _status = 'جاري التحقق...');
+    setState(() => _status = 'جاري التحقق من الجلسة...');
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     await auth.checkAuth();
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => auth.isAuthenticated ? const HomeScreen() : const LoginScreen(),
-      ),
-    );
+
+    if (auth.isAuthenticated) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      setState(() => _hasError = true);
+    }
   }
 
   @override
@@ -117,22 +126,69 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(
-                  _status,
-                  style: TextStyle(
-                    color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
-                    fontSize: 13,
+                if (_hasError) ...[
+                  Icon(Icons.cloud_off, size: 48,
+                    color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'تعذر الاتصال بالخادم',
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                      fontSize: 15,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: 120,
-                  child: LinearProgressIndicator(
-                    backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accent),
-                    borderRadius: BorderRadius.circular(4),
+                  const SizedBox(height: 8),
+                  Text(
+                    'تأكد من اتصالك بالإنترنت',
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF636366) : const Color(0xFF8E8E93),
+                      fontSize: 13,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _initialize,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('إعادة المحاولة'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    child: const Text(
+                      'تسجيل الدخول',
+                      style: TextStyle(color: AppTheme.accent),
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    _status,
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: 120,
+                    child: LinearProgressIndicator(
+                      backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accent),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

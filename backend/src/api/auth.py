@@ -149,7 +149,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=3600,
+        max_age=2592000,  # 30 days
         path="/",
     )
     response.set_cookie(
@@ -158,7 +158,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=2592000,
+        max_age=31536000,  # 1 year
         path="/",
     )
 
@@ -197,7 +197,7 @@ async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=3600,
+        max_age=2592000,  # 30 days
         path="/",
     )
     response.set_cookie(
@@ -206,7 +206,7 @@ async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=2592000,
+        max_age=31536000,  # 1 year
         path="/",
     )
 
