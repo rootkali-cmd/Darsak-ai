@@ -32,16 +32,16 @@ const apps: {
   },
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v1.2.7',
+    title: 'DarsakAI Teacher v1.2.8',
     description: 'تطبيق المدرس - مسح باركود للحضور بدون نظام PC',
     descriptionEn: 'Teacher mobile app — barcode attendance scanner without PC',
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher-v1.2.7.apk', label: 'Android APK v1.2.7', size: '~71 MB' },
+      { name: 'DarsakAI-Teacher-v1.2.8.apk', label: 'Android APK v1.2.8', size: '~71 MB' },
     ],
     platform: 'Android 10+ ✓',
-    note: 'إصدار 1.2.7 • جلسة دائمة 30 يوم • السيرفر دايمًا شغال 24/7 • إصلاح مشاكل الجلسة والباركود والامتحانات',
+    note: 'إصدار 1.2.8 • إصلاح مشاكل تسجيل الدخول والجلسة المتكررة',
   },
   {
     id: 'desktop',
