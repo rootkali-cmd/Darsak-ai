@@ -106,8 +106,6 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                   final students = provider.students;
                   return DropdownButtonFormField<int?>(
                     initialValue: _selectedStudentId,
-                    dropdownColor: const Color(0xFF1a1a2e),
-                    style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
                       labelText: 'اختيار الطالب',
                       prefixIcon: Icon(Icons.person),
@@ -117,7 +115,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                       final name = s['full_name'] ?? s['name'] ?? '';
                       return DropdownMenuItem(
                         value: id,
-                        child: Text(name, style: const TextStyle(color: Colors.white)),
+                        child: Text(name),
                       );
                     }).toList(),
                     onChanged: (value) => setState(() => _selectedStudentId = value),
@@ -128,7 +126,6 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _examController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'اسم الاختبار',
                   prefixIcon: Icon(Icons.assignment),
@@ -141,7 +138,6 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _subjectController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'المادة',
                   prefixIcon: Icon(Icons.book),
@@ -153,7 +149,6 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.left,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'الدرجة',
                   prefixIcon: Icon(Icons.score),
@@ -169,7 +164,6 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.left,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'الدرجة العظمى',
                   prefixIcon: Icon(Icons.assessment),

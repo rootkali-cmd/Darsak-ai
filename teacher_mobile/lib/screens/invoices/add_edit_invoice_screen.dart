@@ -101,8 +101,6 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
                   final students = provider.students;
                   return DropdownButtonFormField<int?>(
                     initialValue: _selectedStudentId,
-                    dropdownColor: const Color(0xFF1a1a2e),
-                    style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
                       labelText: 'اختيار الطالب',
                       prefixIcon: Icon(Icons.person),
@@ -112,7 +110,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
                       final name = s['full_name'] ?? s['name'] ?? '';
                       return DropdownMenuItem(
                         value: id,
-                        child: Text(name, style: const TextStyle(color: Colors.white)),
+                        child: Text(name),
                       );
                     }).toList(),
                     onChanged: (value) => setState(() => _selectedStudentId = value),
@@ -126,7 +124,6 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.left,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'المبلغ',
                   prefixIcon: Icon(Icons.attach_money),
@@ -139,7 +136,6 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'الوصف',
                   prefixIcon: Icon(Icons.description),
@@ -147,7 +143,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
               ),
               const SizedBox(height: 12),
               SwitchListTile(
-                title: const Text('مدفوع', style: TextStyle(color: Colors.white)),
+                title: const Text('مدفوع'),
                 value: _paid,
                 activeThumbColor: const Color(0xFFdc2626),
                 onChanged: (value) => setState(() => _paid = value),

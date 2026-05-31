@@ -24,17 +24,19 @@ async def create_exam(
     data: ExamCreate,
     current_user: dict = Depends(get_current_teacher),
 ):
-    exam = await exam_service.create(
-        teacher_id=current_user["id"],
-        title=data.title,
-        duration_minutes=data.duration_minutes,
-        description=data.description,
-    )
     try:
+        exam = await exam_service.create(
+            teacher_id=current_user["id"],
+            title=data.title,
+            duration_minutes=data.duration_minutes,
+            description=data.description,
+        )
         return ExamResponse(**exam)
+    except HTTPException:
+        raise
     except Exception as exc:
-        logger.error("Failed to parse created exam: %s", exc)
-        raise HTTPException(status_code=500, detail="Failed to create exam")
+        logger.error("Failed to create exam: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to create exam: {str(exc)}")
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024

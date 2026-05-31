@@ -17,33 +17,40 @@ async def create_grade(
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
-    await enforce_grade_limit(current_user["id"])
+    try:
+        await enforce_grade_limit(current_user["id"])
 
-    student = await student_service.get_by_id(str(grade_data.student_id))
-    if not student or student["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+        student = await student_service.get_by_id(str(grade_data.student_id))
+        if not student or student["teacher_id"] != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
-    grade = await grade_service.create(
-        student_id=str(grade_data.student_id),
-        teacher_id=current_user["id"],
-        exam_name=grade_data.exam_name,
-        subject=grade_data.subject,
-        score=grade_data.score,
-        max_score=grade_data.max_score,
-        wrong_questions=grade_data.wrong_questions,
-        notes=grade_data.notes,
-    )
+        grade = await grade_service.create(
+            student_id=str(grade_data.student_id),
+            teacher_id=current_user["id"],
+            exam_name=grade_data.exam_name,
+            subject=grade_data.subject,
+            score=grade_data.score,
+            max_score=grade_data.max_score,
+            wrong_questions=grade_data.wrong_questions,
+            notes=grade_data.notes,
+        )
 
-    await audit_service.log(
-        actor_type=current_user.get("role", "teacher"),
-        action="grade_created",
-        actor_id=current_user["id"],
-        resource_type="grade",
-        resource_id=grade["id"],
-        ip_address=get_client_ip(request),
-    )
+        await audit_service.log(
+            actor_type=current_user.get("role", "teacher"),
+            action="grade_created",
+            actor_id=current_user["id"],
+            resource_type="grade",
+            resource_id=grade["id"],
+            ip_address=get_client_ip(request),
+        )
 
-    return GradeResponse(**grade)
+        return GradeResponse(**grade)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+        logging.getLogger("darsak").error("Failed to create grade: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to create grade: {str(exc)}")
 
 
 @router.post("/bulk", response_model=list[GradeResponse], status_code=status.HTTP_201_CREATED)

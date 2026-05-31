@@ -25,7 +25,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
     super.initState();
     final e = widget.exam;
     _titleController = TextEditingController(text: e?['title']?.toString() ?? '');
-    _durationController = TextEditingController(text: e?['duration']?.toString() ?? '');
+    _durationController = TextEditingController(text: (e?['duration_minutes'] ?? e?['duration'])?.toString() ?? '');
     _status = e?['status']?.toString() ?? 'draft';
   }
 
@@ -95,7 +95,6 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
             children: [
               TextFormField(
                 controller: _titleController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'عنوان الاختبار',
                   prefixIcon: Icon(Icons.title),
@@ -111,7 +110,6 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.left,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'المدة (بالدقائق)',
                   prefixIcon: Icon(Icons.timer),
@@ -125,8 +123,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _status,
-                style: const TextStyle(color: Colors.white),
+                initialValue: _status,
                 decoration: const InputDecoration(
                   labelText: 'الحالة',
                   prefixIcon: Icon(Icons.flag),

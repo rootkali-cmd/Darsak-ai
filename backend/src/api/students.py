@@ -78,11 +78,18 @@ async def get_student(
     student_id: str,
     current_user: dict = Depends(get_current_teacher),
 ):
-    student = await student_service.get_by_id(student_id)
-    if not student or student["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
-    student["has_pin"] = student.get("pin_hash") is not None
-    return StudentResponse(**student)
+    try:
+        student = await student_service.get_by_id(student_id)
+        if not student or student["teacher_id"] != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+        student["has_pin"] = student.get("pin_hash") is not None
+        return StudentResponse(**student)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+        logging.getLogger("darsak").error("Failed to get student %s: %s", student_id, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to get student: {str(exc)}")
 
 
 @router.get("/{student_id}/pin")

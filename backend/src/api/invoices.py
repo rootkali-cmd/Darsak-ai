@@ -17,32 +17,39 @@ async def create_invoice(
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
-    await enforce_invoice_limit(current_user["id"])
+    try:
+        await enforce_invoice_limit(current_user["id"])
 
-    student = await student_service.get_by_id(str(invoice_data.student_id))
-    if not student or student["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+        student = await student_service.get_by_id(str(invoice_data.student_id))
+        if not student or student["teacher_id"] != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
-    invoice = await invoice_service.create(
-        teacher_id=current_user["id"],
-        student_id=str(invoice_data.student_id),
-        amount=invoice_data.amount,
-        description=invoice_data.description,
-        paid=invoice_data.paid,
-        payment_date=invoice_data.payment_date.isoformat() if invoice_data.payment_date else None,
-        signature=invoice_data.signature,
-    )
+        invoice = await invoice_service.create(
+            teacher_id=current_user["id"],
+            student_id=str(invoice_data.student_id),
+            amount=invoice_data.amount,
+            description=invoice_data.description,
+            paid=invoice_data.paid,
+            payment_date=invoice_data.payment_date.isoformat() if invoice_data.payment_date else None,
+            signature=invoice_data.signature,
+        )
 
-    await audit_service.log(
-        actor_type=current_user.get("role", "teacher"),
-        action="invoice_created",
-        actor_id=current_user["id"],
-        resource_type="invoice",
-        resource_id=invoice["id"],
-        ip_address=get_client_ip(request),
-    )
+        await audit_service.log(
+            actor_type=current_user.get("role", "teacher"),
+            action="invoice_created",
+            actor_id=current_user["id"],
+            resource_type="invoice",
+            resource_id=invoice["id"],
+            ip_address=get_client_ip(request),
+        )
 
-    return InvoiceResponse(**invoice)
+        return InvoiceResponse(**invoice)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+        logging.getLogger("darsak").error("Failed to create invoice: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(exc)}")
 
 
 @router.get("/", response_model=list[InvoiceResponse])

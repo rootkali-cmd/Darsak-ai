@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/students_provider.dart';
+import '../../core/app_theme.dart';
 
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/empty_state.dart';
@@ -105,19 +106,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
         title: Text(name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
+            icon: const Icon(Icons.edit),
             onPressed: _editStudent,
           ),
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
+            icon: const Icon(Icons.delete, color: AppTheme.danger),
             onPressed: _deleteStudent,
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFFdc2626),
-          labelColor: const Color(0xFFdc2626),
-          unselectedLabelColor: const Color(0xFF6b7280),
+          indicatorColor: AppTheme.accent,
+          labelColor: AppTheme.accent,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           tabs: const [
             Tab(text: 'معلومات'),
             Tab(text: 'الحضور'),
@@ -145,13 +146,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
         children: [
           CircleAvatar(
             radius: 50,
-            backgroundColor: const Color(0xFFdc2626).withValues(alpha: 0.2),
-            child: const Icon(Icons.person, size: 50, color: Color(0xFFdc2626)),
+            backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
+            child: Icon(Icons.person, size: 50, color: AppTheme.accent),
           ),
           const SizedBox(height: 16),
           Text(
             name,
-            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           _InfoTile(label: 'الاسم', value: name),
@@ -184,17 +185,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
             final status = item['status']?.toString() ?? 'absent';
             final isPresent = status == 'present';
             return Card(
-              color: const Color(0xFF1a1a2e),
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: Icon(
                   isPresent ? Icons.check_circle : Icons.cancel,
-                  color: isPresent ? Colors.green : Colors.red,
+                  color: isPresent ? AppTheme.success : AppTheme.danger,
                 ),
-                title: Text(date, style: const TextStyle(color: Colors.white)),
+                title: Text(date),
                 trailing: Text(
                   isPresent ? 'حاضر' : 'غائب',
-                  style: TextStyle(color: isPresent ? Colors.green : Colors.red),
+                  style: TextStyle(color: isPresent ? AppTheme.success : AppTheme.danger),
                 ),
               ),
             );
@@ -225,13 +225,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
             final score = item['score'] ?? 0;
             final maxScore = item['max_score'] ?? 0;
             return Card(
-              color: const Color(0xFF1a1a2e),
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                title: Text('$exam ${subject.isNotEmpty ? '($subject)' : ''}', style: const TextStyle(color: Colors.white)),
+                title: Text('$exam ${subject.isNotEmpty ? '($subject)' : ''}'),
                 trailing: Text(
                   '$score / $maxScore',
-                  style: const TextStyle(color: Color(0xFFdc2626), fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.bold),
                 ),
               ),
             );
@@ -261,20 +260,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
             final description = item['description']?.toString() ?? '';
             final paid = item['paid'] == true;
             return Card(
-              color: const Color(0xFF1a1a2e),
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                title: Text(description, style: const TextStyle(color: Colors.white)),
+                title: Text(description),
                 trailing: Text(
                   '$amount ج.م',
                   style: TextStyle(
-                    color: paid ? Colors.green : Colors.orange,
+                    color: paid ? AppTheme.success : AppTheme.warning,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 subtitle: Text(
                   paid ? 'مدفوع' : 'غير مدفوع',
-                  style: TextStyle(color: paid ? Colors.green : Colors.orange, fontSize: 12),
+                  style: TextStyle(color: paid ? AppTheme.success : AppTheme.warning, fontSize: 12),
                 ),
               ),
             );
@@ -294,11 +292,10 @@ class _InfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: const Color(0xFF1a1a2e),
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        title: Text(label, style: const TextStyle(color: Color(0xFF6b7280), fontSize: 12)),
-        trailing: Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        title: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
+        trailing: Text(value, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
       ),
     );
   }

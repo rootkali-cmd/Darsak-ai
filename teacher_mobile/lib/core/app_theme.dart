@@ -89,6 +89,17 @@ class AppTheme {
         onError: Colors.white,
         outline: border,
       ),
+      textTheme: TextTheme(
+        bodyLarge: TextStyle(color: textPrimary),
+        bodyMedium: TextStyle(color: textPrimary),
+        bodySmall: TextStyle(color: textSecondary),
+        titleLarge: TextStyle(color: textPrimary),
+        titleMedium: TextStyle(color: textPrimary),
+        titleSmall: TextStyle(color: textPrimary),
+        labelLarge: TextStyle(color: textPrimary),
+        labelMedium: TextStyle(color: textSecondary),
+        labelSmall: TextStyle(color: textMuted),
+      ),
       cardTheme: CardThemeData(
         color: card,
         elevation: isDark ? 0 : 1,
@@ -183,6 +194,7 @@ class AppTheme {
           fillColor: isDark ? const Color(0xFF1a1a2e) : const Color(0xFFF2F2F7),
           border: const OutlineInputBorder(borderSide: BorderSide.none),
         ),
+        textStyle: TextStyle(color: textPrimary),
       ),
       dividerTheme: DividerThemeData(
         color: border,

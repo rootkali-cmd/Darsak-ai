@@ -89,21 +89,30 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   void _startScanner() {
     controller?.dispose();
-    controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
-      torchEnabled: false,
-      formats: [
-        BarcodeFormat.code128,
-        BarcodeFormat.code39,
-        BarcodeFormat.ean8,
-        BarcodeFormat.ean13,
-        BarcodeFormat.upcA,
-        BarcodeFormat.upcE,
-        BarcodeFormat.qrCode,
-      ],
-    );
-    setState(() => cameraReady = true);
+    try {
+      controller = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        facing: CameraFacing.back,
+        torchEnabled: false,
+        formats: [
+          BarcodeFormat.code128,
+          BarcodeFormat.code39,
+          BarcodeFormat.ean8,
+          BarcodeFormat.ean13,
+          BarcodeFormat.upcA,
+          BarcodeFormat.upcE,
+          BarcodeFormat.qrCode,
+        ],
+      );
+      setState(() => cameraReady = true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => permissionDenied = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل تهيئة الكاميرا: $e')),
+        );
+      }
+    }
   }
 
   void onDetect(BarcodeCapture capture) {
@@ -179,7 +188,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       if (!mounted) return;
       setState(() => isProcessing = false);
       await SoundEffects.playError();
-      showNotification('خطأ', 'حدث خطأ أثناء المعالجة', AppTheme.danger);
+      String msg = 'حدث خطأ أثناء المعالجة';
+      if (e is Exception) {
+        msg = e.toString().replaceFirst('Exception: ', '');
+      }
+      showNotification('خطأ', msg, AppTheme.danger);
     }
   }
 

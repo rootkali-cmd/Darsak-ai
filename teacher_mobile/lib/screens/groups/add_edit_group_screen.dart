@@ -15,12 +15,31 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _subjectController;
-  late final TextEditingController _levelController;
-  late final TextEditingController _dayController;
   late final TextEditingController _timeController;
+  String? _selectedLevel;
+  String? _selectedDay;
   bool _isLoading = false;
 
   bool get isEditing => widget.group != null;
+
+  static const _levelItems = [
+    {'label': 'إعدادي 1', 'value': 'preparatory_1'},
+    {'label': 'إعدادي 2', 'value': 'preparatory_2'},
+    {'label': 'إعدادي 3', 'value': 'preparatory_3'},
+    {'label': 'ثانوي 1', 'value': 'secondary_1'},
+    {'label': 'ثانوي 2', 'value': 'secondary_2'},
+    {'label': 'ثانوي 3', 'value': 'secondary_3'},
+  ];
+
+  static const _dayItems = [
+    {'label': 'السبت', 'value': 'Saturday'},
+    {'label': 'الأحد', 'value': 'Sunday'},
+    {'label': 'الإثنين', 'value': 'Monday'},
+    {'label': 'الثلاثاء', 'value': 'Tuesday'},
+    {'label': 'الأربعاء', 'value': 'Wednesday'},
+    {'label': 'الخميس', 'value': 'Thursday'},
+    {'label': 'الجمعة', 'value': 'Friday'},
+  ];
 
   @override
   void initState() {
@@ -28,8 +47,8 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
     final g = widget.group;
     _nameController = TextEditingController(text: g?['name']?.toString() ?? '');
     _subjectController = TextEditingController(text: g?['subject']?.toString() ?? '');
-    _levelController = TextEditingController(text: g?['level']?.toString() ?? '');
-    _dayController = TextEditingController(text: g?['day_of_week']?.toString() ?? '');
+    _selectedLevel = g?['level']?.toString();
+    _selectedDay = g?['day_of_week']?.toString();
     _timeController = TextEditingController(text: g?['time_slot']?.toString() ?? '');
   }
 
@@ -37,8 +56,6 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
   void dispose() {
     _nameController.dispose();
     _subjectController.dispose();
-    _levelController.dispose();
-    _dayController.dispose();
     _timeController.dispose();
     super.dispose();
   }
@@ -51,8 +68,8 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
     final data = {
       'name': _nameController.text.trim(),
       'subject': _subjectController.text.trim(),
-      'level': _levelController.text.trim(),
-      'day_of_week': _dayController.text.trim(),
+      'level': _selectedLevel,
+      'day_of_week': _selectedDay,
       'time_slot': _timeController.text.trim(),
     };
 
@@ -93,7 +110,6 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'اسم المجموعة',
                   prefixIcon: Icon(Icons.group),
@@ -106,7 +122,6 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _subjectController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'المادة',
                   prefixIcon: Icon(Icons.book),
@@ -114,37 +129,45 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _levelController.text.isNotEmpty ? _levelController.text : null,
-                style: const TextStyle(color: Colors.white),
+                initialValue: _selectedLevel,
                 decoration: const InputDecoration(
                   labelText: 'المستوى',
                   prefixIcon: Icon(Icons.school),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'preparatory', child: Text('إعدادي')),
-                  DropdownMenuItem(value: 'secondary', child: Text('ثانوي')),
-                ],
-                onChanged: (v) {
-                  if (v != null) _levelController.text = v;
-                },
+                items: _levelItems
+                    .map((item) => DropdownMenuItem(
+                          value: item['value'],
+                          child: Text(item['label']!),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedLevel = v),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'الرجاء اختيار المستوى';
                   return null;
                 },
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _dayController,
-                style: const TextStyle(color: Colors.white),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedDay,
                 decoration: const InputDecoration(
                   labelText: 'يوم الأسبوع',
                   prefixIcon: Icon(Icons.calendar_today),
                 ),
+                items: _dayItems
+                    .map((item) => DropdownMenuItem(
+                          value: item['value'],
+                          child: Text(item['label']!),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedDay = v),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'الرجاء اختيار يوم الأسبوع';
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _timeController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'وقت المجموعة',
                   prefixIcon: Icon(Icons.access_time),

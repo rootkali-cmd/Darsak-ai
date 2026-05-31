@@ -117,28 +117,48 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    // If token is not expired locally, try to load user
-    if (!_isTokenExpired(_token!)) {
-      try {
-        await _loadUser();
-        ApiService.clearLogoutFlag();
-        return;
-      } catch (e) {
-        if (e is DioException && e.response?.statusCode == 401) {
-          // Token rejected by server but not expired locally
-          // Could be server-side revocation or secret key change
-          // Keep the token — user can still try to use the app
-        }
-      }
-    } else {
-      // Token is expired — clear it
+    final tokenExpired = _isTokenExpired(_token!);
+
+    if (tokenExpired) {
       _token = null;
       _user = null;
       await prefs.remove('access_token');
       await prefs.remove('refresh_token');
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await _loadUser();
+      ApiService.clearLogoutFlag();
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 401) {
+        _user = _extractUserFromToken(_token!);
+        if (_user == null) {
+          _token = null;
+          await prefs.remove('access_token');
+          await prefs.remove('refresh_token');
+        }
+      }
     }
 
     notifyListeners();
+  }
+
+  static Map<String, dynamic>? _extractUserFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(parts[1])),
+      );
+      return {
+        'id': payload['sub'],
+        'full_name': payload['name'] ?? '',
+      };
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> logout() async {
