@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
+import '../../services/update_service.dart';
 import '../groups/groups_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../exams/exams_screen.dart';
@@ -15,6 +17,62 @@ class MoreScreen extends StatelessWidget {
 
   void _navigate(BuildContext context, Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  }
+
+  Future<void> _checkForUpdate(BuildContext context) async {
+    final updateService = UpdateService();
+    final updateInfo = await updateService.checkForUpdate();
+
+    if (!context.mounted) return;
+
+    if (updateInfo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('أنت على أحدث إصدار ✅'),
+          backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final changelog = updateInfo['changelog'] as String? ?? '';
+    final downloadUrl = updateInfo['download_url'] as String? ?? 'https://darsakai.com/download';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تحديث جديد متوفر'),
+        content: changelog.isNotEmpty ? Text(changelog) : null,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'ليس الآن',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF8E8E93)
+                    : const Color(0xFF636366),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final uri = Uri.parse(downloadUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('تحديث الآن'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -82,6 +140,13 @@ class MoreScreen extends StatelessWidget {
         subtitle: 'معلومات المطور وتواصل',
         color: const Color(0xFF6366F1),
         onTap: (ctx) => _navigate(ctx, const DeveloperScreen()),
+      ),
+      _MenuItem(
+        icon: Icons.system_update,
+        title: 'التحقق من التحديثات',
+        subtitle: 'التأكد من وجود إصدار أحدث',
+        color: const Color(0xFF22C55E),
+        onTap: (ctx) => _checkForUpdate(ctx),
       ),
     ];
 

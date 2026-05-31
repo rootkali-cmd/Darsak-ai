@@ -4,8 +4,8 @@ const DOWNLOAD_URL = 'https://darsakai.com/download'
 
 export async function GET() {
   return NextResponse.json({
-    latest_version: '1.3.3',
+    latest_version: '1.3.4',
     download_url: DOWNLOAD_URL,
-    changelog: 'إصلاح ألوان الوضع الفاتح + إصلاح كاميرا + إصلاح إنشاء المجموعات + إصلاح بروفايل الطالب + إصلاح تسجيل الدخول الدائم',
+    changelog: 'إضافة زر التحقق من التحديثات في المزيد',
   })
 }
