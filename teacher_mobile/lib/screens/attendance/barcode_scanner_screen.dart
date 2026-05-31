@@ -127,11 +127,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   Future<void> processScan(String code) async {
     if (!mounted) return;
-    await SoundEffects.playScan();
+    try {
+      await SoundEffects.playScan();
+    } catch (_) {}
 
     final already = scannedStudents.any((s) => s['code'] == code);
     if (already) {
-      await SoundEffects.playWarning();
+      try { await SoundEffects.playWarning(); } catch (_) {}
       showNotification('تم المسح مسبقاً', 'الطالب: $code', AppTheme.warning);
       return;
     }
@@ -140,33 +142,24 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     setState(() => isProcessing = true);
 
     try {
-      int? studentId;
-      if (code.contains('darsak://student/')) {
-        final parts = code.split('/');
-        if (parts.length >= 4) {
-          studentId = int.tryParse(parts[3]);
-        }
-      }
-
       final provider = Provider.of<AttendanceProvider>(context, listen: false);
       final result = await provider.markAttendanceByBarcode(code)
           .timeout(const Duration(seconds: 15));
 
       if (!mounted) return;
 
-      final resultData = result;
-      if (resultData != null) {
-        final studentName = resultData['student']?['full_name'] ?? resultData['student']?['name'] ?? 'طالب';
-        final status = resultData['status']?.toString().toLowerCase();
+      if (result != null) {
+        final studentName = result['student']?['full_name'] ?? result['student']?['name'] ?? 'طالب';
+        final status = result['status']?.toString().toLowerCase();
 
         if (status == 'absent' || status == 'غائب') {
-          await SoundEffects.playError();
+          try { await SoundEffects.playError(); } catch (_) {}
           showNotification('الطالب غائب', studentName, AppTheme.danger);
         } else if (status == 'late' || status == 'متأخر') {
-          await SoundEffects.playWarning();
+          try { await SoundEffects.playWarning(); } catch (_) {}
           showNotification('الطالب متأخر', studentName, AppTheme.warning);
         } else {
-          await SoundEffects.playSuccess();
+          try { await SoundEffects.playSuccess(); } catch (_) {}
           showNotification('تم تسجيل الحضور', studentName, AppTheme.success);
         }
 
@@ -177,22 +170,15 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         });
       } else {
         setState(() => isProcessing = false);
-        await SoundEffects.playError();
-        if (studentId == null) {
-          showNotification('طالب غير معروف', 'لم يتم العثور على الطالب', AppTheme.danger);
-        } else {
-          showNotification('خطأ', provider.error ?? 'فشل تسجيل الحضور', AppTheme.danger);
-        }
+        try { await SoundEffects.playError(); } catch (_) {}
+        final errorMsg = provider.error ?? 'فشل تسجيل الحضور';
+        showNotification('خطأ', errorMsg, AppTheme.danger);
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => isProcessing = false);
-      await SoundEffects.playError();
-      String msg = 'حدث خطأ أثناء المعالجة';
-      if (e is Exception) {
-        msg = e.toString().replaceFirst('Exception: ', '');
-      }
-      showNotification('خطأ', msg, AppTheme.danger);
+      try { await SoundEffects.playError(); } catch (_) {}
+      showNotification('خطأ', 'حدث خطأ أثناء المعالجة: ${e.toString().substring(0, e.toString().length.clamp(0, 80))}', AppTheme.danger);
     }
   }
 

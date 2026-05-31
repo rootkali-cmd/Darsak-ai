@@ -23,12 +23,8 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
   bool get isEditing => widget.group != null;
 
   static const _levelItems = [
-    {'label': 'إعدادي 1', 'value': 'preparatory_1'},
-    {'label': 'إعدادي 2', 'value': 'preparatory_2'},
-    {'label': 'إعدادي 3', 'value': 'preparatory_3'},
-    {'label': 'ثانوي 1', 'value': 'secondary_1'},
-    {'label': 'ثانوي 2', 'value': 'secondary_2'},
-    {'label': 'ثانوي 3', 'value': 'secondary_3'},
+    {'label': 'إعدادي', 'value': 'preparatory'},
+    {'label': 'ثانوي', 'value': 'secondary'},
   ];
 
   static const _dayItems = [

@@ -29,10 +29,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     final api = ApiService();
-    final studentId = widget.student['id'] as int;
+    final studentId = widget.student['id'].toString();
     _attendanceFuture = api.getStudentAttendance(studentId);
     _gradesFuture = api.getStudentGrades(studentId);
-    _invoicesFuture = api.dio.get('/students/$studentId/invoices').then((r) => r.data as List<dynamic>);
+    _invoicesFuture = api.dio.get('/students/$studentId/invoices/').then((r) {
+      final data = r.data;
+      if (data is List) return data as List<dynamic>;
+      return <dynamic>[];
+    }).catchError((_) => <dynamic>[]);
   }
 
   @override
@@ -54,12 +58,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'هل أنت متأكد من حذف هذا الطالب؟',
-          style: TextStyle(color: Colors.white70),
-        ),
+        title: const Text('تأكيد الحذف'),
+        content: const Text('هل أنت متأكد من حذف هذا الطالب؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -76,7 +76,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
 
     if (confirmed == true && mounted) {
       final provider = Provider.of<StudentsProvider>(context, listen: false);
-      final success = await provider.deleteStudent(widget.student['id'] as int);
+      final success = await provider.deleteStudent(int.tryParse(widget.student['id'].toString()) ?? 0);
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(

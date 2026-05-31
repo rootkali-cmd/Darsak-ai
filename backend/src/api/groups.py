@@ -16,25 +16,30 @@ async def create_group(
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
-    group = await group_service.create(
-        teacher_id=current_user["id"],
-        name=group_data.name,
-        subject=group_data.subject,
-        level=group_data.level.value if hasattr(group_data.level, 'value') else group_data.level,
-        day_of_week=group_data.day_of_week,
-        time_slot=group_data.time_slot,
-    )
+    try:
+        group = await group_service.create(
+            teacher_id=current_user["id"],
+            name=group_data.name,
+            subject=group_data.subject,
+            level=group_data.level,
+            day_of_week=group_data.day_of_week,
+            time_slot=group_data.time_slot,
+        )
 
-    await audit_service.log(
-        actor_type=current_user.get("role", "teacher"),
-        action="group_created",
-        actor_id=current_user["id"],
-        resource_type="group",
-        resource_id=group["id"],
-        ip_address=get_client_ip(request),
-    )
+        await audit_service.log(
+            actor_type=current_user.get("role", "teacher"),
+            action="group_created",
+            actor_id=current_user["id"],
+            resource_type="group",
+            resource_id=group["id"],
+            ip_address=get_client_ip(request),
+        )
 
-    return GroupResponse(**group)
+        return GroupResponse(**group)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to create group: {str(exc)}")
 
 
 async def _add_student_count(groups: list[dict], teacher_id: str) -> list[dict]:

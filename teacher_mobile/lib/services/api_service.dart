@@ -206,9 +206,11 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<List<dynamic>> getStudentAttendance(int studentId) async {
+  Future<List<dynamic>> getStudentAttendance(dynamic studentId) async {
     final response = await _dio.get('/students/$studentId/attendance/');
-    return response.data as List<dynamic>;
+    final data = response.data;
+    if (data is List) return data;
+    return [];
   }
 
   // Grades
@@ -233,9 +235,11 @@ class ApiService {
     await _dio.delete('/grades/$id');
   }
 
-  Future<List<dynamic>> getStudentGrades(int studentId) async {
+  Future<List<dynamic>> getStudentGrades(dynamic studentId) async {
     final response = await _dio.get('/students/$studentId/grades/');
-    return response.data as List<dynamic>;
+    final data = response.data;
+    if (data is List) return data;
+    return [];
   }
 
   // Invoices

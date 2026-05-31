@@ -16,10 +16,10 @@ DAY_NAMES = {
 
 class GroupCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
-    subject: str = Field(..., min_length=2, max_length=100)
-    level: EducationLevel
+    subject: str = Field(..., min_length=1, max_length=100)
+    level: str = Field(..., min_length=1, max_length=50)
     day_of_week: str = Field(..., min_length=1, max_length=20)
-    time_slot: str = Field(..., min_length=2, max_length=50)
+    time_slot: str = Field(..., min_length=1, max_length=50)
 
     @field_validator("day_of_week", mode="before")
     @classmethod
@@ -63,11 +63,11 @@ class GroupResponse(BaseModel):
     teacher_id: UUID
     name: str
     subject: str
-    level: EducationLevel
+    level: str
     day_of_week: str
     time_slot: str
     student_count: int = 0
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
