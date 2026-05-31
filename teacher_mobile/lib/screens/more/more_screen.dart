@@ -6,6 +6,8 @@ import '../exams/exams_screen.dart';
 import '../sessions/sessions_screen.dart';
 import '../settings/settings_screen.dart';
 import '../profile/profile_screen.dart';
+import '../subscriptions/subscription_screen.dart';
+import 'developer_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -58,6 +60,20 @@ class MoreScreen extends StatelessWidget {
         subtitle: 'بيانات الحساب',
         color: AppTheme.accent,
         onTap: (ctx) => _navigate(ctx, const ProfileScreen()),
+      ),
+      _MenuItem(
+        icon: Icons.card_membership,
+        title: 'الاشتراكات',
+        subtitle: 'خطط الاشتراك والتفعيل',
+        color: const Color(0xFFF59E0B),
+        onTap: (ctx) => _navigate(ctx, const SubscriptionScreen()),
+      ),
+      _MenuItem(
+        icon: Icons.code,
+        title: 'عن المطور',
+        subtitle: 'معلومات المطور وتواصل',
+        color: const Color(0xFF6366F1),
+        onTap: (ctx) => _navigate(ctx, const DeveloperScreen()),
       ),
     ];
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/update_service.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
@@ -55,11 +57,15 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (auth.isAuthenticated) {
+      await _checkForUpdate();
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else if (auth.hasToken) {
       // Has token but couldn't load user — keep trying, don't force login
+      await _checkForUpdate();
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
@@ -73,6 +79,57 @@ class _SplashScreenState extends State<SplashScreen>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkForUpdate() async {
+    final updateService = UpdateService();
+    final isRemindActive = await updateService.isRemindLaterActive();
+    if (isRemindActive) return;
+
+    final updateInfo = await updateService.checkForUpdate();
+    if (!mounted || updateInfo == null) return;
+
+    final changelog = updateInfo['changelog'] as String? ?? '';
+    final downloadUrl = updateInfo['download_url'] as String? ?? 'https://darsakai.com/download';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تحديث جديد متوفر'),
+        content: changelog.isNotEmpty ? Text(changelog) : null,
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await updateService.setRemindLater();
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            },
+            child: Text(
+              'ذكرني لاحقاً',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF8E8E93)
+                    : const Color(0xFF636366),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final uri = Uri.parse(downloadUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('تحديث الآن'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

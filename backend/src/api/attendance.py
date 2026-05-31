@@ -147,20 +147,20 @@ async def mark_attendance_by_barcode(
 ):
     raw = scan.barcode.strip()
 
-    student_id: str | None = None
-    m = re.match(r"^darsak://student/(\d+)$", raw)
+    student = None
+
+    m = re.match(r"^darsak://student/(\w+)$", raw)
     if m:
-        student_id = m.group(1)
+        student = await student_service.get_by_id(m.group(1))
     elif raw.isdigit():
-        student_id = raw
+        student = await student_service.get_by_id(raw)
+    else:
+        student = await student_service.get_by_code(raw)
 
-    if not student_id:
-        raise HTTPException(status_code=400, detail="رمز الطالب غير صالح")
-
-    student = await student_service.get_by_id(student_id)
     if not student or student.get("teacher_id") != current_user["id"]:
         raise HTTPException(status_code=404, detail="الطالب غير موجود")
 
+    student_id = student["id"]
     today = date.today()
     existing = await attendance_service.get_by_student_and_date(student_id, today.isoformat())
 

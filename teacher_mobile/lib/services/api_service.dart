@@ -183,7 +183,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> markAttendanceByBarcode(String barcode) async {
-    final response = await _dio.post('/attendance/barcode/', data: {'barcode': barcode});
+    final response = await _dio.post('/attendance/barcode', data: {'barcode': barcode});
     return response.data as Map<String, dynamic>;
   }
 
