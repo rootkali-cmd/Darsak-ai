@@ -103,7 +103,15 @@ class AuthProvider extends ChangeNotifier {
           _token = updatedToken;
           try {
             await _loadUser();
+            return;
           } catch (_) {}
+        }
+
+        // If loadUser still fails with 401, tokens are stale — clear them
+        if (e is DioException && e.response?.statusCode == 401) {
+          _token = null;
+          await prefs.remove('access_token');
+          await prefs.remove('refresh_token');
         }
         // Don't clear tokens on network errors — keep user authenticated
         // User data will load on next screen

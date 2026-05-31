@@ -91,9 +91,15 @@ class ApiService {
               _isRefreshing = false;
               return handler.resolve(retryResponse);
             }
-          } catch (_) {}
+          } catch (e) {
+            // If refresh returns 401, tokens are expired/blacklisted — clear them
+            if (e is DioException && e.response?.statusCode == 401) {
+              await prefs.remove('access_token');
+              await prefs.remove('refresh_token');
+            }
+          }
 
-          _refreshCompleter!.complete(false);
+          _refreshCompleter?.complete(false);
           _isRefreshing = false;
         }
 

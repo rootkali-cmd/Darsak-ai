@@ -1,8 +1,10 @@
+import re
 from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from pydantic import BaseModel
 from src.utils.dependencies import get_current_teacher
 from src.schemas.attendance import AttendanceCreate, AttendanceBulkCreate, AttendanceResponse
-from src.services import attendance_service, audit_service
+from src.services import attendance_service, audit_service, student_service
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
@@ -132,3 +134,55 @@ async def attendance_stats(
     target_date = date.isoformat() if date else None
     stats = await attendance_service.get_stats(current_user["id"], target_date)
     return stats
+
+
+class BarcodeScan(BaseModel):
+    barcode: str
+
+
+@router.post("/barcode")
+async def mark_attendance_by_barcode(
+    scan: BarcodeScan,
+    current_user: dict = Depends(get_current_teacher),
+):
+    raw = scan.barcode.strip()
+
+    student_id: str | None = None
+    m = re.match(r"^darsak://student/(\d+)$", raw)
+    if m:
+        student_id = m.group(1)
+    elif raw.isdigit():
+        student_id = raw
+
+    if not student_id:
+        raise HTTPException(status_code=400, detail="رمز الطالب غير صالح")
+
+    student = await student_service.get_by_id(student_id)
+    if not student or student.get("teacher_id") != current_user["id"]:
+        raise HTTPException(status_code=404, detail="الطالب غير موجود")
+
+    today = date.today()
+    existing = await attendance_service.get_by_student_and_date(student_id, today.isoformat())
+
+    if existing:
+        updated = await attendance_service.update(
+            existing["id"],
+            {"status": "present"},
+        )
+        result = updated
+    else:
+        result = await attendance_service.create(
+            student_id=student_id,
+            teacher_id=current_user["id"],
+            status="present",
+            date=today.isoformat(),
+        )
+
+    return {
+        **result,
+        "student": {
+            "id": student["id"],
+            "full_name": student.get("full_name", ""),
+            "name": student.get("full_name", ""),
+        },
+    }

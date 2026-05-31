@@ -117,6 +117,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   }
 
   Future<void> processScan(String code) async {
+    if (!mounted) return;
     await SoundEffects.playScan();
 
     final already = scannedStudents.any((s) => s['code'] == code);
@@ -126,6 +127,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       return;
     }
 
+    if (!mounted) return;
     setState(() => isProcessing = true);
 
     try {

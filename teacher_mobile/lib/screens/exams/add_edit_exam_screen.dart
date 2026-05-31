@@ -54,7 +54,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
 
     final data = <String, dynamic>{
       'title': _titleController.text.trim(),
-      'duration': duration,
+      'duration_minutes': duration,
       'status': _status,
     };
 
