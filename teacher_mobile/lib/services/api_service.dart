@@ -11,6 +11,9 @@ class ApiService {
   bool _isRefreshing = false;
   Completer<bool>? _refreshCompleter;
 
+  static bool _forceLogout = false;
+  static bool get forceLogout => _forceLogout;
+
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
@@ -96,6 +99,7 @@ class ApiService {
             if (e is DioException && e.response?.statusCode == 401) {
               await prefs.remove('access_token');
               await prefs.remove('refresh_token');
+              _forceLogout = true;
             }
           }
 

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/api_service.dart';
+import '../providers/auth_provider.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'students/students_screen.dart';
 import 'attendance/attendance_screen.dart';
 import 'grades/grades_screen.dart';
 import 'more/more_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +28,37 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkForceLogout();
+  }
+
+  void _checkForceLogout() {
+    if (ApiService.forceLogout) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Provider.of<AuthProvider>(context, listen: false).logout();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (ApiService.forceLogout) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Provider.of<AuthProvider>(context, listen: false).logout();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      });
+    }
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,

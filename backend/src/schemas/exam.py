@@ -45,9 +45,9 @@ class ExamResponse(BaseModel):
     teacher_id: str
     title: str
     description: str | None = None
-    duration_minutes: int
-    total_points: int = 0
-    status: str
+    duration_minutes: int | None = None
+    total_points: int | None = 0
+    status: str | None = None
     source_type: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
