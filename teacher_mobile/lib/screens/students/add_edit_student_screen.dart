@@ -93,7 +93,6 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'الاسم الكامل',
                   prefixIcon: Icon(Icons.person),
@@ -109,7 +108,6 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                 keyboardType: TextInputType.phone,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.left,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'رقم الهاتف',
                   prefixIcon: Icon(Icons.phone),
@@ -121,7 +119,6 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                 keyboardType: TextInputType.phone,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.left,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'رقم ولي الأمر',
                   prefixIcon: Icon(Icons.phone_android),
@@ -130,7 +127,6 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _gradeController,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'الصف الدراسي',
                   prefixIcon: Icon(Icons.school),
@@ -142,7 +138,6 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.left,
-                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'الرقم السري (6 أرقام على الأقل)',
                   prefixIcon: Icon(Icons.lock),

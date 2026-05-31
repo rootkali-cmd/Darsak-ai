@@ -72,7 +72,7 @@ class StudentsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deleteStudent(int id) async {
+  Future<bool> deleteStudent(dynamic id) async {
     try {
       await _api.deleteStudent(id);
       _students.removeWhere((s) => s['id'] == id);

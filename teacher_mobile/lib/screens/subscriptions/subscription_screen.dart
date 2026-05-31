@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
-import '../../services/telegram_service.dart';
+import '../../services/api_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -21,9 +22,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final _instaPayIdController = TextEditingController();
   File? _selectedReceipt;
 
+  // Plans from backend
+  List<dynamic> _plans = [];
+  bool _plansLoading = true;
+  String? _planError;
+
   static const String _vodafoneCashNumber = '01031524947';
   static const String _instaPayId = 'ahmed-mahmoud-1@instapay';
   static const String _supportWhatsApp = '201031524947';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlans();
+  }
 
   @override
   void dispose() {
@@ -31,6 +43,93 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _senderPhoneController.dispose();
     _instaPayIdController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchPlans() async {
+    try {
+      final api = ApiService();
+      final response = await api.dio.get('/subscriptions/plans/');
+      if (mounted) {
+        setState(() {
+          _plans = response.data is List ? response.data as List<dynamic> : [];
+          _plansLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _plansLoading = false;
+          _planError = 'فشل تحميل الباقات';
+        });
+      }
+    }
+  }
+
+  String? _findPlanId(String planName) {
+    for (final plan in _plans) {
+      if (plan['name']?.toString().toLowerCase() == planName.toLowerCase()) {
+        return plan['id']?.toString();
+      }
+    }
+    return null;
+  }
+
+  Future<void> _activateCode() async {
+    final code = _codeController.text.trim().toUpperCase();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء إدخال كود التفعيل')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final api = ApiService();
+      final response = await api.dio.post(
+        '/subscriptions/activate/',
+        data: {'code': code},
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // remove loading
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final planName = data['plan_name'] ?? '';
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('✅ تم التفعيل بنجاح'),
+            content: Text('تم تفعيل اشتراكك في باقة $planName'),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('حسناً'),
+              ),
+            ],
+          ),
+        );
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // remove loading
+      final msg = e.response?.data?['detail']?.toString() ?? 'فشل التفعيل';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppTheme.danger),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.danger),
+      );
+    }
   }
 
   void _showPaymentDialog(String planName, String price) {
@@ -179,13 +278,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'QR Code',
-                              style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'QR Code',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -201,7 +304,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             const SizedBox(height: 8),
                             Text(
                               _instaPayId,
-                              style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -320,30 +427,79 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final senderInfo = _paymentMethod == 'vodafone'
-                  ? 'فودافون كاش - ${_senderPhoneController.text}'
-                  : 'إنستا باي - ${_instaPayIdController.text}';
-              final method = _paymentMethod == 'vodafone' ? 'فودافون كاش' : 'إنستا باي';
-              final receiptName = _selectedReceipt?.path.split('/').last;
+              final planId = _findPlanId(planName);
+              if (planId == null) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx as BuildContext).showSnackBar(
+                    const SnackBar(content: Text('لم يتم العثور على معرف الباقة')),
+                  );
+                }
+                return;
+              }
               Navigator.pop(ctx);
               if (!mounted) return;
-              await TelegramService.sendPaymentNotification(
-                planName: planName,
-                planPrice: price,
-                paymentMethod: method,
-                senderInfo: senderInfo,
-                receiptFileName: receiptName,
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم إرسال طلب التفعيل')),
-              );
+              await _submitPaymentRequest(planId, price);
             },
             child: const Text('تأكيد'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _submitPaymentRequest(String planId, String price) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final api = ApiService();
+      final formData = FormData.fromMap({
+        'plan_id': planId,
+        'phone_number': _paymentMethod == 'vodafone'
+            ? _senderPhoneController.text.trim()
+            : _instaPayIdController.text.trim(),
+        'amount': double.tryParse(price) ?? 0,
+      });
+
+      if (_selectedReceipt != null) {
+        formData.files.add(MapEntry(
+          'screenshot',
+          await MultipartFile.fromFile(_selectedReceipt!.path, filename: 'receipt.jpg'),
+        ));
+      }
+
+      await api.dio.post(
+        '/subscriptions/payment-request/',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم إرسال طلب التفعيل، سيتم مراجعة طلبك من المشرف'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      final msg = e.response?.data?['detail']?.toString() ?? 'فشل إرسال الطلب';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppTheme.danger),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.danger),
+      );
+    }
   }
 
   Widget _buildReceiptUpload(void Function(void Function()) setDialogState) {
@@ -448,7 +604,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: _activateCode,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.accent,
                             foregroundColor: Colors.white,

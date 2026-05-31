@@ -76,7 +76,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
 
     if (confirmed == true && mounted) {
       final provider = Provider.of<StudentsProvider>(context, listen: false);
-      final success = await provider.deleteStudent(int.tryParse(widget.student['id'].toString()) ?? 0);
+      final success = await provider.deleteStudent(widget.student['id']);
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -99,6 +99,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
     final phone = student['phone']?.toString() ?? '';
     final parentPhone = student['parent_phone']?.toString() ?? '';
     final gradeLevel = student['grade_level']?.toString() ?? '';
+    final code = student['code']?.toString() ?? '';
     final pin = student['pin']?.toString() ?? '';
 
     return Scaffold(
@@ -130,7 +131,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildInfoTab(name, phone, parentPhone, gradeLevel, pin),
+          _buildInfoTab(name, phone, parentPhone, gradeLevel, code, pin),
           _buildAttendanceTab(),
           _buildGradesTab(),
           _buildInvoicesTab(),
@@ -139,7 +140,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
     );
   }
 
-  Widget _buildInfoTab(String name, String phone, String parentPhone, String gradeLevel, String pin) {
+  Widget _buildInfoTab(String name, String phone, String parentPhone, String gradeLevel, String code, String pin) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -160,6 +161,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen>
           _InfoTile(label: 'رقم ولي الأمر', value: parentPhone.isEmpty ? '—' : parentPhone),
           _InfoTile(label: 'الصف الدراسي', value: gradeLevel.isEmpty ? '—' : gradeLevel),
           _InfoTile(label: 'الرقم السري', value: pin.isEmpty ? '—' : pin),
+          if (code.isNotEmpty)
+            _InfoTile(label: 'كود الطالب', value: code),
         ],
       ),
     );

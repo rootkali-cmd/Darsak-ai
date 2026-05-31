@@ -146,7 +146,7 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<void> deleteStudent(int id) async {
+  Future<void> deleteStudent(dynamic id) async {
     await _dio.delete('/students/$id');
   }
 

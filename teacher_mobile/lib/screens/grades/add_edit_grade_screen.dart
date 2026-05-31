@@ -14,7 +14,7 @@ class AddEditGradeScreen extends StatefulWidget {
 
 class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   final _formKey = GlobalKey<FormState>();
-  int? _selectedStudentId;
+  String? _selectedStudentId;
   late final TextEditingController _examController;
   late final TextEditingController _subjectController;
   late final TextEditingController _scoreController;
@@ -27,7 +27,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   void initState() {
     super.initState();
     final g = widget.grade;
-    _selectedStudentId = g?['student_id'] ?? g?['student']?['id'];
+    _selectedStudentId = g?['student_id']?.toString() ?? g?['student']?['id']?.toString();
     _examController = TextEditingController(text: g?['exam_name']?.toString() ?? g?['exam']?.toString() ?? '');
     _subjectController = TextEditingController(text: g?['subject']?.toString() ?? '');
     _scoreController = TextEditingController(text: g?['score']?.toString() ?? '');
@@ -104,14 +104,14 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                     return const LinearProgressIndicator();
                   }
                   final students = provider.students;
-                  return DropdownButtonFormField<int?>(
-                    initialValue: _selectedStudentId,
+                  return DropdownButtonFormField<String?>(
+                    value: _selectedStudentId,
                     decoration: const InputDecoration(
                       labelText: 'اختيار الطالب',
                       prefixIcon: Icon(Icons.person),
                     ),
-                    items: students.map<DropdownMenuItem<int?>>((s) {
-                      final id = s['id'] as int?;
+                    items: students.map<DropdownMenuItem<String?>>((s) {
+                      final id = s['id']?.toString();
                       final name = s['full_name'] ?? s['name'] ?? '';
                       return DropdownMenuItem(
                         value: id,

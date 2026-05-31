@@ -14,7 +14,7 @@ class AddEditInvoiceScreen extends StatefulWidget {
 
 class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
   final _formKey = GlobalKey<FormState>();
-  int? _selectedStudentId;
+  String? _selectedStudentId;
   late final TextEditingController _amountController;
   late final TextEditingController _descriptionController;
   bool _paid = false;
@@ -26,7 +26,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
   void initState() {
     super.initState();
     final inv = widget.invoice;
-    _selectedStudentId = inv?['student_id'] ?? inv?['student']?['id'];
+    _selectedStudentId = inv?['student_id']?.toString() ?? inv?['student']?['id']?.toString();
     _amountController = TextEditingController(text: inv?['amount']?.toString() ?? '');
     _descriptionController = TextEditingController(text: inv?['description']?.toString() ?? '');
     _paid = inv?['paid'] == true;
@@ -99,14 +99,14 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
                     return const LinearProgressIndicator();
                   }
                   final students = provider.students;
-                  return DropdownButtonFormField<int?>(
-                    initialValue: _selectedStudentId,
+                  return DropdownButtonFormField<String?>(
+                    value: _selectedStudentId,
                     decoration: const InputDecoration(
                       labelText: 'اختيار الطالب',
                       prefixIcon: Icon(Icons.person),
                     ),
-                    items: students.map<DropdownMenuItem<int?>>((s) {
-                      final id = s['id'] as int?;
+                    items: students.map<DropdownMenuItem<String?>>((s) {
+                      final id = s['id']?.toString();
                       final name = s['full_name'] ?? s['name'] ?? '';
                       return DropdownMenuItem(
                         value: id,

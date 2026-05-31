@@ -257,6 +257,34 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
             MobileScanner(
               controller: controller!,
               onDetect: onDetect,
+              errorBuilder: (context, error, child) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.camera_alt_outlined, size: 64, color: AppTheme.textMuted),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'تعذر الوصول إلى الكاميرا',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'يرجى التحقق من إذن الكاميرا في إعدادات الجهاز',
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+                        child: const Text('رجوع'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           SafeArea(
             child: Column(
