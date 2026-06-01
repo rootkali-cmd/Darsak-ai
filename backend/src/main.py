@@ -154,7 +154,6 @@ async def _run_schema_migrations():
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 );
             """))
-            # New tables for video/lesson system
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS lessons (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -173,9 +172,6 @@ async def _run_schema_migrations():
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 );
             """))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lessons_teacher ON lessons(teacher_id);"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lessons_group ON lessons(group_id);"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lessons_tg_message ON lessons(tg_message_id);"))
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS video_analytics (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -194,10 +190,6 @@ async def _run_schema_migrations():
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 );
             """))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_va_student ON video_analytics(student_id);"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_va_video ON video_analytics(video_id);"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_va_teacher ON video_analytics(teacher_id);"))
-
             await conn.execute(text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_channel_id VARCHAR(100);"
             ))
@@ -279,25 +271,11 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("Telegram bot startup skipped: %s", e)
     
-    # Start video bot if token is configured
-    if settings.VIDEO_TELEGRAM_BOT_TOKEN:
-        try:
-            from src.bot.video_bot import video_bot_service
-            if video_bot_service.is_configured:
-                logger.info("Video Telegram bot service initialized")
-        except Exception as e:
-            logger.warning("Video bot service not available: %s", e)
-
     logger.info("DarsakAI Hub started successfully")
     yield
     
     # Shutdown
     await audit_publisher.stop()
-    try:
-        from src.bot.video_bot import video_bot_service
-        await video_bot_service.close()
-    except Exception:
-        pass
     if not os.environ.get("VERCEL"):
         stop_scheduler()
         from src.bot.telegram_bot import stop_bot
