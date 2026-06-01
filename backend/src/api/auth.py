@@ -16,6 +16,15 @@ logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+def get_client_ip(request: Request) -> str:
+    if request.client:
+        return request.client.host
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return "unknown"
+
+
 def _user_response(user: dict) -> dict:
     return {
         "id": str(user.get("id", "")),
