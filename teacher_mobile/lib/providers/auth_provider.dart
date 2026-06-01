@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const _tokenKey = 'access_token';
+  static const _rfreshKey = 'refresh_token';
 
   bool _isLoading = false;
   String? _error;
@@ -18,26 +18,24 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty && _user != null;
   Map<String, dynamic>? get user => _user;
-  String? get token => _token;
 
   AuthProvider() {
     _init();
   }
 
   Future<void> _init() async {
-    try {
-      _token = await _storage.read(key: _tokenKey);
-    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString(_tokenKey);
     if (_token != null && _token!.isNotEmpty) {
       final jwt = _parseJwt(_token!);
       if (jwt != null && jwt['expired'] != true && jwt['id'] != null) {
         _user = {'id': jwt['id'], 'full_name': jwt['full_name'] ?? ''};
       } else {
-        await _storage.delete(key: _tokenKey);
+        await prefs.remove(_tokenKey);
+        await prefs.remove(_rfreshKey);
         _token = null;
       }
     }
-    _isLoading = false;
     notifyListeners();
   }
 
@@ -81,7 +79,7 @@ class AuthProvider extends ChangeNotifier {
           if (e.type == DioExceptionType.connectionError ||
               e.type == DioExceptionType.connectionTimeout ||
               e.type == DioExceptionType.receiveTimeout) {
-            await Future.delayed(const Duration(seconds: 3));
+            await Future.delayed(const Duration(seconds: 2));
             continue;
           }
           rethrow;
@@ -96,6 +94,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final newToken = data['access_token'] as String?;
+      final refreshToken = data['refresh_token'] as String?;
 
       if (newToken == null || newToken.isEmpty) {
         _error = 'بيانات الدخول غير صحيحة';
@@ -104,8 +103,13 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, newToken);
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await prefs.setString(_rfreshKey, refreshToken);
+      }
+
       _token = newToken;
-      await _storage.write(key: _tokenKey, value: _token);
 
       final jwt = _parseJwt(_token!);
       _user = jwt != null
@@ -121,7 +125,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _error = 'حدث خطأ غير متوقع';
+      _error = 'حدث خطأ غير متوقع: $e';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -154,7 +158,9 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     _user = null;
     try {
-      await _storage.delete(key: _tokenKey);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+      await prefs.remove(_rfreshKey);
     } catch (_) {}
     notifyListeners();
   }
