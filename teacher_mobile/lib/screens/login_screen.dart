@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../core/app_theme.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/api_service.dart';
+import '../core/app_theme.dart';
+import '../providers/auth_provider.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,8 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _isWakingUp = false;
-  String? _wakeStatus;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -31,243 +28,163 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isWakingUp = true;
-      _wakeStatus = 'جاري تسجيل الدخول...';
-    });
+    setState(() => _isLoading = true);
 
-    // Wake the server silently in background
-    final api = ApiService();
-    await api.ping();
-
-    if (!mounted) return;
-    setState(() {
-      _isWakingUp = false;
-      _wakeStatus = null;
-    });
-
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final auth = context.read<AuthProvider>();
     final success = await auth.login(
       _emailController.text.trim(),
       _passwordController.text,
     );
 
-    if (success && mounted) {
-      Navigator.of(context).pushReplacement(
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'فشل تسجيل الدخول'),
+          backgroundColor: AppTheme.danger,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 40),
-                Center(
-                  child: Container(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [const Color(0xFF0F172A), const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF), const Color(0xFFEEF2FF)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.accent, AppTheme.accentLight],
-                      ),
-                      borderRadius: BorderRadius.circular(24),
+                      color: AppTheme.accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.school, color: Colors.white, size: 40),
+                    child: const Icon(Icons.school, size: 40, color: AppTheme.accent),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Text(
-                    'تسجيل الدخول',
+                  const SizedBox(height: 24),
+                  Text(
+                    'درسك AI',
                     style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 24,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    'أهلاً بك في DarsakAI Teacher',
+                  const SizedBox(height: 8),
+                  Text(
+                    'تسجيل الدخول للمدرس',
                     style: TextStyle(
-                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
-                      fontSize: 14,
+                      fontSize: 16,
+                      color: isDark ? AppTheme.textSecondary : const Color(0xFF64748B),
                     ),
                   ),
-                ),
-                const SizedBox(height: 40),
-                if (_wakeStatus != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  const SizedBox(height: 40),
+                  Form(
+                    key: _formKey,
+                    child: Column(
                       children: [
-                        SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppTheme.accent,
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                          decoration: InputDecoration(
+                            labelText: 'البريد الإلكتروني',
+                            prefixIcon: const Icon(Icons.email_outlined),
                           ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'مطلوب';
+                            if (!v.contains('@')) return 'بريد غير صالح';
+                            return null;
+                          },
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _wakeStatus!,
-                          style: TextStyle(
-                            color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
-                            fontSize: 13,
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _login(),
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                          decoration: InputDecoration(
+                            labelText: 'كلمة المرور',
+                            prefixIcon: const Icon(Icons.lock_outlined),
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'مطلوب';
+                            if (v.length < 6) return '6 أحرف على الأقل';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text(
+                                    'تسجيل الدخول',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                  ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: 'البريد الإلكتروني',
-                    labelStyle: TextStyle(color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
-                    prefixIcon: Icon(Icons.email_outlined, color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'الرجاء إدخال البريد الإلكتروني';
-                    }
-                    if (!value.contains('@')) {
-                      return 'بريد إلكتروني غير صالح';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: 'كلمة المرور',
-                    labelStyle: TextStyle(color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
-                    prefixIcon: Icon(Icons.lock_outline, color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366),
-                      ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  const SizedBox(height: 40),
+                  Text(
+                    '© 2025 DarsakAI • منصة التعليم الذكي',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white24 : Colors.black26,
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'الرجاء إدخال كلمة المرور';
-                    }
-                    if (value.length < 6) {
-                      return 'كلمة المرور قصيرة جداً';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 8),
-                Consumer<AuthProvider>(
-                  builder: (context, auth, child) {
-                    if (auth.error != null) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          auth.error!,
-                          style: const TextStyle(color: AppTheme.danger, fontSize: 13),
-                          textAlign: TextAlign.center,
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-                const SizedBox(height: 8),
-                Consumer<AuthProvider>(
-                  builder: (context, auth, _) {
-                    final loading = auth.isLoading || _isWakingUp;
-                    return ElevatedButton(
-                      onPressed: loading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: loading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('تسجيل الدخول', style: TextStyle(fontSize: 16)),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'ليس لديك حساب؟',
-                      style: TextStyle(color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF636366)),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('تواصل مع الإدارة'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final uri = Uri.parse('https://wa.me/201031524947');
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                    icon: const Icon(Icons.chat, color: Color(0xFF25D366)),
-                    label: const Text(
-                      'تواصل مع الدعم',
-                      style: TextStyle(color: Color(0xFF25D366)),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF25D366)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

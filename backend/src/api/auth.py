@@ -16,48 +16,22 @@ logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-def get_client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+def _user_response(user: dict) -> dict:
+    return {
+        "id": str(user.get("id", "")),
+        "email": user.get("email", ""),
+        "full_name": user.get("full_name", ""),
+        "role": user.get("role", ""),
+        "teacher_code": user.get("teacher_code"),
+        "is_active": user.get("is_active", True),
+        "created_at": str(user.get("created_at", "")),
+        "onboarding_completed": user.get("onboarding_completed", False),
+        "subjects": user.get("subjects") or [],
+        "levels": user.get("levels") or [],
+    }
 
 
-# ── Token Blacklist (prevents refresh token replay) ──
-# Uses an in-memory set with TTL cleanup + lock for race-condition safety.
-# In multi-worker deployments, replace with Redis-backed implementation.
-
-_blacklist_lock = asyncio.Lock()
-_used_refresh_tokens: dict[str, float] = {}  # token_hash -> expiry_time
-_BLACKLIST_TTL = 3600 * 24 * 31  # 31 days (same as refresh token lifetime)
-
-
-def _hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
-
-
-async def _is_token_blacklisted(token: str) -> bool:
-    token_hash = _hash_token(token)
-    async with _blacklist_lock:
-        # Cleanup expired entries
-        now = time.time()
-        expired = [h for h, exp in _used_refresh_tokens.items() if now >= exp]
-        for h in expired:
-            del _used_refresh_tokens[h]
-        return token_hash in _used_refresh_tokens
-
-
-async def _blacklist_token(token: str) -> bool:
-    """Atomically add token to blacklist. Returns True if it was already blacklisted (race loser)."""
-    token_hash = _hash_token(token)
-    async with _blacklist_lock:
-        if token_hash in _used_refresh_tokens:
-            return False  # Already blacklisted — another request used this token first
-        _used_refresh_tokens[token_hash] = time.time() + _BLACKLIST_TTL
-        return True
-
-
-# ── Endpoints ──
-
-
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, request: Request):
     try:
         user = await user_service.create(
@@ -120,7 +94,7 @@ async def register(user_data: UserCreate, request: Request):
         except Exception as e:
             logger.warning("Failed to auto-activate trial for user %s: %s", user["id"], e)
 
-    return UserResponse(**user)
+    return _user_response(user)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -213,22 +187,22 @@ async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
     return TokenResponse(access_token=new_access, refresh_token=new_refresh)
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return UserResponse(**current_user)
+    return _user_response(current_user)
 
 
-@router.patch("/me", response_model=UserResponse)
+@router.patch("/me")
 async def update_me(
     update_data: UserUpdate,
     current_user: dict = Depends(get_current_user),
 ):
     data = update_data.model_dump(exclude_unset=True)
     updated = await user_service.update(current_user["id"], data)
-    return UserResponse(**updated)
+    return _user_response(updated)
 
 
-@router.patch("/onboarding", response_model=UserResponse)
+@router.patch("/onboarding")
 async def save_onboarding(
     onboarding_data: OnboardingUpdate,
     request: Request,
@@ -255,4 +229,4 @@ async def save_onboarding(
     ))
 
     updated = await user_service.get_by_id(current_user["id"])
-    return UserResponse(**updated)
+    return _user_response(updated)

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
-import '../../services/video_upload_service.dart';
 import 'video_player_screen.dart';
 
 class LessonDetailScreen extends StatefulWidget {
@@ -14,158 +14,137 @@ class LessonDetailScreen extends StatefulWidget {
 }
 
 class _LessonDetailScreenState extends State<LessonDetailScreen> {
-  final _titleController = TextEditingController();
-  final _descController = TextEditingController();
-  final _subjectController = TextEditingController();
-  final _weekController = TextEditingController();
-  final _groupController = TextEditingController();
+  final _titleCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _subjectCtrl = TextEditingController();
+  final _weekCtrl = TextEditingController();
   bool _isPublished = false;
-  bool _isLoading = false;
-  bool _isUploading = false;
-  double _uploadProgress = 0;
+  bool _saving = false;
+  bool _deleting = false;
 
-  bool get _isEditing => widget.lesson != null;
+  bool get _isEdit => widget.lesson != null;
 
   @override
   void initState() {
     super.initState();
     final l = widget.lesson;
-    _titleController.text = l?['title'] ?? '';
-    _descController.text = l?['description'] ?? '';
-    _subjectController.text = l?['subject'] ?? '';
-    _weekController.text = l?['week_number']?.toString() ?? '';
-    _groupController.text = l?['group_id']?.toString() ?? '';
+    _titleCtrl.text = l?['title'] ?? '';
+    _descCtrl.text = l?['description'] ?? '';
+    _subjectCtrl.text = l?['subject'] ?? '';
+    _weekCtrl.text = l?['week_number']?.toString() ?? '';
     _isPublished = l?['is_published'] == true;
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
-    _subjectController.dispose();
-    _weekController.dispose();
-    _groupController.dispose();
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    _subjectCtrl.dispose();
+    _weekCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
-    if (_titleController.text.trim().isEmpty) {
+    if (_titleCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال عنوان الدرس')),
+        const SnackBar(content: Text('العنوان مطلوب')),
       );
       return;
     }
-    setState(() => _isLoading = true);
+
+    setState(() => _saving = true);
+
     try {
       final api = ApiService();
-      final data = {
-        'title': _titleController.text.trim(),
-        'description': _descController.text.trim(),
-        'subject': _subjectController.text.trim(),
-        'week_number': int.tryParse(_weekController.text),
-        'group_id': _groupController.text.trim().isNotEmpty ? _groupController.text.trim() : null,
+      final body = {
+        'title': _titleCtrl.text.trim(),
+        'description': _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        'subject': _subjectCtrl.text.trim().isEmpty ? null : _subjectCtrl.text.trim(),
+        'week_number': int.tryParse(_weekCtrl.text.trim()),
       };
-      if (_isEditing) {
-        data['is_published'] = _isPublished;
-        await api.dio.put('/lessons/${widget.lesson['id']}', data: data);
+
+      if (_isEdit) {
+        body['is_published'] = _isPublished;
+        await api.dio.put('/lessons/${widget.lesson!['id']}', data: body);
       } else {
-        await api.dio.post('/lessons/', data: data);
+        await api.dio.post('/lessons/', data: body);
       }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEditing ? 'تم التحديث' : 'تم إنشاء الدرس')),
+          SnackBar(content: Text(_isEdit ? 'تم التحديث' : 'تم إنشاء الدرس'), backgroundColor: AppTheme.success),
         );
         Navigator.pop(context);
       }
+    } on DioException catch (e) {
+      _showError('فشل الحفظ: ${e.response?.statusCode} ${e.message}');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل الحفظ: $e'), backgroundColor: AppTheme.danger),
-        );
-      }
+      _showError('خطأ: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  Future<void> _uploadVideo() async {
-    if (!_isEditing || widget.lesson == null) return;
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('حذف الدرس'),
+        content: const Text('سيتم حذف الدرس نهائياً'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('حذف', style: TextStyle(color: AppTheme.danger))),
+        ],
+      ),
+    );
+    if (ok != true) return;
 
+    setState(() => _deleting = true);
     try {
-      await VideoUploadService.checkOrCreateChannel();
+      await ApiService().dio.delete('/lessons/${widget.lesson!['id']}');
+      if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل إعداد القناة: $e'), backgroundColor: AppTheme.danger),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _isUploading = true;
-      _uploadProgress = 0;
-    });
-
-    try {
-      await VideoUploadService.uploadVideo(
-        lessonId: widget.lesson['id'],
-        filePath: '', // Will be set by file picker in real UI
-        filename: 'video_${widget.lesson['id']}.mp4',
-        caption: _titleController.text,
-        onProgress: (sent, total) {
-          if (mounted) {
-            setState(() => _uploadProgress = sent / total);
-          }
-        },
-      );
-      if (mounted) {
-        setState(() {
-          _isUploading = false;
-          _isPublished = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم رفع الفيديو بنجاح'), backgroundColor: AppTheme.success),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isUploading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل الرفع: $e'), backgroundColor: AppTheme.danger),
-        );
-      }
+      _showError('فشل الحذف');
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
   }
 
-  void _previewVideo() {
-    if (widget.lesson == null) return;
+  void _preview() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => VideoPlayerScreen(
-          lessonId: widget.lesson['id'].toString(),
-          title: _titleController.text,
-          isTeacher: true,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => VideoPlayerScreen(
+        lessonId: widget.lesson!['id'].toString(),
+        title: _titleCtrl.text,
+        isTeacher: true,
+      )),
+    );
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppTheme.danger),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final hasVideo = widget.lesson?['tg_file_id'] != null;
-    final dur = widget.lesson?['duration_seconds'];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'تعديل الدرس' : 'درس جديد'),
+        title: Text(_isEdit ? 'تعديل الدرس' : 'درس جديد'),
         actions: [
-          if (_isEditing)
-            TextButton(
-              onPressed: _save,
-              child: const Text('حفظ'),
+          if (_isEdit)
+            IconButton(
+              icon: const Icon(Icons.delete, color: AppTheme.danger),
+              onPressed: _deleting ? null : _delete,
             ),
+          IconButton(
+            icon: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check),
+            onPressed: _saving ? null : _save,
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -173,135 +152,76 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_isEditing && hasVideo) ...[
-              Card(
-                child: InkWell(
-                  onTap: _previewVideo,
-                  child: Container(
-                    height: 180,
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.play_circle, size: 64, color: Colors.white),
-                    ),
+            if (_isEdit && hasVideo) ...[
+              GestureDetector(
+                onTap: _preview,
+                child: Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child: const Center(child: Icon(Icons.play_circle_fill, size: 64, color: Colors.white70)),
                 ),
               ),
-              if (dur != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'المدة: ${(dur ~/ 60)}:${(dur % 60).toString().padLeft(2, '0')}',
-                    style: const TextStyle(fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
               const SizedBox(height: 16),
             ],
-            if (_isUploading)
+            if (_isEdit && widget.lesson?['duration_seconds'] != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: LinearProgressIndicator(
-                  value: _uploadProgress > 0 ? _uploadProgress : null,
-                  backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
-                  color: AppTheme.accent,
+                child: Text(
+                  'المدة: ${widget.lesson!['duration_seconds'] ~/ 60}:${(widget.lesson!['duration_seconds'] % 60).toString().padLeft(2, '0')}',
+                  style: const TextStyle(fontSize: 14),
+                  textAlign: TextAlign.center,
                 ),
               ),
             TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'عنوان الدرس *',
-                prefixIcon: Icon(Icons.title),
-              ),
+              controller: _titleCtrl,
+              decoration: const InputDecoration(labelText: 'العنوان *', prefixIcon: Icon(Icons.title)),
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _descController,
+              controller: _descCtrl,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'الوصف',
-                prefixIcon: Icon(Icons.description),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _subjectController,
-              decoration: const InputDecoration(
-                labelText: 'المادة',
-                prefixIcon: Icon(Icons.book),
-              ),
+              decoration: const InputDecoration(labelText: 'الوصف', prefixIcon: Icon(Icons.description)),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _weekController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'الأسبوع',
-                      prefixIcon: Icon(Icons.calendar_today),
-                    ),
+                    controller: _subjectCtrl,
+                    decoration: const InputDecoration(labelText: 'المادة', prefixIcon: Icon(Icons.book)),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+                SizedBox(
+                  width: 100,
                   child: TextField(
-                    controller: _groupController,
-                    decoration: const InputDecoration(
-                      labelText: 'معرف المجموعة',
-                      prefixIcon: Icon(Icons.group),
-                    ),
+                    controller: _weekCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'الأسبوع'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            if (_isEditing) ...[
+            const SizedBox(height: 16),
+            if (_isEdit)
               SwitchListTile(
                 title: const Text('منشور'),
                 value: _isPublished,
                 onChanged: (v) => setState(() => _isPublished = v),
                 activeColor: AppTheme.success,
               ),
-              const SizedBox(height: 12),
-            ],
-            if (_isEditing) ...[
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isUploading ? null : _uploadVideo,
-                  icon: Icon(_isUploading ? Icons.hourglass_top : Icons.cloud_upload),
-                  label: Text(_isUploading ? 'جاري الرفع...' : 'رفع فيديو'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.accent,
-                    side: const BorderSide(color: AppTheme.accent),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (hasVideo)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _previewVideo,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('معاينة الفيديو'),
-                  ),
-                ),
-            ],
             const SizedBox(height: 24),
-            if (!_isEditing)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _save,
-                  child: _isLoading
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('إنشاء الدرس'),
+            if (!_isEdit)
+              ElevatedButton(
+                onPressed: _saving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
+                child: const Text('إنشاء الدرس', style: TextStyle(fontSize: 16)),
               ),
           ],
         ),
