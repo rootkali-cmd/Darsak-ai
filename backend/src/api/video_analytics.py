@@ -45,7 +45,7 @@ async def get_student_analytics(
     student_id: str,
     current_user: dict = Depends(get_current_teacher),
 ):
-    records = await video_analytics_service.list({"student_id": student_id, "teacher_id": current_user["id"]}, limit=500)
+    records = await video_analytics_service.list_all({"student_id": student_id, "teacher_id": current_user["id"]}, limit=500)
     return [VideoAnalyticsResponse(**r) for r in records]
 
 
@@ -66,7 +66,7 @@ async def get_my_analytics(
     video_id: str,
     current_student: dict = Depends(get_current_student),
 ):
-    records = await video_analytics_service.list({"student_id": current_student["id"], "video_id": video_id}, limit=1)
+    records = await video_analytics_service.list_all({"student_id": current_student["id"], "video_id": video_id}, limit=1)
     if not records:
         return VideoAnalyticsResponse(
             id="",
@@ -102,7 +102,7 @@ async def check_group_schedule(
     completed = [r for r in completed_records if r.get("is_completed")]
 
     for s in delayed:
-        existing = await video_analytics_service.list(
+        existing = await video_analytics_service.list_all(
             {"student_id": s["student_id"], "video_id": lesson_id}, limit=1
         )
         if existing:

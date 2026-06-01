@@ -547,7 +547,7 @@ class LessonService:
         kwargs.setdefault("is_published", False)
         return await self.repo.insert(kwargs)
 
-    async def list(self, filters: dict | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+    async def list_all(self, filters: dict | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
         return await self.repo.select(filters, limit=limit, offset=offset)
 
     async def get_by_id(self, lesson_id: str) -> dict | None:
@@ -581,7 +581,7 @@ class VideoAnalyticsService:
         })
         return await self.repo.insert(kwargs)
 
-    async def list(self, filters: dict | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
+    async def list_all(self, filters: dict | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
         return await self.repo.select(filters, limit=limit, offset=offset)
 
     async def get_by_id(self, analytics_id: str) -> dict | None:

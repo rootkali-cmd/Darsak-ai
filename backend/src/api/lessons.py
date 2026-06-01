@@ -41,7 +41,7 @@ async def list_lessons(
         filters["group_id"] = group_id
     if is_published is not None:
         filters["is_published"] = is_published
-    lessons = await lesson_service.list(filters, limit=limit, offset=skip)
+    lessons = await lesson_service.list_all(filters, limit=limit, offset=skip)
     return [LessonResponse(**l) for l in lessons]
 
 
