@@ -58,7 +58,10 @@ class ApiService {
     final response = await _dio.post('/auth/login', data: {
       'email': email,
       'password': password,
-    });
+    }, options: Options(
+      sendTimeout: const Duration(seconds: 120),
+      receiveTimeout: const Duration(seconds: 120),
+    ));
     final data = response.data;
     if (data is Map<String, dynamic>) return data;
     if (data is Map) return Map<String, dynamic>.from(data);
