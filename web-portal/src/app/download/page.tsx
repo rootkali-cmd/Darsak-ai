@@ -32,16 +32,16 @@ const apps: {
   },
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v2.0.0',
+    title: 'DarsakAI Teacher v1.3.7',
     description: 'تطبيق المدرس - مسح باركود للحضور + دروس وفيديو',
     descriptionEn: 'Teacher mobile app — barcode attendance + lessons & video streaming',
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher-v2.0.0.apk', label: 'Android APK v2.0.0', size: '~74 MB' },
+      { name: 'DarsakAI-Teacher-v1.3.7.apk', label: 'Android APK v1.3.7', size: '~74 MB' },
     ],
     platform: 'Android 10+ ✓',
-    note: '🚀 v2.0.0 • رفع وبث فيديو عبر تيليجرام • تحليلات مكافحة الغش • إشعارات واتساب • تسجيل دائم',
+    note: 'v1.3.7 • رفع وبث فيديو عبر تيليجرام • تحليلات مكافحة الغش • إشعارات واتساب • تسجيل دائم',
   },
   {
     id: 'desktop',
