@@ -40,9 +40,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       controller = MobileScannerController();
       if (mounted) setState(() => cameraReady = true);
     } catch (e) {
+      if (mounted) _tryFrontCameraFallback();
+    }
+  }
+
+  Future<void> _tryFrontCameraFallback() async {
+    try {
+      controller?.dispose();
+      controller = MobileScannerController(facing: CameraFacing.front);
+      if (mounted) setState(() => cameraReady = true);
+    } catch (e) {
       if (mounted) {
         setState(() => permissionDenied = true);
-        _showError('فشل تشغيل الكاميرا: $e');
       }
     }
   }

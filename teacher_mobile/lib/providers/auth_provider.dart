@@ -118,7 +118,6 @@ class AuthProvider extends ChangeNotifier {
     }
 
     final tokenExpired = _isTokenExpired(_token!);
-
     if (tokenExpired) {
       _token = null;
       _user = null;
@@ -128,36 +127,32 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    // Try to ping the server first to wake it up from cold start
-    try {
-      await _api.ping();
-    } catch (_) {
-      // ignore ping failures, continue to try _loadUser
+    // Extract user from JWT immediately so we're authenticated even if API fails
+    _user = _extractUserFromToken(_token!);
+    if (_user == null) {
+      _user = {'id': '', 'full_name': ''};
     }
 
-    for (int attempt = 0; attempt < 2; attempt++) {
-      try {
-        await _loadUser();
-        ApiService.clearLogoutFlag();
-        break;
-      } catch (e) {
-        if (e is DioException && e.response?.statusCode == 401) {
-          _user = _extractUserFromToken(_token!);
-          if (_user == null) {
-            _token = null;
-            await prefs.remove('access_token');
-            await prefs.remove('refresh_token');
-          }
-          break;
+    // Try to wake server
+    try { await _api.ping(); } catch (_) {}
+
+    // Try to get fresh user data from API
+    try {
+      await _loadUser();
+      ApiService.clearLogoutFlag();
+    } catch (e) {
+      // If server returns 401, verify JWT locally before clearing
+      if (e is DioException && e.response?.statusCode == 401) {
+        final stillValid = !_isTokenExpired(_token!);
+        if (!stillValid) {
+          _token = null;
+          _user = null;
+          await prefs.remove('access_token');
+          await prefs.remove('refresh_token');
         }
-        // Connection error (cold start) — retry once after delay
-        if (attempt == 0) {
-          await Future.delayed(const Duration(seconds: 3));
-          continue;
-        }
-        // Second attempt failed too — extract from JWT as fallback
-        _user = _extractUserFromToken(_token!);
+        // If still valid (server cold start / transient), keep JWT-extracted user
       }
+      // Connection errors, 500 etc → keep JWT-extracted user, don't clear
     }
 
     notifyListeners();
