@@ -64,13 +64,6 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
-    } else if (auth.hasToken) {
-      // Has token but couldn't load user — keep trying, don't force login
-      await _checkForUpdate();
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
     } else {
       _needsLogin = true;
       if (mounted) setState(() {});

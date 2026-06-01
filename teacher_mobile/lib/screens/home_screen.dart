@@ -1,14 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../providers/auth_provider.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'students/students_screen.dart';
 import 'attendance/attendance_screen.dart';
 import 'grades/grades_screen.dart';
 import 'more/more_screen.dart';
-import 'login_screen.dart';
-import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,7 +14,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  Timer? _forceLogoutTimer;
 
   final List<Widget> _screens = const [
     DashboardScreen(),
@@ -32,23 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _forceLogoutTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (ApiService.forceLogout) {
-        _forceLogoutTimer?.cancel();
-        final auth = context.read<AuthProvider>();
-        auth.logout();
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _forceLogoutTimer?.cancel();
-    super.dispose();
   }
 
   @override

@@ -15,7 +15,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty && _user != null;
-  bool get hasToken => _token != null && _token!.isNotEmpty;
   Map<String, dynamic>? get user => _user;
 
   AuthProvider() {
@@ -26,18 +25,24 @@ class AuthProvider extends ChangeNotifier {
     await checkAuth();
   }
 
-  static bool _isTokenExpired(String token) {
+  static Map<String, dynamic>? _parseJwt(String token) {
     try {
       final parts = token.split('.');
-      if (parts.length != 3) return false;
-      final String padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
+      if (parts.length != 3) return null;
+      final padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
       final payload = jsonDecode(utf8.decode(base64Url.decode(padded)));
+      final sub = payload['sub'];
+      if (sub == null) return null;
       final exp = payload['exp'] as int?;
-      if (exp == null) return false;
-      final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-      return DateTime.now().isAfter(expiry);
+      final expired = exp != null &&
+          DateTime.now().isAfter(DateTime.fromMillisecondsSinceEpoch(exp * 1000));
+      return {
+        'id': sub.toString(),
+        'full_name': payload['name']?.toString() ?? '',
+        'expired': expired,
+      };
     } catch (_) {
-      return false;
+      return null;
     }
   }
 
@@ -64,11 +69,10 @@ class AuthProvider extends ChangeNotifier {
         await prefs.setString('refresh_token', refreshToken);
       }
 
-      ApiService.clearLogoutFlag();
-
-      try {
-        await _loadUser();
-      } catch (_) {
+      final jwt = _parseJwt(_token!);
+      if (jwt != null) {
+        _user = {'id': jwt['id'], 'full_name': jwt['full_name']};
+      } else {
         _user = {'id': '', 'full_name': ''};
       }
 
@@ -76,22 +80,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      String? detail;
-      final respData = e.response?.data;
-      if (respData is Map) {
-        detail = respData['detail']?.toString();
-      }
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout) {
-        _error = 'تعذر الاتصال بالخادم. تأكد من اتصالك وحاول مرة أخرى.';
-      } else if (e.response?.statusCode == 401) {
-        _error = detail ?? 'بيانات الدخول غير صحيحة.';
-      } else {
-        _error = detail ?? 'فشل تسجيل الدخول. تحقق من البيانات.';
-      }
-      _isLoading = false;
-      notifyListeners();
+      _handleLoginError(e);
       return false;
     } catch (e) {
       _error = 'حدث خطأ غير متوقع. حاول مرة أخرى.';
@@ -101,9 +90,24 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadUser() async {
-    final data = await _api.getMe();
-    _user = data;
+  void _handleLoginError(DioException e) {
+    String? detail;
+    final respData = e.response?.data;
+    if (respData is Map) {
+      detail = respData['detail']?.toString();
+    }
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      _error = 'تعذر الاتصال بالخادم. تأكد من اتصالك وحاول مرة أخرى.';
+    } else if (e.response?.statusCode == 401) {
+      _error = detail ?? 'بيانات الدخول غير صحيحة.';
+    } else if (e.response?.statusCode == 500) {
+      _error = 'خطأ في الخادم. حاول مرة أخرى لاحقاً.';
+    } else {
+      _error = detail ?? 'فشل تسجيل الدخول. تحقق من البيانات.';
+    }
+    _isLoading = false;
     notifyListeners();
   }
 
@@ -116,83 +120,33 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    // If token is malformed/unreadable, clear it immediately
-    final extracted = _extractUserFromToken(_token!);
-    if (extracted == null || extracted['id'] == null || extracted['id'].toString().isEmpty) {
-      _token = null;
-      _user = null;
-      await prefs.remove('access_token');
-      await prefs.remove('refresh_token');
+    final jwt = _parseJwt(_token!);
+    if (jwt == null || jwt['id'] == null || jwt['id'].toString().isEmpty) {
+      await _clearToken(prefs);
       notifyListeners();
       return;
     }
 
-    final tokenExpired = _isTokenExpired(_token!);
-    if (tokenExpired) {
-      _token = null;
-      _user = null;
-      await prefs.remove('access_token');
-      await prefs.remove('refresh_token');
+    if (jwt['expired'] == true) {
+      await _clearToken(prefs);
       notifyListeners();
       return;
     }
 
-    // Valid token — use extracted user
-    _user = extracted;
-
-    // Try to wake server
-    try { await _api.ping(); } catch (_) {}
-
-    // Try to get fresh user data from API
-    try {
-      await _loadUser();
-      ApiService.clearLogoutFlag();
-    } catch (e) {
-      // If server returns 401, verify JWT locally before clearing
-      if (e is DioException && e.response?.statusCode == 401) {
-        final stillValid = !_isTokenExpired(_token!);
-        if (!stillValid) {
-          _token = null;
-          _user = null;
-          await prefs.remove('access_token');
-          await prefs.remove('refresh_token');
-        } else {
-          // Token still valid but server returned 401 (cold start/transient)
-          // Clear the forceLogout flag so HomeScreen doesn't log us out
-          ApiService.clearLogoutFlag();
-        }
-      } else {
-        // Connection errors, 500 etc → keep JWT-extracted user, don't clear
-        ApiService.clearLogoutFlag();
-      }
-    }
-
+    _user = {'id': jwt['id'], 'full_name': jwt['full_name']};
     notifyListeners();
   }
 
-  static Map<String, dynamic>? _extractUserFromToken(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return null;
-      final String padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
-      final payload = jsonDecode(
-        utf8.decode(base64Url.decode(padded)),
-      );
-      return {
-        'id': payload['sub'],
-        'full_name': payload['name'] ?? '',
-      };
-    } catch (_) {
-      return null;
-    }
+  Future<void> _clearToken(SharedPreferences prefs) async {
+    _token = null;
+    _user = null;
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
   }
 
   Future<void> logout() async {
-    _token = null;
-    _user = null;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('access_token');
-    await prefs.remove('refresh_token');
+    await _clearToken(prefs);
     notifyListeners();
   }
 }

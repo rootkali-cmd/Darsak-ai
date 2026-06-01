@@ -100,10 +100,10 @@ class SupabaseRepository:
             raise SupabaseError(f"Insert into {self.table_name} returned no data")
         return result.data[0] if isinstance(result.data, list) else result.data
     
-    async def select(self, filters: dict | None = None, limit: int = 50, offset: int = 0, order: str | None = None, count: str | None = None) -> list[dict]:
+    async def select(self, filters: dict | None = None, limit: int = 50, offset: int = 0, order: str | None = None) -> list[dict]:
         client = await self._get_client()
         def build_query():
-            q = client.table(self.table_name).select("*", count=count or "exact" if count else "exact")
+            q = client.table(self.table_name).select("*")
             if filters:
                 for key, value in filters.items():
                     q = q.eq(key, value)

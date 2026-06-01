@@ -10,36 +10,18 @@ class ApiService {
 
   late final Dio _dio;
 
-  static bool _forceLogout = false;
-  static bool get forceLogout => _forceLogout;
-  static void clearLogoutFlag() => _forceLogout = false;
-
-  static bool _isTokenExpired(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return false;
-      final String padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
-      final payload = jsonDecode(utf8.decode(base64Url.decode(padded)));
-      final exp = payload['exp'] as int?;
-      if (exp == null) return false;
-      final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-      return DateTime.now().isAfter(expiry);
-    } catch (_) {
-      return false;
-    }
-  }
-
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(seconds: 60),
+      connectTimeout: const Duration(seconds: 90),
+      receiveTimeout: const Duration(seconds: 90),
       followRedirects: true,
       maxRedirects: 5,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      validateStatus: (s) => s != null && s < 500,
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
@@ -50,12 +32,6 @@ class ApiService {
           options.headers['Authorization'] = 'Bearer $token';
         }
         return handler.next(options);
-      },
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
-          _forceLogout = true;
-        }
-        return handler.next(error);
       },
     ));
   }

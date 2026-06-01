@@ -24,7 +24,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   CameraController? _camera;
   List<CameraDescription> _cameras = [];
-  final BarcodeScanner _barcodeScanner = BarcodeScanner();
+  final BarcodeScanner _barcodeScanner = BarcodeScanner(
+    formats: [BarcodeFormat.all],
+  );
   bool _isProcessing = false;
   bool _cameraReady = false;
   String _errorMsg = '';
@@ -355,7 +357,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   Widget _buildCameraScreen() {
     final size = MediaQuery.of(context).size;
-    const overlay = 220.0;
+    const overlayW = 280.0;
+    const overlayH = 170.0;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -369,10 +372,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               painter: _ScannerOverlayPainter(
                 borderColor: AppTheme.accent,
                 overlayColor: Colors.black.withValues(alpha: 0.5),
-                cutOutSize: overlay,
-                borderRadius: 12,
-                borderLength: 25,
-                borderWidth: 8,
+                cutOutWidth: overlayW,
+                cutOutHeight: overlayH,
+                borderRadius: 8,
+                borderLength: 30,
+                borderWidth: 6,
               ),
             ),
           ),
@@ -551,7 +555,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 class _ScannerOverlayPainter extends CustomPainter {
   final Color borderColor;
   final Color overlayColor;
-  final double cutOutSize;
+  final double cutOutWidth;
+  final double cutOutHeight;
   final double borderRadius;
   final double borderLength;
   final double borderWidth;
@@ -559,10 +564,11 @@ class _ScannerOverlayPainter extends CustomPainter {
   _ScannerOverlayPainter({
     required this.borderColor,
     required this.overlayColor,
-    required this.cutOutSize,
-    this.borderRadius = 12,
-    this.borderLength = 25,
-    this.borderWidth = 8,
+    required this.cutOutWidth,
+    required this.cutOutHeight,
+    this.borderRadius = 8,
+    this.borderLength = 30,
+    this.borderWidth = 6,
   });
 
   @override
@@ -572,8 +578,8 @@ class _ScannerOverlayPainter extends CustomPainter {
     final rect = RRect.fromRectAndRadius(
       Rect.fromCenter(
         center: Offset(size.width / 2, size.height / 2),
-        width: cutOutSize,
-        height: cutOutSize,
+        width: cutOutWidth,
+        height: cutOutHeight,
       ),
       Radius.circular(borderRadius),
     );
