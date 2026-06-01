@@ -1,34 +1,62 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
 from src.utils.dependencies import get_current_teacher, get_current_student
 from src.schemas.lesson import LessonCreate, LessonUpdate, LessonResponse
 from src.services import lesson_service, group_service, user_service
 
+import logging
+logger = logging.getLogger("darsak.lessons")
+
 router = APIRouter(prefix="/lessons", tags=["Lessons"])
 
+def _to_response(lesson: dict) -> dict:
+    """Safe conversion from DB dict to API response dict."""
+    return {
+        "id": str(lesson["id"]) if lesson.get("id") else "",
+        "teacher_id": str(lesson["teacher_id"]) if lesson.get("teacher_id") else "",
+        "group_id": str(lesson["group_id"]) if lesson.get("group_id") else None,
+        "title": lesson.get("title", ""),
+        "description": lesson.get("description"),
+        "subject": lesson.get("subject"),
+        "week_number": lesson.get("week_number"),
+        "video_url": lesson.get("video_url"),
+        "duration_seconds": lesson.get("duration_seconds"),
+        "tg_message_id": lesson.get("tg_message_id"),
+        "tg_file_id": lesson.get("tg_file_id"),
+        "is_published": lesson.get("is_published", False),
+        "created_at": str(lesson.get("created_at", "")),
+        "updated_at": str(lesson.get("updated_at", "")),
+    }
 
-@router.post("/", response_model=LessonResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_lesson(
     lesson_data: LessonCreate,
     current_user: dict = Depends(get_current_teacher),
 ):
-    if lesson_data.group_id:
-        group = await group_service.get_by_id(str(lesson_data.group_id))
-        if not group or group["teacher_id"] != current_user["id"]:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    try:
+        if lesson_data.group_id:
+            group = await group_service.get_by_id(str(lesson_data.group_id))
+            if not group or group.get("teacher_id") != current_user["id"]:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
 
-    lesson = await lesson_service.create(
-        teacher_id=current_user["id"],
-        title=lesson_data.title,
-        description=lesson_data.description,
-        subject=lesson_data.subject,
-        group_id=str(lesson_data.group_id) if lesson_data.group_id else None,
-        week_number=lesson_data.week_number,
-        duration_seconds=lesson_data.duration_seconds,
-    )
-    return LessonResponse(**lesson)
+        lesson = await lesson_service.create(
+            teacher_id=current_user["id"],
+            title=lesson_data.title,
+            description=lesson_data.description,
+            subject=lesson_data.subject,
+            group_id=str(lesson_data.group_id) if lesson_data.group_id else None,
+            week_number=lesson_data.week_number,
+            duration_seconds=lesson_data.duration_seconds,
+        )
+        return _to_response(lesson)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Create lesson failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create lesson: {str(exc)}")
 
 
-@router.get("/", response_model=list[LessonResponse])
+@router.get("/")
 async def list_lessons(
     group_id: str | None = None,
     is_published: bool | None = None,
@@ -36,63 +64,89 @@ async def list_lessons(
     limit: int = Query(50, ge=1, le=200),
     current_user: dict = Depends(get_current_teacher),
 ):
-    filters = {"teacher_id": current_user["id"]}
-    if group_id:
-        filters["group_id"] = group_id
-    if is_published is not None:
-        filters["is_published"] = is_published
-    lessons = await lesson_service.list_all(filters, limit=limit, offset=skip)
-    return [LessonResponse(**l) for l in lessons]
+    try:
+        filters = {"teacher_id": current_user["id"]}
+        if group_id:
+            filters["group_id"] = group_id
+        if is_published is not None:
+            filters["is_published"] = is_published
+        lessons = await lesson_service.list_all(filters, limit=limit, offset=skip)
+        return [_to_response(l) for l in lessons]
+    except Exception as exc:
+        logger.error("List lessons failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to list lessons: {str(exc)}")
 
 
-@router.get("/group/{group_id}", response_model=list[LessonResponse])
+@router.get("/group/{group_id}")
 async def list_group_lessons(
     group_id: str,
     current_user: dict = Depends(get_current_teacher),
 ):
-    group = await group_service.get_by_id(group_id)
-    if not group or group["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
-    lessons = await lesson_service.get_by_group(group_id, published_only=False)
-    return [LessonResponse(**l) for l in lessons]
+    try:
+        group = await group_service.get_by_id(group_id)
+        if not group or group.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+        lessons = await lesson_service.get_by_group(group_id, published_only=False)
+        return [_to_response(l) for l in lessons]
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("List group lessons failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
 
 
-@router.get("/me", response_model=list[LessonResponse])
+@router.get("/me")
 async def list_my_lessons(
     current_student: dict = Depends(get_current_student),
 ):
-    group_id = current_student.get("group_id")
-    if not group_id:
-        return []
-    lessons = await lesson_service.get_by_group(group_id, published_only=True)
-    return [LessonResponse(**l) for l in lessons]
+    try:
+        group_id = current_student.get("group_id")
+        if not group_id:
+            return []
+        lessons = await lesson_service.get_by_group(group_id, published_only=True)
+        return [_to_response(l) for l in lessons]
+    except Exception as exc:
+        logger.error("List my lessons failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
 
 
-@router.get("/{lesson_id}", response_model=LessonResponse)
+@router.get("/{lesson_id}")
 async def get_lesson(
     lesson_id: str,
     current_user: dict = Depends(get_current_teacher),
 ):
-    lesson = await lesson_service.get_by_id(lesson_id)
-    if not lesson or lesson["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
-    return LessonResponse(**lesson)
+    try:
+        lesson = await lesson_service.get_by_id(lesson_id)
+        if not lesson or lesson.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+        return _to_response(lesson)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Get lesson failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
 
 
-@router.put("/{lesson_id}", response_model=LessonResponse)
+@router.put("/{lesson_id}")
 async def update_lesson(
     lesson_id: str,
     lesson_data: LessonUpdate,
     current_user: dict = Depends(get_current_teacher),
 ):
-    lesson = await lesson_service.get_by_id(lesson_id)
-    if not lesson or lesson["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
-    update_data = lesson_data.model_dump(exclude_none=True)
-    if update_data.get("group_id"):
-        update_data["group_id"] = str(update_data["group_id"])
-    updated = await lesson_service.update(lesson_id, update_data)
-    return LessonResponse(**updated)
+    try:
+        lesson = await lesson_service.get_by_id(lesson_id)
+        if not lesson or lesson.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+        update_data = lesson_data.model_dump(exclude_none=True)
+        if update_data.get("group_id"):
+            update_data["group_id"] = str(update_data["group_id"])
+        updated = await lesson_service.update(lesson_id, update_data)
+        return _to_response(updated)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Update lesson failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
 
 
 @router.delete("/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -100,10 +154,16 @@ async def delete_lesson(
     lesson_id: str,
     current_user: dict = Depends(get_current_teacher),
 ):
-    lesson = await lesson_service.get_by_id(lesson_id)
-    if not lesson or lesson["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
-    await lesson_service.delete(lesson_id)
+    try:
+        lesson = await lesson_service.get_by_id(lesson_id)
+        if not lesson or lesson.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+        await lesson_service.delete(lesson_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Delete lesson failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
 
 
 @router.post("/{lesson_id}/upload-video")

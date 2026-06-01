@@ -22,9 +22,12 @@ async def track_watching(
 
     is_cheated = data.is_flagged_cheated
     if not is_cheated and data.is_completed and lesson.get("duration_seconds"):
-        expected_duration = lesson["duration_seconds"] / max(data.current_speed, 0.25)
-        if data.max_watched_duration < expected_duration * 0.5 and data.max_watched_duration > 0:
-            is_cheated = True
+        try:
+            expected_duration = lesson["duration_seconds"] / max(data.current_speed, 0.25)
+            if data.max_watched_duration < expected_duration * 0.5 and data.max_watched_duration > 0:
+                is_cheated = True
+        except (TypeError, ZeroDivisionError):
+            pass
 
     record = await video_analytics_service.upsert(
         student_id=current_student["id"],
