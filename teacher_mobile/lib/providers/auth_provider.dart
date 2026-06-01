@@ -69,7 +69,32 @@ class AuthProvider extends ChangeNotifier {
       _error = 'جاري الاتصال بالخادم...';
       notifyListeners();
 
-      final data = await _api.login(email, password);
+      Map<String, dynamic>? data;
+      DioException? lastError;
+
+      for (int i = 0; i < 3; i++) {
+        try {
+          data = await _api.login(email, password);
+          break;
+        } on DioException catch (e) {
+          lastError = e;
+          if (e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.receiveTimeout) {
+            await Future.delayed(const Duration(seconds: 3));
+            continue;
+          }
+          rethrow;
+        }
+      }
+
+      if (data == null) {
+        _error = _getDioError(lastError!);
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       final newToken = data['access_token'] as String?;
 
       if (newToken == null || newToken.isEmpty) {
@@ -104,19 +129,25 @@ class AuthProvider extends ChangeNotifier {
   }
 
   String _getDioError(DioException e) {
+    final type = e.type.name;
+    final statusCode = e.response?.statusCode;
+    final msg = e.message ?? '';
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.sendTimeout) {
-      return 'تعذر الاتصال بالخادم. تأكد من اتصالك';
+      return 'تعذر الاتصال ($type). تأكد من اتصالك بالإنترنت';
+    }
+    if (e.type == DioExceptionType.connectionError) {
+      return 'خطأ اتصال ($type): $msg';
+    }
+    if (statusCode == 401) {
+      return 'بيانات الدخول غير صحيحة';
     }
     final data = e.response?.data;
     if (data is Map && data['detail'] != null) {
       return data['detail'].toString();
     }
-    if (e.response?.statusCode == 401) {
-      return 'بيانات الدخول غير صحيحة';
-    }
-    return 'فشل تسجيل الدخول. حاول مرة أخرى';
+    return 'خطأ $statusCode: $msg';
   }
 
   Future<void> logout() async {
