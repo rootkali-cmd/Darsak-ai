@@ -37,7 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (!mounted) return;
-
     setState(() => _isLoading = false);
 
     if (success) {
@@ -50,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(
           content: Text(auth.error ?? 'فشل تسجيل الدخول'),
           backgroundColor: AppTheme.danger,
+          duration: const Duration(seconds: 4),
         ),
       );
     }

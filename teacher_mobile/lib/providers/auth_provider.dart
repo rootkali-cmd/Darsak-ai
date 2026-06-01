@@ -66,6 +66,39 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Wake up the server first (Fly.io cold start can take 30-60s)
+      _error = 'جاري الاتصال بالخادم...';
+      notifyListeners();
+
+      bool serverAwake = false;
+      for (int i = 0; i < 8; i++) {
+        try {
+          final resp = await _api.dio.get(
+            '/health',
+            options: Options(
+              sendTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 15),
+            ),
+          );
+          if (resp.statusCode == 200) {
+            serverAwake = true;
+            break;
+          }
+        } catch (_) {
+          await Future.delayed(const Duration(seconds: 3));
+        }
+      }
+
+      if (!serverAwake) {
+        _error = 'تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      _error = null;
+      notifyListeners();
+
       final data = await _api.login(email, password);
       final newToken = data['access_token'] as String?;
 
