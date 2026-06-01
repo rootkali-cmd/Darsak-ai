@@ -18,6 +18,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   bool isProcessing = false;
   bool cameraReady = false;
   bool permissionDenied = false;
+  bool showChoice = true; // Start with choice screen for safety
   final List<Map<String, String>> scannedStudents = [];
   final List<Map<String, dynamic>> notifications = [];
   Timer? _notificationTimer;
@@ -25,7 +26,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   @override
   void initState() {
     super.initState();
-    _initScanner();
+    // Don't init scanner automatically — let user choose
   }
 
   @override
@@ -33,6 +34,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     _notificationTimer?.cancel();
     controller?.dispose();
     super.dispose();
+  }
+
+  void _chooseCamera() {
+    setState(() => showChoice = false);
+    _initScanner();
   }
 
   Future<void> _initScanner() async {
@@ -228,6 +234,65 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       );
     }
 
+    if (showChoice) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text('تسجيل الحضور', style: TextStyle(color: Colors.white)),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.qr_code_scanner, size: 80, color: AppTheme.accent),
+                const SizedBox(height: 24),
+                const Text(
+                  'اختر طريقة تسجيل الحضور',
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _chooseCamera,
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('مسح الباركود بالكاميرا', style: TextStyle(fontSize: 16)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _showManualCodeDialog,
+                    icon: const Icon(Icons.keyboard, color: Colors.white),
+                    label: const Text('إدخال الكود يدوياً', style: TextStyle(fontSize: 16, color: Colors.white)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.textSecondary),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (!cameraReady) {
       return const Scaffold(
         backgroundColor: Colors.black,
@@ -266,6 +331,15 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
                         child: const Text('رجوع'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: _showManualCodeDialog,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: AppTheme.textSecondary),
+                        ),
+                        child: const Text('إدخال الكود يدوياً'),
                       ),
                     ],
                   ),

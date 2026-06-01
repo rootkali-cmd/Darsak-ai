@@ -116,6 +116,17 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
+    // If token is malformed/unreadable, clear it immediately
+    final extracted = _extractUserFromToken(_token!);
+    if (extracted == null || extracted['id'] == null || extracted['id'].toString().isEmpty) {
+      _token = null;
+      _user = null;
+      await prefs.remove('access_token');
+      await prefs.remove('refresh_token');
+      notifyListeners();
+      return;
+    }
+
     final tokenExpired = _isTokenExpired(_token!);
     if (tokenExpired) {
       _token = null;
@@ -126,11 +137,8 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    // Extract user from JWT immediately so we're authenticated even if API fails
-    _user = _extractUserFromToken(_token!);
-    if (_user == null) {
-      _user = {'id': '', 'full_name': ''};
-    }
+    // Valid token — use extracted user
+    _user = extracted;
 
     // Try to wake server
     try { await _api.ping(); } catch (_) {}
@@ -148,10 +156,15 @@ class AuthProvider extends ChangeNotifier {
           _user = null;
           await prefs.remove('access_token');
           await prefs.remove('refresh_token');
+        } else {
+          // Token still valid but server returned 401 (cold start/transient)
+          // Clear the forceLogout flag so HomeScreen doesn't log us out
+          ApiService.clearLogoutFlag();
         }
-        // If still valid (server cold start / transient), keep JWT-extracted user
+      } else {
+        // Connection errors, 500 etc → keep JWT-extracted user, don't clear
+        ApiService.clearLogoutFlag();
       }
-      // Connection errors, 500 etc → keep JWT-extracted user, don't clear
     }
 
     notifyListeners();
@@ -161,8 +174,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       final parts = token.split('.');
       if (parts.length != 3) return null;
+      final String padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
       final payload = jsonDecode(
-        utf8.decode(base64Url.decode(parts[1])),
+        utf8.decode(base64Url.decode(padded)),
       );
       return {
         'id': payload['sub'],
