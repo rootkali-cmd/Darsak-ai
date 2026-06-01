@@ -61,7 +61,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
     final provider = Provider.of<InvoicesProvider>(context, listen: false);
     bool success;
     if (isEditing) {
-      success = await provider.updateInvoice(widget.invoice['id'] as int, data);
+      success = await provider.updateInvoice(widget.invoice['id'], data);
     } else {
       success = await provider.createInvoice(data);
     }

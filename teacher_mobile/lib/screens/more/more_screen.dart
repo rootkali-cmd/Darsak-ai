@@ -10,6 +10,7 @@ import '../settings/settings_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/teacher_code_screen.dart';
 import '../subscriptions/subscription_screen.dart';
+import '../lessons/lessons_screen.dart';
 import 'developer_screen.dart';
 
 class MoreScreen extends StatelessWidget {
@@ -105,6 +106,13 @@ class MoreScreen extends StatelessWidget {
         subtitle: 'إدارة الاختبارات',
         color: const Color(0xFFf59e0b),
         onTap: (ctx) => _navigate(ctx, const ExamsScreen()),
+      ),
+      _MenuItem(
+        icon: Icons.video_library,
+        title: 'الدروس',
+        subtitle: 'إدارة الدروس والفيديوهات',
+        color: const Color(0xFF8B5CF6),
+        onTap: (ctx) => _navigate(ctx, const LessonsScreen()),
       ),
       _MenuItem(
         icon: Icons.settings,

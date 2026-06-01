@@ -28,7 +28,8 @@ from src.api import (
     grades_router, invoices_router, qr_router, sync_router,
     student_me_router, subscriptions_router, versions_router,
     webhook_router, exams_router, analytics_router, audit_router,
-    dashboard_router,
+    dashboard_router, lessons_router, video_analytics_router,
+    whatsapp_router,
 )
 
 settings = get_settings()
@@ -153,6 +154,53 @@ async def _run_schema_migrations():
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 );
             """))
+            # New tables for video/lesson system
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS lessons (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+                    title VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    subject VARCHAR(100),
+                    week_number INT,
+                    duration_seconds INT,
+                    video_url TEXT,
+                    tg_message_id VARCHAR(100),
+                    tg_file_id TEXT,
+                    is_published BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lessons_teacher ON lessons(teacher_id);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lessons_group ON lessons(group_id);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_lessons_tg_message ON lessons(tg_message_id);"))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS video_analytics (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    video_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    last_position INT DEFAULT 0,
+                    max_watched_duration INT DEFAULT 0,
+                    current_speed FLOAT DEFAULT 1.0,
+                    is_completed BOOLEAN DEFAULT FALSE,
+                    is_flagged_cheated BOOLEAN DEFAULT FALSE,
+                    is_delayed BOOLEAN DEFAULT FALSE,
+                    delay_reason VARCHAR(100),
+                    last_event_type VARCHAR(50),
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_va_student ON video_analytics(student_id);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_va_video ON video_analytics(video_id);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_va_teacher ON video_analytics(teacher_id);"))
+
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_channel_id VARCHAR(100);"
+            ))
             await conn.commit()
             logger.info("Schema check: all tables OK")
     except Exception as e:
@@ -231,11 +279,25 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("Telegram bot startup skipped: %s", e)
     
+    # Start video bot if token is configured
+    if settings.VIDEO_TELEGRAM_BOT_TOKEN:
+        try:
+            from src.bot.video_bot import video_bot_service
+            if video_bot_service.is_configured:
+                logger.info("Video Telegram bot service initialized")
+        except Exception as e:
+            logger.warning("Video bot service not available: %s", e)
+
     logger.info("DarsakAI Hub started successfully")
     yield
     
     # Shutdown
     await audit_publisher.stop()
+    try:
+        from src.bot.video_bot import video_bot_service
+        await video_bot_service.close()
+    except Exception:
+        pass
     if not os.environ.get("VERCEL"):
         stop_scheduler()
         from src.bot.telegram_bot import stop_bot
@@ -432,3 +494,6 @@ app.include_router(exams_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(audit_router, prefix=settings.API_V1_PREFIX)
 app.include_router(dashboard_router, prefix=settings.API_V1_PREFIX)
+app.include_router(lessons_router, prefix=settings.API_V1_PREFIX)
+app.include_router(video_analytics_router, prefix=settings.API_V1_PREFIX)
+app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)

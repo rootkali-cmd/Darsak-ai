@@ -64,7 +64,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
 
     if (confirmed == true && mounted) {
       final provider = Provider.of<ExamsProvider>(context, listen: false);
-      final success = await provider.deleteExam(exam['id'] as int);
+      final success = await provider.deleteExam(exam['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(success ? 'تم الحذف بنجاح' : (provider.error ?? 'فشل الحذف'))),

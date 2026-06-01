@@ -72,7 +72,7 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
     final provider = Provider.of<GroupsProvider>(context, listen: false);
     bool success;
     if (isEditing) {
-      success = await provider.updateGroup(widget.group['id'] as int, data);
+      success = await provider.updateGroup(widget.group['id'], data);
     } else {
       success = await provider.createGroup(data);
     }

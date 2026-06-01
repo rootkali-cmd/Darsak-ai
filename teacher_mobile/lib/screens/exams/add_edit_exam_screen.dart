@@ -61,7 +61,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
     final provider = Provider.of<ExamsProvider>(context, listen: false);
     bool success;
     if (isEditing) {
-      success = await provider.updateExam(widget.exam['id'] as int, data);
+      success = await provider.updateExam(widget.exam['id'], data);
     } else {
       success = await provider.createExam(data);
     }

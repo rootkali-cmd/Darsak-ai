@@ -60,7 +60,7 @@ class _GradesScreenState extends State<GradesScreen> {
 
     if (confirmed == true && mounted) {
       final provider = Provider.of<GradesProvider>(context, listen: false);
-      final success = await provider.deleteGrade(grade['id'] as int);
+      final success = await provider.deleteGrade(grade['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(success ? 'تم الحذف بنجاح' : (provider.error ?? 'فشل الحذف'))),

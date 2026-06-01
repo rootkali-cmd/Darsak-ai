@@ -14,6 +14,9 @@ from src.api.exams import router as exams_router
 from src.api.analytics import router as analytics_router
 from src.api.audit import router as audit_router
 from src.api.dashboard import router as dashboard_router
+from src.api.lessons import router as lessons_router
+from src.api.video_analytics import router as video_analytics_router
+from src.api.whatsapp_notifications import router as whatsapp_router
 
 __all__ = [
     "audit_router",

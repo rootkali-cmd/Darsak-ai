@@ -56,7 +56,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
     if (confirmed == true && mounted) {
       final provider = Provider.of<GroupsProvider>(context, listen: false);
-      final success = await provider.deleteGroup(group['id'] as int);
+      final success = await provider.deleteGroup(group['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(success ? 'تم الحذف بنجاح' : (provider.error ?? 'فشل الحذف'))),

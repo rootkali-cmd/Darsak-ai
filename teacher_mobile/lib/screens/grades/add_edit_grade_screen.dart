@@ -66,7 +66,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
     final provider = Provider.of<GradesProvider>(context, listen: false);
     bool success;
     if (isEditing) {
-      success = await provider.updateGrade(widget.grade['id'] as int, data);
+      success = await provider.updateGrade(widget.grade['id'], data);
     } else {
       success = await provider.createGrade(data);
     }

@@ -41,7 +41,7 @@ class InvoicesProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateInvoice(int id, Map<String, dynamic> data) async {
+  Future<bool> updateInvoice(dynamic id, Map<String, dynamic> data) async {
     try {
       await _api.updateInvoice(id, data);
       await loadInvoices();
@@ -53,7 +53,7 @@ class InvoicesProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deleteInvoice(int id) async {
+  Future<bool> deleteInvoice(dynamic id) async {
     try {
       await _api.deleteInvoice(id);
       _invoices.removeWhere((i) => i['id'] == id);

@@ -41,7 +41,7 @@ class GroupsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateGroup(int id, Map<String, dynamic> data) async {
+  Future<bool> updateGroup(dynamic id, Map<String, dynamic> data) async {
     try {
       await _api.updateGroup(id, data);
       await loadGroups();
@@ -53,7 +53,7 @@ class GroupsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deleteGroup(int id) async {
+  Future<bool> deleteGroup(dynamic id) async {
     try {
       await _api.deleteGroup(id);
       _groups.removeWhere((g) => g['id'] == id);

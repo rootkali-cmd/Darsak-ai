@@ -43,7 +43,7 @@ class GradesProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateGrade(int id, Map<String, dynamic> data) async {
+  Future<bool> updateGrade(dynamic id, Map<String, dynamic> data) async {
     try {
       await _api.updateGrade(id, data);
       await loadGrades(subject: _subjectFilter);
@@ -55,7 +55,7 @@ class GradesProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deleteGrade(int id) async {
+  Future<bool> deleteGrade(dynamic id) async {
     try {
       await _api.deleteGrade(id);
       _grades.removeWhere((g) => g['id'] == id);
@@ -68,7 +68,7 @@ class GradesProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<dynamic>> getStudentGrades(int studentId) async {
+  Future<List<dynamic>> getStudentGrades(dynamic studentId) async {
     try {
       return await _api.getStudentGrades(studentId);
     } catch (e) {

@@ -537,3 +537,85 @@ class StudentExamService:
 
     async def get_class_results(self, exam_id: str) -> list[dict]:
         return await self.repo.select({"exam_id": exam_id}, limit=200)
+
+
+class LessonService:
+    def __init__(self):
+        self.repo = SupabaseRepository("lessons")
+
+    async def create(self, **kwargs) -> dict:
+        kwargs.setdefault("is_published", False)
+        return await self.repo.insert(kwargs)
+
+    async def list(self, filters: dict | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+        return await self.repo.select(filters, limit=limit, offset=offset)
+
+    async def get_by_id(self, lesson_id: str) -> dict | None:
+        return await self.repo.select_one({"id": lesson_id})
+
+    async def update(self, lesson_id: str, data: dict) -> dict:
+        return await self.repo.update({"id": lesson_id}, data)
+
+    async def delete(self, lesson_id: str) -> bool:
+        return await self.repo.delete({"id": lesson_id})
+
+    async def get_by_group(self, group_id: str, published_only: bool = True) -> list[dict]:
+        filters = {"group_id": group_id}
+        if published_only:
+            filters["is_published"] = True
+        return await self.repo.select(filters, limit=200)
+
+
+class VideoAnalyticsService:
+    def __init__(self):
+        self.repo = SupabaseRepository("video_analytics")
+
+    async def upsert(self, student_id: str, video_id: str, teacher_id: str, **kwargs) -> dict:
+        existing = await self.repo.select_one({"student_id": student_id, "video_id": video_id})
+        if existing:
+            return await self.repo.update({"student_id": student_id, "video_id": video_id}, kwargs)
+        kwargs.update({
+            "student_id": student_id,
+            "video_id": video_id,
+            "teacher_id": teacher_id,
+        })
+        return await self.repo.insert(kwargs)
+
+    async def list(self, filters: dict | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
+        return await self.repo.select(filters, limit=limit, offset=offset)
+
+    async def get_by_id(self, analytics_id: str) -> dict | None:
+        return await self.repo.select_one({"id": analytics_id})
+
+    async def get_by_video(self, video_id: str) -> list[dict]:
+        return await self.repo.select({"video_id": video_id}, limit=500)
+
+    async def get_delayed_students(self, group_id: str, video_id: str) -> list[dict]:
+        students_in_group = await SupabaseRepository("students").select({"group_id": group_id}, limit=500)
+        watched_records = await self.repo.select({"video_id": video_id, "is_completed": True}, limit=500)
+        watched_ids = {r["student_id"] for r in watched_records}
+        delayed = []
+        for s in students_in_group:
+            if s["id"] not in watched_ids:
+                delayed.append({
+                    "student_id": s["id"],
+                    "full_name": s.get("full_name", ""),
+                    "code": s.get("code", ""),
+                    "parent_phone": s.get("parent_phone", ""),
+                })
+        return delayed
+
+    async def get_student_stats(self, student_id: str) -> dict:
+        records = await self.repo.select({"student_id": student_id}, limit=1000)
+        total = len(records)
+        completed = sum(1 for r in records if r.get("is_completed"))
+        flagged = sum(1 for r in records if r.get("is_flagged_cheated"))
+        delayed = sum(1 for r in records if r.get("is_delayed"))
+        total_minutes = sum(int(r.get("max_watched_duration", 0)) for r in records) / 60
+        return {
+            "total_videos": total,
+            "completed": completed,
+            "flagged_cheated": flagged,
+            "delayed": delayed,
+            "total_watched_minutes": total_minutes,
+        }

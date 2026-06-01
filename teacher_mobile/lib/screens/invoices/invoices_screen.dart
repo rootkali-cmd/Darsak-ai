@@ -45,7 +45,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       ...Map<String, dynamic>.from(invoice as Map),
       'paid': !(invoice['paid'] == true),
     };
-    final success = await provider.updateInvoice(invoice['id'] as int, data);
+    final success = await provider.updateInvoice(invoice['id'], data);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(success ? 'تم التحديث' : (provider.error ?? 'فشل التحديث'))),
@@ -72,7 +72,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
     if (confirmed == true && mounted) {
       final provider = Provider.of<InvoicesProvider>(context, listen: false);
-      final success = await provider.deleteInvoice(invoice['id'] as int);
+      final success = await provider.deleteInvoice(invoice['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(success ? 'تم الحذف بنجاح' : (provider.error ?? 'فشل الحذف'))),

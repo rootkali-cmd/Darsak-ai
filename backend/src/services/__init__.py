@@ -13,6 +13,8 @@ from src.services.supabase_services import (
     NotificationService,
     ExamService,
     StudentExamService,
+    LessonService,
+    VideoAnalyticsService,
 )
 from src.services.ai_analyzer import ai_analyzer
 from src.services.exam_ai import exam_ai_service
@@ -35,6 +37,8 @@ payment_request_service = PaymentRequestService()
 notification_service = NotificationService()
 exam_service = ExamService()
 student_exam_service = StudentExamService()
+lesson_service = LessonService()
+video_analytics_service = VideoAnalyticsService()
 
 __all__ = [
     "user_service",
@@ -51,6 +55,8 @@ __all__ = [
     "notification_service",
     "exam_service",
     "student_exam_service",
+    "lesson_service",
+    "video_analytics_service",
     "ai_analyzer",
     "sync_buffer",
     "qr_service",

@@ -131,7 +131,7 @@ class ApiService {
     return [];
   }
 
-  Future<Map<String, dynamic>> getStudent(int id) async {
+  Future<Map<String, dynamic>> getStudent(dynamic id) async {
     final response = await _dio.get('/students/$id');
     return response.data as Map<String, dynamic>;
   }
@@ -166,12 +166,12 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> updateGroup(int id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateGroup(dynamic id, Map<String, dynamic> data) async {
     final response = await _dio.put('/groups/$id', data: data);
     return response.data as Map<String, dynamic>;
   }
 
-  Future<void> deleteGroup(int id) async {
+  Future<void> deleteGroup(dynamic id) async {
     await _dio.delete('/groups/$id');
   }
 
@@ -226,12 +226,12 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> updateGrade(int id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateGrade(dynamic id, Map<String, dynamic> data) async {
     final response = await _dio.put('/grades/$id', data: data);
     return response.data as Map<String, dynamic>;
   }
 
-  Future<void> deleteGrade(int id) async {
+  Future<void> deleteGrade(dynamic id) async {
     await _dio.delete('/grades/$id');
   }
 
@@ -253,12 +253,12 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> updateInvoice(int id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateInvoice(dynamic id, Map<String, dynamic> data) async {
     final response = await _dio.put('/invoices/$id', data: data);
     return response.data as Map<String, dynamic>;
   }
 
-  Future<void> deleteInvoice(int id) async {
+  Future<void> deleteInvoice(dynamic id) async {
     await _dio.delete('/invoices/$id');
   }
 
@@ -273,7 +273,7 @@ class ApiService {
     return response.data as List<dynamic>;
   }
 
-  Future<Map<String, dynamic>> getExam(int id) async {
+  Future<Map<String, dynamic>> getExam(dynamic id) async {
     final response = await _dio.get('/exams/$id');
     return response.data as Map<String, dynamic>;
   }
@@ -283,12 +283,12 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> updateExam(int id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateExam(dynamic id, Map<String, dynamic> data) async {
     final response = await _dio.put('/exams/$id', data: data);
     return response.data as Map<String, dynamic>;
   }
 
-  Future<void> deleteExam(int id) async {
+  Future<void> deleteExam(dynamic id) async {
     await _dio.delete('/exams/$id');
   }
 }

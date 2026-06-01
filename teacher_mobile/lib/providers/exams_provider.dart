@@ -41,7 +41,7 @@ class ExamsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateExam(int id, Map<String, dynamic> data) async {
+  Future<bool> updateExam(dynamic id, Map<String, dynamic> data) async {
     try {
       await _api.updateExam(id, data);
       await loadExams();
@@ -53,7 +53,7 @@ class ExamsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deleteExam(int id) async {
+  Future<bool> deleteExam(dynamic id) async {
     try {
       await _api.deleteExam(id);
       _exams.removeWhere((e) => e['id'] == id);
