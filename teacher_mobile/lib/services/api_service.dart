@@ -17,16 +17,15 @@ class ApiService {
   static bool _isTokenExpired(String token) {
     try {
       final parts = token.split('.');
-      if (parts.length != 3) return true;
-      final payload = jsonDecode(
-        utf8.decode(base64Url.decode(parts[1])),
-      );
+      if (parts.length != 3) return false;
+      final String padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
+      final payload = jsonDecode(utf8.decode(base64Url.decode(padded)));
       final exp = payload['exp'] as int?;
-      if (exp == null) return true;
+      if (exp == null) return false;
       final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
       return DateTime.now().isAfter(expiry);
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
@@ -54,14 +53,7 @@ class ApiService {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
-          // Only clear tokens if the JWT is actually expired
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString('access_token');
-          if (token != null && _isTokenExpired(token)) {
-            await prefs.remove('access_token');
-            await prefs.remove('refresh_token');
-            _forceLogout = true;
-          }
+          _forceLogout = true;
         }
         return handler.next(error);
       },

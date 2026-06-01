@@ -29,16 +29,15 @@ class AuthProvider extends ChangeNotifier {
   static bool _isTokenExpired(String token) {
     try {
       final parts = token.split('.');
-      if (parts.length != 3) return true;
-      final payload = jsonDecode(
-        utf8.decode(base64Url.decode(parts[1])),
-      );
+      if (parts.length != 3) return false;
+      final String padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
+      final payload = jsonDecode(utf8.decode(base64Url.decode(padded)));
       final exp = payload['exp'] as int?;
-      if (exp == null) return true;
+      if (exp == null) return false;
       final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
       return DateTime.now().isAfter(expiry);
     } catch (_) {
-      return true;
+      return false;
     }
   }
 

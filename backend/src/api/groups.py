@@ -21,7 +21,7 @@ async def create_group(
             teacher_id=current_user["id"],
             name=group_data.name,
             subject=group_data.subject,
-            level=group_data.level,
+            level=str(group_data.level),
             day_of_week=group_data.day_of_week,
             time_slot=group_data.time_slot,
         )
@@ -39,7 +39,13 @@ async def create_group(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to create group: {str(exc)}")
+        import logging
+        logger = logging.getLogger("darsak")
+        logger.error("Group create failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"فشل إنشاء المجموعة. تأكد من البيانات وحاول مرة أخرى. {str(exc)[:200]}"
+        )
 
 
 async def _add_student_count(groups: list[dict], teacher_id: str) -> list[dict]:

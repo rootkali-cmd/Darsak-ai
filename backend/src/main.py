@@ -47,13 +47,19 @@ async def _run_schema_migrations():
         async with engine.connect() as conn:
             await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);"))
 
-            # Change groups.level from enum to text
+            # Force groups.level from enum to text
             await conn.execute(text("""
                 DO $$
                 BEGIN
-                    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'education_level') THEN
-                        ALTER TABLE groups ALTER COLUMN level TYPE TEXT;
-                    END IF;
+                    ALTER TABLE groups ALTER COLUMN level TYPE TEXT USING level::TEXT;
+                EXCEPTION WHEN others THEN NULL;
+                END $$;
+            """))
+            await conn.execute(text("""
+                DO $$
+                BEGIN
+                    DROP TYPE IF EXISTS education_level;
+                EXCEPTION WHEN others THEN NULL;
                 END $$;
             """))
 

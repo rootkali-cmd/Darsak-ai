@@ -36,24 +36,21 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   Future<void> _initScanner() async {
-    try {
-      controller = MobileScannerController();
-      if (mounted) setState(() => cameraReady = true);
-    } catch (e) {
-      if (mounted) _tryFrontCameraFallback();
-    }
-  }
-
-  Future<void> _tryFrontCameraFallback() async {
-    try {
-      controller?.dispose();
-      controller = MobileScannerController(facing: CameraFacing.front);
-      if (mounted) setState(() => cameraReady = true);
-    } catch (e) {
-      if (mounted) {
-        setState(() => permissionDenied = true);
+    // Try front camera first (more compatible), then back
+    for (final facing in [CameraFacing.front, CameraFacing.back]) {
+      try {
+        controller?.dispose();
+        controller = MobileScannerController(
+          facing: facing,
+          detectionSpeed: DetectionSpeed.noDuplicates,
+        );
+        if (mounted) setState(() => cameraReady = true);
+        return;
+      } catch (_) {
+        continue;
       }
     }
+    if (mounted) setState(() => permissionDenied = true);
   }
 
   void _showError(String msg) {
@@ -128,6 +125,41 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     }
   }
 
+  void _showManualCodeDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إدخال كود الطالب'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            hintText: 'مثال: STU-1234567',
+            labelText: 'الكود',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final code = controller.text.trim().toUpperCase();
+              if (code.isNotEmpty) {
+                Navigator.pop(ctx);
+                processScan(code);
+              }
+            },
+            child: const Text('تسجيل'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showNotification(String title, String subtitle, Color color) {
     final notification = {'title': title, 'subtitle': subtitle, 'color': color};
     setState(() {
@@ -173,6 +205,15 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
                     child: const Text('إعادة المحاولة'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _showManualCodeDialog,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: AppTheme.textSecondary),
+                    ),
+                    child: const Text('إدخال الكود يدوياً'),
                   ),
                   const SizedBox(height: 12),
                   TextButton(

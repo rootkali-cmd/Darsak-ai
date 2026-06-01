@@ -51,8 +51,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
+    // Give checkAuth (from AuthProvider constructor) time to complete
+    await Future.delayed(const Duration(milliseconds: 500));
+
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    await auth.checkAuth();
 
     if (!mounted) return;
 
