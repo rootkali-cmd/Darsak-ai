@@ -123,7 +123,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         ip_address=get_client_ip(request),
     ))
 
-    access_token = create_access_token(user["id"])
+    access_token = create_access_token(user["id"], extra_claims={"name": user.get("full_name", "")})
     refresh_token = create_refresh_token(user["id"])
 
     response.set_cookie(

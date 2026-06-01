@@ -45,13 +45,16 @@ class AuthProvider extends ChangeNotifier {
       if (parts.length != 3) return null;
       final padded = parts[1].padRight((parts[1].length + 3) ~/ 4 * 4, '=');
       final payload = jsonDecode(utf8.decode(base64Url.decode(padded)));
-      final exp = payload['exp'] as int?;
+      final sub = payload['sub'];
+      if (sub == null) return null;
+      final exp = payload['exp'];
+      final isExpired = exp is int && DateTime.now().isAfter(
+        DateTime.fromMillisecondsSinceEpoch(exp * 1000),
+      );
       return {
-        'id': payload['sub']?.toString(),
-        'full_name': payload['name']?.toString() ?? '',
-        'expired': exp != null && DateTime.now().isAfter(
-          DateTime.fromMillisecondsSinceEpoch(exp * 1000),
-        ),
+        'id': sub.toString(),
+        'full_name': (payload['name'] ?? payload['full_name'] ?? '').toString(),
+        'expired': isExpired,
       };
     } catch (_) {
       return null;
