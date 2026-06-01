@@ -4,8 +4,8 @@ const DOWNLOAD_URL = 'https://darsakai.com/download'
 
 export async function GET() {
   return NextResponse.json({
-    latest_version: '1.3.7',
+    latest_version: '1.3.8',
     download_url: DOWNLOAD_URL,
-    changelog: 'نظام الدروس والفيديو: رفع وبث عبر تيليجرام\nتحليلات المشاهدة ومكافحة الغش\nإشعارات واتساب لأولياء الأمور\nإصلاح تسجيل الخروج التلقائي (ping + retry + JWT fallback)\nإصلاح 20+ حلقة تحميل لا نهائية (dynamic ID)',
+    changelog: 'إصلاح الكاميرا نهائياً (بدون arguments زائدة)\nتمديد الفترة التجريبية إلى 30 يوم\nتمديد صلاحية الـ Token إلى 30 يوم (سبب تسجيل الخروج)\nإضافة توكن بوت الفيديو',
   })
 }

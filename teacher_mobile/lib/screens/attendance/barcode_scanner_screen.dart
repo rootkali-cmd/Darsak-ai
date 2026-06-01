@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../../providers/attendance_provider.dart';
 import '../../utils/sound_effects.dart';
@@ -14,105 +13,45 @@ class BarcodeScannerScreen extends StatefulWidget {
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
 }
 
-class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
-    with WidgetsBindingObserver {
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   MobileScannerController? controller;
   bool isProcessing = false;
   bool cameraReady = false;
   bool permissionDenied = false;
   final List<Map<String, String>> scannedStudents = [];
   final List<Map<String, dynamic>> notifications = [];
+  Timer? _notificationTimer;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _requestCameraAndStart();
+    _initScanner();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    _notificationTimer?.cancel();
     controller?.dispose();
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !cameraReady && !permissionDenied) {
-      _requestCameraAndStart();
-    }
-  }
-
-  Future<void> _requestCameraAndStart() async {
-    final status = await Permission.camera.request();
-
-    if (status.isGranted) {
-      _startScanner();
-    } else if (status.isPermanentlyDenied) {
-      setState(() => permissionDenied = true);
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: AppTheme.darkSurface,
-            title: const Text('الكاميرا ممنوعة', style: TextStyle(color: Colors.white)),
-            content: const Text(
-              'تم رفض إذن الكاميرا. الرجاء فتح الإعدادات والسماح للكاميرا.',
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  openAppSettings();
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
-                child: const Text('فتح الإعدادات'),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الكاميرا مطلوبة لمسح الباركود')),
-        );
-      }
-    }
-  }
-
-  void _startScanner() {
-    controller?.dispose();
+  Future<void> _initScanner() async {
     try {
-      controller = MobileScannerController(
-        detectionSpeed: DetectionSpeed.normal,
-        facing: CameraFacing.back,
-        torchEnabled: false,
-        formats: [
-          BarcodeFormat.code128,
-          BarcodeFormat.code39,
-          BarcodeFormat.ean8,
-          BarcodeFormat.ean13,
-          BarcodeFormat.upcA,
-          BarcodeFormat.upcE,
-          BarcodeFormat.qrCode,
-        ],
-      );
-      setState(() => cameraReady = true);
+      controller = MobileScannerController();
+      if (mounted) setState(() => cameraReady = true);
     } catch (e) {
       if (mounted) {
         setState(() => permissionDenied = true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل تهيئة الكاميرا: $e')),
-        );
+        _showError('فشل تشغيل الكاميرا: $e');
       }
     }
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppTheme.danger),
+    );
   }
 
   void onDetect(BarcodeCapture capture) {
@@ -121,20 +60,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     if (barcode == null) return;
     final raw = barcode.rawValue;
     if (raw == null || raw.isEmpty) return;
-
     processScan(raw);
   }
 
   Future<void> processScan(String code) async {
     if (!mounted) return;
-    try {
-      await SoundEffects.playScan();
-    } catch (_) {}
+
+    try { await SoundEffects.playScan(); } catch (_) {}
 
     final already = scannedStudents.any((s) => s['code'] == code);
     if (already) {
       try { await SoundEffects.playWarning(); } catch (_) {}
-      showNotification('تم المسح مسبقاً', 'الطالب: $code', AppTheme.warning);
+      _showNotification('تم المسح مسبقاً', 'الطالب: $code', AppTheme.warning);
       return;
     }
 
@@ -154,13 +91,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
         if (status == 'absent' || status == 'غائب') {
           try { await SoundEffects.playError(); } catch (_) {}
-          showNotification('الطالب غائب', studentName, AppTheme.danger);
+          _showNotification('الطالب غائب', studentName, AppTheme.danger);
         } else if (status == 'late' || status == 'متأخر') {
           try { await SoundEffects.playWarning(); } catch (_) {}
-          showNotification('الطالب متأخر', studentName, AppTheme.warning);
+          _showNotification('الطالب متأخر', studentName, AppTheme.warning);
         } else {
           try { await SoundEffects.playSuccess(); } catch (_) {}
-          showNotification('تم تسجيل الحضور', studentName, AppTheme.success);
+          _showNotification('تم تسجيل الحضور', studentName, AppTheme.success);
         }
 
         setState(() {
@@ -171,28 +108,27 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       } else {
         setState(() => isProcessing = false);
         try { await SoundEffects.playError(); } catch (_) {}
-        final errorMsg = provider.error ?? 'فشل تسجيل الحضور';
-        showNotification('خطأ', errorMsg, AppTheme.danger);
+        _showNotification('خطأ', provider.error ?? 'فشل تسجيل الحضور', AppTheme.danger);
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => isProcessing = false);
       try { await SoundEffects.playError(); } catch (_) {}
-      showNotification('خطأ', 'حدث خطأ أثناء المعالجة: ${e.toString().substring(0, e.toString().length.clamp(0, 80))}', AppTheme.danger);
+      final errStr = e.toString();
+      _showNotification('خطأ', errStr.length > 80 ? errStr.substring(0, 80) : errStr, AppTheme.danger);
     }
   }
 
-  void showNotification(String title, String subtitle, Color color) {
+  void _showNotification(String title, String subtitle, Color color) {
     final notification = {'title': title, 'subtitle': subtitle, 'color': color};
     setState(() {
       notifications.insert(0, notification);
       if (notifications.length > 4) notifications.removeLast();
     });
 
-    Future.delayed(const Duration(milliseconds: 3500), () {
-      if (mounted) {
-        setState(() => notifications.remove(notification));
-      }
+    _notificationTimer?.cancel();
+    _notificationTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => notifications.remove(notification));
     });
   }
 
@@ -221,13 +157,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => openAppSettings(),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
-                      child: const Text('فتح الإعدادات'),
-                    ),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() => permissionDenied = false);
+                      _initScanner();
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+                    child: const Text('إعادة المحاولة'),
                   ),
                   const SizedBox(height: 12),
                   TextButton(
@@ -243,9 +179,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     }
 
     if (!cameraReady) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.black,
-        body: const Center(child: CircularProgressIndicator(color: AppTheme.accent)),
+        body: Center(child: CircularProgressIndicator(color: AppTheme.accent)),
       );
     }
 
@@ -270,9 +206,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                         style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'يرجى التحقق من إذن الكاميرا في إعدادات الجهاز',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                      Text(
+                        'خطأ: ${error.toString().length > 60 ? error.toString().substring(0, 60) : error}',
+                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
@@ -293,20 +229,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      _IconBtn(
-                        icon: Icons.arrow_back,
-                        onTap: () => Navigator.pop(context),
-                      ),
+                      _IconBtn(icon: Icons.arrow_back, onTap: () => Navigator.pop(context)),
                       const Spacer(),
                       const Text(
                         'مسح الباركود',
                         style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                       const Spacer(),
-                      _IconBtn(
-                        icon: Icons.flash_on,
-                        onTap: () => controller?.toggleTorch(),
-                      ),
+                      _IconBtn(icon: Icons.flash_on, onTap: () => controller?.toggleTorch()),
                     ],
                   ),
                 ),
@@ -340,8 +270,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       ),
                       const SizedBox(width: 24),
                       Container(
-                        width: 6,
-                        height: 6,
+                        width: 6, height: 6,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isProcessing ? AppTheme.warning : AppTheme.success,
@@ -351,8 +280,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       Text(
                         isProcessing ? 'جاري المعالجة...' : 'جاهز للمسح',
                         style: TextStyle(
-                          color: isProcessing ? AppTheme.warning : AppTheme.success,
-                          fontSize: 12,
+                          color: isProcessing ? AppTheme.warning : AppTheme.success, fontSize: 12,
                         ),
                       ),
                     ],
@@ -362,9 +290,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
             ),
           ),
           Positioned(
-            bottom: 100,
-            left: 0,
-            right: 0,
+            bottom: 100, left: 0, right: 0,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: notifications.asMap().entries.map((entry) {
@@ -388,8 +314,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       child: Row(
                         children: [
                           Container(
-                            width: 36,
-                            height: 36,
+                            width: 36, height: 36,
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
@@ -402,14 +327,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  n['title'] as String,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                                ),
-                                Text(
-                                  n['subtitle'] as String,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-                                ),
+                                Text(n['title'] as String, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                                Text(n['subtitle'] as String, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                               ],
                             ),
                           ),

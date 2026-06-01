@@ -108,7 +108,7 @@ async def register(user_data: UserCreate, request: Request):
                 from datetime import timedelta
                 from datetime import timezone
                 trial_code_id = f"trial-{uuid.uuid4().hex[:12]}"
-                trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+                trial_expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
                 await teacher_subscription_service.repo.insert({
                     "teacher_id": user["id"],
                     "plan_id": premium_plan["id"],
