@@ -32,16 +32,16 @@ const apps: {
   },
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v1.4.1',
+    title: 'DarsakAI Teacher v1.4.2',
     description: 'تطبيق المدرس - مسح باركود للحضور + دروس وفيديو',
     descriptionEn: 'Teacher mobile app — barcode attendance + lessons & video streaming',
     icon: Monitor,
     color: '#FF6B00',
     files: [
-      { name: 'DarsakAI-Teacher-v1.4.1.apk', label: 'Android APK v1.4.1', size: '~75 MB' },
+      { name: 'DarsakAI-Teacher-v1.4.2.apk', label: 'Android APK v1.4.2', size: '~75 MB' },
     ],
     platform: 'Android 10+ ✓',
-    note: 'v1.4.1 • OTA تحديث تلقائي • Server Wake-up • باركود CameraX • flutter_secure_storage',
+    note: 'v1.4.2 • تسجيل دائم • CameraX باركود • OTA تحديث • بدون أخطاء',
   },
   {
     id: 'desktop',
