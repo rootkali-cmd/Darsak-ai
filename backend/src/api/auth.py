@@ -97,7 +97,7 @@ async def register(user_data: UserCreate, request: Request):
     return _user_response(user)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 async def login(credentials: UserLogin, request: Request, response: Response):
     user = await user_service.get_by_email(credentials.email.lower().strip())
     if not user or not verify_password(credentials.password, user["hashed_password"]):
@@ -136,10 +136,10 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         path="/",
     )
 
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh")
 async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
     # 1. Check blacklist atomically (race-safe with asyncio.Lock)
     if await _is_token_blacklisted(token_data.refresh_token):
@@ -184,7 +184,7 @@ async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
         path="/",
     )
 
-    return TokenResponse(access_token=new_access, refresh_token=new_refresh)
+    return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
 
 
 @router.get("/me")

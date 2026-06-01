@@ -273,7 +273,7 @@ async def lifespan(app: FastAPI):
     else:
         try:
             from src.bot.telegram_bot import start_bot
-            await start_bot()
+            asyncio.create_task(start_bot())
         except Exception as e:
             logger.warning("Telegram bot startup skipped: %s", e)
     
