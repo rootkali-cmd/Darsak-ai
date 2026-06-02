@@ -10,10 +10,15 @@ router = APIRouter(prefix="/lessons", tags=["Lessons"])
 
 def _to_response(lesson: dict) -> dict:
     """Safe conversion from DB dict to API response dict."""
+    _id = lesson.get("id")
+    teacher_id = lesson.get("teacher_id")
+    group_id = lesson.get("group_id")
+    created_at = lesson.get("created_at")
+    updated_at = lesson.get("updated_at")
     return {
-        "id": str(lesson["id"]) if lesson.get("id") else "",
-        "teacher_id": str(lesson["teacher_id"]) if lesson.get("teacher_id") else "",
-        "group_id": str(lesson["group_id"]) if lesson.get("group_id") else None,
+        "id": str(_id) if _id is not None else "",
+        "teacher_id": str(teacher_id) if teacher_id is not None else "",
+        "group_id": str(group_id) if group_id is not None else None,
         "title": lesson.get("title", ""),
         "description": lesson.get("description"),
         "subject": lesson.get("subject"),
@@ -23,8 +28,8 @@ def _to_response(lesson: dict) -> dict:
         "tg_message_id": lesson.get("tg_message_id"),
         "tg_file_id": lesson.get("tg_file_id"),
         "is_published": lesson.get("is_published", False),
-        "created_at": str(lesson.get("created_at", "")),
-        "updated_at": str(lesson.get("updated_at", "")),
+        "created_at": str(created_at) if created_at is not None else "",
+        "updated_at": str(updated_at) if updated_at is not None else "",
     }
 
 
@@ -173,58 +178,64 @@ async def upload_lesson_video(
     caption: str = Form(""),
     current_user: dict = Depends(get_current_teacher),
 ):
-    lesson = await lesson_service.get_by_id(lesson_id)
-    if not lesson or lesson["teacher_id"] != current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
-
     try:
-        from src.bot.video_bot import video_bot_service
-    except ImportError:
-        raise HTTPException(status_code=501, detail="Video bot service not available")
+        lesson = await lesson_service.get_by_id(lesson_id)
+        if not lesson or lesson["teacher_id"] != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
 
-    if not video_bot_service.is_configured:
-        raise HTTPException(status_code=501, detail="Video Telegram bot token not configured")
+        try:
+            from src.bot.video_bot import video_bot_service
+        except ImportError:
+            raise HTTPException(status_code=501, detail="Video bot service not available")
 
-    teacher = await user_service.get_by_id(current_user["id"])
-    channel_id = teacher.get("telegram_channel_id") if teacher else None
+        if not video_bot_service.is_configured:
+            raise HTTPException(status_code=501, detail="Video Telegram bot token not configured")
 
-    if not channel_id:
-        teacher_name = teacher.get("full_name", current_user.get("full_name", "Teacher"))
-        result = await video_bot_service.create_channel(teacher_name)
+        teacher = await user_service.get_by_id(current_user["id"])
+        channel_id = teacher.get("telegram_channel_id") if teacher else None
+
+        if not channel_id:
+            teacher_name = teacher.get("full_name", current_user.get("full_name", "Teacher"))
+            result = await video_bot_service.create_channel(teacher_name)
+            if not result.get("ok"):
+                raise HTTPException(status_code=500, detail=f"Failed to create channel: {result.get('error')}")
+            channel_id = result["channel_id"]
+            await user_service.update(current_user["id"], {"telegram_channel_id": channel_id})
+
+        content = await file.read()
+        if len(content) > 2 * 1024 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Video file too large (max 2GB)")
+
+        result = await video_bot_service.send_video(
+            chat_id=channel_id,
+            file_data=content,
+            file_name=file.filename or "lesson_video.mp4",
+            caption=f"<b>{lesson['title']}</b>\n{caption}" if caption else f"<b>{lesson['title']}</b>",
+            supports_streaming=True,
+        )
+
         if not result.get("ok"):
-            raise HTTPException(status_code=500, detail=f"Failed to create channel: {result.get('error')}")
-        channel_id = result["channel_id"]
-        await user_service.update(current_user["id"], {"telegram_channel_id": channel_id})
+            raise HTTPException(status_code=500, detail=f"Upload failed: {result.get('error')}")
 
-    content = await file.read()
-    if len(content) > 2 * 1024 * 1024 * 1024:  # 2GB limit
-        raise HTTPException(status_code=400, detail="Video file too large (max 2GB)")
+        await lesson_service.update(lesson_id, {
+            "tg_message_id": result["message_id"],
+            "tg_file_id": result["file_id"],
+            "duration_seconds": result.get("duration"),
+            "video_url": await video_bot_service.get_file_url(result["file_id"]),
+            "is_published": True,
+        })
 
-    result = await video_bot_service.send_video(
-        chat_id=channel_id,
-        file_data=content,
-        file_name=file.filename or "lesson_video.mp4",
-        caption=f"<b>{lesson['title']}</b>\n{caption}" if caption else f"<b>{lesson['title']}</b>",
-        supports_streaming=True,
-    )
-
-    if not result.get("ok"):
-        raise HTTPException(status_code=500, detail=f"Upload failed: {result.get('error')}")
-
-    await lesson_service.update(lesson_id, {
-        "tg_message_id": result["message_id"],
-        "tg_file_id": result["file_id"],
-        "duration_seconds": result.get("duration"),
-        "video_url": await video_bot_service.get_file_url(result["file_id"]),
-        "is_published": True,
-    })
-
-    return {
-        "ok": True,
-        "message_id": result["message_id"],
-        "file_id": result["file_id"],
-        "duration": result.get("duration"),
-    }
+        return {
+            "ok": True,
+            "message_id": result["message_id"],
+            "file_id": result["file_id"],
+            "duration": result.get("duration"),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Upload video failed for lesson %s: %s", lesson_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to upload video: {str(exc)}")
 
 
 @router.get("/{lesson_id}/stream-url")
@@ -232,54 +243,66 @@ async def get_stream_url(
     lesson_id: str,
     current_student: dict = Depends(get_current_student),
 ):
-    lesson = await lesson_service.get_by_id(lesson_id)
-    if not lesson or not lesson.get("is_published"):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found or not published")
-
-    group_id = current_student.get("group_id")
-    if lesson.get("group_id") and str(lesson.get("group_id")) != str(group_id):
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    file_id = lesson.get("tg_file_id")
-    video_url = lesson.get("video_url")
-
-    if not file_id and not video_url:
-        raise HTTPException(status_code=404, detail="No video uploaded for this lesson")
-
-    if video_url:
-        return {"stream_url": video_url, "file_id": file_id}
-
     try:
-        from src.bot.video_bot import video_bot_service
-        stream_url = await video_bot_service.get_file_url(file_id)
-        if stream_url:
-            return {"stream_url": stream_url, "file_id": file_id}
-    except Exception:
-        pass
+        lesson = await lesson_service.get_by_id(lesson_id)
+        if not lesson or not lesson.get("is_published"):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found or not published")
 
-    raise HTTPException(status_code=502, detail="Cannot get stream URL")
+        group_id = current_student.get("group_id")
+        if lesson.get("group_id") and str(lesson.get("group_id")) != str(group_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        file_id = lesson.get("tg_file_id")
+        video_url = lesson.get("video_url")
+
+        if not file_id and not video_url:
+            raise HTTPException(status_code=404, detail="No video uploaded for this lesson")
+
+        if video_url:
+            return {"stream_url": video_url, "file_id": file_id}
+
+        try:
+            from src.bot.video_bot import video_bot_service
+            stream_url = await video_bot_service.get_file_url(file_id)
+            if stream_url:
+                return {"stream_url": stream_url, "file_id": file_id}
+        except Exception:
+            pass
+
+        raise HTTPException(status_code=502, detail="Cannot get stream URL")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Get stream URL failed for lesson %s: %s", lesson_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
 
 
 @router.post("/setup-channel")
 async def setup_teacher_channel(current_user: dict = Depends(get_current_teacher)):
     try:
-        from src.bot.video_bot import video_bot_service
-    except ImportError:
-        raise HTTPException(status_code=501, detail="Video bot service not available")
+        try:
+            from src.bot.video_bot import video_bot_service
+        except ImportError:
+            raise HTTPException(status_code=501, detail="Video bot service not available")
 
-    if not video_bot_service.is_configured:
-        raise HTTPException(status_code=501, detail="Video Telegram bot token not configured")
+        if not video_bot_service.is_configured:
+            raise HTTPException(status_code=501, detail="Video Telegram bot token not configured")
 
-    teacher = await user_service.get_by_id(current_user["id"])
-    if teacher and teacher.get("telegram_channel_id"):
-        info = await video_bot_service.get_channel_info(teacher["telegram_channel_id"])
-        return {"ok": True, "channel_id": teacher["telegram_channel_id"], "channel_info": info}
+        teacher = await user_service.get_by_id(current_user["id"])
+        if teacher and teacher.get("telegram_channel_id"):
+            info = await video_bot_service.get_channel_info(teacher["telegram_channel_id"])
+            return {"ok": True, "channel_id": teacher["telegram_channel_id"], "channel_info": info}
 
-    teacher_name = teacher.get("full_name", "Teacher") if teacher else "Teacher"
-    result = await video_bot_service.create_channel(teacher_name)
-    if not result.get("ok"):
-        raise HTTPException(status_code=500, detail=f"Failed to create channel: {result.get('error')}")
+        teacher_name = teacher.get("full_name", "Teacher") if teacher else "Teacher"
+        result = await video_bot_service.create_channel(teacher_name)
+        if not result.get("ok"):
+            raise HTTPException(status_code=500, detail=f"Failed to create channel: {result.get('error')}")
 
-    await user_service.update(current_user["id"], {"telegram_channel_id": result["channel_id"]})
-    return {"ok": True, "channel_id": result["channel_id"], "title": result.get("title")}
+        await user_service.update(current_user["id"], {"telegram_channel_id": result["channel_id"]})
+        return {"ok": True, "channel_id": result["channel_id"], "title": result.get("title")}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Setup channel failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to setup channel: {str(exc)}")
 

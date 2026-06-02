@@ -12,11 +12,13 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   String? _token;
   Map<String, dynamic>? _user;
+  bool _isInitialized = false;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty && _user != null;
   Map<String, dynamic>? get user => _user;
+  bool get isInitialized => _isInitialized;
 
   AuthProvider() { _init(); }
 
@@ -32,6 +34,7 @@ class AuthProvider extends ChangeNotifier {
         _token = null;
       }
     }
+    _isInitialized = true;
     notifyListeners();
   }
 

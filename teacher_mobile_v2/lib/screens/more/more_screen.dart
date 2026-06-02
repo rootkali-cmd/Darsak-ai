@@ -7,6 +7,7 @@ import '../settings/settings_screen.dart';
 import '../lessons/lessons_screen.dart';
 import '../subscriptions/subscription_screen.dart';
 import '../exams/exams_screen.dart';
+import 'developer_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -96,6 +97,12 @@ class MoreScreen extends StatelessWidget {
                 );
               }
             },
+          ),
+          _MoreOption(
+            icon: Icons.developer_mode,
+            label: 'المطور',
+            color: AppTheme.textSecondary,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperScreen())),
           ),
           _MoreOption(
             icon: Icons.info_outline,

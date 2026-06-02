@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,7 +13,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isDarkMode = false;
   bool _notificationsEnabled = true;
   String _version = '1.0.0';
 
@@ -30,19 +31,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (mounted) {
       setState(() {
-        _isDarkMode = prefs.getBool('dark_mode') ?? false;
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       });
     }
-  }
-
-  Future<void> _toggleTheme(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('dark_mode', value);
-    setState(() => _isDarkMode = value);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('سيتم تطبيق التغيير بعد إعادة التشغيل'), backgroundColor: AppTheme.accent),
-    );
   }
 
   Future<void> _toggleNotifications(bool value) async {
@@ -53,6 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
     return Scaffold(
       appBar: AppBar(title: const Text('الإعدادات')),
       body: ListView(
@@ -62,14 +54,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: Icon(_isDarkMode ? Icons.dark_mode : Icons.light_mode, color: AppTheme.accent),
-                  title: Text(_isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح'),
-                  trailing: Switch(
-                    value: _isDarkMode,
-                    onChanged: _toggleTheme,
-                    activeColor: AppTheme.accent,
-                  ),
+                SwitchListTile(
+                  secondary: Icon(themeProvider.isDark ? Icons.dark_mode : Icons.light_mode, color: AppTheme.accent),
+                  title: const Text('الوضع الداكن'),
+                  value: themeProvider.isDark,
+                  onChanged: (_) => context.read<ThemeProvider>().toggle(),
+                  activeColor: AppTheme.accent,
                 ),
               ],
             ),
