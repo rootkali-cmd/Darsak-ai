@@ -8,17 +8,17 @@ import { Smartphone, Monitor, Download, ArrowRight, Check, Sparkles } from 'luci
 const apps = [
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher',
+    title: 'DarsakAI Teacher v2.1.0',
     subtitle: 'تطبيق المدرس',
     description: 'مسح باركود للحضور • دروس فيديو • ذكاء اصطناعي • إدارة كاملة للسنتر',
     icon: Smartphone,
     color: '#6366F1',
     bgColor: 'rgba(99,102,241,0.12)',
     file: '/teacher-v2.apk',
-    label: 'Android APK v2.0.1',
+    label: 'Android APK v2.1.0',
     size: '~74 MB',
     platform: 'Android 10+',
-    note: 'CameraX + ML Kit • تسجيل دائم • نظام متكامل',
+    note: 'v2.1.0 • Landing Page • QR حقيقي • لوحة تحكم جديدة • Onboarding',
   },
   {
     id: 'student',
