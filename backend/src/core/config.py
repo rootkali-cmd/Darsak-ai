@@ -24,15 +24,20 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "deepseek/deepseek-v4-flash"
     OPENROUTER_VISION_MODEL: str = "deepseek/deepseek-v4-flash"
 
+    # Plan student limits
+    PLAN_BASIC_MAX_STUDENTS: int = 100
+    PLAN_PRO_MAX_STUDENTS: int = 400
+    PLAN_ENTERPRISE_MAX_STUDENTS: int = -1  # Unlimited
+
+    # Plan AI request limits per month
+    PLAN_BASIC_AI_LIMIT: int = 5
+    PLAN_PRO_AI_LIMIT: int = 30
+    PLAN_ENTERPRISE_AI_LIMIT: int = -1  # Unlimited
+
     # Plan video storage limits (bytes)
     PLAN_BASIC_STORAGE_LIMIT: int = 2 * 1024 * 1024 * 1024   # 2GB
     PLAN_PRO_STORAGE_LIMIT: int = 6 * 1024 * 1024 * 1024      # 6GB
     PLAN_ENTERPRISE_STORAGE_LIMIT: int = -1                     # Unlimited
-
-    # Plan AI request limits (per month)
-    PLAN_BASIC_AI_LIMIT: int = 10       # 10 AI requests/month
-    PLAN_PRO_AI_LIMIT: int = 50         # 50 AI requests/month
-    PLAN_ENTERPRISE_AI_LIMIT: int = -1  # Unlimited
 
     SECRET_KEY: str = "change-me-in-production-use-openssl-rand"
     ALGORITHM: str = "HS256"

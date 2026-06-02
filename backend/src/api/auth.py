@@ -220,17 +220,34 @@ async def get_me(current_user: dict = Depends(get_current_user)):
             sub = await teacher_subscription_service.get_active_subscription(current_user["id"])
             if sub:
                 plan = await subscription_plan_service.get_by_id(sub["plan_id"])
-                plan_name = plan["name"] if plan else "Unknown"
-                result["plan_name"] = plan_name
-                result["storage_limit_gb"] = _get_plan_storage_limit_gb(plan_name)
-                result["ai_requests_per_month"] = _get_plan_ai_limit_display(plan_name)
-                expires = sub.get("expires_at")
-                if isinstance(expires, str):
-                    expires_dt = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+                if plan:
+                    plan_name = plan.get("name", "")
+                    result["subscription"] = {
+                        "plan_name": plan_name,
+                        "expires_at": sub.get("expires_at", ""),
+                        "is_active": sub.get("is_active", True),
+                    }
+                    result["plan_limits"] = {
+                        "max_students": await subscription_plan_service.get_plan_student_limit(plan_name),
+                        "ai_requests_per_month": await subscription_plan_service.get_plan_ai_limit(plan_name),
+                        "storage_limit_gb": _get_plan_storage_limit_gb(plan_name),
+                    }
+                    result["plan_name"] = plan_name
+                    result["storage_limit_gb"] = _get_plan_storage_limit_gb(plan_name)
+                    result["ai_requests_per_month"] = _get_plan_ai_limit_display(plan_name)
+                    expires = sub.get("expires_at")
+                    if isinstance(expires, str):
+                        expires_dt = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+                    else:
+                        expires_dt = expires
+                    result["is_expired"] = expires_dt < datetime.now(timezone.utc)
+                    result["days_remaining"] = max(0, (expires_dt - datetime.now(timezone.utc)).days)
                 else:
-                    expires_dt = expires
-                result["is_expired"] = expires_dt < datetime.now(timezone.utc)
-                result["days_remaining"] = max(0, (expires_dt - datetime.now(timezone.utc)).days)
+                    result["plan_name"] = "No Plan"
+                    result["storage_limit_gb"] = 2
+                    result["ai_requests_per_month"] = 0
+                    result["is_expired"] = True
+                    result["days_remaining"] = 0
             else:
                 result["plan_name"] = "No Plan"
                 result["storage_limit_gb"] = 2

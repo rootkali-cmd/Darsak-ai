@@ -9,8 +9,8 @@ from src.schemas.student import (
 from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
 from src.core.security.auth import create_access_token, verify_password
 from src.core.security.sanitizer import sanitize_text, sanitize_student_code, sanitize_pin, sanitize_teacher_code
-from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service
-from src.core.subscription_guard import enforce_student_limit, enforce_ai_request_limit, increment_ai_usage
+from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service, teacher_subscription_service, subscription_plan_service
+from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_usage
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -25,7 +25,20 @@ async def create_student(
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
-    await enforce_student_limit(current_user["id"])
+    # Check student limit
+    sub = await teacher_subscription_service.get_active_subscription(current_user["id"])
+    if sub:
+        plan = await subscription_plan_service.get_by_id(sub.get("plan_id", ""))
+        if plan:
+            limit = await subscription_plan_service.get_plan_student_limit(plan.get("name", ""))
+            if limit > 0:
+                count = await student_service.count(current_user["id"])
+                if count >= limit:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"وصلت للحد الأقصى للطلاب في باقتك ({limit} طالب). قم بالترقية لإضافة المزيد."
+                    )
+
     student = await student_service.create(
         teacher_id=current_user["id"],
         full_name=sanitize_text(student_data.full_name) or student_data.full_name,
@@ -208,6 +221,7 @@ async def analyze_student(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
     analysis = await ai_analyzer.analyze_student(
+        teacher_id=current_user["id"],
         student_name=student["full_name"],
         subject=analyze_request.subject,
         grades=analyze_request.grades,
@@ -216,7 +230,7 @@ async def analyze_student(
     await increment_ai_usage(current_user["id"])
     await audit_service.log(
         actor_type=current_user.get("role", "teacher"),
-        action="ai_analysis",
+        action="ai_request",
         actor_id=current_user["id"],
         resource_type="student",
         resource_id=str(analyze_request.student_id),

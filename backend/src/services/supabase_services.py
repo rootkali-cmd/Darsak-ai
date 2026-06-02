@@ -219,7 +219,7 @@ class SubscriptionPlanService:
     async def get_plan_storage_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "enterprise" in plan_name.lower():
+        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower():
             return s.PLAN_ENTERPRISE_STORAGE_LIMIT
         if "pro" in plan_name.lower():
             return s.PLAN_PRO_STORAGE_LIMIT
@@ -228,11 +228,32 @@ class SubscriptionPlanService:
     async def get_plan_ai_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "enterprise" in plan_name.lower():
+        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower():
             return s.PLAN_ENTERPRISE_AI_LIMIT
         if "pro" in plan_name.lower():
             return s.PLAN_PRO_AI_LIMIT
         return s.PLAN_BASIC_AI_LIMIT
+
+    async def get_plan_student_limit(self, plan_name: str) -> int:
+        from src.core.config import get_settings
+        s = get_settings()
+        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower():
+            return s.PLAN_ENTERPRISE_MAX_STUDENTS
+        if "pro" in plan_name.lower():
+            return s.PLAN_PRO_MAX_STUDENTS
+        return s.PLAN_BASIC_MAX_STUDENTS
+
+    async def get_teacher_ai_usage_this_month(self, teacher_id: str) -> int:
+        from datetime import datetime, timezone
+        audit_repo = SupabaseRepository("audit_logs")
+        now = datetime.now(timezone.utc)
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+        records = await audit_repo.select(
+            {"actor_id": teacher_id, "action": "ai_request"},
+            limit=10000
+        )
+        count = sum(1 for r in records if r.get("created_at", "") >= start_of_month)
+        return count
 
 
 class SubscriptionCodeService:

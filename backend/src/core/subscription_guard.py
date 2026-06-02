@@ -13,8 +13,6 @@ from src.services import (
 
 logger = logging.getLogger("darsak")
 
-_ai_usage: dict[str, int] = {}
-
 
 async def get_teacher_subscription(teacher_id: str) -> dict | None:
     sub = await teacher_subscription_service.get_active_subscription(teacher_id)
@@ -67,18 +65,20 @@ async def get_remaining_limit(teacher_id: str, feature: str) -> dict:
     features = plan.get("features_json", []) or []
 
     if feature == "student_management":
-        limit = plan.get("max_students", 50)
-        if limit == -1:
+        plan_name = plan.get("name", "")
+        limit = await subscription_plan_service.get_plan_student_limit(plan_name)
+        if limit <= 0:
             return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
         current = await student_service.count(teacher_id)
         remaining = limit - current
         return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
 
     if feature == "ai_analysis":
-        limit = plan.get("max_ai_requests", 100)
-        if limit == -1:
+        plan_name = plan.get("name", "")
+        limit = await subscription_plan_service.get_plan_ai_limit(plan_name)
+        if limit <= 0:
             return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
-        current = _ai_usage.get(teacher_id, 0)
+        current = await subscription_plan_service.get_teacher_ai_usage_this_month(teacher_id)
         remaining = limit - current
         return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
 
@@ -125,7 +125,7 @@ async def enforce_ai_request_limit(teacher_id: str) -> bool:
 
 
 async def increment_ai_usage(teacher_id: str) -> None:
-    _ai_usage[teacher_id] = _ai_usage.get(teacher_id, 0) + 1
+    pass  # AI usage now tracked via audit_logs
 
 
 async def require_active_subscription(teacher_id: str) -> dict:

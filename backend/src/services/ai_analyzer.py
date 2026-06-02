@@ -39,13 +39,35 @@ class AIAnalyzer:
                 "base_url": "https://api.groq.com/openai/v1",
             }
 
+    async def _check_ai_limit(self, teacher_id: str) -> None:
+        from src.services import teacher_subscription_service, subscription_plan_service
+        sub = await teacher_subscription_service.get_active_subscription(teacher_id)
+        if not sub:
+            return
+        plan_name = sub.get("plan_name", "")
+        if not plan_name:
+            plan = await subscription_plan_service.get_by_id(sub.get("plan_id", ""))
+            if not plan:
+                return
+            plan_name = plan.get("name", "")
+        limit = await subscription_plan_service.get_plan_ai_limit(plan_name)
+        if limit <= 0:
+            return
+        count = await subscription_plan_service.get_teacher_ai_usage_this_month(teacher_id)
+        if count >= limit:
+            raise Exception(f"وصلت للحد الأقصى لاستخدام AI هذا الشهر ({limit} طلب). انتظر الشهر القادم أو قم بالترقية.")
+
     async def analyze_student(
         self,
         student_name: str,
         subject: str,
         grades: list[dict],
         curriculum_context: str | None = None,
+        teacher_id: str | None = None,
     ) -> dict[str, Any]:
+        if teacher_id:
+            await self._check_ai_limit(teacher_id)
+
         if not self.api_key:
             logger.warning("No AI API key set, using fallback analysis")
             return self._fallback_analysis(subject, grades)

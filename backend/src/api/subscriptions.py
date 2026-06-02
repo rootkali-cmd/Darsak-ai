@@ -26,36 +26,71 @@ logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
-def _get_plan_storage_limit_gb(plan_name: str):
-    name_lower = plan_name.lower()
-    if "enterprise" in name_lower:
-        return "غير محدود"
-    if "pro" in name_lower:
-        return 6
-    return 2
+def _get_limit(name: str, basic: int, pro: int, enterprise: int):
+    if "unlimited" in name or "enterprise" in name: return enterprise if enterprise > 0 else "غير محدود"
+    if "pro" in name: return pro
+    return basic
 
-def _get_plan_ai_limit_display(plan_name: str):
-    name_lower = plan_name.lower()
-    if "enterprise" in name_lower:
+def _get_limit_gb(name: str, basic: int, pro: int, enterprise: int):
+    if "unlimited" in name or "enterprise" in name: return "غير محدود"
+    if "pro" in name: return pro
+    return basic
+
+
+def _get_limit_gb(name: str, basic: int, pro: int, enterprise: int):
+    if "enterprise" in name:
         return "غير محدود"
-    if "pro" in name_lower:
-        return 50
-    return 10
+    if "pro" in name:
+        return pro
+    return basic
+
+
+def _get_features(plan: dict) -> list:
+    features = plan.get("features_json", [])
+    if isinstance(features, str):
+        import json
+        features = json.loads(features)
+    if not features:
+        features = []
+    name = (plan.get("name") or "").lower()
+    base_features = [
+        "إدارة الطلاب",
+        "تسجيل الحضور",
+        "الدرجات والامتحانات",
+    ]
+    if "pro" in name or "enterprise" in name or "unlimited" in name:
+        base_features.extend([
+            "فيديوهات تعليمية (تخزين 6GB)",
+            "تحليلات AI (30 طلب/شهر)",
+            "فواتير ومصاريف",
+            "تقارير متقدمة",
+        ])
+    if "enterprise" in name or "unlimited" in name:
+        base_features.extend([
+            "فيديوهات غير محدودة",
+            "AI غير محدود",
+            "دعم فني مباشر",
+            "تخصيص كامل",
+        ])
+    else:
+        base_features.extend([
+            "فيديوهات تعليمية (تخزين 2GB)",
+            "تحليلات AI (5 طلب/شهر)",
+        ])
+    return base_features
+
 
 def _to_plan_response(plan: dict) -> dict:
-    plan_name = str(plan.get("name", ""))
+    name = (plan.get("name") or "").lower()
     return {
         "id": str(plan.get("id", "")),
-        "name": plan_name,
-        "price_egp": float(plan.get("price_egp", 0)),
-        "max_students": int(plan.get("max_students", 0)),
-        "max_ai_requests": int(plan.get("max_ai_requests", 0)),
-        "max_grades": plan.get("max_grades"),
-        "max_invoices": plan.get("max_invoices"),
-        "features_json": plan.get("features_json", []),
-        "is_active": bool(plan.get("is_active", True)),
-        "storage_limit_gb": _get_plan_storage_limit_gb(plan_name),
-        "ai_requests_per_month": _get_plan_ai_limit_display(plan_name),
+        "name": plan.get("name", ""),
+        "price_egp": plan.get("price_egp", 0),
+        "max_students": _get_limit(name, 100, 400, -1),
+        "ai_requests_per_month": _get_limit(name, 5, 30, -1),
+        "storage_limit_gb": _get_limit_gb(name, 2, 6, -1),
+        "features": _get_features(plan),
+        "is_active": plan.get("is_active", True),
     }
 
 
