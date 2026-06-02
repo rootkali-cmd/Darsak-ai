@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -51,7 +52,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       final plansResp = await api.dio.get('/subscriptions/plans');
       _plans = plansResp.data is List ? plansResp.data : [];
     } on DioException catch (e) {
-      _error = 'فشل التحميل: ${e.response?.statusCode}';
+      _error = 'فشل التحميل: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'خطأ: $e';
     }

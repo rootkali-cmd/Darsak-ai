@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_theme.dart';
 import '../../services/api_service.dart';
 import '../home_screen.dart';
@@ -64,6 +65,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
         'subjects': _selectedSubjects,
         'levels': _selectedLevels,
       });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_completed', true);
     } catch (_) {}
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(

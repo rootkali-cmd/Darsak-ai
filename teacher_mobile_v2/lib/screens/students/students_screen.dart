@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import 'add_edit_student_screen.dart';
 import 'student_detail_screen.dart';
 
@@ -48,7 +49,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
         _students = [];
       }
     } on DioException catch (e) {
-      _error = 'فشل تحميل الطلاب: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل الطلاب: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }

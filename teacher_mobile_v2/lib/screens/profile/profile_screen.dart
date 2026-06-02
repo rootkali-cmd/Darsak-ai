@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../login_screen.dart';
 
@@ -35,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final data = resp.data;
       _user = data is Map<String, dynamic> ? data : null;
     } on DioException catch (e) {
-      _error = 'فشل تحميل الملف الشخصي: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل الملف الشخصي: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }

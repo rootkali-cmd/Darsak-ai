@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../services/update_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -40,6 +41,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_enabled', value);
     setState(() => _notificationsEnabled = value);
+  }
+
+  Future<void> _checkForUpdate() async {
+    try {
+      final update = await UpdateService().checkForUpdate();
+      if (!mounted) return;
+      if (update != null) {
+        _showUpdateDialog(update);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('التطبيق محدث لأحدث إصدار'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر التحقق من التحديثات'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showUpdateDialog(Map<String, dynamic> update) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تحديث متاح'),
+        content: Text('الإصدار ${update['latest_version']} متاح الآن. هل تريد التحديث؟'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              UpdateService().setRemindLater();
+            },
+            child: const Text('لاحقاً'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await UpdateService().downloadAndInstall(
+                  version: update['latest_version'] ?? '0.0.0',
+                  onProgress: (_) {},
+                );
+              } catch (_) {}
+            },
+            child: const Text('تحديث'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -106,6 +164,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.info_outline, color: AppTheme.success),
                   title: const Text('الإصدار'),
                   trailing: Text(_version, style: const TextStyle(color: AppTheme.textSecondary)),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.system_update, color: AppTheme.accent),
+                  title: const Text('التحقق من التحديثات'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textSecondary),
+                  onTap: _checkForUpdate,
                 ),
                 const Divider(height: 1),
                 ListTile(

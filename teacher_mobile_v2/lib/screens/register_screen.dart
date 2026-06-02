@@ -73,8 +73,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
       }
     } on DioException catch (e) {
-      final detail = e.response?.data is Map ? (e.response!.data as Map)['detail'] : null;
-      _showError(detail?.toString() ?? 'فشل إنشاء الحساب');
+      if (e.type == DioExceptionType.connectionError) {
+        _showError('أنت غير متصل بالإنترنت');
+      } else {
+        final detail = e.response?.data is Map ? (e.response!.data as Map)['detail'] : null;
+        _showError(detail?.toString() ?? 'فشل إنشاء الحساب');
+      }
     } catch (e) {
       _showError('حدث خطأ: $e');
     } finally {

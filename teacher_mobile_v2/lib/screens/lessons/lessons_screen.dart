@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import 'lesson_detail_screen.dart';
 
 class LessonsScreen extends StatefulWidget {
@@ -34,7 +35,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
       final data = resp.data;
       _lessons = data is List ? data : [];
     } on DioException catch (e) {
-      _error = 'فشل تحميل الدروس: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل الدروس: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }

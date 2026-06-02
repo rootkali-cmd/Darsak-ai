@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../services/video_upload_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import 'package:image_picker/image_picker.dart';
 
 class LessonDetailScreen extends StatefulWidget {
@@ -81,7 +82,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         Navigator.pop(context);
       }
     } on DioException catch (e) {
-      _showError('فشل الحفظ: ${e.response?.statusCode} ${e.message}');
+      _showError('فشل الحفظ: ${getDioErrorMessage(e)}');
     } catch (e) {
       _showError('خطأ: $e');
     } finally {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import 'add_edit_grade_screen.dart';
 
 class GradesScreen extends StatefulWidget {
@@ -32,7 +33,7 @@ class _GradesScreenState extends State<GradesScreen> {
       final data = resp.data;
       _grades = data is List ? data : [];
     } on DioException catch (e) {
-      _error = 'فشل تحميل الدرجات: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل الدرجات: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }

@@ -81,8 +81,10 @@ class AuthProvider extends ChangeNotifier {
       final onboardingCompleted = data['onboarding_completed'] ?? data['user']?['onboarding_completed'] ?? jwt?['onboarding_completed'];
       if (onboardingCompleted != null) {
         _user!['onboarding_completed'] = onboardingCompleted == true || onboardingCompleted == 'true';
+        await prefs.setBool(_onboardingKey, _user!['onboarding_completed']!);
+      } else {
+        _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? false;
       }
-      await prefs.setBool(_onboardingKey, _user!['onboarding_completed'] ?? false);
       _isLoading = false; notifyListeners(); return true;
     } on DioException catch (e) { _error = _getDioError(e); _isLoading = false; notifyListeners(); return false; }
     catch (e) { _error = 'حدث خطأ غير متوقع: $e'; _isLoading = false; notifyListeners(); return false; }
@@ -90,11 +92,12 @@ class AuthProvider extends ChangeNotifier {
 
   String _getDioError(DioException e) {
     final s = e.response?.statusCode; final d = e.response?.data;
+    if (e.type == DioExceptionType.connectionError) return 'أنت غير متصل بالإنترنت';
     if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.sendTimeout) return 'تعذر الاتصال. تأكد من الإنترنت';
-    if (e.type == DioExceptionType.connectionError) return 'خطأ اتصال: ${e.message}';
     if (s == 401) return 'بيانات الدخول غير صحيحة';
     if (d is Map && d['detail'] != null) return d['detail'].toString();
-    return 'خطأ $s: ${e.message}';
+    if (s != null) return 'خطأ $s';
+    return e.message ?? 'حدث خطأ غير معروف';
   }
 
   Future<void> logout() async {

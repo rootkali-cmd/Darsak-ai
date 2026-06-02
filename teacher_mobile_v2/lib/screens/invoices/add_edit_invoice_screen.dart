@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 
 class AddEditInvoiceScreen extends StatefulWidget {
   final dynamic invoice;
@@ -79,7 +80,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل الحفظ: ${e.response?.statusCode ?? e.message}'),
+            content: Text('فشل الحفظ: ${getDioErrorMessage(e)}'),
             backgroundColor: AppTheme.danger,
           ),
         );

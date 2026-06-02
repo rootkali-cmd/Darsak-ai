@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 
 class ManualAttendanceScreen extends StatefulWidget {
   const ManualAttendanceScreen({super.key});
@@ -38,7 +39,7 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
         _students = [];
       }
     } on DioException catch (e) {
-      _error = 'فشل تحميل الطلاب: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل الطلاب: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }

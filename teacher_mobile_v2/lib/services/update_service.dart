@@ -19,10 +19,10 @@ class UpdateService {
 
   Future<Map<String, dynamic>?> checkForUpdate() async {
     try {
-      final api = ApiService();
-      final response = await api.dio.get(
+      final response = await Dio().get(
         _updateUrl,
         options: Options(
+          headers: {'Accept': 'application/json'},
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 10),
         ),

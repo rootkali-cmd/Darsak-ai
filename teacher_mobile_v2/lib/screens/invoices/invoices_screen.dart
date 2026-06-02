@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import 'add_edit_invoice_screen.dart';
 
 class InvoicesScreen extends StatefulWidget {
@@ -32,7 +33,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       final data = resp.data;
       _invoices = data is List ? data : [];
     } on DioException catch (e) {
-      _error = 'فشل تحميل الفواتير: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل الفواتير: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }

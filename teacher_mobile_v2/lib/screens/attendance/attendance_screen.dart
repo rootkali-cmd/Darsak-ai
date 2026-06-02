@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import 'barcode_scanner_screen.dart';
 import 'manual_attendance_screen.dart';
 
@@ -96,7 +97,7 @@ class _TodayTabState extends State<_TodayTab> {
       final data = resp.data;
       _attendance = data is List ? data : [];
     } on DioException catch (e) {
-      _error = 'فشل تحميل الحضور: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل الحضور: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }
@@ -235,7 +236,7 @@ class _HistoryTabState extends State<_HistoryTab> {
       final data = resp.data;
       _attendance = data is List ? data : [];
     } on DioException catch (e) {
-      _error = 'فشل تحميل السجل: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل السجل: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }

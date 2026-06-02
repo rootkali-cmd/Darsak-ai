@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/error_utils.dart';
 import 'add_edit_group_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
@@ -32,7 +33,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       final data = resp.data;
       _groups = data is List ? data : [];
     } on DioException catch (e) {
-      _error = 'فشل تحميل المجموعات: ${e.response?.statusCode ?? e.message}';
+      _error = 'فشل تحميل المجموعات: ${getDioErrorMessage(e)}';
     } catch (e) {
       _error = 'حدث خطأ: $e';
     }
