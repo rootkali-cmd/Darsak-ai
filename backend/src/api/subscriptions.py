@@ -37,14 +37,6 @@ def _get_limit_gb(name: str, basic: int, pro: int, enterprise: int):
     return basic
 
 
-def _get_limit_gb(name: str, basic: int, pro: int, enterprise: int):
-    if "enterprise" in name:
-        return "غير محدود"
-    if "pro" in name:
-        return pro
-    return basic
-
-
 def _get_features(plan: dict) -> list:
     features = plan.get("features_json", [])
     if isinstance(features, str):
