@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     AI_TIMEOUT: int = 60
 
     OPENROUTER_API_KEY: str = ""
-    OPENROUTER_MODEL: str = "google/gemini-2.0-flash-001"
-    OPENROUTER_VISION_MODEL: str = "google/gemini-2.0-flash-001"
+    OPENROUTER_MODEL: str = "deepseek/deepseek-v4-flash"
+    OPENROUTER_VISION_MODEL: str = "deepseek/deepseek-v4-flash"
 
     SECRET_KEY: str = "change-me-in-production-use-openssl-rand"
     ALGORITHM: str = "HS256"
