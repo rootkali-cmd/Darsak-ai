@@ -6,6 +6,10 @@ const PUBLIC_PATHS = ['/login', '/register', '/', '/pricing', '/about', '/contac
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  if (/\.(png|webp|jpg|jpeg|svg|ico|gif|woff2?|ttf|css|js|json|xml|txt|map)$/i.test(pathname)) {
+    return NextResponse.next()
+  }
+
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/static'))
   if (isPublic) return NextResponse.next()
 
@@ -31,5 +35,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|public|\.png|\.webp|\.jpg|\.jpeg|\.svg|\.ico|\.gif|\.woff|\.woff2|\.ttf|\.css|\.js|\.json|sitemap|robots).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
