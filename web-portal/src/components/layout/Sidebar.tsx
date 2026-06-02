@@ -52,7 +52,7 @@ export function Sidebar() {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-3 right-3 z-50 p-2 border border-[var(--card-border)] bg-[var(--bg)]"
+        className="lg:hidden fixed top-3 right-3 z-50 p-2 rounded-xl bg-slate-900/90 border border-white/[0.08] backdrop-blur-sm text-white"
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -63,21 +63,21 @@ export function Sidebar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 bg-black/60 z-40"
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
             onClick={() => setIsOpen(false)}
           />
         )}
       </AnimatePresence>
 
       <aside
-        className={`fixed top-0 right-0 h-full w-64 z-50 transform transition-transform duration-300 border-l border-[var(--card-border)] bg-[var(--bg)] ${
+        className={`fixed top-0 right-0 h-full w-64 z-50 transform transition-transform duration-300 border-l border-white/[0.08] bg-slate-900/90 backdrop-blur-md ${
           isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
         }`}
       >
         <div className="flex flex-col h-full">
-          <div className="p-5 border-b border-[var(--card-border)]">
+          <div className="p-5 border-b border-white/[0.08]">
             <Link href="/dashboard" className="flex items-center gap-2.5">
-              <span               className="text-[var(--accent)] font-black text-lg" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+              <span className="text-indigo-400 font-black text-lg" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                 DARSAK AI
               </span>
             </Link>
@@ -92,10 +92,10 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-none transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors ${
                     isActive
-                      ? 'bg-[rgba(220,38,38,0.08)] text-[var(--text)] font-medium border-r-2 border-[var(--accent)]'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[rgba(0,0,0,0.02)]'
+                      ? 'bg-indigo-500/10 text-white font-medium border-r-2 border-indigo-400'
+                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
                   <Icon size={18} />
@@ -105,17 +105,17 @@ export function Sidebar() {
             })}
           </nav>
 
-          <div className="p-3 border-t border-[var(--card-border)] space-y-0.5">
+          <div className="p-3 border-t border-white/[0.08] space-y-0.5">
             <Link
               href="/dashboard/assistants"
-              className="flex items-center gap-3 px-3 py-2.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[rgba(0,0,0,0.02)] transition-colors rounded-none"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-400 hover:text-white hover:bg-white/[0.04] transition-colors rounded-xl"
             >
               <UserCog size={18} />
               <span>المساعدون</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-[var(--accent)] hover:bg-[rgba(220,38,38,0.06)] transition-colors rounded-none"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors rounded-xl"
             >
               <LogOut size={18} />
               <span>تسجيل الخروج</span>

@@ -55,6 +55,9 @@ export default function DashboardPage() {
       icon: Users,
       change: '+12%',
       positive: true,
+      borderColor: 'border-l-indigo-500',
+      iconBg: 'bg-indigo-500/10',
+      iconColor: 'text-indigo-400',
     },
     {
       label: 'متوسط الدرجات',
@@ -63,6 +66,9 @@ export default function DashboardPage() {
       icon: TrendingUp,
       change: '+5%',
       positive: true,
+      borderColor: 'border-l-emerald-500',
+      iconBg: 'bg-emerald-500/10',
+      iconColor: 'text-emerald-400',
     },
     {
       label: 'حضور اليوم',
@@ -70,6 +76,9 @@ export default function DashboardPage() {
       icon: CalendarCheck,
       change: '-2%',
       positive: false,
+      borderColor: 'border-l-amber-500',
+      iconBg: 'bg-amber-500/10',
+      iconColor: 'text-amber-400',
     },
     {
       label: 'إجمالي الامتحانات',
@@ -77,15 +86,25 @@ export default function DashboardPage() {
       icon: GraduationCap,
       change: '+8%',
       positive: true,
+      borderColor: 'border-l-violet-500',
+      iconBg: 'bg-violet-500/10',
+      iconColor: 'text-violet-400',
     },
   ]
 
   return (
-    <div className="space-y-8">
+    <div className="relative space-y-8">
+      <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-3xl" />
+      </div>
+
       <Section>
-        <div className="p-6 md:p-8 card" style={{ borderColor: 'rgba(255,0,60,0.2)' }}>
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">لوحة التحكم</h1>
-          <p className="text-[var(--text-muted)]">نظرة شاملة على أداء طلابك وفصولك</p>
+        <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 md:p-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">لوحة التحكم</h1>
+          <p className="text-slate-400">نظرة شاملة على أداء طلابك وفصولك</p>
         </div>
       </Section>
 
@@ -94,20 +113,20 @@ export default function DashboardPage() {
           const Icon = stat.icon
           return (
             <Section key={stat.label} delay={index * 0.08}>
-              <div className="card p-5">
+              <div className={`bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5 border-l-4 ${stat.borderColor}`}>
                 <div className="flex items-start justify-between mb-3">
-                  <div className="p-2 bg-[rgba(255,0,60,0.08)]">
-                    <Icon size={20} className="text-[var(--accent)]" />
+                  <div className={`p-2 rounded-lg ${stat.iconBg}`}>
+                    <Icon size={20} className={stat.iconColor} />
                   </div>
-                  <div className={`flex items-center gap-1 text-xs ${stat.positive ? 'text-green-500' : 'text-red-500'}`}>
+                  <div className={`flex items-center gap-1 text-xs ${stat.positive ? 'text-emerald-400' : 'text-red-400'}`}>
                     {stat.positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                     {stat.change}
                   </div>
                 </div>
-                <div className="text-2xl font-bold mb-0.5" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                <div className="text-2xl font-bold text-white mb-0.5" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   {stat.value}{stat.suffix || ''}
                 </div>
-                <p className="text-xs text-[var(--text-muted)]">{stat.label}</p>
+                <p className="text-xs text-slate-500">{stat.label}</p>
               </div>
             </Section>
           )
@@ -116,29 +135,30 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section delay={0.15}>
-          <div className="card p-5">
-            <h2 className="text-sm font-bold mb-5 text-[var(--text-muted)]">الحضور الأسبوعي</h2>
+          <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
+            <h2 className="text-sm font-bold mb-5 text-slate-400">الحضور الأسبوعي</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ff003c" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#ff003c" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                  <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-                  <YAxis stroke="var(--text-muted)" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
+                  <YAxis stroke="#64748b" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      background: 'var(--card-bg)',
-                      border: '1px solid var(--card-border)',
-                      color: 'var(--text)',
+                      background: '#1E293B',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '12px',
+                      color: '#fff',
                       fontSize: '12px',
                     }}
                   />
-                  <Area type="monotone" dataKey="attendance" stroke="#ff003c" strokeWidth={2} fill="url(#colorAttendance)" />
+                  <Area type="monotone" dataKey="attendance" stroke="#6366f1" strokeWidth={2} fill="url(#colorAttendance)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -146,23 +166,24 @@ export default function DashboardPage() {
         </Section>
 
         <Section delay={0.2}>
-          <div className="card p-5">
-            <h2 className="text-sm font-bold mb-5 text-[var(--text-muted)]">الطلاب الجدد</h2>
+          <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
+            <h2 className="text-sm font-bold mb-5 text-slate-400">الطلاب الجدد</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                  <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-                  <YAxis stroke="var(--text-muted)" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
+                  <YAxis stroke="#64748b" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      background: 'var(--card-bg)',
-                      border: '1px solid var(--card-border)',
-                      color: 'var(--text)',
+                      background: '#1E293B',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '12px',
+                      color: '#fff',
                       fontSize: '12px',
                     }}
                   />
-                  <Bar dataKey="students" fill="#00f3ff" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="students" fill="#818cf8" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -171,26 +192,26 @@ export default function DashboardPage() {
       </div>
 
       <Section delay={0.25}>
-        <div className="card p-5">
-          <h2 className="text-sm font-bold mb-5 text-[var(--text-muted)]">إجراءات سريعة</h2>
+        <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
+          <h2 className="text-sm font-bold mb-5 text-slate-400">إجراءات سريعة</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'إضافة طالب', href: '/dashboard/students', icon: Users },
-              { label: 'تسجيل حضور', href: '/dashboard/attendance', icon: CalendarCheck },
-              { label: 'رفع درجات', href: '/dashboard/grades', icon: GraduationCap },
-              { label: 'تحليل AI', href: '/dashboard/students', icon: TrendingUp },
+              { label: 'إضافة طالب', href: '/dashboard/students', icon: Users, iconBg: 'bg-indigo-500/10', iconColor: 'text-indigo-400' },
+              { label: 'تسجيل حضور', href: '/dashboard/attendance', icon: CalendarCheck, iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-400' },
+              { label: 'رفع درجات', href: '/dashboard/grades', icon: GraduationCap, iconBg: 'bg-amber-500/10', iconColor: 'text-amber-400' },
+              { label: 'تحليل AI', href: '/dashboard/students', icon: TrendingUp, iconBg: 'bg-violet-500/10', iconColor: 'text-violet-400' },
             ].map((action) => {
               const Icon = action.icon
               return (
                 <a
                   key={action.label}
                   href={action.href}
-                  className="flex flex-col items-center gap-3 p-5 card hover:border-[var(--accent)] transition-colors"
+                  className="flex flex-col items-center gap-3 p-5 bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl hover:border-indigo-500/50 transition-colors"
                 >
-                  <div className="p-2.5 bg-[rgba(255,0,60,0.08)]">
-                    <Icon size={22} className="text-[var(--accent)]" />
+                  <div className={`p-2.5 rounded-lg ${action.iconBg}`}>
+                    <Icon size={22} className={action.iconColor} />
                   </div>
-                  <span className="text-sm font-medium">{action.label}</span>
+                  <span className="text-sm font-medium text-white">{action.label}</span>
                 </a>
               )
             })}
