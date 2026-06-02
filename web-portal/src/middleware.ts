@@ -6,7 +6,7 @@ const PUBLIC_PATHS = ['/login', '/register', '/', '/pricing', '/about', '/contac
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (/\.(png|webp|jpg|jpeg|svg|ico|gif|woff2?|ttf|css|js|json|xml|txt|map)$/i.test(pathname)) {
+  if (/\.(png|webp|jpg|jpeg|svg|ico|gif|woff2?|ttf|css|js|json|xml|txt|map|apk)$/i.test(pathname)) {
     return NextResponse.next()
   }
 
