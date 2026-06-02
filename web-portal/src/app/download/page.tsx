@@ -3,167 +3,171 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { Smartphone, Monitor, Download } from 'lucide-react'
+import { Smartphone, Monitor, Download, ArrowRight, Check, Sparkles } from 'lucide-react'
 
-const apps: {
-  id: string;
-  title: string;
-  description: string;
-  descriptionEn: string;
-  icon: any;
-  color: string;
-  files?: { name: string; label: string; size: string }[];
-  size?: string;
-  platform: string;
-  note: string;
-}[] = [
-  {
-    id: 'mobile',
-    title: 'DarsakAI Student v1.3.0',
-    description: 'تطبيق الهاتف للطلاب - متابعة الدرجات والحضور والاختبارات والملف الشخصي',
-    descriptionEn: 'Student mobile app — grades, attendance, exams & profile',
-    icon: Smartphone,
-    color: '#00f3ff',
-    files: [
-      { name: 'DarsakAI-Student.apk', label: 'Android APK v1.3.0', size: '~80 MB' },
-    ],
-    platform: 'Android ✓',
-    note: 'إصدار 1.3.0 • مساعد AI ذكي • Camera only permission',
-  },
+const apps = [
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v2.0.1',
-    description: 'تطبيق المدرس - مسح باركود للحضور + دروس وفيديو',
-    descriptionEn: 'Teacher mobile app — barcode attendance + lessons & video streaming',
-    icon: Monitor,
-    color: '#FF6B00',
-    files: [
-      { name: 'DarsakAI-Teacher-v2.0.1.apk', label: 'Android APK v2.0.1', size: '~74 MB' },
-    ],
-    platform: 'Android 10+ ✓',
-    note: 'v2.0.1 • هيكلة جديدة • Clean Architecture • بدون أخطاء',
+    title: 'DarsakAI Teacher',
+    subtitle: 'تطبيق المدرس',
+    description: 'مسح باركود للحضور • دروس فيديو • ذكاء اصطناعي • إدارة كاملة للسنتر',
+    icon: Smartphone,
+    color: '#6366F1',
+    bgColor: 'rgba(99,102,241,0.12)',
+    file: '/teacher-v2.apk',
+    label: 'Android APK v2.0.1',
+    size: '~74 MB',
+    platform: 'Android 10+',
+    note: 'CameraX + ML Kit • تسجيل دائم • نظام متكامل',
+  },
+  {
+    id: 'student',
+    title: 'DarsakAI Student',
+    subtitle: 'تطبيق الطالب',
+    description: 'متابعة الدرجات • الحضور • الاختبارات • الملف الشخصي',
+    icon: Smartphone,
+    color: '#00f3ff',
+    bgColor: 'rgba(0,243,255,0.12)',
+    file: '/api/download/DarsakAI-Student.apk',
+    label: 'Android APK v1.3.0',
+    size: '~80 MB',
+    platform: 'Android ✓',
+    note: 'مساعد AI ذكي • متابعة الأداء • إشعارات',
   },
   {
     id: 'desktop',
-    title: 'DarsakAI Desktop v2.0.0',
-    description: 'نظام إدارة السنتر - طلاب، درجات، حضور، امتحانات، فواتير',
-    descriptionEn: 'Learning center management — students, grades, attendance, exams',
+    title: 'DarsakAI Desktop',
+    subtitle: 'نظام الإدارة',
+    description: 'طلاب • درجات • حضور • امتحانات • فواتير • Offline',
     icon: Monitor,
-    color: '#ccff00',
+    color: '#10B981',
+    bgColor: 'rgba(16,185,129,0.12)',
     files: [
-      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer v2.0.0', size: '~15 MB' },
-      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable v2.0.0', size: '~18 MB' },
+      { name: 'DarsakAI-Setup.exe', label: 'Windows Installer', size: '~15 MB' },
+      { name: 'DarsakAI-Windows.zip', label: 'Windows Portable', size: '~18 MB' },
     ],
-    platform: 'Windows ✓',
-    note: 'إصدار 2.0.0 • Offline-first • SQLite • Auto-sync • QR + PIN',
+    platform: 'Windows',
+    note: 'Offline-first • SQLite • Auto-sync',
   },
-]
-
-const features = [
-  { ar: 'مساعد AI ذكي (5 أسئلة/يوم) - you.com', en: 'Smart AI assistant (5 questions/day) - you.com' },
-  { ar: 'نظام التحديث التلقائي (Auto-update مع شريط التقدم)', en: 'Auto-update system with progress bar' },
-  { ar: 'معرف حساب مميز (UUID) للتواصل مع الدعم', en: 'Unique account ID (UUID) for support' },
-  { ar: 'قفل الميزات لحين الاشتراك في باقة', en: 'Feature gating until subscription activated' },
-  { ar: 'دفع عبر فودافون كاش + صورة الإيصال + تأكيد', en: 'Vodafone Cash payment + receipt upload + confirm' },
-  { ar: 'إشعارات التفعيل والرفض (بوت تليجرام)', en: 'Activation/rejection notifications (Telegram bot)' },
-  { ar: 'توليد كود اشتراك عبر بوت تليجرام', en: 'Subscription code generation via Telegram bot' },
-  { ar: 'نظام الاختبارات الذكي (AI + PDF ← أسئلة)', en: 'Smart exam system (AI + PDF → questions)' },
-  { ar: 'تقييم ذكي: تصحيح + تحليل نقاط القوة/الضعف', en: 'AI grading: auto-correct + strengths/weaknesses' },
-  { ar: 'نظام الاشتراكات (Basic 200 / Pro 600 / Enterprise 1100)', en: 'Subscription system (Basic 200 / Pro 600 / Enterprise 1100)' },
-  { ar: 'QR Code المسح الضوئي للحضور', en: 'QR code attendance scanning' },
-  { ar: 'إدارة PIN للطلاب', en: 'Student PIN management' },
-  { ar: 'Offline-first مع كشف الانترنت', en: 'Offline-first with internet detection' },
-  { ar: 'Signed APK + تحديثات أمنية', en: 'Signed APK + security updates' },
 ]
 
 export default function DownloadPage() {
   const router = useRouter()
   const [isAr, setIsAr] = useState(true)
 
-  useEffect(() => {
-    setIsAr(document.dir === 'rtl')
-  }, [])
+  useEffect(() => { setIsAr(document.dir === 'rtl') }, [])
 
   return (
-    <div className="min-h-screen py-16 px-4">
-      <button
-        onClick={() => router.push('/')}
-        className="fixed top-4 left-4 z-50 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
-      >
-        ← {isAr ? 'رجوع' : 'BACK'}
-      </button>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)' }}>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
+      </div>
 
-      <div className="w-full max-w-5xl mx-auto mt-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+      <div className="relative max-w-6xl mx-auto px-4 py-20">
+        {/* Back */}
+        <motion.button
+          onClick={() => router.push('/')}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-sm text-slate-400 hover:text-white transition-colors mb-8 inline-flex items-center gap-1"
         >
-          <h1 className="text-3xl font-bold mb-2">DOWNLOADS</h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            {isAr ? 'حمّل تطبيقات درسك أي' : 'Download DarsakAI apps'}
+          <ArrowRight className="w-4 h-4 rotate-180" />
+          {isAr ? 'رجوع للرئيسية' : 'Back'}
+        </motion.button>
+
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 text-indigo-400 text-sm font-semibold rounded-full mb-4 border border-indigo-500/20">
+            <Sparkles className="w-4 h-4" />
+            {isAr ? 'التطبيقات' : 'Applications'}
+          </span>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            {isAr ? 'حمّل تطبيقات درسك AI' : 'Download DarsakAI Apps'}
+          </h1>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+            {isAr
+              ? 'جميع التطبيقات متاحة للتحميل المباشر. اختر التطبيق المناسب وابدأ الآن.'
+              : 'All apps available for direct download. Choose your app and get started.'}
           </p>
         </motion.div>
 
+        {/* App Cards */}
         <div className="grid md:grid-cols-3 gap-6">
           {apps.map((app, i) => (
             <motion.div
               key={app.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * (i + 1) }}
-              className="card p-6 flex flex-col h-full"
-              style={{ borderColor: `color-mix(in srgb, ${app.color} 25%, transparent)` }}
+              className="relative group"
             >
-              <div className="w-12 h-12 flex items-center justify-center mb-4" style={{ border: `1px solid ${app.color}` }}>
-                <app.icon className="w-6 h-6" style={{ color: app.color }} />
-              </div>
-
-              <h2 className="text-lg font-bold mb-1">{app.title}</h2>
-
-              <p className="text-xs text-[var(--text-muted)] mb-4 leading-relaxed">
-                {isAr ? app.description : app.descriptionEn}
-              </p>
-
-              <div className="mt-auto space-y-3">
-                <div className="flex justify-between text-xs">
-                  <span className="text-[var(--text-muted)]">{isAr ? 'المنصة' : 'Platform'}</span>
-                  <span style={{ color: app.color }}>{app.platform}</span>
+              <div className="absolute inset-0 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ background: `radial-gradient(circle at center, ${app.color}20, transparent 70%)` }}
+              />
+              <div className="relative bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 flex flex-col h-full hover:border-white/[0.15] transition-all duration-300">
+                {/* Icon */}
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
+                  style={{ background: app.bgColor }}>
+                  <app.icon className="w-7 h-7" style={{ color: app.color }} />
                 </div>
-                {app.size && (
+
+                {/* Title */}
+                <div className="mb-1">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ color: app.color, background: `${app.color}15` }}>
+                    {app.subtitle}
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">{app.title}</h2>
+                <p className="text-slate-400 text-sm mb-6 leading-relaxed flex-1">
+                  {app.description}
+                </p>
+
+                {/* Meta */}
+                <div className="space-y-2 mb-6">
                   <div className="flex justify-between text-xs">
-                    <span className="text-[var(--text-muted)]">{isAr ? 'الحجم' : 'Size'}</span>
-                    <span>{app.size}</span>
+                    <span className="text-slate-500">{isAr ? 'المنصة' : 'Platform'}</span>
+                    <span className="text-slate-300">{app.platform}</span>
                   </div>
-                )}
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">{isAr ? 'الحجم' : 'Size'}</span>
+                    <span className="text-slate-300">{app.size || '—'}</span>
+                  </div>
+                </div>
+
                 {app.note && (
-                  <p className="text-[10px] text-[var(--text-muted)] opacity-60 pt-2 border-t border-[var(--card-border)]">
+                  <p className="text-[10px] text-slate-500 mb-4 pb-4 border-b border-white/[0.06]">
                     {app.note}
                   </p>
                 )}
 
-                {'files' in app && app.files ? (
+                {/* Download Button(s) */}
+                {'file' in app && app.file ? (
+                  <a
+                    href={app.file}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:scale-[1.02] active:scale-95"
+                    style={{ background: `linear-gradient(135deg, ${app.color}, ${app.color}cc)` }}
+                  >
+                    <Download className="w-4 h-4" />
+                    {app.label} ({app.size})
+                  </a>
+                ) : 'files' in app && app.files ? (
                   <div className="space-y-2">
                     {app.files.map((f: any) => (
                       <a
                         key={f.name}
                         href={`/api/download/${f.name}`}
-                        download
-                        className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold transition-opacity"
-                        style={{ background: app.color, color: '#000' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-[1.02] active:scale-95"
+                        style={{ background: `linear-gradient(135deg, ${app.color}, ${app.color}cc)` }}
                       >
-                        <Download className="w-3 h-3" />
+                        <Download className="w-4 h-4" />
                         {f.label} ({f.size})
                       </a>
                     ))}
                   </div>
                 ) : (
-                  <div className="w-full flex items-center justify-center gap-2 py-2.5 text-xs cursor-not-allowed"
-                    style={{ border: '1px solid var(--card-border)', color: 'var(--text-muted)', opacity: 0.5 }}
-                  >
-                    {isAr ? 'قريباً' : 'COMING SOON'}
+                  <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm text-slate-500 bg-white/[0.02] border border-white/[0.05] cursor-not-allowed">
+                    {isAr ? 'قريباً' : 'Coming Soon'}
                   </div>
                 )}
               </div>
@@ -171,38 +175,16 @@ export default function DownloadPage() {
           ))}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mt-12 max-w-lg mx-auto"
-        >
-          <div className="card p-6">
-            <h3 className="text-sm font-bold mb-4">
-              {isAr ? 'الميزات الجديدة v1.4.0' : 'NEW FEATURES v1.4.0'}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {features.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs">
-                  <span className="text-[var(--accent-2)]">▸</span>
-                  <span className="text-[var(--text-muted)]">
-                    {isAr ? f.ar : f.en}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
+        {/* Footer */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="text-center text-xs text-[var(--text-muted)] mt-8 opacity-50"
+          className="text-center text-xs text-slate-500 mt-16"
         >
           {isAr
-            ? 'التطبيقات تحت التطوير • للاستخدام الداخلي'
-            : 'Apps are under active development • For internal use'}
+            ? 'التطبيقات تُحدّث باستمرار • تابع التحديثات من داخل التطبيق'
+            : 'Apps are updated regularly • Check for updates from within the app'}
         </motion.p>
       </div>
     </div>
