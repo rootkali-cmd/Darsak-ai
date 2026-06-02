@@ -60,6 +60,7 @@ darsak_accounts_db/
 
 # Zip files
 *.zip
+*.apk
 
 # Build artifacts
 desktop_app/build/

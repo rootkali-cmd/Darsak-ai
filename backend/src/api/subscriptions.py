@@ -26,10 +26,27 @@ logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
+def _get_plan_storage_limit_gb(plan_name: str):
+    name_lower = plan_name.lower()
+    if "enterprise" in name_lower:
+        return "غير محدود"
+    if "pro" in name_lower:
+        return 6
+    return 2
+
+def _get_plan_ai_limit_display(plan_name: str):
+    name_lower = plan_name.lower()
+    if "enterprise" in name_lower:
+        return "غير محدود"
+    if "pro" in name_lower:
+        return 50
+    return 10
+
 def _to_plan_response(plan: dict) -> dict:
+    plan_name = str(plan.get("name", ""))
     return {
         "id": str(plan.get("id", "")),
-        "name": str(plan.get("name", "")),
+        "name": plan_name,
         "price_egp": float(plan.get("price_egp", 0)),
         "max_students": int(plan.get("max_students", 0)),
         "max_ai_requests": int(plan.get("max_ai_requests", 0)),
@@ -37,6 +54,8 @@ def _to_plan_response(plan: dict) -> dict:
         "max_invoices": plan.get("max_invoices"),
         "features_json": plan.get("features_json", []),
         "is_active": bool(plan.get("is_active", True)),
+        "storage_limit_gb": _get_plan_storage_limit_gb(plan_name),
+        "ai_requests_per_month": _get_plan_ai_limit_display(plan_name),
     }
 
 

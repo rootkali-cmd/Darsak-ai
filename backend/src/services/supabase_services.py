@@ -216,6 +216,24 @@ class SubscriptionPlanService:
     async def get_by_name(self, name: str) -> dict | None:
         return await self.repo.select_one({"name": name})
 
+    async def get_plan_storage_limit(self, plan_name: str) -> int:
+        from src.core.config import get_settings
+        s = get_settings()
+        if "enterprise" in plan_name.lower():
+            return s.PLAN_ENTERPRISE_STORAGE_LIMIT
+        if "pro" in plan_name.lower():
+            return s.PLAN_PRO_STORAGE_LIMIT
+        return s.PLAN_BASIC_STORAGE_LIMIT
+
+    async def get_plan_ai_limit(self, plan_name: str) -> int:
+        from src.core.config import get_settings
+        s = get_settings()
+        if "enterprise" in plan_name.lower():
+            return s.PLAN_ENTERPRISE_AI_LIMIT
+        if "pro" in plan_name.lower():
+            return s.PLAN_PRO_AI_LIMIT
+        return s.PLAN_BASIC_AI_LIMIT
+
 
 class SubscriptionCodeService:
     def __init__(self):

@@ -203,6 +203,22 @@ async def upload_lesson_video(
             await user_service.update(current_user["id"], {"telegram_channel_id": channel_id})
 
         content = await file.read()
+
+        from src.services import subscription_plan_service, teacher_subscription_service
+        teacher_sub = await teacher_subscription_service.get_active_subscription(current_user["id"])
+        if teacher_sub:
+            plan = await subscription_plan_service.get_by_id(teacher_sub.get("plan_id"))
+            if plan:
+                limit = await subscription_plan_service.get_plan_storage_limit(plan.get("name", ""))
+            else:
+                limit = await subscription_plan_service.get_plan_storage_limit(teacher_sub.get("plan_name", ""))
+            if limit > 0 and len(content) > limit:
+                limit_gb = limit // (1024 * 1024 * 1024)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"حجم الفيديو ({len(content) // (1024 * 1024)}MB) يتجاوز الحد الأقصى للباقة ({limit_gb}GB)"
+                )
+
         if len(content) > 2 * 1024 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="Video file too large (max 2GB)")
 

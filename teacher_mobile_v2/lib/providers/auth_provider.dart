@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   static const _tokenKey = 'access_token';
+  static const _onboardingKey = 'onboarding_completed';
 
   bool _isLoading = false;
   String? _error;
@@ -19,6 +20,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _token != null && _token!.isNotEmpty && _user != null;
   Map<String, dynamic>? get user => _user;
   bool get isInitialized => _isInitialized;
+  bool get needsOnboarding => _user != null && _user!['onboarding_completed'] != true;
 
   AuthProvider() { _init(); }
 
@@ -29,6 +31,7 @@ class AuthProvider extends ChangeNotifier {
       final jwt = _parseJwt(_token!);
       if (jwt != null && jwt['expired'] != true && jwt['id'] != null) {
         _user = {'id': jwt['id'], 'full_name': jwt['full_name'] ?? ''};
+        _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? true;
       } else {
         await prefs.remove(_tokenKey);
         _token = null;
@@ -74,7 +77,12 @@ class AuthProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance(); await prefs.setString(_tokenKey, newToken);
       _token = newToken;
       final jwt = _parseJwt(_token!);
-      _user = jwt != null ? {'id': jwt['id'], 'full_name': jwt['full_name']} : {'id': '', 'full_name': email};
+      _user = jwt != null ? {'id': jwt['id'], 'full_name': jwt['full_name'] ?? ''} : {'id': '', 'full_name': email};
+      final onboardingCompleted = data['onboarding_completed'] ?? data['user']?['onboarding_completed'] ?? jwt?['onboarding_completed'];
+      if (onboardingCompleted != null) {
+        _user!['onboarding_completed'] = onboardingCompleted == true || onboardingCompleted == 'true';
+      }
+      await prefs.setBool(_onboardingKey, _user!['onboarding_completed'] ?? false);
       _isLoading = false; notifyListeners(); return true;
     } on DioException catch (e) { _error = _getDioError(e); _isLoading = false; notifyListeners(); return false; }
     catch (e) { _error = 'حدث خطأ غير متوقع: $e'; _isLoading = false; notifyListeners(); return false; }

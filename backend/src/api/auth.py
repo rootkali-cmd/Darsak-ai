@@ -25,6 +25,22 @@ def get_client_ip(request: Request) -> str:
     return "unknown"
 
 
+def _get_plan_storage_limit_gb(plan_name: str):
+    name_lower = plan_name.lower()
+    if "enterprise" in name_lower:
+        return "غير محدود"
+    if "pro" in name_lower:
+        return 6
+    return 2
+
+def _get_plan_ai_limit_display(plan_name: str):
+    name_lower = plan_name.lower()
+    if "enterprise" in name_lower:
+        return "غير محدود"
+    if "pro" in name_lower:
+        return 50
+    return 10
+
 def _user_response(user: dict) -> dict:
     return {
         "id": str(user.get("id", "")),
@@ -198,7 +214,32 @@ async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
 
 @router.get("/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return _user_response(current_user)
+    result = _user_response(current_user)
+    if current_user.get("role") in ("teacher", "admin", None):
+        try:
+            sub = await teacher_subscription_service.get_active_subscription(current_user["id"])
+            if sub:
+                plan = await subscription_plan_service.get_by_id(sub["plan_id"])
+                plan_name = plan["name"] if plan else "Unknown"
+                result["plan_name"] = plan_name
+                result["storage_limit_gb"] = _get_plan_storage_limit_gb(plan_name)
+                result["ai_requests_per_month"] = _get_plan_ai_limit_display(plan_name)
+                expires = sub.get("expires_at")
+                if isinstance(expires, str):
+                    expires_dt = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+                else:
+                    expires_dt = expires
+                result["is_expired"] = expires_dt < datetime.now(timezone.utc)
+                result["days_remaining"] = max(0, (expires_dt - datetime.now(timezone.utc)).days)
+            else:
+                result["plan_name"] = "No Plan"
+                result["storage_limit_gb"] = 2
+                result["ai_requests_per_month"] = 0
+                result["is_expired"] = True
+                result["days_remaining"] = 0
+        except Exception as e:
+            logger.warning("Failed to load subscription info for /me: %s", e)
+    return result
 
 
 @router.patch("/me")
