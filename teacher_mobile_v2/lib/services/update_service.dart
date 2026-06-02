@@ -52,7 +52,7 @@ class UpdateService {
       final filePath = '${dir.path}/DarsakAI-Teacher-v$version.apk';
       final file = File(filePath);
 
-      final downloadUrl = '$_downloadBase/v$version/DarsakAI-Teacher-v$version.apk';
+      final downloadUrl = 'https://darsakai.com/teacher-v2.apk';
 
       final api = ApiService();
       await api.dio.download(

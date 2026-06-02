@@ -63,32 +63,64 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showUpdateDialog(Map<String, dynamic> update) {
+    double progress = 0;
+    bool downloading = false;
+    String? error;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تحديث متاح'),
-        content: Text('الإصدار ${update['latest_version']} متاح الآن. هل تريد التحديث؟'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              UpdateService().setRemindLater();
-            },
-            child: const Text('لاحقاً'),
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(error != null ? 'خطأ' : (downloading ? 'جاري التحميل...' : 'تحديث متاح')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (error != null)
+                Text(error!, style: const TextStyle(color: AppTheme.danger))
+              else if (downloading)
+                Column(children: [
+                  LinearProgressIndicator(value: progress > 0 ? progress : null),
+                  const SizedBox(height: 8),
+                  Text('${(progress * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 14)),
+                ])
+              else
+                Text('الإصدار ${update['latest_version']} متاح الآن.\nهل تريد التحديث الآن؟', textAlign: TextAlign.center),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await UpdateService().downloadAndInstall(
-                  version: update['latest_version'] ?? '0.0.0',
-                  onProgress: (_) {},
-                );
-              } catch (_) {}
-            },
-            child: const Text('تحديث'),
-          ),
-        ],
+          actions: downloading
+              ? [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                ]
+              : [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      UpdateService().setRemindLater();
+                    },
+                    child: const Text('لاحقاً'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      setDialogState(() => downloading = true);
+                      try {
+                        await UpdateService().downloadAndInstall(
+                          version: update['latest_version'] ?? '0.0.0',
+                          onProgress: (p) => setDialogState(() => progress = p),
+                        );
+                        Navigator.pop(ctx);
+                      } catch (e) {
+                        setDialogState(() {
+                          downloading = false;
+                          error = 'فشل التحميل. جرب مرة أخرى من الموقع';
+                        });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+                    child: const Text('تحديث الآن'),
+                  ),
+                ],
+        ),
       ),
     );
   }
