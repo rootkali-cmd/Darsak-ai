@@ -199,14 +199,11 @@ export default function LandingPage() {
                     animate={{ opacity: 0.6 }}
                     transition={{ delay: 0.5, duration: 0.6 }}
                   />
-                  <Image
-                    src="/hero.png"
-                    alt="DARSAK AI platform"
-                    width={768}
-                    height={512}
-                    className="w-full h-auto relative"
-                    style={{ objectFit: 'cover' }}
-                    priority
+                   <img
+                     src="/hero.webp"
+                     alt="DARSAK AI platform"
+                     className="w-full h-auto relative"
+                     style={{ objectFit: 'cover' }}
                   />
                 </div>
               </motion.div>
