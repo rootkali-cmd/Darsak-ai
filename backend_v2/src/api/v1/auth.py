@@ -71,7 +71,7 @@ async def register(body: RegisterRequest):
         user_data = {
             "email": email,
             "full_name": body.full_name,
-            "password_hash": hashed_pw,
+            "hashed_password": hashed_pw,
             "role": "teacher",
             "teacher_code": teacher_code,
             "is_active": True,
@@ -124,7 +124,7 @@ async def login(body: LoginRequest):
         if user is None:
             raise UnauthorizedException("Invalid email or password")
 
-        if not verify_password(body.password, user.get("password_hash", "")):
+        if not verify_password(body.password, user.get("hashed_password", "")):
             raise UnauthorizedException("Invalid email or password")
 
         if not user.get("is_active"):

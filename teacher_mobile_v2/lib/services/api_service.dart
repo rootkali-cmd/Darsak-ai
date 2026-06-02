@@ -6,7 +6,7 @@ class ApiService {
   factory ApiService() => _instance;
 
   late final Dio _dio;
-  static const _baseUrl = 'https://darsak-backend-v2.fly.dev/api/v1';
+  static const _baseUrl = 'https://darsak-backend.fly.dev/api';
 
   ApiService._internal() {
     _dio = Dio(BaseOptions(
