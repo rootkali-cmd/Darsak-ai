@@ -13,7 +13,7 @@ const plans = [
     price: '200',
     currency: 'ج.م',
     period: '/شهر',
-    color: '#00f3ff',
+    color: '#6366F1',
     students: '50 طالب',
     features: [
       { ar: 'حتى 50 طالب', en: 'Up to 50 students', ok: true },
@@ -34,7 +34,7 @@ const plans = [
     price: '600',
     currency: 'ج.م',
     period: '/شهر',
-    color: '#ccff00',
+    color: '#6366F1',
     students: '500 طالب',
     popular: true,
     features: [
@@ -56,7 +56,7 @@ const plans = [
     price: '1100',
     currency: 'ج.م',
     period: '/شهر',
-    color: '#ff003c',
+    color: '#6366F1',
     students: 'غير محدود',
     features: [
       { ar: 'طلاب غير محدود', en: 'Unlimited students', ok: true },
@@ -82,22 +82,33 @@ export default function PricingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen py-16 px-4">
-      <button
-        onClick={() => router.push('/')}
-        className="fixed top-4 left-4 z-50 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
-      >
-        ← {isAr ? 'العودة' : 'BACK'}
-      </button>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)' }}>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
+      </div>
 
-      <div className="w-full max-w-6xl mx-auto mt-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+      <div className="relative max-w-5xl mx-auto px-4 py-20">
+        <button
+          onClick={() => router.push('/')}
+          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-16"
         >
-          <h1 className="text-3xl font-bold mb-3">{isAr ? 'اختر باقتك' : 'Choose Your Plan'}</h1>
-          <p className="text-sm text-[var(--text-muted)]">
+          ← {isAr ? 'العودة للرئيسية' : 'BACK HOME'}
+        </button>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-16"
+        >
+          <span className="inline-block px-3 py-1 text-xs font-bold tracking-widest mb-4 border border-indigo-500/40 text-indigo-400 rounded-full">
+            {isAr ? 'الباقات' : 'PLANS'}
+          </span>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
+            {isAr ? 'اختر باقتك' : 'Choose Your Plan'}
+          </h1>
+          <p className="text-slate-400">
             {isAr ? 'اشتراكات شهرية مرنة • يمكنك الترقية في أي وقت' : 'Flexible monthly subscriptions • Upgrade anytime'}
           </p>
         </motion.div>
@@ -106,77 +117,62 @@ export default function PricingPage() {
           {plans.map((plan, i) => (
             <motion.div
               key={plan.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * i }}
+              transition={{ delay: 0.1 * i, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="relative"
             >
               {plan.popular && (
-                <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1 text-[10px] font-bold"
-                  style={{ background: plan.color, color: '#000' }}
-                >
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1 text-xs font-bold text-white rounded-full"
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
                   {isAr ? 'الأكثر طلباً' : 'POPULAR'}
                 </div>
               )}
 
-              <div
-                className="card p-6 md:p-8 h-full flex flex-col"
-                style={{
-                  borderColor: plan.popular ? plan.color : undefined,
-                }}
-              >
+              <div className={`p-6 md:p-8 h-full flex flex-col rounded-2xl bg-white/[0.03] border transition-all duration-300 ${
+                plan.popular ? 'border-indigo-500/40 scale-[1.02]' : 'border-white/[0.08] hover:border-indigo-500/20'
+              }`}>
                 <div className="text-center mb-6">
-                  <h3 className="text-lg font-bold mb-2" style={{ color: plan.color }}>
+                  <h3 className="text-lg font-bold text-white mb-2">
                     {isAr ? plan.nameAr : plan.nameEn}
                   </h3>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-3xl font-bold">{plan.price}</span>
-                    <span className="text-xs text-[var(--text-muted)]">{plan.currency}{plan.period}</span>
+                    <span className="text-4xl font-extrabold text-white">{plan.price}</span>
+                    <span className="text-sm text-slate-400">{plan.currency}{plan.period}</span>
                   </div>
-                  <div className="mt-2 flex items-center justify-center gap-1 text-xs" style={{ color: plan.color }}>
+                  <div className="mt-2 flex items-center justify-center gap-1 text-xs text-indigo-400">
                     <Users size={12} />
                     <span>{plan.students}</span>
                   </div>
                 </div>
 
-                <div className="divider" />
+                <div className="h-px bg-white/[0.08] mb-6" />
 
                 <div className="flex-1 space-y-3 mb-8">
                   {plan.features.map((f, fi) => (
                     <div key={fi} className="flex items-center gap-3">
                       {f.ok ? (
-                        <Check size={14} className="flex-shrink-0" style={{ color: plan.color }} />
+                        <Check size={14} className="flex-shrink-0 text-indigo-400" />
                       ) : (
-                        <X size={14} className="flex-shrink-0" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+                        <X size={14} className="flex-shrink-0 text-slate-600" />
                       )}
-                      <span
-                        className="text-xs"
-                        style={{
-                          color: f.ok ? 'var(--text-secondary)' : 'var(--text-muted)',
-                          opacity: f.ok ? 1 : 0.4,
-                        }}
-                      >
+                      <span className={`text-xs ${f.ok ? 'text-slate-300' : 'text-slate-600'}`}>
                         {isAr ? f.ar : f.en}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                <button
+                <motion.button
                   onClick={() => router.push('/dashboard/subscription')}
-                  className="btn w-full justify-center py-3 text-xs font-bold"
-                  style={{
-                    background: plan.color,
-                    color: '#000',
-                    borderColor: plan.color,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                  className="w-full py-3 text-sm font-bold text-white rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}
+                  whileHover={{ scale: 1.02, opacity: 0.9 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   <CreditCard size={14} />
                   {isAr ? 'اشتراك الآن' : 'SUBSCRIBE'}
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           ))}
