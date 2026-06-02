@@ -126,6 +126,49 @@ async def update_group(
     return GroupResponse(**updated_list[0])
 
 
+@router.put("/{group_id}")
+async def update_group_put(
+    group_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_teacher),
+):
+    try:
+        group = await group_service.get_by_id(group_id)
+        if not group or group.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+
+        body = await request.json()
+        update_dict = {k: v for k, v in body.items() if v is not None and k not in ("id", "teacher_id")}
+        updated = await group_service.update(group_id, update_dict)
+
+        await audit_service.log(
+            actor_type=current_user.get("role", "teacher"),
+            action="group_updated",
+            actor_id=current_user["id"],
+            resource_type="group",
+            resource_id=group_id,
+            ip_address=get_client_ip(request),
+        )
+
+        updated_list = await _add_student_count([updated], current_user["id"])
+        updated = updated_list[0]
+
+        return {
+            "ok": True,
+            "data": {
+                k: str(v) if hasattr(v, "hex") else (v.isoformat() if hasattr(v, "isoformat") else v)
+                for k, v in updated.items()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+        logger = logging.getLogger("darsak")
+        logger.error("Failed to update group %s: %s", group_id, exc)
+        raise HTTPException(status_code=500, detail="Update failed")
+
+
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_group(
     group_id: str,

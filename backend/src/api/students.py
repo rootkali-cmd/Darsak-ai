@@ -7,7 +7,7 @@ from src.schemas.student import (
     StudentPinUpdate, TeacherVerifyRequest, TeacherVerifyResponse,
 )
 from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
-from src.core.security.auth import create_access_token, verify_password
+from src.core.security.auth import create_access_token, verify_password, hash_password
 from src.core.security.sanitizer import sanitize_text, sanitize_student_code, sanitize_pin, sanitize_teacher_code
 from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service, teacher_subscription_service, subscription_plan_service
 from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_usage
@@ -17,6 +17,22 @@ router = APIRouter(prefix="/students", tags=["Students"])
 
 def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
+
+
+def _serialize_student(s: dict) -> dict:
+    return {
+        "id": str(s.get("id", "")),
+        "teacher_id": str(s.get("teacher_id", "")),
+        "full_name": s.get("full_name", ""),
+        "code": s.get("code", ""),
+        "parent_phone": s.get("parent_phone"),
+        "group_id": str(s.get("group_id")) if s.get("group_id") else None,
+        "pin_hash": s.get("pin_hash"),
+        "has_pin": s.get("pin_hash") is not None,
+        "is_active": s.get("is_active", True),
+        "created_at": str(s.get("created_at", "")),
+        "updated_at": str(s.get("updated_at", "")),
+    }
 
 
 @router.post("/", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
@@ -103,6 +119,31 @@ async def get_student(
         import logging
         logging.getLogger("darsak").error("Failed to get student %s: %s", student_id, exc)
         raise HTTPException(status_code=500, detail=f"Failed to get student: {str(exc)}")
+
+
+@router.put("/{student_id}")
+async def update_student(
+    student_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_teacher),
+):
+    try:
+        student = await student_service.get_by_id(student_id)
+        if not student or student.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+        body = await request.json()
+        update_dict = {k: v for k, v in body.items() if v is not None and k != "id" and k != "teacher_id"}
+        if "pin" in update_dict:
+            update_dict["pin_hash"] = hash_password(update_dict.pop("pin"))
+        updated = await student_service.update(student_id, update_dict)
+        return {"ok": True, "student": _serialize_student(updated)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.getLogger("darsak").error("Failed to update student %s: %s", student_id, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to update student: {str(exc)}")
+
+Actually, let me just use a simple approach. Read the request body directly.
 
 
 @router.get("/{student_id}/pin")

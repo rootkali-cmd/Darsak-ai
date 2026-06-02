@@ -167,6 +167,45 @@ async def get_grade(
     return await _enrich_grade(grade)
 
 
+@router.put("/{grade_id}")
+async def update_grade(
+    grade_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_teacher),
+):
+    try:
+        existing = await grade_service.get_by_id(grade_id)
+        if not existing or existing.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+        body = await request.json()
+        update_dict = {k: v for k, v in body.items() if v is not None and k not in ("id", "teacher_id")}
+        updated = await grade_service.update(grade_id, update_dict)
+
+        await audit_service.log(
+            actor_type=current_user.get("role", "teacher"),
+            action="grade_updated",
+            actor_id=current_user["id"],
+            resource_type="grade",
+            resource_id=grade_id,
+            ip_address=get_client_ip(request),
+        )
+
+        return {
+            "ok": True,
+            "data": {
+                k: str(v) if hasattr(v, "hex") else (v.isoformat() if hasattr(v, "isoformat") else v)
+                for k, v in updated.items()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+        logging.getLogger("darsak").error("Failed to update grade %s: %s", grade_id, exc)
+        raise HTTPException(status_code=500, detail="Update failed")
+
+
 @router.delete("/{grade_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_grade(
     grade_id: str,

@@ -101,6 +101,45 @@ async def update_invoice(
     return InvoiceResponse(**updated)
 
 
+@router.put("/{invoice_id}")
+async def update_invoice_put(
+    invoice_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_teacher),
+):
+    try:
+        existing = await invoice_service.get_by_id(invoice_id)
+        if not existing or existing.get("teacher_id") != current_user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+        body = await request.json()
+        update_dict = {k: v for k, v in body.items() if v is not None and k not in ("id", "teacher_id")}
+        updated = await invoice_service.update(invoice_id, update_dict)
+
+        await audit_service.log(
+            actor_type=current_user.get("role", "teacher"),
+            action="invoice_updated",
+            actor_id=current_user["id"],
+            resource_type="invoice",
+            resource_id=invoice_id,
+            ip_address=get_client_ip(request),
+        )
+
+        return {
+            "ok": True,
+            "data": {
+                k: str(v) if hasattr(v, "hex") else (v.isoformat() if hasattr(v, "isoformat") else v)
+                for k, v in updated.items()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+        logging.getLogger("darsak").error("Failed to update invoice %s: %s", invoice_id, exc)
+        raise HTTPException(status_code=500, detail="Update failed")
+
+
 @router.delete("/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_invoice(
     invoice_id: str,
