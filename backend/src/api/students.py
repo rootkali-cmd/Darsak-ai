@@ -143,8 +143,6 @@ async def update_student(
         logging.getLogger("darsak").error("Failed to update student %s: %s", student_id, exc)
         raise HTTPException(status_code=500, detail=f"Failed to update student: {str(exc)}")
 
-Actually, let me just use a simple approach. Read the request body directly.
-
 
 @router.get("/{student_id}/pin")
 async def check_student_pin(
