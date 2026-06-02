@@ -90,19 +90,17 @@ async def register(user_data: UserCreate, request: Request):
         ip_address=get_client_ip(request),
     ))
 
-    # Auto-activate 7-day trial on premium plan for new registered teachers
+    # Auto-activate 30-day trial on Basic plan for new registered teachers
     if user.get("role") in ("teacher", None):
         try:
             plans = await subscription_plan_service.list_active()
-            premium_plan = None
+            basic_plan = None
             for p in plans:
-                if "متقدمة" in p.get("name", ""):
-                    premium_plan = p
+                if "basic" in p.get("name", "").lower():
+                    basic_plan = p
                     break
-            if not premium_plan and plans:
-                premium_plan = plans[0]
 
-            if premium_plan:
+            if basic_plan:
                 import uuid
                 from datetime import timedelta
                 from datetime import timezone
@@ -110,12 +108,12 @@ async def register(user_data: UserCreate, request: Request):
                 trial_expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
                 await teacher_subscription_service.repo.insert({
                     "teacher_id": user["id"],
-                    "plan_id": premium_plan["id"],
+                    "plan_id": basic_plan["id"],
                     "code_id": trial_code_id,
                     "expires_at": trial_expires,
                     "is_active": True,
                 })
-                logger.info("Trial subscription activated for user %s on plan %s", user["id"], premium_plan["name"])
+                logger.info("Trial subscription activated for user %s on plan %s", user["id"], basic_plan["name"])
         except Exception as e:
             logger.warning("Failed to auto-activate trial for user %s: %s", user["id"], e)
 
@@ -242,21 +240,72 @@ async def get_me(current_user: dict = Depends(get_current_user)):
                         expires_dt = expires
                     result["is_expired"] = expires_dt < datetime.now(timezone.utc)
                     result["days_remaining"] = max(0, (expires_dt - datetime.now(timezone.utc)).days)
+                    code_id = sub.get("code_id", "")
+                    result["is_trial"] = isinstance(code_id, str) and code_id.startswith("trial-")
                 else:
                     result["plan_name"] = "No Plan"
                     result["storage_limit_gb"] = 2
                     result["ai_requests_per_month"] = 0
                     result["is_expired"] = True
                     result["days_remaining"] = 0
+                    result["is_trial"] = False
             else:
                 result["plan_name"] = "No Plan"
                 result["storage_limit_gb"] = 2
                 result["ai_requests_per_month"] = 0
                 result["is_expired"] = True
-                result["days_remaining"] = 0
+                result["days_remaining"] = -1
+                result["is_trial"] = False
         except Exception as e:
             logger.warning("Failed to load subscription info for /me: %s", e)
     return result
+
+
+@router.get("/my-subscription")
+async def get_my_subscription(current_user: dict = Depends(get_current_user)):
+    try:
+        sub = await teacher_subscription_service.get_active_subscription(current_user["id"])
+        if sub:
+            plan = await subscription_plan_service.get_by_id(sub["plan_id"])
+            plan_name = plan.get("name", "") if plan else "Unknown"
+            price_egp = plan.get("price_egp", 0) if plan else 0
+
+            max_students = await subscription_plan_service.get_plan_student_limit(plan_name) if plan else 100
+            ai_limit = _get_plan_ai_limit_display(plan_name) if plan else 0
+            storage_limit = _get_plan_storage_limit_gb(plan_name) if plan else 2
+
+            expires = sub.get("expires_at")
+            if isinstance(expires, str):
+                expires_dt = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+            else:
+                expires_dt = expires
+            days_remaining = max(0, (expires_dt - datetime.now(timezone.utc)).days)
+
+            code_id = sub.get("code_id", "")
+            is_trial = isinstance(code_id, str) and code_id.startswith("trial-")
+
+            return {
+                "has_subscription": True,
+                "plan_name": plan_name,
+                "price_egp": price_egp,
+                "max_students": max_students,
+                "ai_limit": ai_limit,
+                "storage_limit": storage_limit,
+                "days_remaining": days_remaining,
+                "is_trial": is_trial,
+                "expires_at": expires_dt.isoformat() if isinstance(expires_dt, datetime) else str(expires_dt),
+            }
+        else:
+            has_ever_had = await teacher_subscription_service.repo.count({"teacher_id": current_user["id"]}) > 0
+            return {
+                "has_subscription": False,
+                "trial_available": not has_ever_had,
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get my subscription: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get subscription: {str(e)}")
 
 
 @router.patch("/me")

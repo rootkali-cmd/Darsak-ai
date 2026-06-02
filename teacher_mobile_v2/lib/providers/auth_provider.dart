@@ -13,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   String? _token;
   Map<String, dynamic>? _user;
+  Map<String, dynamic>? _subscription;
   bool _isInitialized = false;
 
   bool get isLoading => _isLoading;
@@ -21,6 +22,8 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? get user => _user;
   bool get isInitialized => _isInitialized;
   bool get needsOnboarding => _user != null && _user!['onboarding_completed'] != true;
+  Map<String, dynamic>? get subscription => _subscription;
+  bool get hasSubscription => _subscription != null;
 
   AuthProvider() { _init(); }
 
@@ -39,6 +42,7 @@ class AuthProvider extends ChangeNotifier {
     }
     _isInitialized = true;
     notifyListeners();
+    refreshSubscription();
   }
 
   static Map<String, dynamic>? _parseJwt(String token) {
@@ -85,9 +89,21 @@ class AuthProvider extends ChangeNotifier {
       } else {
         _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? false;
       }
-      _isLoading = false; notifyListeners(); return true;
+      _isLoading = false; notifyListeners();
+      refreshSubscription();
+      return true;
     } on DioException catch (e) { _error = _getDioError(e); _isLoading = false; notifyListeners(); return false; }
     catch (e) { _error = 'حدث خطأ غير متوقع: $e'; _isLoading = false; notifyListeners(); return false; }
+  }
+
+  Future<void> refreshSubscription() async {
+    if (!isAuthenticated) return;
+    try {
+      final meResp = await _api.dio.get('/auth/me');
+      final me = meResp.data is Map ? meResp.data as Map<String, dynamic> : <String, dynamic>{};
+      _subscription = me['subscription'] is Map ? Map<String, dynamic>.from(me['subscription']) : null;
+      notifyListeners();
+    } catch (_) {}
   }
 
   String _getDioError(DioException e) {

@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/update_service.dart';
+import '../subscriptions/subscription_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -100,9 +102,222 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  int? _daysUntilExpiry(Map<String, dynamic> sub) {
+    final expiresAt = sub['expires_at'];
+    if (expiresAt == null) return null;
+    try {
+      final expiry = DateTime.parse(expiresAt.toString());
+      return expiry.difference(DateTime.now()).inDays;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isExpired(Map<String, dynamic> sub) {
+    final days = _daysUntilExpiry(sub);
+    return days != null && days <= 0;
+  }
+
+  bool _canUpgrade(String? planName) {
+    if (planName == null) return false;
+    final lower = planName.toLowerCase();
+    return lower.contains('basic') || lower.contains('أساسي') || lower.contains('pro');
+  }
+
+  Widget _buildSubscriptionSection(AuthProvider auth) {
+    final sub = auth.subscription;
+
+    if (sub == null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(children: [
+                Icon(Icons.subscriptions, color: AppTheme.textSecondary),
+                SizedBox(width: 8),
+                Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 12),
+              const Text('لا يوجد اشتراك نشط', style: TextStyle(color: AppTheme.textSecondary)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                  },
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                  label: const Text('تفعيل مجاني'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.warning,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final planName = sub['plan_name']?.toString() ?? sub['name']?.toString() ?? '—';
+    final daysRemaining = _daysUntilExpiry(sub);
+    final expired = _isExpired(sub);
+    final isTrial = (sub['is_trial'] == true || sub['is_trial'] == 'true') ||
+        (planName.toLowerCase().contains('trial') || planName.contains('تجريبي'));
+
+    final double progress;
+    if (daysRemaining != null && daysRemaining > 0) {
+      final totalDays = isTrial ? 30.0 : 30.0;
+      progress = (daysRemaining / totalDays).clamp(0.0, 1.0);
+    } else {
+      progress = 0.0;
+    }
+
+    final Color progressColor;
+    if (expired) {
+      progressColor = AppTheme.danger;
+    } else if (daysRemaining != null && daysRemaining <= 3) {
+      progressColor = AppTheme.warning;
+    } else {
+      progressColor = AppTheme.success;
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(children: [
+              Icon(Icons.subscriptions, color: AppTheme.accent),
+              SizedBox(width: 8),
+              Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ]),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 52,
+                        height: 52,
+                        child: CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 4,
+                          backgroundColor: progressColor.withValues(alpha: 0.15),
+                          valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                        ),
+                      ),
+                      Text(
+                        daysRemaining != null ? '$daysRemaining' : '—',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: progressColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        planName,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        expired
+                            ? 'منتهي'
+                            : isTrial
+                                ? 'فترة تجريبية'
+                                : 'نشطة',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: expired ? AppTheme.danger : progressColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (daysRemaining != null && daysRemaining <= 3 && !expired) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'سينتهي اشتراكك خلال $daysRemaining أيام. جدده الآن لتجنب انقطاع الخدمة.',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
+            const SizedBox(height: 14),
+            if (expired)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                  },
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('جدد اشتراكك'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.danger,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              )
+            else if (_canUpgrade(planName))
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                  },
+                  icon: const Icon(Icons.upgrade, size: 18),
+                  label: const Text('ترقية الباقة'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.accent,
+                    side: const BorderSide(color: AppTheme.accent),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final auth = context.watch<AuthProvider>();
     return Scaffold(
       appBar: AppBar(title: const Text('الإعدادات')),
       body: ListView(
@@ -117,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('الوضع الداكن'),
                   value: themeProvider.isDark,
                   onChanged: (_) => context.read<ThemeProvider>().toggle(),
-                  activeColor: AppTheme.accent,
+                  activeTrackColor: AppTheme.accent,
                 ),
               ],
             ),
@@ -133,12 +348,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: Switch(
                     value: _notificationsEnabled,
                     onChanged: _toggleNotifications,
-                    activeColor: AppTheme.accent,
+                    activeTrackColor: AppTheme.accent,
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          _buildSectionHeader('الاشتراك'),
+          _buildSubscriptionSection(auth),
           const SizedBox(height: 16),
           _buildSectionHeader('اللغة'),
           Card(

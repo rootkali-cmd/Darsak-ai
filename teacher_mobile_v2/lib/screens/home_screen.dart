@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
+import '../providers/auth_provider.dart';
 import '../services/update_service.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'students/students_screen.dart';
 import 'attendance/attendance_screen.dart';
 import 'grades/grades_screen.dart';
 import 'more/more_screen.dart';
+import 'subscriptions/subscription_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _showTrialBanner = true;
 
   static const List<String> _titles = [
     'الرئيسية',
@@ -89,6 +93,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _dismissBanner() {
+    setState(() => _showTrialBanner = false);
+  }
+
+  void _notifySubscriptionUpdate() {
+    context.read<AuthProvider>().refreshSubscription();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,12 +110,24 @@ class _HomeScreenState extends State<HomeScreen> {
           style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         ),
       ),
-      body: Directionality(
-        textDirection: TextDirection.rtl,
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
-        ),
+      body: Consumer<AuthProvider>(
+        builder: (context, auth, _) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Column(
+              children: [
+                if (_showTrialBanner && auth.isAuthenticated && !auth.hasSubscription)
+                  _buildTrialBanner(),
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: _screens,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
       bottomNavigationBar: Directionality(
         textDirection: TextDirection.rtl,
@@ -126,5 +150,69 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
 
+  Widget _buildTrialBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.warning.withValues(alpha: 0.15), AppTheme.warning.withValues(alpha: 0.08)],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        border: Border(bottom: BorderSide(color: AppTheme.warning.withValues(alpha: 0.3))),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_offer_rounded, color: AppTheme.warning, size: 22),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'جرب الباقة الأساسية مجاناً لمدة 30 يوم',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+              GestureDetector(
+                onTap: _dismissBanner,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.close, size: 16, color: AppTheme.textSecondary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                );
+                if (result == true) {
+                  _notifySubscriptionUpdate();
+                }
+              },
+              icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+              label: const Text('تفعيل مجاني', style: TextStyle(fontSize: 13)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.warning,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
