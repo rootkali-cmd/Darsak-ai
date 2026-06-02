@@ -22,6 +22,7 @@ from src.services.sync_buffer import sync_buffer
 from src.services.qr_service import qr_service
 from src.services.pdf_generator import pdf_generator
 from src.services.conflict_resolver import ConflictResolver
+from src.services.quiz_service import quiz_service
 from src.services.scheduler import start_scheduler, stop_scheduler
 user_service = UserService()
 student_service = StudentService()
@@ -58,9 +59,11 @@ __all__ = [
     "lesson_service",
     "video_analytics_service",
     "ai_analyzer",
+    "exam_ai_service",
     "sync_buffer",
     "qr_service",
     "pdf_generator",
+    "quiz_service",
     "ConflictResolver",
     "start_scheduler",
     "stop_scheduler",

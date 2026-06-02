@@ -67,13 +67,7 @@ export default function GradesPage() {
   })
 
   return (
-    <div className="relative space-y-6">
-      <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="space-y-6">
 
       <Section>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -87,7 +81,7 @@ export default function GradesPage() {
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 active:scale-95"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:brightness-110 transition-all duration-200 active:scale-95"
             >
               <Plus className="w-5 h-5" /> إضافة درجة
             </button>
@@ -102,23 +96,23 @@ export default function GradesPage() {
               <div className="text-4xl font-black text-white">
                 <CountUp end={Math.round(gradeStats.average || 0)} suffix="%" />
               </div>
-              <p className="text-slate-500 text-sm mt-1">المتوسط</p>
+              <p className="text-slate-400 text-sm mt-1">المتوسط</p>
             </div>
           </Section>
           <Section delay={0.2}>
-            <div className="bg-white/[0.03] backdrop-blur-sm border border-emerald-500/20 rounded-2xl p-5 text-center">
+            <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5 text-center">
               <div className="text-4xl font-black text-emerald-400">
                 <CountUp end={Math.round(gradeStats.highest || 0)} suffix="%" />
               </div>
-              <p className="text-slate-500 text-sm mt-1">أعلى درجة</p>
+              <p className="text-slate-400 text-sm mt-1">أعلى درجة</p>
             </div>
           </Section>
           <Section delay={0.3}>
-            <div className="bg-white/[0.03] backdrop-blur-sm border border-red-500/20 rounded-2xl p-5 text-center">
+            <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5 text-center">
               <div className="text-4xl font-black text-red-400">
                 <CountUp end={Math.round(gradeStats.lowest || 0)} suffix="%" />
               </div>
-              <p className="text-slate-500 text-sm mt-1">أقل درجة</p>
+              <p className="text-slate-400 text-sm mt-1">أقل درجة</p>
             </div>
           </Section>
           <Section delay={0.4}>
@@ -126,7 +120,7 @@ export default function GradesPage() {
               <div className="text-4xl font-black text-white">
                 <CountUp end={gradeStats.total || 0} />
               </div>
-              <p className="text-slate-500 text-sm mt-1">إجمالي الدرجات</p>
+              <p className="text-slate-400 text-sm mt-1">إجمالي الدرجات</p>
             </div>
           </Section>
         </div>
@@ -155,12 +149,12 @@ export default function GradesPage() {
                     const percentage = grade.max_score > 0 ? (grade.score / grade.max_score) * 100 : 0
                     const color = percentage >= 85 ? 'text-emerald-400' : percentage >= 50 ? 'text-amber-400' : 'text-red-400'
                     return (
-                      <motion.tr key={grade.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: index * 0.05 }} className="border-b border-white/[0.06] hover:bg-white/[0.03] transition-colors">
+                      <motion.tr key={grade.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: index * 0.05 }} className="border-b border-white/[0.06] hover:bg-white/[0.04] transition-colors">
                         <td className="py-3 px-4">
                           <p className="font-medium text-white">{student?.full_name || '-'}</p>
-                          <p className="text-xs text-slate-500 font-mono">{student?.code || ''}</p>
+                          <p className="text-xs text-slate-400 font-mono">{student?.code || ''}</p>
                         </td>
-                        <td className="py-3 px-4 text-slate-300">{grade.exam_name}</td>
+                        <td className="py-3 px-4 text-slate-400">{grade.exam_name}</td>
                         <td className="py-3 px-4 text-slate-400">{grade.subject}</td>
                         <td className="py-3 px-4 text-center font-mono text-white">{grade.score}/{grade.max_score}</td>
                         <td className={`py-3 px-4 text-center font-bold ${color}`}>{percentage.toFixed(1)}%</td>
@@ -183,14 +177,14 @@ export default function GradesPage() {
       <AnimatePresence>
         {showAddModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
-            <motion.div initial={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} transition={{ type: 'spring', damping: 25 }} className="bg-[#1E293B] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <motion.div initial={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} transition={{ type: 'spring', damping: 25 }} className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-white">إضافة درجة جديدة</h2>
                 <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-white/[0.05] transition-colors text-slate-400"><X className="w-5 h-5" /></motion.button>
               </div>
               <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ ...formData, score: parseFloat(formData.score), max_score: parseFloat(formData.max_score) }) }} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slate-500 mb-2">المجموعة</label>
+                  <label className="block text-sm text-slate-400 mb-2">المجموعة</label>
                   <select value={selectedGroup} onChange={(e) => { setSelectedGroup(e.target.value); setSearchValue('') }} className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white outline-none focus:border-indigo-500/50 transition-colors">
                     <option value="" className="bg-[#1E293B]">جميع المجموعات</option>
                     {groups?.map((g: any) => <option key={g.id} value={g.id} className="bg-[#1E293B]">{g.name}</option>)}
@@ -225,7 +219,7 @@ export default function GradesPage() {
                 </div>
                 <textarea placeholder="ملاحظات" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-indigo-500/50 transition-colors" rows={3} />
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled={createMutation.isPending || !formData.student_id}>{createMutation.isPending ? 'جاري...' : 'إضافة'}</button>
+                  <button type="submit" className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:brightness-110 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled={createMutation.isPending || !formData.student_id}>{createMutation.isPending ? 'جاري...' : 'إضافة'}</button>
                   <button type="button" className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-transparent border border-white/[0.08] rounded-xl text-slate-300 font-semibold hover:border-indigo-500/50 hover:text-indigo-400 transition-all duration-200 active:scale-95" onClick={() => setShowAddModal(false)}>إلغاء</button>
                 </div>
               </form>

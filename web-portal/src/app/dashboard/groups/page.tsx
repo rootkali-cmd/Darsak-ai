@@ -87,13 +87,7 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="relative space-y-6">
-      <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="space-y-6">
 
       <Section>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -103,7 +97,7 @@ export default function GroupsPage() {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 active:scale-95"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:brightness-110 transition-all duration-200 active:scale-95"
           >
             <Plus className="w-5 h-5" />
             إضافة مجموعة
@@ -140,11 +134,11 @@ export default function GroupsPage() {
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-slate-500">المستوى:</span><span className="text-slate-300">{levelLabels[group.level]}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">اليوم:</span><span className="text-slate-300">{dayLabels[group.day_of_week]}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">الوقت:</span><span className="text-slate-300 font-mono" dir="ltr">{group.time_slot}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">المستوى:</span><span className="text-slate-400">{levelLabels[group.level]}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">اليوم:</span><span className="text-slate-400">{dayLabels[group.day_of_week]}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">الوقت:</span><span className="text-slate-400 font-mono" dir="ltr">{group.time_slot}</span></div>
                   <div className="flex justify-between items-center pt-1 border-t border-white/[0.06] mt-2">
-                    <span className="text-slate-500">عدد الطلاب:</span>
+                    <span className="text-slate-400">عدد الطلاب:</span>
                     <span className="font-bold text-indigo-400 flex items-center gap-1"><Users className="w-3.5 h-3.5" />{studentCountByGroup[group.id] || 0}</span>
                   </div>
                 </div>
@@ -166,7 +160,7 @@ export default function GroupsPage() {
       <AnimatePresence>
         {showAddModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
-            <motion.div initial={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} transition={{ type: 'spring', damping: 25 }} className="bg-[#1E293B] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <motion.div initial={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }} transition={{ type: 'spring', damping: 25 }} className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-white">إضافة مجموعة جديدة</h2>
                 <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setShowAddModal(false)} className="p-2 rounded-lg hover:bg-white/[0.05] transition-colors text-slate-400"><X className="w-5 h-5" /></motion.button>
@@ -184,7 +178,7 @@ export default function GroupsPage() {
                 </select>
                 <input placeholder="الوقت (مثال: 18:00-20:00)" value={formData.time_slot} onChange={(e) => setFormData({ ...formData, time_slot: e.target.value })} className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-indigo-500/50 transition-colors" required />
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled={createMutation.isPending}>{createMutation.isPending ? 'جاري...' : 'إضافة'}</button>
+                  <button type="submit" className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:brightness-110 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled={createMutation.isPending}>{createMutation.isPending ? 'جاري...' : 'إضافة'}</button>
                   <button type="button" className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-transparent border border-white/[0.08] rounded-xl text-slate-300 font-semibold hover:border-indigo-500/50 hover:text-indigo-400 transition-all duration-200 active:scale-95" onClick={() => setShowAddModal(false)}>إلغاء</button>
                 </div>
               </form>

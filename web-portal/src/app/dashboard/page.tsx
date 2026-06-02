@@ -93,13 +93,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="relative space-y-8">
-      <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="space-y-8">
 
       <Section>
         <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 md:p-8">
@@ -126,7 +120,7 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold text-white mb-0.5" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   {stat.value}{stat.suffix || ''}
                 </div>
-                <p className="text-xs text-slate-500">{stat.label}</p>
+                <p className="text-xs text-slate-400">{stat.label}</p>
               </div>
             </Section>
           )

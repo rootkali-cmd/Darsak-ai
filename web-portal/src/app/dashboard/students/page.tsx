@@ -71,13 +71,7 @@ export default function StudentsPage() {
   })
 
   return (
-    <div className="relative space-y-6">
-      <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="space-y-6">
 
       <Section>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -89,7 +83,7 @@ export default function StudentsPage() {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 active:scale-95"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:brightness-110 transition-all duration-200 active:scale-95"
           >
             <Plus className="w-5 h-5" />
             إضافة طالب
@@ -136,7 +130,7 @@ export default function StudentsPage() {
                     </motion.div>
                     <div>
                       <h3 className="font-bold text-white">{student.full_name}</h3>
-                      <p className="text-sm text-slate-500 font-mono">{student.code}</p>
+                      <p className="text-sm text-slate-400 font-mono">{student.code}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -165,19 +159,19 @@ export default function StudentsPage() {
                 <div className="space-y-2 text-sm">
                   {student.phone && (
                     <div className="flex justify-between">
-                      <span className="text-slate-500">الهاتف:</span>
-                      <span className="text-slate-300 font-mono" dir="ltr">{student.phone}</span>
+                      <span className="text-slate-400">الهاتف:</span>
+                      <span className="text-slate-400 font-mono" dir="ltr">{student.phone}</span>
                     </div>
                   )}
                   {student.grade_level && (
                     <div className="flex justify-between">
-                      <span className="text-slate-500">الصف:</span>
-                      <span className="text-slate-300">{student.grade_level}</span>
+                      <span className="text-slate-400">الصف:</span>
+                      <span className="text-slate-400">{student.grade_level}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-slate-500">تاريخ الإضافة:</span>
-                    <span className="text-slate-300">{formatDate(student.created_at)}</span>
+                    <span className="text-slate-400">تاريخ الإضافة:</span>
+                    <span className="text-slate-400">{formatDate(student.created_at)}</span>
                   </div>
                 </div>
               </motion.div>
@@ -210,7 +204,7 @@ export default function StudentsPage() {
               animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }}
               exit={{ scale: 0.8, opacity: 0, y: 50, filter: 'blur(10px)' }}
               transition={{ type: 'spring', damping: 25 }}
-              className="bg-[#1E293B] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 w-full max-w-md"
+              className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-6 w-full max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
@@ -270,7 +264,7 @@ export default function StudentsPage() {
                 <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:brightness-110 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={createMutation.isPending}
                   >
                     {createMutation.isPending ? 'جاري الإضافة...' : 'إضافة'}

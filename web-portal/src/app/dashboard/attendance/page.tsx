@@ -78,13 +78,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="relative space-y-6">
-      <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="space-y-6">
 
       <Section>
         <h1 className="text-2xl md:text-3xl font-bold text-white">الحضور والغياب</h1>
@@ -95,14 +89,14 @@ export default function AttendancePage() {
         <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <label className="block text-xs text-slate-500 mb-1.5">المجموعة</label>
+              <label className="block text-xs text-slate-400 mb-1.5">المجموعة</label>
               <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white outline-none focus:border-indigo-500/50 transition-colors">
                 <option value="" className="bg-[#1E293B]">جميع المجموعات</option>
                 {groups?.map((g: any) => <option key={g.id} value={g.id} className="bg-[#1E293B]">{g.name}</option>)}
               </select>
             </div>
             <div className="flex-1">
-              <label className="block text-xs text-slate-500 mb-1.5">التاريخ</label>
+              <label className="block text-xs text-slate-400 mb-1.5">التاريخ</label>
               <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]" />
             </div>
           </div>
@@ -114,19 +108,19 @@ export default function AttendancePage() {
           <Section delay={0.2}>
             <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] border-l-4 border-l-emerald-500 rounded-2xl p-5 text-center">
               <div className="text-2xl font-bold text-emerald-400">{attendanceStats.present}</div>
-              <p className="text-xs text-slate-500 mt-1">حاضر</p>
+              <p className="text-xs text-slate-400 mt-1">حاضر</p>
             </div>
           </Section>
           <Section delay={0.3}>
             <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] border-l-4 border-l-red-500 rounded-2xl p-5 text-center">
               <div className="text-2xl font-bold text-red-400">{attendanceStats.absent}</div>
-              <p className="text-xs text-slate-500 mt-1">غائب</p>
+              <p className="text-xs text-slate-400 mt-1">غائب</p>
             </div>
           </Section>
           <Section delay={0.4}>
             <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] border-l-4 border-l-amber-500 rounded-2xl p-5 text-center">
               <div className="text-2xl font-bold text-amber-400">{attendanceStats.cancelled}</div>
-              <p className="text-xs text-slate-500 mt-1">ملغي</p>
+              <p className="text-xs text-slate-400 mt-1">ملغي</p>
             </div>
           </Section>
         </div>
@@ -146,7 +140,7 @@ export default function AttendancePage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white">{student.full_name}</p>
-                      <p className="text-xs text-slate-500" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{student.code}</p>
+                      <p className="text-xs text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{student.code}</p>
                     </div>
                   </div>
                   <div className="flex gap-1.5">

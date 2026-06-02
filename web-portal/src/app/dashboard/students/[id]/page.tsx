@@ -90,11 +90,8 @@ export default function StudentReportPage() {
 
   if (studentLoading) {
     return (
-      <div className="relative">
-        <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
-        <div className="flex justify-center py-24">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-400" />
-        </div>
+      <div className="flex justify-center py-24">
+        <Loader2 className="w-12 h-12 animate-spin text-indigo-400" />
       </div>
     )
   }
@@ -104,13 +101,7 @@ export default function StudentReportPage() {
     : 0
 
   return (
-    <div className="relative space-y-6">
-      <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0F172A] -z-10 pointer-events-none" />
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="space-y-6">
 
       <Section>
         <div className="flex items-center gap-4">
@@ -162,7 +153,7 @@ export default function StudentReportPage() {
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing || !grades || grades.length === 0}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 text-white font-semibold rounded-xl hover:brightness-110 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {isAnalyzing ? (
                 <>
@@ -238,7 +229,7 @@ export default function StudentReportPage() {
                         className="flex items-start gap-3 p-3 rounded-lg bg-emerald-500/5"
                       >
                         <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-slate-300">{item}</span>
+                        <span className="text-sm text-slate-400">{item}</span>
                       </motion.li>
                     ))}
                   </ul>
@@ -263,7 +254,7 @@ export default function StudentReportPage() {
                         className="flex items-start gap-3 p-3 rounded-lg bg-red-500/5"
                       >
                         <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-slate-300">{item}</span>
+                        <span className="text-sm text-slate-400">{item}</span>
                       </motion.li>
                     ))}
                   </ul>
@@ -290,7 +281,7 @@ export default function StudentReportPage() {
                         className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5"
                       >
                         <span className="text-amber-400 mt-1">→</span>
-                        <span className="text-sm text-slate-300">{item}</span>
+                        <span className="text-sm text-slate-400">{item}</span>
                       </motion.li>
                     ))}
                   </ul>
@@ -309,7 +300,7 @@ export default function StudentReportPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="text-sm leading-relaxed text-slate-300 p-4 rounded-lg bg-violet-500/5"
+                    className="text-sm leading-relaxed text-slate-400 p-4 rounded-lg bg-violet-500/5"
                   >
                     {aiReport.next_exercise_suggestion || ''}
                   </motion.p>
@@ -326,7 +317,7 @@ export default function StudentReportPage() {
             <h2 className="text-xl font-bold text-white">سجل الدرجات</h2>
             <button
               onClick={handleExportPdf}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-transparent border border-white/[0.08] rounded-xl text-slate-300 font-semibold text-sm hover:border-indigo-500/50 hover:text-indigo-400 transition-all duration-200 active:scale-95"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-transparent border border-white/[0.08] rounded-xl text-slate-400 font-semibold text-sm hover:border-indigo-500/50 hover:text-indigo-400 transition-all duration-200 active:scale-95"
             >
               <Download className="w-4 h-4" />
               تصدير PDF
@@ -358,7 +349,7 @@ export default function StudentReportPage() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="border-b border-white/[0.06] hover:bg-white/[0.03] transition-colors"
+                        className="border-b border-white/[0.06] hover:bg-white/[0.04] transition-colors"
                       >
                         <td className="py-3 px-4 text-white">{grade.exam_name}</td>
                         <td className="py-3 px-4 text-slate-400">{grade.subject}</td>

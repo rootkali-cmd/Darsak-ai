@@ -115,7 +115,7 @@ export default function DownloadsPage() {
         transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="text-center"
       >
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-slate-500">
           التطبيقات تحت التطوير • للاستخدام الداخلي
         </p>
       </motion.div>

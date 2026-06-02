@@ -30,6 +30,7 @@ from src.api import (
     webhook_router, exams_router, analytics_router, audit_router,
     dashboard_router, lessons_router, video_analytics_router,
     whatsapp_router,
+    quiz_router,
 )
 
 settings = get_settings()
@@ -199,6 +200,24 @@ async def _run_schema_migrations():
             await conn.execute(text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_channel_id VARCHAR(100);"
             ))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS quizzes (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+                    total_questions INT DEFAULT 0,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS quiz_questions (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+                    question_text TEXT NOT NULL,
+                    options JSONB DEFAULT '[]',
+                    correct_answer INT DEFAULT 0
+                );
+            """))
             await conn.commit()
             logger.info("Schema check: all tables OK")
     except Exception as e:
@@ -481,3 +500,4 @@ app.include_router(dashboard_router, prefix=settings.API_V1_PREFIX)
 app.include_router(lessons_router, prefix=settings.API_V1_PREFIX)
 app.include_router(video_analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)
+app.include_router(quiz_router, prefix=settings.API_V1_PREFIX)

@@ -119,13 +119,13 @@ export default function InvoicesPage() {
             </div>
             <p className="text-slate-400 text-sm mt-1">إجمالي المبالغ</p>
           </div>
-          <div className={`${glassCard} p-5 text-center border-emerald-500/20`}>
+          <div className={`${glassCard} p-5 text-center`}>
             <div className="text-2xl font-black text-emerald-400">
               <CountUp end={Math.round(invoiceStats.paid_amount || 0)} suffix=" ج.م" />
             </div>
             <p className="text-slate-400 text-sm mt-1">المدفوع</p>
           </div>
-          <div className={`${glassCard} p-5 text-center border-red-500/20`}>
+          <div className={`${glassCard} p-5 text-center`}>
             <div className="text-2xl font-black text-red-400">
               <CountUp end={Math.round(invoiceStats.unpaid_amount || 0)} suffix=" ج.م" />
             </div>
@@ -170,11 +170,11 @@ export default function InvoicesPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
-                        className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
+                        className="border-b border-white/[0.04] hover:bg-white/[0.04] transition-colors"
                       >
                         <td className="py-3 px-4">
                           <p className="font-medium text-white">{student?.full_name || '-'}</p>
-                          <p className="text-xs text-slate-500 font-mono">{student?.code || ''}</p>
+                          <p className="text-xs text-slate-400 font-mono">{student?.code || ''}</p>
                         </td>
                         <td className="py-3 px-4 font-mono font-bold text-white">{invoice.amount?.toFixed(0)} ج.م</td>
                         <td className="py-3 px-4 text-slate-400 text-sm">{invoice.description || '-'}</td>
@@ -305,7 +305,7 @@ export default function InvoicesPage() {
                             : 'hover:bg-white/[0.03] text-white'
                         }`}
                       >
-                        {s.full_name} <span className="text-slate-500 font-mono">({s.code})</span>
+                        {s.full_name} <span className="text-slate-400 font-mono">({s.code})</span>
                       </button>
                     ))}
                   </div>
