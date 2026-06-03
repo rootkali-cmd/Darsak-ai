@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { Smartphone, Monitor, Download, ArrowRight, Sparkles, User } from 'lucide-react'
+import { Smartphone, Monitor, Download, ArrowRight, Sparkles, User, School } from 'lucide-react'
 
 const teacherApps = [
   {
@@ -34,6 +34,23 @@ const teacherApps = [
     ],
     platform: 'Windows',
     note: 'Offline-first • SQLite • Auto-sync',
+  },
+]
+
+const studentApps = [
+  {
+    id: 'student',
+    title: 'DarsakAI Student v1.3.0',
+    subtitle: 'تطبيق الطالب',
+    description: 'متابعة الدرجات • الحضور • الاختبارات • الملف الشخصي',
+    icon: School,
+    color: '#00f3ff',
+    bgColor: 'rgba(0,243,255,0.12)',
+    file: '/student.apk?v=1.3.0',
+    label: 'Android APK v1.3.0',
+    size: '~76 MB',
+    platform: 'Android',
+    note: 'مساعد AI ذكي • متابعة الأداء • إشعارات',
   },
 ]
 
@@ -114,6 +131,27 @@ export default function DownloadPage() {
             ))}
           </div>
         </div>
+
+        <div className="flex items-center gap-4 my-20">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <span className="text-slate-500 text-sm">{isAr ? 'المزيد' : 'More'}</span>
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        </div>
+
+        <div id="student">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            className="flex items-center gap-3 mb-8">
+            <div className="h-10 w-1 rounded-full bg-cyan-400" />
+            <div>
+              <h2 className="text-2xl font-bold text-white">{isAr ? 'تطبيق الطالب' : 'Student App'}</h2>
+              <p className="text-slate-400 text-sm mt-1">{isAr ? 'لمتابعة الأداء والدرجات' : 'Track performance & grades'}</p>
+            </div>
+          </motion.div>
+          <div className="grid md:grid-cols-1 max-w-md">
+            {studentApps.map((app) => <AppCard key={app.id} app={app} isAr={isAr} />)}
+          </div>
+        </div>
+
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
           className="text-center text-xs text-slate-500 mt-20">
           {isAr ? 'التطبيقات تُحدّث باستمرار • تابع التحديثات من داخل التطبيق' : 'Apps are updated regularly'}
