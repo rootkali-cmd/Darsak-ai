@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from src.utils.dependencies import get_current_teacher, get_current_user
 from src.schemas.sync import SyncPushRequest, SyncPushResponse, SyncPullResponse, SyncAckRequest, SyncAckResponse
@@ -12,7 +13,7 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.post("/push", response_model=SyncPushResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/push", status_code=status.HTTP_201_CREATED)
 async def push_sync(
     request: Request,
     sync_request: SyncPushRequest,
@@ -52,13 +53,13 @@ async def push_sync(
         metadata={"payload_type": sync_request.payload_type.value if hasattr(sync_request.payload_type, 'value') else sync_request.payload_type},
     )
 
-    return SyncPushResponse(
-        queue_id=payload_id,
-        timestamp=result.data[0]["created_at"],
-    )
+    return {
+        "queue_id": payload_id,
+        "timestamp": result.data[0]["created_at"],
+    }
 
 
-@router.get("/pull", response_model=SyncPullResponse)
+@router.get("/pull")
 async def pull_sync(
     since: str | None = None,
     limit: int = 50,
@@ -96,17 +97,17 @@ async def pull_sync(
         metadata={"count": len(items)},
     )
 
-    return SyncPullResponse(items=items, total=len(items))
+    return {"items": items, "total": len(items)}
 
 
-@router.post("/ack", response_model=SyncAckResponse)
+@router.post("/ack")
 async def ack_sync(
     request: Request,
     ack_request: SyncAckRequest,
     current_user: dict = Depends(get_current_teacher),
 ):
     if not ack_request.acked_ids:
-        return SyncAckResponse(acknowledged=0)
+        return {"acknowledged": 0}
 
     client = await get_supabase()
     for payload_id in ack_request.acked_ids:
@@ -126,4 +127,4 @@ async def ack_sync(
         metadata={"acknowledged": len(ack_request.acked_ids)},
     )
 
-    return SyncAckResponse(acknowledged=len(ack_request.acked_ids))
+    return {"acknowledged": len(ack_request.acked_ids)}

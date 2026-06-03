@@ -1,3 +1,5 @@
+from datetime import datetime
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_teacher
 from src.schemas.group import GroupCreate, GroupUpdate, GroupResponse
@@ -6,11 +8,25 @@ from src.services import group_service, audit_service, student_service
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
 
+def _to_response(data: dict) -> dict:
+    result = {}
+    for key, value in data.items():
+        if hasattr(value, 'isoformat'):
+            result[key] = value.isoformat()
+        elif isinstance(value, UUID) or hasattr(value, 'hex'):
+            result[key] = str(value)
+        elif isinstance(value, datetime):
+            result[key] = value.isoformat()
+        else:
+            result[key] = value
+    return result
+
+
 def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_group(
     group_data: GroupCreate,
     request: Request,
@@ -35,7 +51,7 @@ async def create_group(
             ip_address=get_client_ip(request),
         )
 
-        return GroupResponse(**group)
+        return _to_response(group)
     except HTTPException:
         raise
     except Exception as exc:
@@ -60,7 +76,7 @@ async def _add_student_count(groups: list[dict], teacher_id: str) -> list[dict]:
     return groups
 
 
-@router.get("/", response_model=list[GroupResponse])
+@router.get("/")
 async def list_groups(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -69,10 +85,10 @@ async def list_groups(
     groups = await group_service.list_by_teacher(current_user["id"], limit=limit)
     groups = groups[skip:skip+limit]
     groups = await _add_student_count(groups, current_user["id"])
-    return [GroupResponse(**g) for g in groups]
+    return [_to_response(g) for g in groups]
 
 
-@router.get("/{group_id}", response_model=GroupResponse)
+@router.get("/{group_id}")
 async def get_group(
     group_id: str,
     current_user: dict = Depends(get_current_teacher),
@@ -81,7 +97,7 @@ async def get_group(
     if not group or group["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
     [group] = await _add_student_count([group], current_user["id"])
-    return GroupResponse(**group)
+    return _to_response(group)
 
 
 @router.get("/{group_id}/student-count")
@@ -97,7 +113,7 @@ async def group_student_count(
     return {"student_count": count}
 
 
-@router.patch("/{group_id}", response_model=GroupResponse)
+@router.patch("/{group_id}")
 async def update_group(
     group_id: str,
     update_data: GroupUpdate,
@@ -123,7 +139,7 @@ async def update_group(
     )
 
     updated_list = await _add_student_count([updated], current_user["id"])
-    return GroupResponse(**updated_list[0])
+    return _to_response(updated_list[0])
 
 
 @router.put("/{group_id}")

@@ -8,6 +8,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isBiometricVerified = false;
   String? _token;
   String? _lastError;
+  String? _lastBiometricError;
   final LocalAuthentication _localAuth = LocalAuthentication();
   final Dio _dio = Dio(BaseOptions(
     baseUrl: 'https://darsak-backend.fly.dev/api/admin',
@@ -19,6 +20,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isBiometricVerified => _isBiometricVerified;
   bool get needsBiometric => _isAuthenticated && !_isBiometricVerified;
   String? get lastError => _lastError;
+  String? get lastBiometricError => _lastBiometricError;
 
   AuthProvider() { _init(); }
 
@@ -30,17 +32,35 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> authenticateWithBiometrics() async {
+    _lastBiometricError = null;
     try {
       final canCheck = await _localAuth.canCheckBiometrics;
-      if (!canCheck) return false;
+      if (!canCheck) {
+        _lastBiometricError = 'جهازك لا يدعم البصمة';
+        return false;
+      }
+
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      debugPrint('Available biometrics: $availableBiometrics');
+      if (availableBiometrics.isEmpty) {
+        _lastBiometricError = 'لم يتم العثور على أي مستشعر بصمة في الجهاز';
+        return false;
+      }
+
       final didAuthenticate = await _localAuth.authenticate(
         localizedReason: 'الرجاء التحقق من هويتك للدخول للوحة التحكم',
         options: const AuthenticationOptions(stickyAuth: true, biometricOnly: true),
       );
+      debugPrint('Biometric auth result: $didAuthenticate');
       _isBiometricVerified = didAuthenticate;
+      if (!didAuthenticate) {
+        _lastBiometricError = 'فشل التحقق من البصمة - تم الإلغاء أو فشلت المحاولة';
+      }
       notifyListeners();
       return didAuthenticate;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Biometric auth error: $e');
+      _lastBiometricError = 'حدث خطأ أثناء التحقق من البصمة';
       return false;
     }
   }

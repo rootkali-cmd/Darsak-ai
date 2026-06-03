@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.models.audit_log import ActorType
@@ -13,6 +15,20 @@ from src.services import student_service, grade_service, ai_analyzer, audit_serv
 from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_usage
 
 router = APIRouter(prefix="/students", tags=["Students"])
+
+
+def _to_response(data: dict) -> dict:
+    result = {}
+    for key, value in data.items():
+        if hasattr(value, 'isoformat'):
+            result[key] = value.isoformat()
+        elif isinstance(value, UUID) or hasattr(value, 'hex'):
+            result[key] = str(value)
+        elif isinstance(value, datetime):
+            result[key] = value.isoformat()
+        else:
+            result[key] = value
+    return result
 
 
 def get_client_ip(request: Request) -> str:
@@ -35,7 +51,7 @@ def _serialize_student(s: dict) -> dict:
     }
 
 
-@router.post("/", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_student(
     student_data: StudentCreate,
     request: Request,
@@ -73,10 +89,10 @@ async def create_student(
         ip_address=get_client_ip(request),
     )
 
-    return StudentResponse(**student)
+    return _serialize_student(student)
 
 
-@router.get("/", response_model=list[StudentResponse])
+@router.get("/")
 async def list_students(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -92,7 +108,7 @@ async def list_students(
     result = []
     for s in students:
         s["has_pin"] = s.get("pin_hash") is not None
-        result.append(StudentResponse(**s))
+        result.append(_serialize_student(s))
     return result
 
 
@@ -102,7 +118,7 @@ async def student_count(current_user: dict = Depends(get_current_teacher)):
     return {"count": count}
 
 
-@router.get("/{student_id}", response_model=StudentResponse)
+@router.get("/{student_id}")
 async def get_student(
     student_id: str,
     current_user: dict = Depends(get_current_teacher),
@@ -112,7 +128,7 @@ async def get_student(
         if not student or student["teacher_id"] != current_user["id"]:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
         student["has_pin"] = student.get("pin_hash") is not None
-        return StudentResponse(**student)
+        return _serialize_student(student)
     except HTTPException:
         raise
     except Exception as exc:
@@ -265,7 +281,7 @@ async def student_login(credentials: StudentLogin):
         raise HTTPException(status_code=500, detail=f"Failed to login: {str(exc)}")
 
 
-@router.post("/analyze", response_model=AIAnalysisResponse)
+@router.post("/analyze")
 async def analyze_student(
     request: Request,
     analyze_request: AIAnalysisRequest,
@@ -295,7 +311,7 @@ async def analyze_student(
         metadata={"subject": analyze_request.subject},
     )
 
-    return AIAnalysisResponse(**analysis)
+    return _to_response(analysis)
 
 
 @router.get("/{student_id}/report/pdf")

@@ -269,6 +269,51 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                       style: TextStyle(color: Colors.grey[500], fontSize: 14),
                     ),
                     const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _openScanner,
+                        icon: const Icon(Icons.qr_code_scanner, size: 20),
+                        label: const Text(
+                          'مسح QR Code',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor:
+                              const Color(0xFF2563EB).withValues(alpha: 0.3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _pickAndScanImage,
+                        icon: const Icon(Icons.photo_library, size: 20),
+                        label: const Text(
+                          'استرداد QR من الملفات',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E1E1E),
+                          foregroundColor: const Color(0xFFF5F5F5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Color(0xFF2A2A2A)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     TextFormField(
                       controller: _codeController,
                       textDirection: TextDirection.ltr,
@@ -303,28 +348,6 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                     SizedBox(
                       width: double.infinity,
                       height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _pickAndScanImage,
-                        icon: const Icon(Icons.photo_library, size: 20),
-                        label: const Text(
-                          'استرداد QR من الملفات',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E1E1E),
-                          foregroundColor: const Color(0xFFF5F5F5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFF2A2A2A)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : () => _connect(),
                         style: ElevatedButton.styleFrom(
@@ -350,22 +373,6 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.arrow_forward, size: 18),
-                      label: const Text('تسجيل دخول الطالب مباشرة'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey[500],
                       ),
                     ),
                   ],

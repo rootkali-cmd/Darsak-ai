@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 
@@ -15,6 +16,20 @@ from src.services import grade_service, attendance_service, invoice_service, stu
 router = APIRouter(prefix="/students/me", tags=["Student - Self Service"])
 
 
+def _to_response(data: dict) -> dict:
+    result = {}
+    for key, value in data.items():
+        if hasattr(value, 'isoformat'):
+            result[key] = value.isoformat()
+        elif isinstance(value, UUID) or hasattr(value, 'hex'):
+            result[key] = str(value)
+        elif isinstance(value, datetime):
+            result[key] = value.isoformat()
+        else:
+            result[key] = value
+    return result
+
+
 class StudentPinUpdate(BaseModel):
     old_pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
     new_pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
@@ -24,14 +39,25 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.get("", response_model=StudentResponse)
+@router.get("")
 async def get_my_profile(
     current_student: dict = Depends(get_current_student),
 ):
-    return StudentResponse(**current_student)
+    return {
+        "id": str(current_student.get("id", "")),
+        "teacher_id": str(current_student.get("teacher_id", "")),
+        "full_name": current_student.get("full_name", ""),
+        "code": current_student.get("code", ""),
+        "parent_phone": current_student.get("parent_phone"),
+        "group_id": str(current_student.get("group_id")) if current_student.get("group_id") else None,
+        "has_pin": current_student.get("pin_hash") is not None,
+        "is_active": current_student.get("is_active", True),
+        "created_at": str(current_student.get("created_at", "")),
+        "updated_at": str(current_student.get("updated_at", "")),
+    }
 
 
-@router.get("/grades", response_model=list[GradeResponse])
+@router.get("/grades")
 async def get_my_grades(
     subject: str | None = None,
     limit: int = Query(100, ge=1, le=200),
@@ -41,10 +67,10 @@ async def get_my_grades(
     if subject:
         filters["subject"] = subject
     grades = await grade_service.list(filters, limit=limit)
-    return [GradeResponse(**g) for g in grades]
+    return [_to_response(g) for g in grades]
 
 
-@router.get("/attendance", response_model=list[AttendanceResponse])
+@router.get("/attendance")
 async def get_my_attendance(
     from_date: str | None = None,
     to_date: str | None = None,
@@ -57,10 +83,10 @@ async def get_my_attendance(
         records = [r for r in records if r["date"] >= from_date]
     if to_date:
         records = [r for r in records if r["date"] <= to_date]
-    return [AttendanceResponse(**r) for r in records]
+    return [_to_response(r) for r in records]
 
 
-@router.get("/invoices", response_model=list[InvoiceResponse])
+@router.get("/invoices")
 async def get_my_invoices(
     paid: bool | None = None,
     limit: int = Query(100, ge=1, le=200),
@@ -70,7 +96,7 @@ async def get_my_invoices(
     invoices = await invoice_service.list(filters, limit=limit)
     if paid is not None:
         invoices = [i for i in invoices if i.get("paid") == paid]
-    return [InvoiceResponse(**i) for i in invoices]
+    return [_to_response(i) for i in invoices]
 
 
 @router.patch("/pin")

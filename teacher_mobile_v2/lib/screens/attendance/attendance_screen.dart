@@ -75,9 +75,10 @@ class _TodayTabState extends State<_TodayTab> {
 
   List<dynamic> get _filteredAttendance {
     if (_filter == 'all') return _attendance;
-    if (_filter == 'present') return _attendance.where((a) => a['status'] == 'present').toList();
-    if (_filter == 'absent') return _attendance.where((a) => a['status'] == 'absent').toList();
-    return _attendance;
+    return _attendance.where((a) {
+      final s = (a['status'] ?? '').toString().trim().toLowerCase();
+      return s == _filter;
+    }).toList();
   }
 
   @override
@@ -171,7 +172,7 @@ class _TodayTabState extends State<_TodayTab> {
                               itemCount: _filteredAttendance.length,
                               itemBuilder: (_, i) {
                                 final a = _filteredAttendance[i];
-                                final status = a['status'] ?? '';
+                                final status = (a['status'] ?? '').toString().trim().toLowerCase();
                                 final isPresent = status == 'present';
                                 return Card(
                                   margin: const EdgeInsets.only(bottom: 8),
@@ -306,7 +307,7 @@ class _HistoryTabState extends State<_HistoryTab> {
                             itemCount: _attendance.length,
                             itemBuilder: (_, i) {
                               final a = _attendance[i];
-                              final status = a['status'] ?? '';
+                              final status = (a['status'] ?? '').toString().trim().toLowerCase();
                               final isPresent = status == 'present';
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 8),

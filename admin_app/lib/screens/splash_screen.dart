@@ -25,7 +25,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAndNavigate() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
     final passed = await auth.authenticateWithBiometrics();
@@ -38,18 +37,31 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _showRetryDialog() {
+    final auth = context.read<AuthProvider>();
+    final errorMessage = auth.lastBiometricError ?? 'يجب التحقق من بصمة الإصبع للدخول';
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
         title: const Text('التحقق مطلوب', style: TextStyle(color: Color(0xFFD4AF37))),
-        content: const Text('يجب التحقق من بصمة الإصبع للدخول', style: TextStyle(color: Colors.white70)),
+        content: Text(errorMessage, style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('خروج', style: TextStyle(color: Colors.redAccent)),
+          ),
+          TextButton(
+            onPressed: () async {
               Navigator.pop(ctx);
-              _checkAndNavigate();
+              final auth = context.read<AuthProvider>();
+              final passed = await auth.authenticateWithBiometrics();
+              if (!mounted) return;
+              if (passed) {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+              } else {
+                _showRetryDialog();
+              }
             },
             child: const Text('إعادة المحاولة', style: TextStyle(color: Color(0xFFD4AF37))),
           ),

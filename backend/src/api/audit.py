@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import UUID
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
@@ -7,6 +8,20 @@ from src.utils.dependencies import get_current_teacher, get_current_admin
 from src.services import audit_service
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
+
+
+def _to_response(data: dict) -> dict:
+    result = {}
+    for key, value in data.items():
+        if hasattr(value, 'isoformat'):
+            result[key] = value.isoformat()
+        elif isinstance(value, UUID) or hasattr(value, 'hex'):
+            result[key] = str(value)
+        elif isinstance(value, datetime):
+            result[key] = value.isoformat()
+        else:
+            result[key] = value
+    return result
 
 
 class AuditLogEntry(BaseModel):
@@ -65,7 +80,7 @@ async def create_audit_log(
     return {"id": str(log_entry["id"]), "created_at": log_entry["created_at"].isoformat() if hasattr(log_entry["created_at"], "isoformat") else log_entry["created_at"]}
 
 
-@router.get("/logs", response_model=list[AuditLogResponse])
+@router.get("/logs")
 async def get_audit_logs(
     request: Request,
     actor_id: Optional[str] = Query(None, description="Filter by actor ID"),
@@ -91,20 +106,20 @@ async def get_audit_logs(
 
     logs = await audit_service.search(filters=filters, limit=limit, offset=offset)
     return [
-        AuditLogResponse(
-            id=str(log["id"]),
-            actor_type=log["actor_type"],
-            actor_id=str(log["actor_id"]) if log.get("actor_id") else "",
-            action=log["action"],
-            resource_type=log.get("resource_type"),
-            resource_id=str(log["resource_id"]) if log.get("resource_id") else None,
-            before_state=log.get("before_state"),
-            after_state=log.get("after_state"),
-            device_id=log.get("device_id"),
-            ip_address=log.get("ip_address"),
-            metadata=log.get("extra_metadata") or log.get("metadata"),
-            created_at=log["created_at"].isoformat() if hasattr(log["created_at"], "isoformat") else str(log["created_at"]),
-        )
+        {
+            "id": str(log["id"]),
+            "actor_type": log["actor_type"],
+            "actor_id": str(log["actor_id"]) if log.get("actor_id") else "",
+            "action": log["action"],
+            "resource_type": log.get("resource_type"),
+            "resource_id": str(log["resource_id"]) if log.get("resource_id") else None,
+            "before_state": log.get("before_state"),
+            "after_state": log.get("after_state"),
+            "device_id": log.get("device_id"),
+            "ip_address": log.get("ip_address"),
+            "metadata": log.get("extra_metadata") or log.get("metadata"),
+            "created_at": log["created_at"].isoformat() if hasattr(log["created_at"], "isoformat") else str(log["created_at"]),
+        }
         for log in logs
     ]
 
