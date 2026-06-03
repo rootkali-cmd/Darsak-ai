@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,53 +19,11 @@ class _SplashScreenState extends State<SplashScreen>
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
-    _checkAndNavigate();
-  }
-
-  Future<void> _checkAndNavigate() async {
-    if (!mounted) return;
-    final auth = context.read<AuthProvider>();
-    final passed = await auth.authenticateWithBiometrics();
-    if (!mounted) return;
-    if (passed) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-    } else {
-      _showRetryDialog();
-    }
-  }
-
-  void _showRetryDialog() {
-    final auth = context.read<AuthProvider>();
-    final errorMessage = auth.lastBiometricError ?? 'يجب التحقق من بصمة الإصبع للدخول';
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text('التحقق مطلوب', style: TextStyle(color: Color(0xFFD4AF37))),
-        content: Text(errorMessage, style: const TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('خروج', style: TextStyle(color: Colors.redAccent)),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final auth = context.read<AuthProvider>();
-              final passed = await auth.authenticateWithBiometrics();
-              if (!mounted) return;
-              if (passed) {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-              } else {
-                _showRetryDialog();
-              }
-            },
-            child: const Text('إعادة المحاولة', style: TextStyle(color: Color(0xFFD4AF37))),
-          ),
-        ],
-      ),
-    );
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+      }
+    });
   }
 
   @override
