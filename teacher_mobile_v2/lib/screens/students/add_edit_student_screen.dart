@@ -57,7 +57,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
         'full_name': _nameCtrl.text.trim(),
         'code': _codeCtrl.text.trim().isEmpty ? null : _codeCtrl.text.trim(),
         'parent_phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        'group_id': int.tryParse(_groupIdCtrl.text.trim()),
+        'group_id': _groupIdCtrl.text.trim().isEmpty ? null : _groupIdCtrl.text.trim(),
         'pin': _pinCtrl.text.trim().isEmpty ? null : _pinCtrl.text.trim(),
       };
 

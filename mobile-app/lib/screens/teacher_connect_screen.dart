@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
@@ -157,76 +156,6 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
     });
   }
 
-  Future<void> _pickAndScanImage() async {
-    final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return;
-
-    setState(() => _isLoading = true);
-
-    final controller = MobileScannerController();
-    try {
-      final capture = await controller.analyzeImage(image.path);
-      if (capture != null && capture.barcodes.isNotEmpty) {
-        final raw = capture.barcodes.first.rawValue;
-        if (raw != null && raw.isNotEmpty) {
-          final teacherCode = _extractCodeFromRaw(raw);
-          if (teacherCode != null && mounted) {
-            _codeController.text = teacherCode;
-            setState(() => _isLoading = false);
-            _connect(code: teacherCode);
-            return;
-          }
-        }
-      }
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('لم يتم العثور على باركود في الصورة'),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('فشل في قراءة الباركود من الصورة'),
-            backgroundColor: const Color(0xFFEF4444),
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
-      }
-    } finally {
-      controller.dispose();
-    }
-  }
-
-  String? _extractCodeFromRaw(String raw) {
-    final clean = raw.trim();
-    if (clean.startsWith('darsak://teacher/')) {
-      final parts = clean.split('/');
-      if (parts.length >= 4) {
-        final code = parts[3];
-        if (code.isNotEmpty) return code;
-      }
-    }
-    if (clean.length <= 20 && RegExp(r'^TCH[-:][A-Z0-9]+$').hasMatch(clean)) {
-      return clean.replaceAll(':', '-');
-    }
-    if (clean.length <= 20 && RegExp(r'^[A-Z0-9\-]+$').hasMatch(clean)) {
-      return clean;
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -269,51 +198,6 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                       style: TextStyle(color: Colors.grey[500], fontSize: 14),
                     ),
                     const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _openScanner,
-                        icon: const Icon(Icons.qr_code_scanner, size: 20),
-                        label: const Text(
-                          'مسح QR Code',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                              const Color(0xFF2563EB).withValues(alpha: 0.3),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _pickAndScanImage,
-                        icon: const Icon(Icons.photo_library, size: 20),
-                        label: const Text(
-                          'استرداد QR من الملفات',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E1E1E),
-                          foregroundColor: const Color(0xFFF5F5F5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFF2A2A2A)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     TextFormField(
                       controller: _codeController,
                       textDirection: TextDirection.ltr,
@@ -348,6 +232,28 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                     SizedBox(
                       width: double.infinity,
                       height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _openScanner,
+                        icon: const Icon(Icons.qr_code_scanner, size: 20),
+                        label: const Text(
+                          'مسح QR Code',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E1E1E),
+                          foregroundColor: const Color(0xFFF5F5F5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Color(0xFF2A2A2A)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : () => _connect(),
                         style: ElevatedButton.styleFrom(
@@ -373,6 +279,22 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      label: const Text('تسجيل دخول الطالب مباشرة'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[500],
                       ),
                     ),
                   ],

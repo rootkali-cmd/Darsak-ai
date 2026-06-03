@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.lastError ?? 'كلمة مرور غير صحيحة'), backgroundColor: const Color(0xFFEF4444)),
+        const SnackBar(content: Text('كلمة مرور غير صحيحة'), backgroundColor: Color(0xFFEF4444)),
       );
     }
   }

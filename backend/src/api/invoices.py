@@ -1,5 +1,3 @@
-from datetime import datetime
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_teacher
 from src.schemas.invoice import InvoiceCreate, InvoiceUpdate, InvoiceResponse
@@ -9,25 +7,11 @@ from src.core.subscription_guard import enforce_invoice_limit
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
 
-def _to_response(data: dict) -> dict:
-    result = {}
-    for key, value in data.items():
-        if hasattr(value, 'isoformat'):
-            result[key] = value.isoformat()
-        elif isinstance(value, UUID) or hasattr(value, 'hex'):
-            result[key] = str(value)
-        elif isinstance(value, datetime):
-            result[key] = value.isoformat()
-        else:
-            result[key] = value
-    return result
-
-
 def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
 async def create_invoice(
     invoice_data: InvoiceCreate,
     request: Request,
@@ -59,7 +43,7 @@ async def create_invoice(
             ip_address=get_client_ip(request),
         )
 
-        return _to_response(invoice)
+        return InvoiceResponse(**invoice)
     except HTTPException:
         raise
     except Exception as exc:
@@ -68,7 +52,7 @@ async def create_invoice(
         raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(exc)}")
 
 
-@router.get("/")
+@router.get("/", response_model=list[InvoiceResponse])
 async def list_invoices(
     student_id: str | None = None,
     paid: bool | None = None,
@@ -84,10 +68,10 @@ async def list_invoices(
     if paid is not None:
         invoices = [i for i in invoices if i.get("paid") == paid]
 
-    return [_to_response(i) for i in invoices]
+    return [InvoiceResponse(**i) for i in invoices]
 
 
-@router.patch("/{invoice_id}")
+@router.patch("/{invoice_id}", response_model=InvoiceResponse)
 async def update_invoice(
     invoice_id: str,
     update_data: InvoiceUpdate,
@@ -114,7 +98,7 @@ async def update_invoice(
         ip_address=get_client_ip(request),
     )
 
-    return _to_response(updated)
+    return InvoiceResponse(**updated)
 
 
 @router.put("/{invoice_id}")

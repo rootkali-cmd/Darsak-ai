@@ -1,6 +1,4 @@
 import uuid
-from datetime import datetime
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.models.audit_log import ActorType
@@ -15,20 +13,6 @@ from src.services import student_service, grade_service, ai_analyzer, audit_serv
 from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_usage
 
 router = APIRouter(prefix="/students", tags=["Students"])
-
-
-def _to_response(data: dict) -> dict:
-    result = {}
-    for key, value in data.items():
-        if hasattr(value, 'isoformat'):
-            result[key] = value.isoformat()
-        elif isinstance(value, UUID) or hasattr(value, 'hex'):
-            result[key] = str(value)
-        elif isinstance(value, datetime):
-            result[key] = value.isoformat()
-        else:
-            result[key] = value
-    return result
 
 
 def get_client_ip(request: Request) -> str:
@@ -51,7 +35,7 @@ def _serialize_student(s: dict) -> dict:
     }
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
 async def create_student(
     student_data: StudentCreate,
     request: Request,
@@ -89,10 +73,10 @@ async def create_student(
         ip_address=get_client_ip(request),
     )
 
-    return _serialize_student(student)
+    return StudentResponse(**student)
 
 
-@router.get("/")
+@router.get("/", response_model=list[StudentResponse])
 async def list_students(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -108,7 +92,7 @@ async def list_students(
     result = []
     for s in students:
         s["has_pin"] = s.get("pin_hash") is not None
-        result.append(_serialize_student(s))
+        result.append(StudentResponse(**s))
     return result
 
 
@@ -118,7 +102,7 @@ async def student_count(current_user: dict = Depends(get_current_teacher)):
     return {"count": count}
 
 
-@router.get("/{student_id}")
+@router.get("/{student_id}", response_model=StudentResponse)
 async def get_student(
     student_id: str,
     current_user: dict = Depends(get_current_teacher),
@@ -128,7 +112,7 @@ async def get_student(
         if not student or student["teacher_id"] != current_user["id"]:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
         student["has_pin"] = student.get("pin_hash") is not None
-        return _serialize_student(student)
+        return StudentResponse(**student)
     except HTTPException:
         raise
     except Exception as exc:
@@ -226,62 +210,44 @@ async def delete_student(
     )
 
 
-@router.post("/verify-teacher")
+@router.post("/verify-teacher", response_model=TeacherVerifyResponse)
 async def verify_teacher(request: TeacherVerifyRequest):
-    import logging
-    logger = logging.getLogger("darsak")
-    try:
-        teacher = await user_service.repo.select_one({"teacher_code": sanitize_teacher_code(request.teacher_code)})
-        if not teacher:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid teacher code")
+    teacher = await user_service.repo.select_one({"teacher_code": sanitize_teacher_code(request.teacher_code)})
+    if not teacher:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid teacher code")
 
-        return {
-            "teacher_id": str(teacher["id"]),
-            "teacher_code": teacher["teacher_code"],
-            "teacher_name": teacher["full_name"],
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Failed to verify teacher code %s: %s", request.teacher_code, exc)
-        raise HTTPException(status_code=500, detail=f"Failed to verify teacher: {str(exc)}")
+    return TeacherVerifyResponse(
+        teacher_id=teacher["id"],
+        teacher_code=teacher["teacher_code"],
+        teacher_name=teacher["full_name"],
+    )
 
 
-@router.post("/login")
+@router.post("/login", response_model=StudentTokenResponse)
 async def student_login(credentials: StudentLogin):
-    import logging
-    logger = logging.getLogger("darsak")
-    try:
-        student = await student_service.get_by_code(sanitize_student_code(credentials.code))
-        if not student or not student.get("pin_hash"):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+    student = await student_service.get_by_code(sanitize_student_code(credentials.code))
+    if not student or not student.get("pin_hash"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
-        if not verify_password(sanitize_pin(credentials.pin), student["pin_hash"]):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+    if not verify_password(sanitize_pin(credentials.pin), student["pin_hash"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
-        # If teacher_code provided, verify student belongs to that teacher
-        if credentials.teacher_code:
-            teacher = await user_service.repo.select_one({"teacher_code": credentials.teacher_code})
-            if not teacher or str(student.get("teacher_id")) != str(teacher["id"]):
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student does not belong to this teacher")
+    # If teacher_code provided, verify student belongs to that teacher
+    if credentials.teacher_code:
+        teacher = await user_service.repo.select_one({"teacher_code": credentials.teacher_code})
+        if not teacher or str(student.get("teacher_id")) != str(teacher["id"]):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student does not belong to this teacher")
 
-        token = create_access_token(student["id"], expires_delta=None)
+    token = create_access_token(student["id"], expires_delta=None)
 
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-            "student_id": str(student["id"]),
-            "student_code": student["code"],
-            "student_name": student.get("full_name", ""),
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Failed to login student %s: %s", credentials.code, exc)
-        raise HTTPException(status_code=500, detail=f"Failed to login: {str(exc)}")
+    return StudentTokenResponse(
+        access_token=token,
+        student_id=student["id"],
+        student_code=student["code"],
+    )
 
 
-@router.post("/analyze")
+@router.post("/analyze", response_model=AIAnalysisResponse)
 async def analyze_student(
     request: Request,
     analyze_request: AIAnalysisRequest,
@@ -311,7 +277,7 @@ async def analyze_student(
         metadata={"subject": analyze_request.subject},
     )
 
-    return _to_response(analysis)
+    return AIAnalysisResponse(**analysis)
 
 
 @router.get("/{student_id}/report/pdf")

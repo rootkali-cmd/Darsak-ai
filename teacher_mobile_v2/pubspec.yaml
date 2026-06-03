@@ -1,7 +1,7 @@
 name: darsak_teacher_v2
 description: DarsakAI Teacher App v2
 publish_to: 'none'
-version: 2.2.0+32
+version: 2.1.2+31
 
 environment:
   sdk: ^3.12.0

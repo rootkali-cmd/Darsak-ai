@@ -271,6 +271,11 @@ async def _run_schema_migrations():
                 ON CONFLICT DO NOTHING;
             """))
             await conn.commit()
+            # Refresh Supabase PostgREST schema cache
+            try:
+                await conn.execute(text("NOTIFY pgrst, 'reload schema'"))
+            except Exception:
+                pass
             logger.info("Schema check: all tables OK")
     except Exception as e:
         logger.warning("Schema migration skipped: %s", e)

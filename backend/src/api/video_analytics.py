@@ -1,5 +1,3 @@
-from datetime import datetime
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from src.utils.dependencies import get_current_teacher, get_current_student
 from src.schemas.video_analytics import (
@@ -10,20 +8,6 @@ from src.schemas.video_analytics import (
 from src.services import video_analytics_service, lesson_service, group_service
 
 router = APIRouter(prefix="/video-analytics", tags=["Video Analytics"])
-
-
-def _to_response(data: dict) -> dict:
-    result = {}
-    for key, value in data.items():
-        if hasattr(value, 'isoformat'):
-            result[key] = value.isoformat()
-        elif isinstance(value, UUID) or hasattr(value, 'hex'):
-            result[key] = str(value)
-        elif isinstance(value, datetime):
-            result[key] = value.isoformat()
-        else:
-            result[key] = value
-    return result
 
 
 @router.post("/track")
@@ -59,16 +43,16 @@ async def track_watching(
     return {"ok": True, "record_id": record.get("id"), "is_flagged_cheated": is_cheated}
 
 
-@router.get("/student/{student_id}")
+@router.get("/student/{student_id}", response_model=list[VideoAnalyticsResponse])
 async def get_student_analytics(
     student_id: str,
     current_user: dict = Depends(get_current_teacher),
 ):
     records = await video_analytics_service.list_all({"student_id": student_id, "teacher_id": current_user["id"]}, limit=500)
-    return [_to_response(r) for r in records]
+    return [VideoAnalyticsResponse(**r) for r in records]
 
 
-@router.get("/video/{video_id}")
+@router.get("/video/{video_id}", response_model=list[VideoAnalyticsResponse])
 async def get_video_analytics(
     video_id: str,
     current_user: dict = Depends(get_current_teacher),
@@ -77,32 +61,32 @@ async def get_video_analytics(
     if not lesson or lesson["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
     records = await video_analytics_service.get_by_video(video_id)
-    return [_to_response(r) for r in records]
+    return [VideoAnalyticsResponse(**r) for r in records]
 
 
-@router.get("/my/{video_id}")
+@router.get("/my/{video_id}", response_model=VideoAnalyticsResponse)
 async def get_my_analytics(
     video_id: str,
     current_student: dict = Depends(get_current_student),
 ):
     records = await video_analytics_service.list_all({"student_id": current_student["id"], "video_id": video_id}, limit=1)
     if not records:
-        return {
-            "id": "",
-            "student_id": current_student["id"],
-            "video_id": video_id,
-            "teacher_id": "",
-            "last_position": 0,
-            "max_watched_duration": 0,
-            "current_speed": 1.0,
-            "is_completed": False,
-            "is_flagged_cheated": False,
-            "is_delayed": False,
-        }
-    return _to_response(records[0])
+        return VideoAnalyticsResponse(
+            id="",
+            student_id=current_student["id"],
+            video_id=video_id,
+            teacher_id="",
+            last_position=0,
+            max_watched_duration=0,
+            current_speed=1.0,
+            is_completed=False,
+            is_flagged_cheated=False,
+            is_delayed=False,
+        )
+    return VideoAnalyticsResponse(**records[0])
 
 
-@router.post("/check-schedule")
+@router.post("/check-schedule", response_model=ScheduleCheckResponse)
 async def check_group_schedule(
     group_id: str = Query(...),
     lesson_id: str = Query(...),
@@ -134,13 +118,13 @@ async def check_group_schedule(
                 last_event_type="cron_delayed",
             )
 
-    return {
-        "group_id": group_id,
-        "total_students": len(delayed) + len(completed),
-        "delayed_students": delayed,
-        "completed_students": [
+    return ScheduleCheckResponse(
+        group_id=group_id,
+        total_students=len(delayed) + len(completed),
+        delayed_students=delayed,
+        completed_students=[
             {"student_id": c["student_id"], "is_flagged_cheated": c.get("is_flagged_cheated", False)}
             for c in completed
         ],
-        "lesson_id": lesson_id,
-    }
+        lesson_id=lesson_id,
+    )

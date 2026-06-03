@@ -1,5 +1,3 @@
-from datetime import datetime
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_teacher
 from src.schemas.grade import GradeCreate, GradeBulkUpload, GradeResponse, StudentBrief
@@ -9,66 +7,52 @@ from src.core.subscription_guard import enforce_grade_limit
 router = APIRouter(prefix="/grades", tags=["Grades"])
 
 
-def _to_response(data: dict) -> dict:
-    result = {}
-    for key, value in data.items():
-        if hasattr(value, 'isoformat'):
-            result[key] = value.isoformat()
-        elif isinstance(value, UUID) or hasattr(value, 'hex'):
-            result[key] = str(value)
-        elif isinstance(value, datetime):
-            result[key] = value.isoformat()
-        else:
-            result[key] = value
-    return result
-
-
 def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-async def _enrich_grade(g: dict) -> dict:
-    resp = _to_response(g)
+async def _enrich_grade(g: dict) -> GradeResponse:
+    resp = GradeResponse(**g)
     try:
         s = await student_service.get_by_id(g["student_id"])
         if s:
-            resp["student"] = {
-                "id": str(s["id"]),
-                "full_name": s.get("full_name", ""),
-                "code": s.get("code"),
-                "phone": s.get("phone"),
-            }
+            resp.student = StudentBrief(
+                id=s["id"],
+                full_name=s.get("full_name", ""),
+                code=s.get("code"),
+                phone=s.get("phone"),
+            )
     except Exception:
         pass
     return resp
 
 
-async def _enrich_grades(grades: list[dict]) -> list[dict]:
+async def _enrich_grades(grades: list[dict]) -> list[GradeResponse]:
     student_ids = list({g["student_id"] for g in grades if g.get("student_id")})
     students_map = {}
     for sid in student_ids:
         try:
             s = await student_service.get_by_id(sid)
             if s:
-                students_map[sid] = {
-                    "id": str(s["id"]),
-                    "full_name": s.get("full_name", ""),
-                    "code": s.get("code"),
-                    "phone": s.get("phone"),
-                }
+                students_map[sid] = StudentBrief(
+                    id=s["id"],
+                    full_name=s.get("full_name", ""),
+                    code=s.get("code"),
+                    phone=s.get("phone"),
+                )
         except Exception:
             pass
     result = []
     for g in grades:
-        resp = _to_response(g)
+        resp = GradeResponse(**g)
         sid = str(g["student_id"])
         if sid in students_map:
-            resp["student"] = students_map[sid]
+            resp.student = students_map[sid]
         result.append(resp)
     return result
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=GradeResponse, status_code=status.HTTP_201_CREATED)
 async def create_grade(
     grade_data: GradeCreate,
     request: Request,
@@ -110,7 +94,7 @@ async def create_grade(
         raise HTTPException(status_code=500, detail=f"Failed to create grade: {str(exc)}")
 
 
-@router.post("/bulk", status_code=status.HTTP_201_CREATED)
+@router.post("/bulk", response_model=list[GradeResponse], status_code=status.HTTP_201_CREATED)
 async def bulk_upload_grades(
     bulk_data: GradeBulkUpload,
     request: Request,
@@ -144,7 +128,7 @@ async def bulk_upload_grades(
     return results
 
 
-@router.get("/")
+@router.get("/", response_model=list[GradeResponse])
 async def list_grades(
     student_id: str | None = None,
     subject: str | None = None,
@@ -171,7 +155,7 @@ async def grade_stats(
     return stats
 
 
-@router.get("/{grade_id}")
+@router.get("/{grade_id}", response_model=GradeResponse)
 async def get_grade(
     grade_id: str,
     current_user: dict = Depends(get_current_teacher),

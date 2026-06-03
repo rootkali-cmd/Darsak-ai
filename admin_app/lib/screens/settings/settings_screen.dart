@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../providers/auth_provider.dart';
+import '../login_screen.dart';
 import '../templates/templates_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -30,17 +32,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _closeApp() async {
+  Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
         title: const Text(
-          'إغلاق التطبيق',
+          'تسجيل الخروج',
           style: TextStyle(color: Color(0xFFD4AF37)),
         ),
         content: const Text(
-          'هل أنت متأكد من إغلاق التطبيق؟',
+          'هل أنت متأكد من تسجيل الخروج؟',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -51,7 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
-              'إغلاق',
+              'خروج',
               style: TextStyle(color: Colors.redAccent),
             ),
           ),
@@ -59,8 +61,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
-    if (confirmed == true) {
-      SystemNavigator.pop();
+    if (confirmed != true || !mounted) return;
+
+    await context.read<AuthProvider>().logout();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -106,6 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
 
         const SizedBox(height: 32),
+        // Logout button
         SizedBox(
           height: 48,
           child: DecoratedBox(
@@ -114,9 +124,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               border: Border.all(color: const Color(0xFFD4AF37)),
             ),
             child: TextButton(
-              onPressed: _closeApp,
+              onPressed: _logout,
               child: const Text(
-                'إغلاق',
+                'تسجيل الخروج',
                 style: TextStyle(
                   color: Color(0xFFD4AF37),
                   fontSize: 16,

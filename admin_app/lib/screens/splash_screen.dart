@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import 'login_screen.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -16,12 +19,26 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      if (auth.isAuthenticated) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
       }
     });
   }
@@ -42,9 +59,25 @@ class _SplashScreenState extends State<SplashScreen>
           child: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('DarsakAI', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w300, color: Color(0xFFD4AF37), letterSpacing: 4)),
+              Text(
+                'DarsakAI',
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w300,
+                  color: Color(0xFFD4AF37),
+                  letterSpacing: 4,
+                ),
+              ),
               SizedBox(height: 12),
-              Text('Admin', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: Color(0xFFD4AF37), letterSpacing: 8)),
+              Text(
+                'Admin',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w300,
+                  color: Color(0xFFD4AF37),
+                  letterSpacing: 8,
+                ),
+              ),
             ],
           ),
         ),
