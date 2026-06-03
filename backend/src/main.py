@@ -31,6 +31,7 @@ from src.api import (
     dashboard_router, lessons_router, video_analytics_router,
     whatsapp_router,
     quiz_router,
+    admin_router,
 )
 
 settings = get_settings()
@@ -217,6 +218,42 @@ async def _run_schema_migrations():
                     options JSONB DEFAULT '[]',
                     correct_answer INT DEFAULT 0
                 );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS admin_templates (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    type VARCHAR(50) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    pattern TEXT,
+                    template TEXT,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS payment_transactions (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    student_id UUID REFERENCES students(id) ON DELETE SET NULL,
+                    phone_number VARCHAR(20),
+                    amount DECIMAL(10,2),
+                    method VARCHAR(20),
+                    reference TEXT,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    matched_by VARCHAR(50),
+                    approved_at TIMESTAMPTZ,
+                    rejected_at TIMESTAMPTZ,
+                    notes TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("""
+                INSERT INTO admin_templates (type, name, pattern, template) VALUES 
+                ('sms_regex', 'vodafone_cash', 'Vodafone Cash.*?(\\d{11}).*?(\\d+)\\.?\\d*\\s?(EGP|LE|ج\\.م)', '{"phone_group":1,"amount_group":2}'),
+                ('sms_regex', 'instapay', 'InstaPay.*?(\\d{11}).*?(\\d+)\\.?\\d*\\s?(EGP|LE|ج\\.م)', '{"phone_group":1,"amount_group":2}'),
+                ('notification', 'payment_approved', 'تم تأكيد الدفع', '✅ تم تأكيد الدفع بقيمة {amount} ج.م للطالب {student_name}'),
+                ('notification', 'payment_rejected', 'تم رفض الدفع', '❌ تم رفض الدفع بقيمة {amount} ج.م للطالب {student_name}')
+                ON CONFLICT DO NOTHING;
             """))
             await conn.commit()
             logger.info("Schema check: all tables OK")
@@ -501,3 +538,4 @@ app.include_router(lessons_router, prefix=settings.API_V1_PREFIX)
 app.include_router(video_analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)
 app.include_router(quiz_router, prefix=settings.API_V1_PREFIX)
+app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
