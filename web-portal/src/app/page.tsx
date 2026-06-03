@@ -96,31 +96,32 @@ const pricingPlans = [
   {
     name: 'Basic',
     nameAr: 'الأساسي',
-    price: '200',
+    price: '199',
     period: '/شهر',
     desc: 'للسناتر الصغيرة',
-    features: ['إدارة حتى 50 طالب', 'تسجيل حضور وغياب', 'تقارير أساسية', 'دعم عبر البريد الإلكتروني'],
+    features: ['إدارة حتى 100 طالب', 'تسجيل حضور وغياب', 'تخزين فيديو 2GB', '5 تحليلات AI شهرياً'],
     cta: 'ابدأ مجاناً',
+    trial: true,
     popular: false,
   },
   {
     name: 'Pro',
     nameAr: 'المحترف',
-    price: '600',
+    price: '499',
     period: '/شهر',
     desc: 'للسناتر المتوسطة',
-    features: ['إدارة حتى 200 طالب', 'كل ميزات الأساسي', 'امتحانات وتصحيح آلي', 'فواتير إلكترونية', 'تحليلات AI متقدمة', 'دعم فني مباشر'],
-    cta: 'ابدأ مجاناً',
+    features: ['إدارة حتى 400 طالب', 'كل ميزات الأساسي', 'تخزين فيديو 6GB', '30 تحليل AI شهرياً', 'فواتير إلكترونية', 'دعم فني مباشر'],
+    cta: 'اشتراك',
     popular: true,
   },
   {
-    name: 'Enterprise',
-    nameAr: 'المؤسسي',
-    price: '1100',
+    name: 'Unlimited',
+    nameAr: 'المتكامل',
+    price: '999',
     period: '/شهر',
-    desc: 'لسلاسل السناتر الكبيرة',
-    features: ['عدد غير محدود من الطلاب', 'كل ميزات Pro', 'تخصيص كامل للمنصة', 'API مفتوح للتكامل', 'مدير حساب مخصص', 'تدريب للفريق'],
-    cta: 'تحدث معنا',
+    desc: 'للسناتر الكبيرة',
+    features: ['عدد غير محدود من الطلاب', 'كل ميزات Pro', 'تخزين فيديو غير محدود', 'AI غير محدود', 'تخصيص كامل', 'دعم 24/7'],
+    cta: 'اشتراك',
     popular: false,
   },
 ]
@@ -550,7 +551,7 @@ export default function LandingPage() {
             <motion.div className="text-center mb-16" {...fadeUp()}>
               <span className="inline-block px-3 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full mb-4">الباقات</span>
               <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3">باقات تناسب كل سنتر</h2>
-              <p className="text-slate-500 max-w-lg mx-auto">اختر الباقة المناسبة — كل الباقات تبدأ بـ ٣٠ يوم مجاناً بدون بطاقة ائتمان</p>
+              <p className="text-slate-500 max-w-lg mx-auto">اختر الباقة المناسبة — الباقة الأساسية تبدأ بـ ٣٠ يوم مجاناً</p>
             </motion.div>
 
             <motion.div
