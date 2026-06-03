@@ -11,7 +11,7 @@ class CodesScreen extends StatefulWidget {
 
 class _CodesScreenState extends State<CodesScreen> {
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://darsak-backend.fly.dev/api/v1/admin',
+    baseUrl: 'https://darsak-backend.fly.dev/api/admin',
     connectTimeout: const Duration(seconds: 30),
   ));
 
@@ -20,12 +20,6 @@ class _CodesScreenState extends State<CodesScreen> {
   bool _generating = false;
   List<Map<String, dynamic>> _codes = [];
   bool _loading = true;
-
-  // Placeholder data
-  static const _placeholderCodes = [
-    {'id': '1', 'code': 'DSK-A1B2C3', 'plan_name': 'Free', 'is_used': true},
-    {'id': '2', 'code': 'DSK-D4E5F6', 'plan_name': 'Premium', 'is_used': false},
-  ];
 
   static const _plans = [
     {'name': 'Free', 'value': 'free'},
@@ -51,8 +45,13 @@ class _CodesScreenState extends State<CodesScreen> {
       final res = await _dio.get('/codes');
       final list = List<Map<String, dynamic>>.from(res.data);
       if (mounted) setState(() { _codes = list; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() { _codes = _placeholderCodes; _loading = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() { _codes = []; _loading = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 
@@ -66,7 +65,7 @@ class _CodesScreenState extends State<CodesScreen> {
     }
     setState(() => _generating = true);
     try {
-      await _dio.post('/codes', data: {
+      await _dio.post('/codes/generate', data: {
         'plan': _selectedPlan,
         'quantity': qty,
       });

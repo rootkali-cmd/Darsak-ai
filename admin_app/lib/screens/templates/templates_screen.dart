@@ -10,34 +10,12 @@ class TemplatesScreen extends StatefulWidget {
 
 class _TemplatesScreenState extends State<TemplatesScreen> {
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://darsak-backend.fly.dev/api/v1/admin',
+    baseUrl: 'https://darsak-backend.fly.dev/api/admin',
     connectTimeout: const Duration(seconds: 30),
   ));
 
   List<Map<String, dynamic>> _templates = [];
   bool _loading = true;
-
-  // Placeholder data
-  static const _placeholderTemplates = [
-    {
-      'id': '1',
-      'type': 'sms_regex',
-      'name': 'Vodafone Cash',
-      'pattern': r'Vodafone Cash.*?(\d{11}).*?(\d+\.?\d*)\s?(EGP|LE|ج\.م)',
-    },
-    {
-      'id': '2',
-      'type': 'sms_regex',
-      'name': 'بنك مصر',
-      'pattern': r'بنك مصر.*?(\d{11}).*?(\d+\.?\d*)\s?(EGP|LE|ج\.م)',
-    },
-    {
-      'id': '3',
-      'type': 'notification',
-      'name': 'تنبيه دفع جديد',
-      'pattern': 'تم استلام {amount} ج.م من {phone}',
-    },
-  ];
 
   @override
   void initState() {
@@ -51,8 +29,13 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
       final res = await _dio.get('/templates');
       final list = List<Map<String, dynamic>>.from(res.data);
       if (mounted) setState(() { _templates = list; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() { _templates = _placeholderTemplates; _loading = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() { _templates = []; _loading = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 

@@ -10,7 +10,7 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://darsak-backend.fly.dev/api/v1/admin',
+    baseUrl: 'https://darsak-backend.fly.dev/api/admin',
     connectTimeout: const Duration(seconds: 30),
   ));
 
@@ -18,37 +18,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _filtered = [];
   bool _loading = true;
-
-  // Placeholder data
-  static const _placeholderTransactions = [
-    {
-      'id': '1',
-      'student_name': 'أحمد محمد',
-      'plan_name': 'Premium',
-      'amount': '99.99',
-      'status': 'pending',
-      'phone': '01001234567',
-      'created_at': '2026-06-03T10:00:00Z',
-    },
-    {
-      'id': '2',
-      'student_name': 'سارة أحمد',
-      'plan_name': 'Free',
-      'amount': '0.00',
-      'status': 'approved',
-      'phone': '01009876543',
-      'approved_at': '2026-06-02T15:30:00Z',
-    },
-    {
-      'id': '3',
-      'student_name': 'خالد علي',
-      'plan_name': 'Pro',
-      'amount': '199.99',
-      'status': 'rejected',
-      'phone': '01005550000',
-      'created_at': '2026-06-01T08:00:00Z',
-    },
-  ];
 
   static const _filters = [
     {'label': 'الكل', 'value': 'all'},
@@ -75,13 +44,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           _loading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _transactions = _placeholderTransactions;
+          _transactions = [];
           _applyFilter();
           _loading = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.redAccent),
+        );
       }
     }
   }
@@ -98,7 +70,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Future<void> _approveTransaction(Map<String, dynamic> tx) async {
     try {
-      await _dio.post('/transactions/${tx['id']}/approve');
+      await _dio.put('/transactions/${tx['id']}', data: {'status': 'approved'});
       _fetchTransactions();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,7 +91,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Future<void> _rejectTransaction(Map<String, dynamic> tx) async {
     try {
-      await _dio.post('/transactions/${tx['id']}/reject');
+      await _dio.put('/transactions/${tx['id']}', data: {'status': 'rejected'});
       _fetchTransactions();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
