@@ -8,14 +8,14 @@ import { Smartphone, Monitor, Download, ArrowRight, Sparkles, School, User } fro
 const teacherApps = [
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v2.1.1',
+    title: 'DarsakAI Teacher v2.1.2',
     subtitle: 'تطبيق المدرس',
     description: 'مسح باركود للحضور • دروس فيديو • ذكاء اصطناعي • إدارة كاملة للسنتر',
     icon: User,
     color: '#6366F1',
     bgColor: 'rgba(99,102,241,0.12)',
     file: '/teacher-v2.apk',
-    label: 'Android APK v2.1.1',
+    label: 'Android APK v2.1.2',
     size: '~75 MB',
     platform: 'Android 10+',
     note: 'CameraX + ML Kit • QR حقيقي • Onboarding • لوحة تحكم جديدة',

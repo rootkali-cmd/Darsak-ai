@@ -42,9 +42,9 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String password) async {
     try {
-      final res = await _dio.post('/login', data: {'email': email, 'password': password});
+      final res = await _dio.post('/login', data: {'password': password});
       _token = res.data['access_token'];
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('admin_token', _token!);

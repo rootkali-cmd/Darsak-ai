@@ -20,9 +20,8 @@ ADMIN_PASSWORD = "Ahmedtelly2008@"
 @router.post("/login")
 async def admin_login(request: Request):
     body = await request.json()
-    email = body.get("email", "").strip().lower()
     password = body.get("password", "")
-    if email != ADMIN_EMAIL or password != ADMIN_PASSWORD:
+    if password != ADMIN_PASSWORD:
         raise HTTPException(401, "Invalid credentials")
     token = create_access_token(
         "admin", extra_claims={"name": "Ahmed Telly", "role": "admin"}
