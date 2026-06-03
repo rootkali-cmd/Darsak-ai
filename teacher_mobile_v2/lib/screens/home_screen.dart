@@ -136,12 +136,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _titles[_currentIndex],
-          style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
-        ),
-      ),
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           return Directionality(
@@ -163,18 +157,17 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: Directionality(
         textDirection: TextDirection.rtl,
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) => setState(() => _currentIndex = index),
-          backgroundColor: AppTheme.surface,
-          indicatorColor: AppTheme.accent.withValues(alpha: 0.12),
-          height: 68,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: List.generate(
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
+          selectedItemColor: AppTheme.accent,
+          unselectedItemColor: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54,
+          items: List.generate(
             _titles.length,
-            (i) => NavigationDestination(
-              icon: Icon(_icons[i], color: AppTheme.textMuted),
-              selectedIcon: Icon(_icons[i], color: AppTheme.accent),
+            (i) => BottomNavigationBarItem(
+              icon: Icon(_icons[i]),
               label: _titles[i],
             ),
           ),

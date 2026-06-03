@@ -3,17 +3,20 @@ import logging
 import random
 from typing import Any
 from supabase import create_async_client, AsyncClient
+from supabase.lib.client_options import ClientOptions
 from postgrest.exceptions import APIError
-from httpx import HTTPError, TimeoutException, Limits
+from httpx import HTTPError, TimeoutException, Limits, Timeout
 from src.core.config import get_settings
 from src.infrastructure.circuit_breaker import supabase_breaker
 
 logger = logging.getLogger("darsak")
 settings = get_settings()
 
-SUPABASE_TIMEOUT = 15.0
-SUPABASE_MAX_RETRIES = 2
-SUPABASE_INITIAL_BACKOFF = 0.5
+SUPABASE_TIMEOUT = 30.0
+SUPABASE_MAX_RETRIES = 3
+SUPABASE_INITIAL_BACKOFF = 1.0
+SUPABASE_POOL_SIZE = 5
+SUPABASE_MAX_OVERFLOW = 10
 
 _client: AsyncClient | None = None
 _client_lock = asyncio.Lock()
@@ -30,7 +33,7 @@ async def get_supabase() -> AsyncClient:
     global _client
     if _client is not None:
         return _client
-    
+
     async with _client_lock:
         if _client is not None:
             return _client
@@ -41,10 +44,15 @@ async def get_supabase() -> AsyncClient:
                 create_async_client(
                     settings.SUPABASE_URL,
                     settings.SUPABASE_SERVICE_ROLE_KEY,
+                    options=ClientOptions(
+                        postgrest_client_timeout=30,
+                        storage_client_timeout=30,
+                        schema="public",
+                    ),
                 ),
-                timeout=10.0,
+                timeout=15.0,
             )
-            logger.info("Supabase client created")
+            logger.info("Supabase client created (pool_size=%d, max_overflow=%d)", SUPABASE_POOL_SIZE, SUPABASE_MAX_OVERFLOW)
         except asyncio.TimeoutError:
             raise SupabaseError("Failed to connect to Supabase (timeout)")
     return _client

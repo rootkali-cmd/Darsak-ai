@@ -30,6 +30,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _uploading = false;
 
   static const _trialPlanNames = ['basic', 'أساسي', 'باقة أساسية'];
+  static const _vodafoneNumber = '01031524947';
 
   @override
   void initState() {
@@ -185,6 +186,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  void _copyVodafoneNumber() {
+    Clipboard.setData(const ClipboardData(text: _vodafoneNumber));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم نسخ رقم فودافون كاش'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
+    );
   }
 
   void _showMsg(String msg, Color color) {
@@ -346,19 +354,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const Text('حوّل المبلغ على فودافون كاش وأرفق لقطة الشاشة', style: TextStyle(color: AppTheme.textSecondary)),
           const SizedBox(height: 8),
           GestureDetector(
-            onTap: () {
-              Clipboard.setData(const ClipboardData(text: '01000000000'));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم نسخ رقم فودافون كاش'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
-              );
-            },
+            onTap: _copyVodafoneNumber,
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: AppTheme.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.copy, size: 20, color: AppTheme.accent),
-                SizedBox(width: 8),
-                Text('01000000000', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppTheme.accent)),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.copy, size: 20, color: AppTheme.accent),
+                const SizedBox(width: 8),
+                const Text(_vodafoneNumber, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppTheme.accent)),
               ]),
             ),
           ),
@@ -420,12 +423,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const Text('فودافون كاش', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           GestureDetector(
-            onTap: () {
-              Clipboard.setData(const ClipboardData(text: '01000000000'));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم نسخ رقم فودافون كاش'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
-              );
-            },
+            onTap: _copyVodafoneNumber,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -434,10 +432,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
               ),
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.copy, size: 18, color: AppTheme.primary),
-                SizedBox(width: 10),
-                Text('01000000000', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Cairo', letterSpacing: 2, color: AppTheme.primary)),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.copy, size: 18, color: AppTheme.primary),
+                const SizedBox(width: 10),
+                const Text(_vodafoneNumber, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Cairo', letterSpacing: 2, color: AppTheme.primary)),
               ]),
             ),
           ),
@@ -446,19 +444,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
-            height: 140,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppTheme.accent.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppTheme.accent.withValues(alpha: 0.15)),
             ),
-            child: const Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.qr_code_2, size: 48, color: AppTheme.textMuted),
-                SizedBox(height: 8),
-                Text('QR إنستاباي قريباً', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
-              ]),
-            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.payment, size: 20, color: AppTheme.accent),
+              const SizedBox(width: 10),
+              const Text(_vodafoneNumber, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Cairo', letterSpacing: 2, color: AppTheme.accent)),
+            ]),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -481,7 +477,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _openWhatsApp() async {
-    const phone = '201000000000';
+    const phone = '201031524947';
     const message = 'مرحباً، أحتاج مساعدة بخصوص الاشتراك في تطبيق درسك AI';
     final url = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
     try {

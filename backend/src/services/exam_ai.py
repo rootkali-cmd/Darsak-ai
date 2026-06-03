@@ -12,33 +12,47 @@ settings = get_settings()
 
 try:
     import fitz
-    HAS_PDF_SUPPORT = True
+    HAS_FITZ = True
 except ImportError:
-    HAS_PDF_SUPPORT = False
-    logger.warning("PyMuPDF not installed; PDF text extraction disabled")
+    HAS_FITZ = False
+    logger.warning("PyMuPDF not installed; PDF text extraction via fitz disabled")
 
-QUESTION_GEN_PROMPT = """أنت معلم خبير في المناهج التعليمية المصرية. مهمتك تحويل محتوى دراسي إلى أسئلة امتحان.
+try:
+    import pdfplumber
+    HAS_PDFPLUMBER = True
+except ImportError:
+    HAS_PDFPLUMBER = False
+    logger.warning("pdfplumber not installed; PDF text extraction via pdfplumber disabled")
+
+QUESTION_GEN_PROMPT = """أنت معلم خبير في المناهج التعليمية المصرية. مهمتك قراءة المحتوى الدراسي المقدم بعناية شديدة وتحويله إلى أسئلة امتحان احترافية.
+
+تعليمات هامة — اقرأها جيداً قبل البدء:
+1. اقرأ المحتوى كلمة كلمة بتركيز شديد. لا تفوّت أي معلومة أو تفصيلة مهما كانت صغيرة.
+2. استخرج أهم المفاهيم، التعريفات، القواعد، التواريخ، الأسماء، والأرقام المذكورة.
+3. تأكد أن كل سؤال له إجابة صحيحة واحدة واضحة مستخلصة من النص مباشرة — لا تخمن.
+4. لكل سؤال اختيار متعدد، تأكد أن الخيارات الأربعة معقولة والإجابة الصحيحة موجودة بينها.
+5. تنويع الأسئلة بين المستويات: تذكر، فهم، تطبيق، تحليل.
+6. الأسئلة المقالية يجب أن تكون مفتوحة تتطلب تفكيراً وتكون لها إجابة نموذجية مفصلة.
 
 المطلوب:
-1. تحليل النص أو الصورة المقدمة
-2. استخراج أهم المعلومات
-3. توليد 5-10 أسئلة متنوعة (اختيار متعدد + مقالي)
-4. توفير نموذج إجابة كامل لكل سؤال
+- توليد 5-10 أسئلة متنوعة تغطي أهم نقاط المحتوى
+- مزيج بين أسئلة الاختيار المتعدد والأسئلة المقالية (سؤالين مقاليين على الأقل)
+- تحديد عدد النقاط لكل سؤال حسب صعوبته (5-15 نقطة)
+- الإجابة النموذجية للأسئلة المقالية تكون مفصلة (3-5 جمل على الأقل)
 
 القواعد:
-- أخرج JSON صالح فقط بدون أي نص إضافي
-- استخدم اللغة العربية في الأسئلة والإجابات
-- تنوع الأسئلة بين المستويات (فهم، تطبيق، تحليل)
-- كل سؤال اختيار متعدد必须有 4 خيارات (أ، ب، ج، د)
+- أخرج JSON صالح فقط بدون أي نص إضافي خارج الأقواس
+- استخدم اللغة العربية الفصحى في الأسئلة والإجابات
+- كل سؤال اختيار متعدد له 4 خيارات مرقمة (أ، ب، ج، د)
 
-الصيغة المطلوبة:
+الصيغة المطلوبة بدقة:
 {
   "title": "عنوان الامتحان المقترح",
-  "description": "وصف الامتحان",
+  "description": "وصف مختصر للامتحان ونوع الأسئلة",
   "questions": [
     {
       "type": "multiple_choice",
-      "question_text": "نص السؤال",
+      "question_text": "نص السؤال كاملاً",
       "options": [
         {"key": "أ", "text": "الخيار الأول"},
         {"key": "ب", "text": "الخيار الثاني"},
@@ -51,8 +65,8 @@ QUESTION_GEN_PROMPT = """أنت معلم خبير في المناهج التعل
     },
     {
       "type": "essay",
-      "question_text": "نص السؤال المقالي",
-      "correct_answer": "الإجابة النموذجية",
+      "question_text": "نص السؤال المقالي كاملاً",
+      "correct_answer": "الإجابة النموذجية المفصلة (3-5 جمل على الأقل)",
       "points": 10,
       "page_number": 1
     }
@@ -167,18 +181,39 @@ class ExamAIService:
         return self._fallback_questions()
 
     async def extract_text_from_pdf(self, pdf_bytes: bytes) -> str:
-        if not HAS_PDF_SUPPORT:
-            return ""
-        try:
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-            text = ""
-            for page in doc:
-                text += page.get_text() + "\n"
-            doc.close()
-            return text.strip()
-        except Exception as e:
-            logger.error("PDF text extraction failed: %s", e)
-            return ""
+        """Extract text from PDF using PyMuPDF (fitz) first, then pdfplumber as fallback."""
+        text = ""
+        if HAS_FITZ:
+            try:
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                parts = []
+                for page in doc:
+                    parts.append(page.get_text())
+                doc.close()
+                text = "\n".join(parts).strip()
+                if text:
+                    logger.info("PDF text extracted via PyMuPDF: %d chars", len(text))
+                    return text
+            except Exception as e:
+                logger.warning("PyMuPDF extraction failed: %s", e)
+        if HAS_PDFPLUMBER:
+            try:
+                import io
+                with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                    parts = []
+                    for page in pdf.pages:
+                        t = page.extract_text()
+                        if t:
+                            parts.append(t)
+                    text = "\n".join(parts).strip()
+                if text:
+                    logger.info("PDF text extracted via pdfplumber: %d chars", len(text))
+                    return text
+            except Exception as e:
+                logger.warning("pdfplumber extraction failed: %s", e)
+        if not text:
+            logger.warning("All PDF text extraction methods failed; falling back to vision mode")
+        return text
 
     def _image_to_base64(self, image_bytes: bytes) -> str:
         return base64.b64encode(image_bytes).decode("utf-8")
@@ -191,7 +226,7 @@ class ExamAIService:
             {"role": "system", "content": QUESTION_GEN_PROMPT},
             {
                 "role": "user",
-                "content": f"قم بتحليل المحتوى التالي وتوليد أسئلة امتحان منه:{subject_ctx}\n\n{text[:12000]}",
+                "content": f"اقرأ المحتوى الدراسي التالي بعناية شديدة ثم استخرج أهم المعلومات وولّد أسئلة امتحان شاملة تغطي جميع النقاط الهامة.{subject_ctx}\n\n{text[:15000]}",
             },
         ]
         return await self._call_best(messages)
@@ -199,13 +234,12 @@ class ExamAIService:
     async def generate_questions_from_image(self, image_bytes: bytes, subject: str | None = None) -> dict[str, Any]:
         b64 = self._image_to_base64(image_bytes)
         subject_ctx = f"\nالمادة: {subject}" if subject else ""
-        fmt = 'أخرج JSON صالح فقط بهذا التنسيق:\n{"title":"عنوان","description":"وصف","questions":[{"type":"multiple_choice","question_text":"نص","options":[{"key":"أ","text":"..."}],"correct_answer":"أ","points":5,"page_number":1}]}'
         messages = [
             {"role": "system", "content": QUESTION_GEN_PROMPT},
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": f"قم بتحليل الصورة التعليمية التالية وتوليد أسئلة امتحان منها.{subject_ctx}\n\n{fmt}"},
+                    {"type": "text", "text": f"حلل الصورة التعليمية التالية بعناية. اقرأ كل ما هو مكتوب فيها بدقة، ثم استخرج المفاهيم والمعلومات الأساسية وولّد أسئلة امتحان شاملة منها.{subject_ctx}"},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
                 ],
             },

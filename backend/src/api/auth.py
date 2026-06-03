@@ -159,7 +159,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         path="/",
     )
 
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "onboarding_completed": user.get("onboarding_completed", False)}
 
 
 @router.post("/refresh")

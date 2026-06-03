@@ -87,10 +87,22 @@ class AuthProvider extends ChangeNotifier {
         _user!['onboarding_completed'] = onboardingCompleted == true || onboardingCompleted == 'true';
         await prefs.setBool(_onboardingKey, _user!['onboarding_completed']!);
       } else {
-        _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? false;
+        try {
+          final meData = await _api.getMe();
+          final serverOnboarding = meData['onboarding_completed'];
+          if (serverOnboarding == true) {
+            _user!['onboarding_completed'] = true;
+            await prefs.setBool(_onboardingKey, true);
+          } else {
+            _user!['onboarding_completed'] = prefs.getBool(_onboardingKey);
+          }
+          _subscription = meData['subscription'] is Map ? Map<String, dynamic>.from(meData['subscription']) : null;
+        } catch (_) {
+          _user!['onboarding_completed'] = prefs.getBool(_onboardingKey);
+        }
       }
       _isLoading = false; notifyListeners();
-      refreshSubscription();
+      if (_subscription == null) refreshSubscription();
       return true;
     } on DioException catch (e) { _error = _getDioError(e); _isLoading = false; notifyListeners(); return false; }
     catch (e) { _error = 'حدث خطأ غير متوقع: $e'; _isLoading = false; notifyListeners(); return false; }
