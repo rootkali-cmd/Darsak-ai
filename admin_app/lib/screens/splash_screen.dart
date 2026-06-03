@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import 'login_screen.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -19,28 +18,44 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
+    _checkAndNavigate();
+  }
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      final auth = context.read<AuthProvider>();
-      if (auth.isAuthenticated) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
-    });
+  Future<void> _checkAndNavigate() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final passed = await auth.authenticateWithBiometrics();
+    if (!mounted) return;
+    if (passed) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } else {
+      _showRetryDialog();
+    }
+  }
+
+  void _showRetryDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text('التحقق مطلوب', style: TextStyle(color: Color(0xFFD4AF37))),
+        content: const Text('يجب التحقق من بصمة الإصبع للدخول', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _checkAndNavigate();
+            },
+            child: const Text('إعادة المحاولة', style: TextStyle(color: Color(0xFFD4AF37))),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -59,25 +74,9 @@ class _SplashScreenState extends State<SplashScreen>
           child: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'DarsakAI',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w300,
-                  color: Color(0xFFD4AF37),
-                  letterSpacing: 4,
-                ),
-              ),
+              Text('DarsakAI', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w300, color: Color(0xFFD4AF37), letterSpacing: 4)),
               SizedBox(height: 12),
-              Text(
-                'Admin',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w300,
-                  color: Color(0xFFD4AF37),
-                  letterSpacing: 8,
-                ),
-              ),
+              Text('Admin', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: Color(0xFFD4AF37), letterSpacing: 8)),
             ],
           ),
         ),

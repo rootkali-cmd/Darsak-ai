@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/biometric_lock_widget.dart';
 import 'students/students_screen.dart';
 import 'codes/codes_screen.dart';
 import 'transactions/transactions_screen.dart';
@@ -52,8 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       const SettingsScreen(),
     ];
 
-    return BiometricLockWidget(
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: const Color(0xFF0A0A0A),
         appBar: AppBar(
           title: const Text(
@@ -94,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 
