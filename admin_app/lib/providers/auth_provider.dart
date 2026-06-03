@@ -8,7 +8,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isBiometricVerified = false;
   String? _token;
   final LocalAuthentication _localAuth = LocalAuthentication();
-  final Dio _dio = Dio(BaseOptions(baseUrl: 'https://darsak-backend.fly.dev/api/v1/admin', connectTimeout: const Duration(seconds: 30)));
+  final Dio _dio = Dio(BaseOptions(baseUrl: 'https://darsak-backend.fly.dev/api/admin', connectTimeout: const Duration(seconds: 30)));
 
   bool get isAuthenticated => _isAuthenticated;
   bool get isBiometricVerified => _isBiometricVerified;
