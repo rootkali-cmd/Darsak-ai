@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
@@ -156,6 +157,76 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
     });
   }
 
+  Future<void> _pickAndScanImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+
+    setState(() => _isLoading = true);
+
+    final controller = MobileScannerController();
+    try {
+      final capture = await controller.analyzeImage(image.path);
+      if (capture != null && capture.barcodes.isNotEmpty) {
+        final raw = capture.barcodes.first.rawValue;
+        if (raw != null && raw.isNotEmpty) {
+          final teacherCode = _extractCodeFromRaw(raw);
+          if (teacherCode != null && mounted) {
+            _codeController.text = teacherCode;
+            setState(() => _isLoading = false);
+            _connect(code: teacherCode);
+            return;
+          }
+        }
+      }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('لم يتم العثور على باركود في الصورة'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('فشل في قراءة الباركود من الصورة'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  String? _extractCodeFromRaw(String raw) {
+    final clean = raw.trim();
+    if (clean.startsWith('darsak://teacher/')) {
+      final parts = clean.split('/');
+      if (parts.length >= 4) {
+        final code = parts[3];
+        if (code.isNotEmpty) return code;
+      }
+    }
+    if (clean.length <= 20 && RegExp(r'^TCH[-:][A-Z0-9]+$').hasMatch(clean)) {
+      return clean.replaceAll(':', '-');
+    }
+    if (clean.length <= 20 && RegExp(r'^[A-Z0-9\-]+$').hasMatch(clean)) {
+      return clean;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -233,10 +304,10 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton.icon(
-                        onPressed: _openScanner,
-                        icon: const Icon(Icons.qr_code_scanner, size: 20),
+                        onPressed: _isLoading ? null : _pickAndScanImage,
+                        icon: const Icon(Icons.photo_library, size: 20),
                         label: const Text(
-                          'مسح QR Code',
+                          'استرداد QR من الملفات',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
                         ),

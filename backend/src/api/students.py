@@ -210,41 +210,59 @@ async def delete_student(
     )
 
 
-@router.post("/verify-teacher", response_model=TeacherVerifyResponse)
+@router.post("/verify-teacher")
 async def verify_teacher(request: TeacherVerifyRequest):
-    teacher = await user_service.repo.select_one({"teacher_code": sanitize_teacher_code(request.teacher_code)})
-    if not teacher:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid teacher code")
+    import logging
+    logger = logging.getLogger("darsak")
+    try:
+        teacher = await user_service.repo.select_one({"teacher_code": sanitize_teacher_code(request.teacher_code)})
+        if not teacher:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid teacher code")
 
-    return TeacherVerifyResponse(
-        teacher_id=teacher["id"],
-        teacher_code=teacher["teacher_code"],
-        teacher_name=teacher["full_name"],
-    )
+        return {
+            "teacher_id": str(teacher["id"]),
+            "teacher_code": teacher["teacher_code"],
+            "teacher_name": teacher["full_name"],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to verify teacher code %s: %s", request.teacher_code, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to verify teacher: {str(exc)}")
 
 
-@router.post("/login", response_model=StudentTokenResponse)
+@router.post("/login")
 async def student_login(credentials: StudentLogin):
-    student = await student_service.get_by_code(sanitize_student_code(credentials.code))
-    if not student or not student.get("pin_hash"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+    import logging
+    logger = logging.getLogger("darsak")
+    try:
+        student = await student_service.get_by_code(sanitize_student_code(credentials.code))
+        if not student or not student.get("pin_hash"):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
-    if not verify_password(sanitize_pin(credentials.pin), student["pin_hash"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+        if not verify_password(sanitize_pin(credentials.pin), student["pin_hash"]):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
-    # If teacher_code provided, verify student belongs to that teacher
-    if credentials.teacher_code:
-        teacher = await user_service.repo.select_one({"teacher_code": credentials.teacher_code})
-        if not teacher or str(student.get("teacher_id")) != str(teacher["id"]):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student does not belong to this teacher")
+        # If teacher_code provided, verify student belongs to that teacher
+        if credentials.teacher_code:
+            teacher = await user_service.repo.select_one({"teacher_code": credentials.teacher_code})
+            if not teacher or str(student.get("teacher_id")) != str(teacher["id"]):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student does not belong to this teacher")
 
-    token = create_access_token(student["id"], expires_delta=None)
+        token = create_access_token(student["id"], expires_delta=None)
 
-    return StudentTokenResponse(
-        access_token=token,
-        student_id=student["id"],
-        student_code=student["code"],
-    )
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "student_id": str(student["id"]),
+            "student_code": student["code"],
+            "student_name": student.get("full_name", ""),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to login student %s: %s", credentials.code, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to login: {str(exc)}")
 
 
 @router.post("/analyze", response_model=AIAnalysisResponse)

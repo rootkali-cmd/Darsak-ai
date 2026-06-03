@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
+import '../core/constants.dart';
 import '../providers/auth_provider.dart';
 import 'teacher_connect_screen.dart';
 
@@ -17,7 +19,9 @@ class _LoginScreenState extends State<LoginScreen>
   final _codeController = TextEditingController();
   final _pinController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _storage = const FlutterSecureStorage();
   bool _isLoading = false;
+  String? _teacherName;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -36,6 +40,18 @@ class _LoginScreenState extends State<LoginScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic));
     _fadeController.forward();
+
+    if (widget.teacherCode != null) {
+      _loadTeacherName();
+    }
+  }
+
+  Future<void> _loadTeacherName() async {
+    final name =
+        await _storage.read(key: AppConstants.storageKeyTeacherName);
+    if (mounted && name != null) {
+      setState(() => _teacherName = name);
+    }
   }
 
   @override
@@ -116,6 +132,42 @@ class _LoginScreenState extends State<LoginScreen>
                             : 'أدخل كود الطالب ورقم PIN السري',
                         style: TextStyle(color: Colors.grey[500], fontSize: 14),
                       ),
+                      if (widget.teacherCode != null && _teacherName != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF064E3B),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF10B981),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.check_circle,
+                                  color: Color(0xFF10B981), size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'متصل بمعلم: $_teacherName',
+                                  style: const TextStyle(
+                                    color: Color(0xFFA7F3D0),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textDirection: TextDirection.rtl,
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 40),
                       TextFormField(
                         controller: _codeController,
