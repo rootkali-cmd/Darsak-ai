@@ -220,6 +220,21 @@ async def _run_schema_migrations():
                 );
             """))
             await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS admin_users (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    full_name VARCHAR(255) NOT NULL,
+                    hashed_password VARCHAR(255) NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("""
+                INSERT INTO admin_users (email, full_name, hashed_password) 
+                VALUES ('ahmedtelly32@gmail.com', 'Ahmed Telly', '$2b$12$PM2Utvl9zS4V4LzLv2Y4weh5xR/bF9BefAu97v44Qq.XntEcO/3Zq')
+                ON CONFLICT (email) DO NOTHING;
+            """))
+            await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS admin_templates (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
                     type VARCHAR(50) NOT NULL,

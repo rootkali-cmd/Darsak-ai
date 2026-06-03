@@ -3,13 +3,15 @@ import secrets
 
 from fastapi import APIRouter, HTTPException, Request, Query
 
-from src.core.security.auth import create_access_token
+from src.core.security.auth import create_access_token, verify_password
 from src.core.security.supabase_repo import SupabaseRepository
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-ADMIN_EMAIL = "ahmedtelly32@gmail.com"
-ADMIN_PASSWORD = "Kaliroot2008@"
+
+def _hash_password(password: str) -> str:
+    import bcrypt
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 @router.post("/login")
@@ -17,10 +19,17 @@ async def admin_login(request: Request):
     body = await request.json()
     email = body.get("email", "").strip().lower()
     password = body.get("password", "")
-    if email != ADMIN_EMAIL or password != ADMIN_PASSWORD:
+
+    admin = await SupabaseRepository("admin_users").select_one({"email": email})
+    if not admin:
         raise HTTPException(401, "Invalid credentials")
+    if not admin.get("is_active", True):
+        raise HTTPException(403, "Account deactivated")
+    if not verify_password(password, admin.get("hashed_password", "")):
+        raise HTTPException(401, "Invalid credentials")
+
     token = create_access_token(
-        "admin", extra_claims={"name": "Ahmed Telly", "role": "admin"}
+        admin["id"], extra_claims={"name": admin.get("full_name", "Admin"), "role": "admin"}
     )
     return {"access_token": token, "token_type": "bearer"}
 
