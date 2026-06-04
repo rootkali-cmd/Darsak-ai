@@ -13,7 +13,7 @@ const apps = [
     gradient: 'linear-gradient(135deg, #6366F1, #818CF8)',
     file: '/teacher-v2.apk',
     label: 'Android APK v2.2.0',
-    size: '~75 MB',
+    size: '~29 MB',
     platform: 'Android 10+',
   },
   {
@@ -24,7 +24,7 @@ const apps = [
     gradient: 'linear-gradient(135deg, #06b6d4, #22d3ee)',
     file: '/student.apk',
     label: 'Android APK v1.5.0',
-    size: '~75 MB',
+    size: '~29 MB',
     platform: 'Android',
   },
   {
