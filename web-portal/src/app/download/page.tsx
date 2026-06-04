@@ -48,7 +48,7 @@ const studentApps = [
     bgColor: 'rgba(0,243,255,0.12)',
     file: '/student.apk',
     label: 'Android APK v1.5.0',
-    size: '~29 MB',
+    size: '~75 MB',
     platform: 'Android',
     note: 'مساعد AI ذكي • متابعة الأداء • إشعارات',
   },
