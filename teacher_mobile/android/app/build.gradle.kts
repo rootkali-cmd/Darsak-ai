@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.darsakai.teacher_mobile"
+    namespace = "com.darsakai.student_app"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.darsakai.teacher_mobile"
+        applicationId = "com.darsakai.student_app"
         minSdk = 29
         targetSdk = 36
         versionCode = flutter.versionCode

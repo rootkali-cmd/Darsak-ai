@@ -7,7 +7,7 @@
         android:maxSdkVersion="28" />
     
     <application
-        android:label="DarsakAI Teacher"
+        android:label="DarsakAI Student"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
