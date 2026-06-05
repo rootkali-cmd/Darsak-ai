@@ -4,8 +4,6 @@ import '../core/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
-import 'onboarding/onboarding_screen.dart';
-import 'landing/landing_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -38,19 +36,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (!mounted) return;
 
     if (auth.isAuthenticated) {
-      if (auth.needsOnboarding) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
-      } else {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
-      }
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LandingPage()),
-      );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
     }
   }
 

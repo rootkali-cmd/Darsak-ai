@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'home_screen.dart';
-import 'onboarding/onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,8 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
-      final needsOnboarding = auth.needsOnboarding;
-      final destination = needsOnboarding ? const OnboardingScreen() : const HomeScreen();
+      final destination = auth.isAuthenticated ? const HomeScreen() : const HomeScreen();
       Navigator.pushAndRemoveUntil(
         context,
         PageRouteBuilder(
