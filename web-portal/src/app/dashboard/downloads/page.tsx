@@ -7,13 +7,13 @@ import { Smartphone, Monitor, Download } from 'lucide-react'
 const apps = [
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v3.0.1',
+    title: 'DarsakAI Teacher v3.0.2',
     description: 'تطبيق المدرس — مسح باركود • دروس فيديو • ذكاء اصطناعي • إدارة كاملة',
     icon: Monitor,
     gradient: 'linear-gradient(135deg, #6366F1, #818CF8)',
-    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.0/teacher-v2.apk',
+    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.2/teacher-v3.0.2.apk',
     label: 'Download',
-    size: '~72 MB',
+    size: '~75 MB',
     platform: 'Android 10+',
   },
   {
@@ -22,9 +22,9 @@ const apps = [
     description: 'تطبيق الطالب — متابعة الدرجات • الحضور • الاختبارات • الملف الشخصي',
     icon: Smartphone,
     gradient: 'linear-gradient(135deg, #06b6d4, #22d3ee)',
-    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.0/student.apk',
+    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.2/student-v1.4.1.apk',
     label: 'Download',
-    size: '~73 MB',
+    size: '~77 MB',
     platform: 'Android',
   },
   {
