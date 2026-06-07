@@ -9,7 +9,7 @@ import 'api_service.dart';
 
 class UpdateService {
   static const String _remindLaterKey = 'update_remind_later';
-  static const String _updateUrl = 'https://darsakai.com/api/update/check';
+  static const String _updateUrl = 'https://darsak-backend.fly.dev/api/versions/android';
   static const String _downloadBase = 'https://github.com/rootkali-cmd/Darsak-ai/releases/download';
 
   Future<String> getCurrentVersion() async {
