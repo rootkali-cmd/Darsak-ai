@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../core/theme.dart';
 import 'teacher_connect_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -101,10 +102,10 @@ class _LoginScreenState extends State<LoginScreen>
                             const Icon(Icons.school, color: Colors.white, size: 40),
                       ),
                       const SizedBox(height: 24),
-                      const Text(
+                      Text(
                         'تسجيل دخول الطالب',
                         style: TextStyle(
-                          color: Color(0xFFF5F5F5),
+                          color: AppColors.textPrimary(context),
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -114,26 +115,26 @@ class _LoginScreenState extends State<LoginScreen>
                         widget.teacherCode != null
                             ? 'مرحباً بك في DarsakAI'
                             : 'أدخل كود الطالب ورقم PIN السري',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                        style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14),
                       ),
                       const SizedBox(height: 40),
                       TextFormField(
                         controller: _codeController,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFF5F5F5),
+                        style: TextStyle(
+                          color: AppColors.textPrimary(context),
                           fontSize: 18,
                           letterSpacing: 2,
                         ),
                         decoration: InputDecoration(
                           labelText: 'كود الطالب',
                           hintText: 'STXXXXXXX',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
+                          hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                           prefixIcon:
                               const Icon(Icons.badge, color: Color(0xFF2563EB)),
                           filled: true,
-                          fillColor: const Color(0xFF141414),
+                          fillColor: AppColors.inputFill(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -154,19 +155,19 @@ class _LoginScreenState extends State<LoginScreen>
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.center,
                         obscureText: true,
-                        style: const TextStyle(
-                          color: Color(0xFFF5F5F5),
+                        style: TextStyle(
+                          color: AppColors.textPrimary(context),
                           fontSize: 24,
                           letterSpacing: 8,
                         ),
                         decoration: InputDecoration(
                           labelText: 'PIN',
                           hintText: '••••••',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
+                          hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                           prefixIcon:
                               const Icon(Icons.lock, color: Color(0xFF2563EB)),
                           filled: true,
-                          fillColor: const Color(0xFF141414),
+                          fillColor: AppColors.inputFill(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -182,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen>
                         onFieldSubmitted: (_) => _login(),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-                          UpperCaseTextFormatter(),
                         ],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'أدخل PIN';
@@ -253,17 +253,6 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
       ),
-    );
-  }
-}
-
-class UpperCaseTextFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    return TextEditingValue(
-      text: newValue.text.toUpperCase(),
-      selection: newValue.selection,
     );
   }
 }

@@ -96,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF0F172A)]),
+            colors: [Color(0xFF000000), Color(0xFF111111), Color(0xFF000000)]),
         ),
         child: SafeArea(
           child: Center(

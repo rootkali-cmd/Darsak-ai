@@ -321,7 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = context.watch<ThemeProvider>();
     final auth = context.watch<AuthProvider>();
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar('الإعدادات'),
       body: ListView(
         padding: const EdgeInsets.all(16),

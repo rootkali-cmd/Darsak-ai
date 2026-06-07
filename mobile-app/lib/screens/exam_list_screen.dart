@@ -96,7 +96,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: AppColors.surfaceElevated(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -114,7 +114,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
                   'الاختبارات المتاحة (${_availableExams.length})',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _tab == 'available' ? Colors.white : Colors.grey[500],
+                    color: _tab == 'available' ? Colors.white : AppColors.textSecondary(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -134,7 +134,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
                   'نتائجي (${_myResults.length})',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _tab == 'results' ? Colors.white : Colors.grey[500],
+                    color: _tab == 'results' ? Colors.white : AppColors.textSecondary(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -157,9 +157,9 @@ class _ExamListScreenState extends State<ExamListScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: AppColors.surfaceElevated(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -177,10 +177,10 @@ class _ExamListScreenState extends State<ExamListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 15)),
                 if (description.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(description, style: TextStyle(color: Colors.grey[500], fontSize: 12), maxLines: 2),
+                  Text(description, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12), maxLines: 2),
                 ],
                 const SizedBox(height: 6),
                 Row(
@@ -200,7 +200,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
               MaterialPageRoute(builder: (_) => ExamTakeScreen(examId: examId, examTitle: title, durationMinutes: duration)),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
+              backgroundColor: AppTheme.success,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -215,9 +215,9 @@ class _ExamListScreenState extends State<ExamListScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: Colors.grey[500]),
+        Icon(icon, size: 14, color: AppColors.textSecondary(context)),
         const SizedBox(width: 4),
-        Text(text, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+        Text(text, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
       ],
     );
   }
@@ -253,9 +253,9 @@ class _ExamListScreenState extends State<ExamListScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: AppColors.surfaceElevated(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -273,7 +273,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -288,7 +288,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Text('$score / $maxScore', style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.bold)),
+                      Text('$score / $maxScore', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
                       Text(
                         '(${pct.toStringAsFixed(1)}%)',
@@ -302,7 +302,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
           ),
           if (status == 'graded')
             IconButton(
-              icon: const Icon(Icons.chevron_left, color: Colors.grey),
+              icon: Icon(Icons.chevron_left, color: AppColors.textSecondary(context)),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => ExamResultScreen(studentExamId: result['id'] ?? '', examTitle: title)),

@@ -69,7 +69,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
   Widget build(BuildContext context) {
     final s = widget.student;
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar(
         s['full_name'] ?? 'تفاصيل الطالب',
         actions: [

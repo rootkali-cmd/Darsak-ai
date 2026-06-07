@@ -14,13 +14,10 @@ class StudentQrScreen extends StatelessWidget {
     final studentCode = student?.code ?? '';
     final studentName = student?.fullName ?? 'طالب';
     
-    // QR data format: darsak://student/{id}/{code}
     final qrData = 'darsak://student/${student?.id ?? ''}/$studentCode';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0A),
         foregroundColor: Colors.white,
         title: const Text('كود الحضور'),
         centerTitle: true,
@@ -31,13 +28,12 @@ class StudentQrScreen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              // Student info
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF1E3A5F), Color(0xFF0A0A0A)]),
+                  gradient: AppColors.headerGradient(context),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF2A2A2A)),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Row(
                   children: [
@@ -62,11 +58,11 @@ class StudentQrScreen extends StatelessWidget {
                         children: [
                           Text(
                             studentName,
-                            style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           Text(
                             studentCode,
-                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                            style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                           ),
                         ],
                       ),
@@ -75,7 +71,6 @@ class StudentQrScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              // QR Code
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -83,7 +78,7 @@ class StudentQrScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.accent.withOpacity(0.2),
+                      color: AppTheme.accent.withValues(alpha: 0.2),
                       blurRadius: 30,
                       offset: const Offset(0, 10),
                     ),
@@ -103,13 +98,12 @@ class StudentQrScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              // Instructions
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: AppColors.surfaceHigher(context),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF2A2A2A)),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Column(
                   children: [
@@ -117,10 +111,10 @@ class StudentQrScreen extends StatelessWidget {
                       children: [
                         Icon(Icons.camera_alt, size: 20, color: AppTheme.accent),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'ارفع QR Code أمام كاميرا المدرس',
-                            style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 14),
+                            style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
                           ),
                         ),
                       ],
@@ -128,12 +122,12 @@ class StudentQrScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.check_circle, size: 20, color: const Color(0xFF10B981)),
+                        const Icon(Icons.check_circle, size: 20, color: AppTheme.success),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'المسح تلقائي — لا حاجة للضغط على أي شيء',
-                            style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 14),
+                            style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
                           ),
                         ),
                       ],
@@ -141,12 +135,12 @@ class StudentQrScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.save_alt, size: 20, color: Colors.grey),
+                        Icon(Icons.save_alt, size: 20, color: AppColors.textSecondary(context)),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'يمكنك أخذ screenshot للحفظ',
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                            style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                           ),
                         ),
                       ],
@@ -155,11 +149,10 @@ class StudentQrScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // Status
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: auth.isOnline ? const Color(0xFF10B981).withOpacity(0.1) : const Color(0xFFF59E0B).withOpacity(0.1),
+                  color: auth.isOnline ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -170,14 +163,14 @@ class StudentQrScreen extends StatelessWidget {
                       height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: auth.isOnline ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                        color: auth.isOnline ? AppTheme.success : AppTheme.warning,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       auth.isOnline ? 'متصل — الحضور يُسجل فوراً' : 'غير متصل — سيتم التسجيل لاحقاً',
                       style: TextStyle(
-                        color: auth.isOnline ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                        color: auth.isOnline ? AppTheme.success : AppTheme.warning,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),

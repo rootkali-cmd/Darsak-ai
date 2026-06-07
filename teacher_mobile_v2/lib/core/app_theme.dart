@@ -6,7 +6,7 @@ class AppTheme {
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color danger = Color(0xFFEF4444);
-  static const Color textPrimary = Color(0xFF1E293B);
+  static const Color textPrimary = Color(0xFF111111);
   static const Color textSecondary = Color(0xFF64748B);
   static const Color textMuted = Color(0xFF94A3B8);
   static const Color background = Color(0xFFF8FAFC);
@@ -17,17 +17,20 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.light,
     primaryColor: primary,
-    scaffoldBackgroundColor: background,
+    scaffoldBackgroundColor: const Color(0xFFF5F5F5),
     fontFamily: 'Cairo',
     colorScheme: const ColorScheme.light(
       primary: primary,
       secondary: accent,
-      surface: surface,
+      surface: Colors.white,
       error: danger,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: Color(0xFF111111),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: surface,
-      foregroundColor: textPrimary,
+      backgroundColor: Colors.white,
+      foregroundColor: Color(0xFF111111),
       elevation: 0,
       centerTitle: true,
     ),
@@ -51,7 +54,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: border)),
-      color: surface,
+      color: Colors.white,
     ),
   );
 
@@ -59,26 +62,29 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.dark,
     primaryColor: primary,
-    scaffoldBackgroundColor: const Color(0xFF0F172A),
+    scaffoldBackgroundColor: Colors.black,
     fontFamily: 'Cairo',
     colorScheme: const ColorScheme.dark(
       primary: accent,
       secondary: accent,
-      surface: Color(0xFF1E293B),
+      surface: Color(0xFF111111),
       error: danger,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF1E293B),
+      backgroundColor: Colors.black,
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFF1E293B),
+      fillColor: Colors.white.withValues(alpha: 0.06),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A1A1A))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A1A1A))),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: accent, width: 2)),
       errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: danger)),
     ),
@@ -92,8 +98,8 @@ class AppTheme {
     ),
     cardTheme: CardThemeData(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF334155))),
-      color: const Color(0xFF1E293B),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF1A1A1A))),
+      color: const Color(0xFF111111),
     ),
   );
 }

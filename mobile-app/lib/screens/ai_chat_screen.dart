@@ -30,10 +30,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
       setState(() {
         _isLoading = false;
         _messages.add(_ChatMessage(
-          text: '👋 مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك، '
+          text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك، '
               'المناهج التعليمية، أو أي موضوع يهمك. سأبحث وأحضر لك إجابة '
               'مفصلة مع المصادر.\n\n'
-              '⚠️ لديك ${_ai.remaining} أسئلة متبقية اليوم',
+              'لديك ${_ai.remaining} أسئلة متبقية اليوم',
           isUser: false,
         ));
       });
@@ -61,7 +61,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       setState(() {
         _messages.add(_ChatMessage(text: answer, isUser: false));
         _messages.add(_ChatMessage(
-          text: '💡 لديك ${_ai.remaining} أسئلة متبقية اليوم',
+          text: 'لديك ${_ai.remaining} أسئلة متبقية اليوم',
           isUser: false,
           isSmall: true,
         ));
@@ -102,10 +102,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
         title: const Text('مساعد درسك AI'),
-        backgroundColor: const Color(0xFF0A0A0A),
         elevation: 0,
       ),
       body: Column(
@@ -116,7 +114,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: AppTheme.warning.withValues(alpha: 0.1),
               child: Text(
-                '⚠️ تبقى ${_ai.remaining} أسئلة فقط اليوم',
+                'تبقى ${_ai.remaining} أسئلة فقط اليوم',
                 style: const TextStyle(color: AppTheme.warning, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
@@ -129,7 +127,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('حدث خطأ في التحميل', style: TextStyle(color: Colors.grey)),
+                            Text('حدث خطأ في التحميل', style: TextStyle(color: AppColors.textSecondary(context))),
                             const SizedBox(height: 12),
                             ElevatedButton(
                               onPressed: () {
@@ -156,15 +154,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
           if (_ai.remaining <= 0 && !_isLoading)
             Container(
               padding: const EdgeInsets.all(16),
-              color: const Color(0xFF1A1A1A),
-              child: const Row(
+              color: AppColors.surfaceHigher(context),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.block, color: Colors.grey, size: 18),
-                  SizedBox(width: 8),
+                  const Icon(Icons.block, color: Colors.grey, size: 18),
+                  const SizedBox(width: 8),
                   Text(
                     'انتهى حد الأسئلة لليوم، ارجع غداً',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13),
                   ),
                 ],
               ),
@@ -188,7 +186,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ? AppTheme.danger.withValues(alpha: 0.1)
               : msg.isUser
                   ? AppTheme.accent
-                  : const Color(0xFF1E1E1E),
+                  : AppColors.surfaceHigher(context),
           borderRadius: BorderRadius.circular(16).copyWith(
             bottomLeft: msg.isUser ? const Radius.circular(4) : const Radius.circular(16),
             bottomRight: msg.isUser ? const Radius.circular(16) : const Radius.circular(4),
@@ -202,8 +200,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 : msg.isError
                     ? AppTheme.danger
                     : msg.isSmall
-                        ? Colors.grey
-                        : const Color(0xFFF5F5F5),
+                        ? AppColors.textSecondary(context)
+                        : AppColors.textPrimary(context),
             fontSize: msg.isSmall ? 11 : 14,
             height: 1.5,
           ),
@@ -219,7 +217,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: AppColors.surfaceHigher(context),
           borderRadius: BorderRadius.circular(16).copyWith(
             bottomRight: const Radius.circular(4),
           ),
@@ -252,9 +250,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Widget _buildInputBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
-        border: Border(top: BorderSide(color: Color(0xFF2A2A2A))),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        border: Border(top: BorderSide(color: AppColors.border(context))),
       ),
       child: SafeArea(
         child: Row(
@@ -264,12 +262,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 controller: _controller,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _send(),
-                style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 14),
+                style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
                 decoration: InputDecoration(
                   hintText: _ai.remaining > 0 ? 'اسأل أي سؤال...' : '',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                   filled: true,
-                  fillColor: const Color(0xFF141414),
+                  fillColor: AppColors.inputFill(context),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,

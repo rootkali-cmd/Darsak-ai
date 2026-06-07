@@ -179,7 +179,7 @@ async def update_grade(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
         body = await request.json()
-        update_dict = {k: v for k, v in body.items() if v is not None and k not in ("id", "teacher_id")}
+        update_dict = {k: v for k, v in body.items() if v is not None and k not in ("id", "teacher_id", "type")}
         updated = await grade_service.update(grade_id, update_dict)
 
         await audit_service.log(

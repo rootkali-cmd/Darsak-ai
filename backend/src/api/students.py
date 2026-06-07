@@ -225,11 +225,21 @@ async def verify_teacher(request: TeacherVerifyRequest):
 
 @router.post("/login", response_model=StudentTokenResponse)
 async def student_login(credentials: StudentLogin):
-    student = await student_service.get_by_code(sanitize_student_code(credentials.code))
-    if not student or not student.get("pin_hash"):
+    import logging
+    log = logging.getLogger("darsak")
+    sanitized_code = sanitize_student_code(credentials.code)
+    log.info("Student login attempt: code=%s", sanitized_code)
+    student = await student_service.get_by_code(sanitized_code)
+    if not student:
+        log.warning("Student login failed: no student found for code=%s", sanitized_code)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+    if not student.get("pin_hash"):
+        log.warning("Student login failed: no pin_hash for student_id=%s code=%s", student.get("id"), sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
-    if not verify_password(sanitize_pin(credentials.pin), student["pin_hash"]):
+    sanitized_pin = sanitize_pin(credentials.pin)
+    if not verify_password(sanitized_pin, student["pin_hash"]):
+        log.warning("Student login failed: PIN mismatch for student_id=%s code=%s", student.get("id"), sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
 
     # If teacher_code provided, verify student belongs to that teacher

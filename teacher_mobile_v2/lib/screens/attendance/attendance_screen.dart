@@ -30,7 +30,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar(
         'الحضور',
         bottom: TabBar(

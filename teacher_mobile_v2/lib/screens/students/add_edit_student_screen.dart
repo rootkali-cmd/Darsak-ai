@@ -132,7 +132,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar(
         _isEdit ? 'تعديل الطالب' : 'طالب جديد',
         actions: [

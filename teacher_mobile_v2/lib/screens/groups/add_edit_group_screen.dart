@@ -103,7 +103,7 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل المجموعة' : 'مجموعة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -140,7 +140,7 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
                 DropdownButtonFormField<String>(
                   value: _days.contains(_selectedDay) ? _selectedDay : null,
                   decoration: GlassTheme.glassFormInput('اليوم', Icons.calendar_today),
-                  dropdownColor: const Color(0xFF1E293B),
+                  dropdownColor: const Color(0xFF111111),
                   style: const TextStyle(color: Colors.white),
                   items: _days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                   onChanged: (v) => setState(() => _selectedDay = v),

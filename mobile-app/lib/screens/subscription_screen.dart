@@ -149,8 +149,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: isActive
-            ? const LinearGradient(colors: [Color(0xFF1E3A5F), Color(0xFF141414)])
-            : const LinearGradient(colors: [Color(0xFF3D1A1A), Color(0xFF141414)]),
+            ? LinearGradient(colors: [
+                AppTheme.accent.withValues(alpha: 0.15),
+                AppColors.surfaceElevated(context),
+              ])
+            : LinearGradient(colors: [
+                AppTheme.danger.withValues(alpha: 0.15),
+                AppColors.surfaceElevated(context),
+              ]),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isActive ? AppTheme.accent.withValues(alpha: 0.3) : AppTheme.danger.withValues(alpha: 0.3),
@@ -173,8 +179,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const SizedBox(height: 16),
           Text(
             planName,
-            style: const TextStyle(
-              color: Color(0xFFF5F5F5),
+            style: TextStyle(
+              color: AppColors.textPrimary(context),
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
@@ -202,7 +208,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             Text(
               '$remainingDays يوم متبقي',
               style: TextStyle(
-                color: remainingDays < 7 ? AppTheme.warning : Colors.grey[400],
+                color: remainingDays < 7 ? AppTheme.warning : AppColors.textSecondary(context),
                 fontSize: 14,
               ),
             ),
@@ -210,7 +216,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const SizedBox(height: 8),
           Text(
             _getExpiryText(subData),
-            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
           ),
         ],
       ),
@@ -221,9 +227,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: AppColors.surfaceElevated(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,32 +238,32 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               const Icon(Icons.vpn_key, color: AppTheme.accent, size: 20),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'تفعيل باشتراك',
-                style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             'أدخل رمز التفعيل المكون من 16 رقم (XXXX-XXXX-XXXX-XXXX)',
-            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _codeController,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFF5F5F5),
+            style: TextStyle(
+              color: AppColors.textPrimary(context),
               fontSize: 18,
               letterSpacing: 2,
             ),
             decoration: InputDecoration(
               hintText: 'XXXX-XXXX-XXXX-XXXX',
-              hintStyle: TextStyle(color: Colors.grey[600]),
+              hintStyle: TextStyle(color: AppColors.textSecondary(context)),
               filled: true,
-              fillColor: const Color(0xFF0A0A0A),
+              fillColor: AppColors.inputFill(context),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -295,9 +301,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'الباقات المتاحة',
-          style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         if (_loadingPlans)
@@ -306,12 +312,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF141414),
+              color: AppColors.surfaceElevated(context),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF2A2A2A)),
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: Center(
-              child: Text('لا توجد باقات متاحة حالياً', style: TextStyle(color: Colors.grey[600])),
+              child: Text('لا توجد باقات متاحة حالياً', style: TextStyle(color: AppColors.textSecondary(context))),
             ),
           )
         else
@@ -352,7 +358,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   void _showPaymentDialog(String planName, int amount, String planId) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: AppColors.surfaceElevated(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -368,18 +374,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   child: Container(
                     width: 40, height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[700],
+                      color: AppColors.textSecondary(context).withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text('اختر طريقة الدفع',
-                  style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 20, fontWeight: FontWeight.bold),
+                Text('اختر طريقة الدفع',
+                  style: TextStyle(color: AppColors.textPrimary(context), fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text('$planName - $amount ج.م',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14),
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -433,7 +439,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: AppColors.surfaceElevated(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -455,14 +461,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   child: Container(
                     width: 40, height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[700],
+                      color: AppColors.textSecondary(context).withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text('دفع عبر فودافون كاش',
-                  style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 20, fontWeight: FontWeight.bold),
+                Text('دفع عبر فودافون كاش',
+                  style: TextStyle(color: AppColors.textPrimary(context), fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 Container(
@@ -476,7 +482,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('حول إلى رقم فودافون كاش',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                       ),
                       const SizedBox(height: 4),
                       const Text('201031524947',
@@ -490,12 +496,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 TextField(
                   decoration: InputDecoration(
                     labelText: 'رقم هاتفك المحول منه',
-                    labelStyle: TextStyle(color: Colors.grey[500]),
+                    labelStyle: TextStyle(color: AppColors.textSecondary(context)),
                     hintText: '10XXXXXXXX',
                     prefixText: '+20 ',
-                    prefixStyle: TextStyle(color: Colors.grey[600]),
+                    prefixStyle: TextStyle(color: AppColors.textSecondary(context)),
                     filled: true,
-                    fillColor: const Color(0xFF0A0A0A),
+                    fillColor: AppColors.inputFill(context),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -509,15 +515,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0A0A0A),
+                    color: AppColors.inputFill(context),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      Text('المبلغ: ', style: TextStyle(color: Colors.grey[500])),
+                      Text('المبلغ: ', style: TextStyle(color: AppColors.textSecondary(context))),
                       const SizedBox(width: 8),
                       Text('$amount ج.م',
-                        style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -537,7 +543,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       style: TextStyle(color: screenshotB64 != null ? AppTheme.success : Colors.grey),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: screenshotB64 != null ? AppTheme.success : Colors.grey[700]!),
+                      side: BorderSide(color: screenshotB64 != null ? AppTheme.success : AppColors.border(context)),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -592,14 +598,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.dialogBackground(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(children: [
           const Icon(Icons.check_circle, color: AppTheme.success),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(color: Color(0xFFF5F5F5))),
+          Text(title, style: TextStyle(color: AppColors.textPrimary(context))),
         ]),
-        content: Text(message, style: const TextStyle(color: Colors.grey)),
+        content: Text(message, style: TextStyle(color: AppColors.textSecondary(context))),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً')),
         ],
@@ -611,14 +617,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.dialogBackground(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(children: [
           const Icon(Icons.error, color: AppTheme.danger),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(color: Color(0xFFF5F5F5))),
+          Text(title, style: TextStyle(color: AppColors.textPrimary(context))),
         ]),
-        content: Text(message, style: const TextStyle(color: Colors.grey)),
+        content: Text(message, style: TextStyle(color: AppColors.textSecondary(context))),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً')),
         ],
@@ -630,9 +636,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: AppColors.surfaceHigher(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -641,7 +647,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           Expanded(
             child: Text(
               'يمكنك الاشتراك أيضاً عبر الموقع: darsakai.com',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
             ),
           ),
         ],
@@ -662,11 +668,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: isPopular
-            ? const LinearGradient(colors: [Color(0xFF1E3A5F), Color(0xFF141414)])
-            : const LinearGradient(colors: [Color(0xFF1E1E1E), Color(0xFF141414)]),
+            ? LinearGradient(colors: [AppTheme.accent.withValues(alpha: 0.15), AppColors.surfaceElevated(context)])
+            : AppColors.cardGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isPopular ? AppTheme.accent.withValues(alpha: 0.5) : const Color(0xFF2A2A2A),
+          color: isPopular ? AppTheme.accent.withValues(alpha: 0.5) : AppColors.border(context),
         ),
       ),
       child: Column(
@@ -677,7 +683,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Expanded(
                 child: Text(
                   name,
-                  style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
               if (isPopular)
@@ -697,7 +703,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const SizedBox(height: 4),
           Text(price, style: const TextStyle(color: Color(0xFF00f3ff), fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
-          Text(students, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+          Text(students, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
           const SizedBox(height: 12),
           ...features.map((f) => Padding(
                 padding: const EdgeInsets.only(bottom: 6),
@@ -705,7 +711,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   children: [
                     const Icon(Icons.check_circle, color: AppTheme.success, size: 16),
                     const SizedBox(width: 8),
-                    Text(f, style: TextStyle(color: Colors.grey[300], fontSize: 13)),
+                    Text(f, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 13)),
                   ],
                 ),
               )),

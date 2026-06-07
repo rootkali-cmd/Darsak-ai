@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
+import '../core/theme.dart';
 import '../providers/data_provider.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/empty_state.dart';
@@ -52,9 +53,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF1E1E1E), Color(0xFF141414)]),
+              gradient: AppColors.cardGradient(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2A2A2A)),
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: Column(
               children: [
@@ -63,15 +64,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   children: [
                     GestureDetector(
                       onTap: () => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1)),
-                      child: const Icon(Icons.chevron_right, color: Color(0xFF2563EB)),
+                      child: const Icon(Icons.chevron_right, color: AppTheme.accent),
                     ),
                     Text(
                       DateFormat('MMMM yyyy', 'ar').format(_currentMonth),
-                      style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     GestureDetector(
                       onTap: () => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1)),
-                      child: const Icon(Icons.chevron_left, color: Color(0xFF2563EB)),
+                      child: const Icon(Icons.chevron_left, color: AppTheme.accent),
                     ),
                   ],
                 ),
@@ -80,8 +81,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
                     value: rate / 100,
-                    backgroundColor: const Color(0xFF2A2A2A),
-                    color: rate >= 75 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    backgroundColor: AppColors.border(context),
+                    color: rate >= 75 ? AppTheme.success : AppTheme.danger,
                     minHeight: 8,
                   ),
                 ),
@@ -89,7 +90,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 Text(
                   'نسبة الحضور: ${rate.toStringAsFixed(0)}%',
                   style: TextStyle(
-                    color: rate >= 75 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    color: rate >= 75 ? AppTheme.success : AppTheme.danger,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -98,9 +99,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _LegendItem(color: const Color(0xFF10B981), label: 'حاضر $presentCount'),
+                    _LegendItem(color: AppTheme.success, label: 'حاضر $presentCount'),
                     const SizedBox(width: 16),
-                    _LegendItem(color: const Color(0xFFEF4444), label: 'غائب $absentCount'),
+                    _LegendItem(color: AppTheme.danger, label: 'غائب $absentCount'),
                   ],
                 ),
               ],
@@ -139,7 +140,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             children: ['سبت', 'أحد', 'اثن', 'ثلث', 'أرب', 'خمس', 'جمع']
                 .map((d) => SizedBox(
                       width: 40,
-                      child: Text(d, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                      child: Text(d, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11)),
                     ))
                 .toList(),
           ),
@@ -178,14 +179,14 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color? bgColor;
-    Color textColor = const Color(0xFFF5F5F5);
+    Color textColor = AppColors.textPrimary(context);
 
     if (status == 'present') {
-      bgColor = const Color(0xFF10B981).withValues(alpha: 0.15);
-      textColor = const Color(0xFF10B981);
+      bgColor = AppTheme.success.withValues(alpha: 0.15);
+      textColor = AppTheme.success;
     } else if (status == 'absent') {
-      bgColor = const Color(0xFFEF4444).withValues(alpha: 0.15);
-      textColor = const Color(0xFFEF4444);
+      bgColor = AppTheme.danger.withValues(alpha: 0.15);
+      textColor = AppTheme.danger;
     }
 
     return Container(
@@ -216,7 +217,7 @@ class _LegendItem extends StatelessWidget {
       children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+        Text(label, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
       ],
     );
   }

@@ -90,14 +90,14 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
         _submitting = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسليم الاختبار بنجاح!'), backgroundColor: Color(0xFF10B981)),
+        const SnackBar(content: Text('تم تسليم الاختبار بنجاح!'), backgroundColor: AppTheme.success),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل التسليم: $e'), backgroundColor: const Color(0xFFEF4444)),
+        SnackBar(content: Text('فشل التسليم: $e'), backgroundColor: AppTheme.danger),
       );
     }
   }
@@ -117,10 +117,10 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
         final result = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF141414),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFF2A2A2A))),
-            title: const Text('تأكيد الخروج', style: TextStyle(color: Color(0xFFF5F5F5))),
-            content: const Text('سيتم فقد الإجابات غير المسلمة. هل أنت متأكد؟', style: TextStyle(color: Colors.grey)),
+            backgroundColor: AppColors.dialogBackground(context),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.border(context))),
+            title: Text('تأكيد الخروج', style: TextStyle(color: AppColors.textPrimary(context))),
+            content: Text('سيتم فقد الإجابات غير المسلمة. هل أنت متأكد؟', style: TextStyle(color: AppColors.textSecondary(context))),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء', style: TextStyle(color: Colors.grey))),
               ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger), child: const Text('خروج')),
@@ -137,15 +137,15 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
               margin: const EdgeInsets.symmetric(vertical: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _remainingSeconds < 60 ? Colors.red.withValues(alpha: 0.1) : const Color(0xFF1E3A5F),
+                color: _remainingSeconds < 60 ? AppTheme.danger.withValues(alpha: 0.1) : AppTheme.accent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.timer, size: 18, color: _remainingSeconds < 60 ? Colors.red : Colors.white),
+                  Icon(Icons.timer, size: 18, color: _remainingSeconds < 60 ? AppTheme.danger : AppTheme.accent),
                   const SizedBox(width: 4),
-                  Text(_formattedTime, style: TextStyle(color: _remainingSeconds < 60 ? Colors.red : Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(_formattedTime, style: TextStyle(color: _remainingSeconds < 60 ? AppTheme.danger : AppTheme.accent, fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
             ),
@@ -176,8 +176,8 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('السؤال ${_currentIndex + 1} من $total', style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
-              Text('تم حل $answered من $total', style: TextStyle(color: answered == total ? AppTheme.success : Colors.grey[500], fontSize: 13)),
+              Text('السؤال ${_currentIndex + 1} من $total', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13)),
+              Text('تم حل $answered من $total', style: TextStyle(color: answered == total ? AppTheme.success : AppColors.textSecondary(context), fontSize: 13)),
             ],
           ),
           const SizedBox(height: 6),
@@ -185,7 +185,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: total > 0 ? answered / total : 0,
-              backgroundColor: const Color(0xFF2A2A2A),
+              backgroundColor: AppColors.border(context),
               valueColor: AlwaysStoppedAnimation<Color>(answered == total ? AppTheme.success : AppTheme.accent),
               minHeight: 4,
             ),
@@ -211,9 +211,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF141414),
+              color: AppColors.surfaceElevated(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2A2A2A)),
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,11 +236,11 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                       ),
                     ),
                     const Spacer(),
-                    Text('${q['points'] ?? 1} درجة', style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12)),
+                    Text('${q['points'] ?? 1} درجة', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(questionText, style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 16, height: 1.5)),
+                Text(questionText, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, height: 1.5)),
               ],
             ),
           ),
@@ -258,9 +258,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF141414),
+                color: AppColors.surfaceElevated(context),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF2A2A2A)),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: TextField(
                 maxLines: 8,
@@ -268,10 +268,10 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                 decoration: InputDecoration(
                   hintText: 'اكتب إجابتك هنا...',
                   hintTextDirection: TextDirection.rtl,
-                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                   border: InputBorder.none,
                 ),
-                style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 15, height: 1.5),
+                style: TextStyle(color: AppColors.textPrimary(context), fontSize: 15, height: 1.5),
                 onChanged: (v) => _answers[qId] = v,
               ),
             ),
@@ -288,9 +288,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accent.withValues(alpha: 0.1) : const Color(0xFF141414),
+          color: isSelected ? AppTheme.accent.withValues(alpha: 0.1) : AppColors.surfaceElevated(context),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? AppTheme.accent : const Color(0xFF2A2A2A)),
+          border: Border.all(color: isSelected ? AppTheme.accent : AppColors.border(context)),
         ),
         child: Row(
           children: [
@@ -300,12 +300,12 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isSelected ? AppTheme.accent : Colors.transparent,
-                border: Border.all(color: isSelected ? AppTheme.accent : const Color(0xFF2A2A2A)),
+                border: Border.all(color: isSelected ? AppTheme.accent : AppColors.border(context)),
               ),
-              child: Center(child: Text(key, style: TextStyle(color: isSelected ? Colors.white : Colors.grey[500], fontWeight: FontWeight.bold, fontSize: 13))),
+              child: Center(child: Text(key, style: TextStyle(color: isSelected ? Colors.white : AppColors.textSecondary(context), fontWeight: FontWeight.bold, fontSize: 13))),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(text, style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 14))),
+            Expanded(child: Text(text, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14))),
             if (isSelected)
               const Icon(Icons.check_circle, color: AppTheme.accent, size: 20),
           ],
@@ -317,9 +317,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   Widget _buildNavigation() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF141414),
-        border: Border(top: BorderSide(color: Color(0xFF2A2A2A))),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        border: Border(top: BorderSide(color: AppColors.border(context))),
       ),
       child: SafeArea(
         child: Row(
@@ -331,8 +331,8 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                   icon: const Icon(Icons.arrow_right, size: 20),
                   label: const Text('السابق'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey[400],
-                    side: const BorderSide(color: Color(0xFF2A2A2A)),
+                    foregroundColor: AppColors.textSecondary(context),
+                    side: BorderSide(color: AppColors.border(context)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -379,17 +379,17 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFF2A2A2A))),
-        title: const Text('تأكيد التسليم', style: TextStyle(color: Color(0xFFF5F5F5))),
+        backgroundColor: AppColors.dialogBackground(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.border(context))),
+        title: Text('تأكيد التسليم', style: TextStyle(color: AppColors.textPrimary(context))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('هل أنت متأكد من تسليم الاختبار؟', style: TextStyle(color: Colors.grey)),
+            Text('هل أنت متأكد من تسليم الاختبار؟', style: TextStyle(color: AppColors.textSecondary(context))),
             const SizedBox(height: 8),
             Text('الأسئلة التي تم حلها: ${_answers.length} من ${_questions.length}',
-              style: const TextStyle(color: Color(0xFFF5F5F5))),
+              style: TextStyle(color: AppColors.textPrimary(context))),
             if (unanswered > 0)
               Text('$unanswered سؤال لم يتم حلها', style: const TextStyle(color: AppTheme.danger)),
           ],

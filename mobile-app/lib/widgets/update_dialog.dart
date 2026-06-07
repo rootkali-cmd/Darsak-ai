@@ -18,7 +18,7 @@ class AndroidUpdateDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppColors.dialogBackground(context),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -41,12 +41,12 @@ class AndroidUpdateDialog extends StatelessWidget {
                   children: [
                     Text(
                       'تحديث متوفر v${info.version}',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     if (info.sizeMb != null)
                       Text(
                         'الحجم: ~${info.sizeMb} MB',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                        style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                       ),
                   ],
                 ),
@@ -64,15 +64,15 @@ class AndroidUpdateDialog extends StatelessWidget {
           ),
           if (info.changelog.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text('التغييرات:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+            Text('التغييرات:', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w600, fontSize: 13)),
             const SizedBox(height: 8),
             ...info.changelog.map((item) => Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('• ', style: TextStyle(color: Colors.blue[400], fontSize: 13)),
-                  Expanded(child: Text(item, style: TextStyle(color: Colors.grey[300], fontSize: 13))),
+                  Text('• ', style: TextStyle(color: AppTheme.accent, fontSize: 13)),
+                  Expanded(child: Text(item, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13))),
                 ],
               ),
             )),
@@ -83,7 +83,7 @@ class AndroidUpdateDialog extends StatelessWidget {
         if (!info.mandatory)
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('لاحقاً', style: TextStyle(color: Colors.grey[400])),
+            child: Text('لاحقاً', style: TextStyle(color: AppColors.textSecondary(context))),
           ),
         ElevatedButton.icon(
           onPressed: () {

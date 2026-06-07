@@ -111,8 +111,8 @@ class _HomeScreenState extends State<HomeScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name, style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(code, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+            Text(name, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(code, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
           ],
         ),
         const Spacer(),
@@ -133,9 +133,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+              color: AppTheme.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+              border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -144,14 +144,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 6, height: 6,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: data.isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                    color: data.isOffline ? AppTheme.danger : AppTheme.success,
                   ),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   data.isOffline ? 'غير متصل' : 'متصل',
                   style: TextStyle(
-                    color: data.isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                    color: data.isOffline ? AppTheme.danger : AppTheme.success,
                     fontSize: 11,
                   ),
                 ),
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'الحضور',
                 value: '${data.attendanceRate.toStringAsFixed(0)}%',
                 icon: Icons.check_circle,
-                color: const Color(0xFF10B981),
+                color: AppTheme.success,
                 valueFontSize: 22,
               ),
             ),
@@ -182,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'المعدل',
                 value: '${data.averageGrade.toStringAsFixed(1)}%',
                 icon: Icons.trending_up,
-                color: const Color(0xFF2563EB),
+                color: AppTheme.accent,
                 valueFontSize: 22,
               ),
             ),
@@ -196,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'درجات منخفضة',
                 value: '${data.lowGrades.length}',
                 icon: Icons.assignment_late,
-                color: data.lowGrades.isEmpty ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                color: data.lowGrades.isEmpty ? AppTheme.success : AppTheme.warning,
                 valueFontSize: 22,
               ),
             ),
@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'الشهر الحالي',
                 value: data.isPaidThisMonth ? 'مدفوع' : 'غير مدفوع',
                 icon: Icons.payment,
-                color: data.isPaidThisMonth ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                color: data.isPaidThisMonth ? AppTheme.success : AppTheme.danger,
                 valueFontSize: 16,
               ),
             ),
@@ -221,9 +221,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF1E1E1E), Color(0xFF141414)]),
+        gradient: AppColors.cardGradient(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -232,9 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: today != null
                   ? today.status == 'present'
-                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                      : const Color(0xFFEF4444).withValues(alpha: 0.15)
-                  : const Color(0xFF9CA3AF).withValues(alpha: 0.15),
+                      ? AppTheme.success.withValues(alpha: 0.15)
+                      : AppTheme.danger.withValues(alpha: 0.15)
+                  : AppColors.textSecondary(context).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -242,8 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? today.status == 'present' ? Icons.check_circle : Icons.cancel
                   : Icons.help_outline,
               color: today != null
-                  ? today.status == 'present' ? const Color(0xFF10B981) : const Color(0xFFEF4444)
-                  : Colors.grey,
+                  ? today.status == 'present' ? AppTheme.success : AppTheme.danger
+                  : AppColors.textSecondary(context),
               size: 28,
             ),
           ),
@@ -254,15 +254,15 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'حالة اليوم',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   today != null
                       ? today.statusLabel
                       : 'لم تسجل بعد',
-                  style: const TextStyle(
-                    color: Color(0xFFF5F5F5),
+                  style: TextStyle(
+                    color: AppColors.textPrimary(context),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -275,14 +275,14 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: today.status == 'present'
-                    ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                    : const Color(0xFFEF4444).withValues(alpha: 0.1),
+                    ? AppTheme.success.withValues(alpha: 0.1)
+                    : AppTheme.danger.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 today.status == 'present' ? 'حاضر' : 'غائب',
                 style: TextStyle(
-                  color: today.status == 'present' ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                  color: today.status == 'present' ? AppTheme.success : AppTheme.danger,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -301,10 +301,10 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('آخر الدرجات', style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('آخر الدرجات', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold)),
             TextButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradesScreen())),
-              child: const Text('عرض الكل', style: TextStyle(color: Color(0xFF2563EB))),
+              child: const Text('عرض الكل', style: TextStyle(color: AppTheme.accent)),
             ),
           ],
         ),
@@ -313,12 +313,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF141414),
+              color: AppColors.surfaceElevated(context),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF2A2A2A)),
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: Center(
-              child: Text('لا توجد درجات بعد', style: TextStyle(color: Colors.grey[600])),
+              child: Text('لا توجد درجات بعد', style: TextStyle(color: AppColors.textSecondary(context))),
             ),
           )
         else
@@ -326,9 +326,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 margin: const EdgeInsets.only(bottom: 6),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF141414),
+                  color: AppColors.surfaceElevated(context),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF2A2A2A)),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Row(
                   children: [
@@ -336,8 +336,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(g.examName, style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 13, fontWeight: FontWeight.w600)),
-                          Text(g.subject, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                          Text(g.examName, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(g.subject, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11)),
                         ],
                       ),
                     ),
@@ -345,20 +345,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: g.percentage >= 75
-                            ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                            ? AppTheme.success.withValues(alpha: 0.1)
                             : g.percentage >= 50
-                                ? const Color(0xFFF59E0B).withValues(alpha: 0.1)
-                                : const Color(0xFFEF4444).withValues(alpha: 0.1),
+                                ? AppTheme.warning.withValues(alpha: 0.1)
+                                : AppTheme.danger.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '${g.score.toStringAsFixed(0)}/${g.maxScore.toStringAsFixed(0)}',
                         style: TextStyle(
                           color: g.percentage >= 75
-                              ? const Color(0xFF10B981)
+                              ? AppTheme.success
                               : g.percentage >= 50
-                                  ? const Color(0xFFF59E0B)
-                                  : const Color(0xFFEF4444),
+                                  ? AppTheme.warning
+                                  : AppTheme.danger,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
@@ -373,13 +373,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDrawer(BuildContext context, AuthProvider auth) {
     return Drawer(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: AppColors.background(context),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF1E3A5F), Color(0xFF0A0A0A)]),
+            decoration: BoxDecoration(
+              gradient: AppColors.headerGradient(context),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,11 +396,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 Text(
                   auth.student?.fullName ?? 'طالب',
-                  style: const TextStyle(color: Color(0xFFF5F5F5), fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   auth.student?.code ?? '',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                 ),
               ],
             ),
@@ -474,7 +474,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AiChatScreen()));
             },
           ),
-          const Divider(color: Color(0xFF2A2A2A), height: 1),
+          Divider(color: AppColors.border(context), height: 1),
           _DrawerItem(
             icon: Icons.card_membership,
             label: 'الاشتراك',
@@ -493,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
             },
           ),
-          const Divider(color: Color(0xFF2A2A2A), height: 1),
+          Divider(color: AppColors.border(context), height: 1),
           _DrawerItem(
             icon: Icons.logout,
             label: 'تسجيل الخروج',
@@ -504,14 +504,14 @@ class _HomeScreenState extends State<HomeScreen> {
               showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  backgroundColor: const Color(0xFF1E1E2E),
+                  backgroundColor: AppColors.dialogBackground(context),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  title: const Text('تسجيل الخروج', style: TextStyle(color: Color(0xFFEF4444))),
-                  content: const Text('هل أنت متأكد من تسجيل الخروج؟', style: TextStyle(color: Color(0xFF9CA3AF))),
+                  title: Text('تسجيل الخروج', style: TextStyle(color: AppTheme.danger)),
+                  content: Text('هل أنت متأكد من تسجيل الخروج؟', style: TextStyle(color: AppColors.textSecondary(context))),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء', style: TextStyle(color: Color(0xFF9CA3AF)))),
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: TextStyle(color: AppColors.textSecondary(context)))),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
                       onPressed: () {
                         Navigator.pop(ctx);
                         auth.logout();
@@ -556,23 +556,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  int _parseRemainingDays(Map<String, dynamic> subData) {
-    final expiresAt = subData['expires_at'] as String?;
-    if (expiresAt == null) return 0;
-    final expiry = DateTime.tryParse(expiresAt);
-    if (expiry == null) return 0;
-    return expiry.difference(DateTime.now()).inDays;
-  }
-
   Widget _buildBottomNav() {
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFF2A2A2A))),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.border(context))),
       ),
       child: BottomNavigationBar(
-        backgroundColor: const Color(0xFF0A0A0A),
-        selectedItemColor: const Color(0xFF2563EB),
-        unselectedItemColor: Colors.grey[600],
+        backgroundColor: AppColors.background(context),
+        selectedItemColor: AppTheme.accent,
+        unselectedItemColor: AppColors.textSecondary(context),
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
@@ -609,11 +601,11 @@ class _DrawerItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: iconColor ?? Colors.grey[500], size: 22),
+      leading: Icon(icon, color: iconColor ?? AppColors.textSecondary(context), size: 22),
       title: Text(
         label,
         style: TextStyle(
-          color: textColor ?? const Color(0xFFF5F5F5),
+          color: textColor ?? AppColors.textPrimary(context),
           fontSize: 14,
         ),
       ),

@@ -165,6 +165,20 @@ class SupabaseRepository:
             f"select_one {self.table_name}",
         )
         return result.data[0] if result.data else None
+
+    async def select_one_ilike(self, filters: dict) -> dict | None:
+        """Case-insensitive select_one using ILIKE."""
+        client = await self._get_client()
+        def build_query():
+            q = client.table(self.table_name).select("*")
+            for key, value in filters.items():
+                q = q.ilike(key, value)
+            return q
+        result = await _execute_with_retry(
+            lambda: build_query().limit(1).execute(),
+            f"select_one_ilike {self.table_name}",
+        )
+        return result.data[0] if result.data else None
     
     async def update(self, filters: dict, data: dict) -> dict:
         client = await self._get_client()

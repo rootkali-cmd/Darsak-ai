@@ -66,7 +66,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar('رمز QR للمدرس'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))

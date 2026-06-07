@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../core/theme.dart';
 import '../providers/data_provider.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/empty_state.dart';
@@ -114,9 +115,9 @@ class _GradesScreenState extends State<GradesScreen> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFF141414),
+            color: AppColors.surfaceElevated(context),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF2A2A2A)),
+            border: Border.all(color: AppColors.border(context)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,14 +125,14 @@ class _GradesScreenState extends State<GradesScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(g.examName, style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w600)),
+                  Text(g.examName, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w600)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                      color: AppTheme.accent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(g.subject, style: const TextStyle(color: Color(0xFF2563EB), fontSize: 11)),
+                    child: Text(g.subject, style: const TextStyle(color: AppTheme.accent, fontSize: 11)),
                   ),
                 ],
               ),
@@ -143,12 +144,12 @@ class _GradesScreenState extends State<GradesScreen> {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: pct / 100,
-                        backgroundColor: const Color(0xFF2A2A2A),
+                        backgroundColor: AppColors.border(context),
                         color: pct >= 75
-                            ? const Color(0xFF10B981)
+                            ? AppTheme.success
                             : pct >= 50
-                                ? const Color(0xFFF59E0B)
-                                : const Color(0xFFEF4444),
+                                ? AppTheme.warning
+                                : AppTheme.danger,
                         minHeight: 6,
                       ),
                     ),
@@ -158,10 +159,10 @@ class _GradesScreenState extends State<GradesScreen> {
                     '${pct.toStringAsFixed(0)}%',
                     style: TextStyle(
                       color: pct >= 75
-                          ? const Color(0xFF10B981)
+                          ? AppTheme.success
                           : pct >= 50
-                              ? const Color(0xFFF59E0B)
-                              : const Color(0xFFEF4444),
+                              ? AppTheme.warning
+                              : AppTheme.danger,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -171,7 +172,7 @@ class _GradesScreenState extends State<GradesScreen> {
               const SizedBox(height: 4),
               Text(
                 '${g.score.toStringAsFixed(0)} / ${g.maxScore.toStringAsFixed(0)}',
-                style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11),
               ),
             ],
           ),
@@ -197,7 +198,7 @@ class _GradesScreenState extends State<GradesScreen> {
                   show: true,
                   horizontalInterval: 25,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: const Color(0xFF2A2A2A),
+                    color: AppColors.border(context),
                     strokeWidth: 1,
                   ),
                   drawVerticalLine: false,
@@ -209,7 +210,7 @@ class _GradesScreenState extends State<GradesScreen> {
                       reservedSize: 32,
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}%',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                        style: TextStyle(color: AppColors.textSecondary(context), fontSize: 10),
                       ),
                     ),
                   ),
@@ -226,21 +227,21 @@ class _GradesScreenState extends State<GradesScreen> {
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    color: const Color(0xFF2563EB),
+                    color: AppTheme.accent,
                     barWidth: 3,
                     isStrokeCapRound: true,
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
                         radius: 4,
-                        color: const Color(0xFF2563EB),
+                        color: AppTheme.accent,
                         strokeWidth: 2,
                         strokeColor: Colors.white,
                       ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                      color: AppTheme.accent.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -259,17 +260,17 @@ class _GradesScreenState extends State<GradesScreen> {
                     width: 8, height: 8,
                     decoration: BoxDecoration(
                       color: g.percentage >= 75
-                          ? const Color(0xFF10B981)
+                          ? AppTheme.success
                           : g.percentage >= 50
-                              ? const Color(0xFFF59E0B)
-                              : const Color(0xFFEF4444),
+                              ? AppTheme.warning
+                              : AppTheme.danger,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     g.createdAt.month.toString(),
-                    style: TextStyle(color: Colors.grey[600], fontSize: 9),
+                    style: TextStyle(color: AppColors.textSecondary(context), fontSize: 9),
                   ),
                 ],
               );
@@ -295,16 +296,16 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2563EB).withValues(alpha: 0.15) : const Color(0xFF141414),
+          color: selected ? AppTheme.accent.withValues(alpha: 0.15) : AppColors.surfaceElevated(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? const Color(0xFF2563EB) : const Color(0xFF2A2A2A),
+            color: selected ? AppTheme.accent : AppColors.border(context),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF2563EB) : Colors.grey[400],
+            color: selected ? AppTheme.accent : AppColors.textSecondary(context),
             fontWeight: selected ? FontWeight.bold : FontWeight.normal,
             fontSize: 13,
           ),

@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
+import '../core/theme.dart';
 import 'login_screen.dart';
 
 class TeacherConnectScreen extends StatefulWidget {
@@ -39,7 +40,6 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
         CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic));
     _fadeController.forward();
 
-    // Listen for hardware barcode scanner input (types the full URI)
     _codeController.addListener(_onInputChanged);
   }
 
@@ -135,7 +135,7 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('كود المعلم غير صحيح'),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: AppTheme.danger,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -159,7 +159,6 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -184,10 +183,10 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                           color: Colors.white, size: 40),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'الاتصال بالمعلم',
                       style: TextStyle(
-                        color: Color(0xFFF5F5F5),
+                        color: AppColors.textPrimary(context),
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -195,26 +194,26 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                     const SizedBox(height: 8),
                     Text(
                       'امسح باركود المعلم أو أدخل الكود يدوياً',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14),
                     ),
                     const SizedBox(height: 40),
                     TextFormField(
                       controller: _codeController,
                       textDirection: TextDirection.ltr,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFFF5F5F5),
+                      style: TextStyle(
+                        color: AppColors.textPrimary(context),
                         fontSize: 18,
                         letterSpacing: 2,
                       ),
                       decoration: InputDecoration(
                         labelText: 'كود المعلم',
                         hintText: 'TCH-XXXXXX',
-                        hintStyle: TextStyle(color: Colors.grey[600]),
+                        hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                         prefixIcon: const Icon(Icons.person,
-                            color: Color(0xFF2563EB)),
+                            color: AppTheme.accent),
                         filled: true,
-                        fillColor: const Color(0xFF141414),
+                        fillColor: AppColors.inputFill(context),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -222,7 +221,7 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide:
-                              const BorderSide(color: Color(0xFF2563EB)),
+                              const BorderSide(color: AppTheme.accent),
                         ),
                       ),
                       textInputAction: TextInputAction.done,
@@ -241,11 +240,11 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                               fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E1E1E),
-                          foregroundColor: const Color(0xFFF5F5F5),
+                          backgroundColor: AppColors.surfaceHigher(context),
+                          foregroundColor: AppColors.textPrimary(context),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFF2A2A2A)),
+                            side: BorderSide(color: AppColors.border(context)),
                           ),
                         ),
                       ),
@@ -257,9 +256,9 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : () => _connect(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
+                          backgroundColor: AppTheme.accent,
                           disabledBackgroundColor:
-                              const Color(0xFF2563EB).withValues(alpha: 0.3),
+                              AppTheme.accent.withValues(alpha: 0.3),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -294,7 +293,7 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                       icon: const Icon(Icons.arrow_forward, size: 18),
                       label: const Text('تسجيل دخول الطالب مباشرة'),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey[500],
+                        foregroundColor: AppColors.textSecondary(context),
                       ),
                     ),
                   ],
@@ -348,7 +347,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('باركود غير صالح'),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: AppTheme.danger,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8)),
@@ -414,7 +413,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
+                    backgroundColor: AppTheme.accent,
                   ),
                   child: const Text('رجوع',
                       style: TextStyle(color: Colors.white)),
@@ -429,7 +428,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             width: 250,
             height: 250,
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF2563EB), width: 2),
+              border: Border.all(color: AppTheme.accent, width: 2),
               borderRadius: BorderRadius.circular(16),
             ),
           ),

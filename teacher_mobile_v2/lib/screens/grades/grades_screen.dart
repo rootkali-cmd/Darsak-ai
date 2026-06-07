@@ -96,7 +96,7 @@ class _GradesScreenState extends State<GradesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar('الدرجات'),
       floatingActionButton: GlassTheme.glassFAB(_addGrade),
       body: RefreshIndicator(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/local_db.dart';
@@ -140,7 +141,19 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'خطأ في كود الطالب أو PIN';
+      String message = 'خطأ في كود الطالب أو PIN';
+      if (e is DioException && e.response != null) {
+        final data = e.response?.data;
+        if (data is Map<String, dynamic>) {
+          message = data['detail'] as String? ??
+              data['message'] as String? ??
+              data['error'] as String? ??
+              message;
+        } else if (data is String && data.isNotEmpty) {
+          message = data;
+        }
+      }
+      _error = message;
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;

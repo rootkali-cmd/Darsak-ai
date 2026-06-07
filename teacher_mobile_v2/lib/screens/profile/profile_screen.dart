@@ -87,7 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar('الملف الشخصي'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
@@ -238,7 +238,7 @@ class _EditProfilePageState extends State<_EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar('تعديل الملف الشخصي'),
       body: Padding(
         padding: const EdgeInsets.all(16),

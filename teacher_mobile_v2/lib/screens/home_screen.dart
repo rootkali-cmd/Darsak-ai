@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           return Directionality(
@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
         textDirection: TextDirection.rtl,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
+            color: const Color(0xFF111111),
             border: Border(
               top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
             ),

@@ -123,7 +123,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                 DropdownButtonFormField<int>(
                   value: correctAnswer,
                   decoration: GlassTheme.glassFormInput('الإجابة الصحيحة', Icons.check),
-                  dropdownColor: const Color(0xFF1E293B),
+                  dropdownColor: const Color(0xFF111111),
                   items: [1, 2, 3, 4].map((i) => DropdownMenuItem(value: i, child: Text('الخيار $i'))).toList(),
                   onChanged: (v) => setDialogState(() => correctAnswer = v ?? 1),
                 ),
@@ -164,7 +164,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الاختبار' : 'اختبار جديد'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

@@ -11,6 +11,7 @@ import 'services/analytics_service.dart';
 import 'services/structured_logger.dart';
 import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/update_service.dart';
 import 'screens/teacher_connect_screen.dart';
 import 'screens/home_screen.dart';
@@ -42,19 +43,26 @@ class DarsakMobileApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => DataProvider()),
         ChangeNotifierProvider(create: (_) => AndroidUpdateService()),
       ],
-      child: MaterialApp(
-        title: 'DarsakAI',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const AuthGate(),
-        builder: (context, child) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: child!,
-        ),
+      child: Consumer<ThemeNotifier>(
+        builder: (context, themeNotifier, _) {
+          return MaterialApp(
+            title: 'DarsakAI',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeNotifier.themeMode,
+            home: const AuthGate(),
+            builder: (context, child) => Directionality(
+              textDirection: TextDirection.rtl,
+              child: child!,
+            ),
+          );
+        },
       ),
     );
   }
@@ -98,7 +106,6 @@ class _AuthGateState extends State<AuthGate> {
     switch (auth.status) {
       case AuthStatus.uninitialized:
         return Scaffold(
-          backgroundColor: const Color(0xFF0A0A0A),
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -112,7 +119,7 @@ class _AuthGateState extends State<AuthGate> {
                   child: const Icon(Icons.school, color: Colors.white, size: 40),
                 ),
                 const SizedBox(height: 24),
-                const Text('DarsakAI', style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 28, fontWeight: FontWeight.bold)),
+                Text('DarsakAI', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
               ],

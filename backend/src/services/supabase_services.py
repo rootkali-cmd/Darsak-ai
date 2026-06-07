@@ -61,7 +61,7 @@ class StudentService:
         return await self.repo.select_one({"id": student_id})
 
     async def get_by_code(self, code: str) -> dict | None:
-        return await self.repo.select_one({"code": code})
+        return await self.repo.select_one_ilike({"code": code})
 
     async def list_by_teacher(self, teacher_id: str, search: str | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
         filters = {"teacher_id": teacher_id}

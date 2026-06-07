@@ -93,7 +93,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: isDark
-                ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                ? [const Color(0xFF000000), const Color(0xFF111111)]
                 : [const Color(0xFFEEF2FF), const Color(0xFFF8FAFC)],
           ),
         ),

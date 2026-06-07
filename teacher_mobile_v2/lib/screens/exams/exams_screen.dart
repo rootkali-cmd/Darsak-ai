@@ -109,7 +109,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar('الاختبارات'),
       floatingActionButton: GlassTheme.glassFAB(_addExam),
       body: RefreshIndicator(

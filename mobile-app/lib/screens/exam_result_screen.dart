@@ -79,17 +79,17 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF141414),
+                color: AppColors.surfaceElevated(context),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF2A2A2A)),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: Column(
                 children: [
                   const Icon(Icons.hourglass_empty, color: AppTheme.warning, size: 48),
                   const SizedBox(height: 12),
-                  const Text('الاختبار في انتظار التصحيح', style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('الاختبار في انتظار التصحيح', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  const Text('سيتم إشعارك بنتيجة الاختبار بعد مراجعته', style: TextStyle(color: Colors.grey)),
+                  Text('سيتم إشعارك بنتيجة الاختبار بعد مراجعته', style: TextStyle(color: AppColors.textSecondary(context))),
                 ],
               ),
             ),
@@ -123,7 +123,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [color.withValues(alpha: 0.1), const Color(0xFF0A0A0A)]),
+        gradient: LinearGradient(colors: [color.withValues(alpha: 0.1), AppColors.background(context)]),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
@@ -145,7 +145,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
                   child: CircularProgressIndicator(
                     value: pct / 100,
                     strokeWidth: 10,
-                    backgroundColor: const Color(0xFF2A2A2A),
+                    backgroundColor: AppColors.border(context),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
                 ),
@@ -153,7 +153,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('${pct.toStringAsFixed(1)}%', style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.bold)),
-                    Text('الدرجة', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    Text('الدرجة', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
                   ],
                 ),
               ],
@@ -168,14 +168,14 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: AppColors.surfaceElevated(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Column(
         children: [
           _buildDetailRow('الدرجة', '$score / $maxScore'),
-          const Divider(color: Color(0xFF2A2A2A), height: 1),
+          Divider(color: AppColors.border(context), height: 1),
           _buildDetailRow('النسبة', '${pct.toStringAsFixed(1)}%'),
         ],
       ),
@@ -188,8 +188,8 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
-          Text(value, style: const TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(label, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14)),
+          Text(value, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 16)),
         ],
       ),
     );

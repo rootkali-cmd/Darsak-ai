@@ -71,8 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: isDark
-                ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
-                : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF)],
+                ? [const Color(0xFF000000), const Color(0xFF0A0A0A)]
+                : [const Color(0xFFF5F5F5), const Color(0xFFEEEEEE)],
           ),
         ),
         child: Directionality(
@@ -91,11 +91,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 80,
                         decoration: BoxDecoration(
                           color: AppTheme.accent,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(22),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.accent.withValues(alpha: 0.3),
-                              blurRadius: 20,
+                              color: AppTheme.accent.withValues(alpha: 0.4),
+                              blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
                           ],
@@ -200,21 +200,21 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         prefixIcon: Icon(Icons.email_outlined, color: isDark ? AppTheme.textMuted : AppTheme.textSecondary),
         filled: true,
-        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.border),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : AppTheme.border),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppTheme.accent, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppTheme.danger),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -253,21 +253,21 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
         ),
         filled: true,
-        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.border),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : AppTheme.border),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppTheme.accent, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppTheme.danger),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

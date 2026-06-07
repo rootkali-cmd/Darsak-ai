@@ -114,7 +114,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الفاتورة' : 'فاتورة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -162,7 +162,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
                 DropdownButtonFormField<String>(
                   value: _selectedStatus,
                   decoration: GlassTheme.glassFormInput('الحالة', Icons.flag),
-                  dropdownColor: const Color(0xFF1E293B),
+                  dropdownColor: const Color(0xFF111111),
                   style: const TextStyle(color: Colors.white),
                   items: _statuses.map((s) {
                     String label;

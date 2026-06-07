@@ -65,7 +65,6 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
         'subject': _subjectCtrl.text.trim().isEmpty ? null : _subjectCtrl.text.trim(),
         'score': int.tryParse(_scoreCtrl.text.trim()) ?? 0,
         'max_score': int.tryParse(_maxScoreCtrl.text.trim()) ?? 100,
-        'type': _selectedType ?? _typeCtrl.text.trim(),
         'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       };
 
@@ -107,7 +106,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF000000),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الدرجة' : 'درجة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -160,7 +159,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                 DropdownButtonFormField<String>(
                   value: _types.contains(_selectedType) ? _selectedType : null,
                   decoration: GlassTheme.glassFormInput('النوع', Icons.category),
-                  dropdownColor: const Color(0xFF1E293B),
+                  dropdownColor: const Color(0xFF111111),
                   style: const TextStyle(color: Colors.white),
                   items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                   onChanged: (v) => setState(() => _selectedType = v),
