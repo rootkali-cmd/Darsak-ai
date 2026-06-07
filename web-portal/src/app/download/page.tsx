@@ -8,17 +8,17 @@ import { Smartphone, Monitor, Download, ArrowRight, Sparkles, School, User } fro
 const teacherApps = [
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v3.0.0',
+    title: 'DarsakAI Teacher v3.0.1',
     subtitle: 'تطبيق المدرس',
     description: 'مسح باركود للحضور • دروس فيديو • ذكاء اصطناعي • إدارة كاملة للسنتر',
     icon: User,
     color: '#6366F1',
     bgColor: 'rgba(99,102,241,0.12)',
     file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.0/teacher-v2.apk',
-    label: 'Android APK v3.0.0',
-    size: '~75 MB',
+    label: 'Android APK v3.0.1',
+    size: '~72 MB',
     platform: 'Android 10+',
-    note: 'v3.0.0 • iOS Glass Design • اشتراكات جديدة • إصلاح الحفظ',
+    note: 'v3.0.1 • تصميم iOS زجاجي • خلفية سوداء نقية • إصلاح الحفظ والدخول',
   },
   {
     id: 'desktop',
@@ -40,17 +40,17 @@ const teacherApps = [
 const studentApps = [
   {
     id: 'student',
-    title: 'DarsakAI Student v1.4.0',
+    title: 'DarsakAI Student v1.4.1',
     subtitle: 'تطبيق الطالب',
     description: 'متابعة الدرجات • الحضور • الاختبارات • الملف الشخصي',
     icon: School,
     color: '#00f3ff',
     bgColor: 'rgba(0,243,255,0.12)',
     file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.0/student.apk',
-    label: 'Android APK v1.4.0',
-    size: '~76 MB',
+    label: 'Android APK v1.4.1',
+    size: '~73 MB',
     platform: 'Android',
-    note: 'v1.4.0 • إصلاح تسجيل الدخول • تنقل محسّن • اتصال حقيقي',
+    note: 'v1.4.1 • تصميم iOS زجاجي • إصلاح تسجيل الدخول • اتصال حقيقي',
   },
 ]
 
