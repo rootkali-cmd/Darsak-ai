@@ -29,13 +29,18 @@ class UpdateService {
       );
       if (response.statusCode == 200) {
         final data = response.data is String ? jsonDecode(response.data) : response.data;
-        final latestVersion = data['latest_version'] as String? ?? '';
+        final latestVersion = data['version'] as String? ?? data['latest_version'] as String? ?? '';
+        final downloadUrl = data['download_url'] as String? ?? '';
+        final changelog = data['changelog'] as List? ?? [];
         final currentVersion = await getCurrentVersion();
 
         if (_isNewer(latestVersion, currentVersion)) {
           return {
-            ...data,
+            'latest_version': latestVersion,
+            'download_url': downloadUrl,
+            'changelog': changelog,
             'current_version': currentVersion,
+            ...data,
           };
         }
       }
@@ -52,7 +57,7 @@ class UpdateService {
       final filePath = '${dir.path}/DarsakAI-Teacher-v$version.apk';
       final file = File(filePath);
 
-      final downloadUrl = '$_downloadBase/v3.0.1/teacher-v2.apk';
+      final downloadUrl = 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.2/teacher-v3.0.2.apk';
 
       final api = ApiService();
       await api.dio.download(
