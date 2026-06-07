@@ -8,17 +8,17 @@ import { Smartphone, Monitor, Download, ArrowRight, Sparkles, School, User } fro
 const teacherApps = [
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v2.2.0',
+    title: 'DarsakAI Teacher v3.0.0',
     subtitle: 'تطبيق المدرس',
     description: 'مسح باركود للحضور • دروس فيديو • ذكاء اصطناعي • إدارة كاملة للسنتر',
     icon: User,
     color: '#6366F1',
     bgColor: 'rgba(99,102,241,0.12)',
     file: '/teacher-v2.apk',
-    label: 'Android APK v2.2.0',
+    label: 'Android APK v3.0.0',
     size: '~75 MB',
     platform: 'Android 10+',
-    note: 'v2.2.0 • CameraX + ML Kit • QR • Onboarding • Dashboard جديد',
+    note: 'v3.0.0 • iOS Glass Design • اشتراكات جديدة • إصلاح الحفظ',
   },
   {
     id: 'desktop',
@@ -40,17 +40,17 @@ const teacherApps = [
 const studentApps = [
   {
     id: 'student',
-    title: 'DarsakAI Student v1.3.0',
+    title: 'DarsakAI Student v1.4.0',
     subtitle: 'تطبيق الطالب',
     description: 'متابعة الدرجات • الحضور • الاختبارات • الملف الشخصي',
     icon: School,
     color: '#00f3ff',
     bgColor: 'rgba(0,243,255,0.12)',
     file: '/student.apk',
-    label: 'Android APK v1.3.0',
+    label: 'Android APK v1.4.0',
     size: '~76 MB',
     platform: 'Android',
-    note: 'مساعد AI ذكي • متابعة الأداء • إشعارات',
+    note: 'v1.4.0 • إصلاح تسجيل الدخول • تنقل محسّن • اتصال حقيقي',
   },
 ]
 
