@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'core/constants.dart';
 import 'core/theme.dart';
 import 'core/local_db.dart';
 import 'services/analytics_service.dart';
@@ -27,7 +28,7 @@ void main() async {
 
   AnalyticsService.instance.appOpened();
   StructuredLogger.instance.info('app_started', data: {
-    'version': '1.1.0',
+    'version': AppConstants.appVersion,
     'platform': 'android',
   });
 

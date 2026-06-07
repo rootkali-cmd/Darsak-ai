@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 import 'add_edit_exam_screen.dart';
 
@@ -80,15 +81,15 @@ class _ExamsScreenState extends State<ExamsScreen> {
     switch (status?.toLowerCase()) {
       case 'published':
       case 'منشور':
-        return AppTheme.success;
+        return GlassTheme.green;
       case 'draft':
       case 'مسودة':
         return AppTheme.warning;
       case 'closed':
       case 'مغلق':
-        return AppTheme.textSecondary;
+        return const Color(0xFF94A3B8);
       default:
-        return AppTheme.textSecondary;
+        return const Color(0xFF94A3B8);
     }
   }
 
@@ -108,16 +109,14 @@ class _ExamsScreenState extends State<ExamsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الاختبارات')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addExam,
-        backgroundColor: AppTheme.accent,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('الاختبارات'),
+      floatingActionButton: GlassTheme.glassFAB(_addExam),
       body: RefreshIndicator(
         onRefresh: _loadExams,
+        color: GlassTheme.indigo,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
             : _error != null
                 ? _buildError()
                 : _exams.isEmpty
@@ -125,9 +124,9 @@ class _ExamsScreenState extends State<ExamsScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.quiz_outlined, size: 64, color: AppTheme.textMuted),
+                            Icon(Icons.quiz_outlined, size: 64, color: Color(0xFF94A3B8)),
                             SizedBox(height: 16),
-                            Text('لا توجد اختبارات', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
+                            Text('لا توجد اختبارات', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
                           ],
                         ),
                       )
@@ -138,8 +137,9 @@ class _ExamsScreenState extends State<ExamsScreen> {
                           final e = _exams[i];
                           final status = e['status'] ?? '';
                           final statusColor = _getStatusColor(status);
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: GlassTheme.glassCard,
                             child: ListTile(
                               onTap: () async {
                                 await Navigator.push(
@@ -149,21 +149,23 @@ class _ExamsScreenState extends State<ExamsScreen> {
                                 _loadExams();
                               },
                               onLongPress: () => _deleteExam(e),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                               leading: CircleAvatar(
-                                backgroundColor: statusColor.withValues(alpha: 0.1),
-                                child: Icon(Icons.quiz, color: statusColor, size: 24),
+                                backgroundColor: statusColor.withValues(alpha: 0.15),
+                                child: Icon(Icons.quiz, color: statusColor, size: 22),
                               ),
-                              title: Text(e['title'] ?? 'بدون عنوان'),
+                              title: Text(e['title'] ?? 'بدون عنوان', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
                               subtitle: Text(
                                 [
                                   if (e['duration_minutes'] != null) '${e['duration_minutes']} دقيقة',
                                   if (e['question_count'] != null) '${e['question_count']} سؤال',
                                 ].join(' • '),
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                               ),
                               trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: statusColor.withValues(alpha: 0.1),
+                                  color: statusColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -184,11 +186,11 @@ class _ExamsScreenState extends State<ExamsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
+          const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center),
+          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: _loadExams, child: const Text('إعادة المحاولة')),
+          ElevatedButton(onPressed: _loadExams, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
         ],
       ),
     );

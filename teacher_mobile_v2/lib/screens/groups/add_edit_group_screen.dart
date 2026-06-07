@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 
 class AddEditGroupScreen extends StatefulWidget {
@@ -60,7 +61,7 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
         'name': _nameCtrl.text.trim(),
         'subject': _subjectCtrl.text.trim().isEmpty ? null : _subjectCtrl.text.trim(),
         'level': _levelCtrl.text.trim().isEmpty ? null : _levelCtrl.text.trim(),
-        'day_of_week': _selectedDay ?? _dayCtrl.text.trim().isEmpty ? null : _dayCtrl.text.trim(),
+        'day_of_week': _selectedDay ?? (_dayCtrl.text.trim().isEmpty ? null : _dayCtrl.text.trim()),
         'time_slot': _timeCtrl.text.trim().isEmpty ? null : _timeCtrl.text.trim(),
       };
 
@@ -102,55 +103,70 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'تعديل المجموعة' : 'مجموعة جديدة')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل المجموعة' : 'مجموعة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'الاسم *', prefixIcon: Icon(Icons.group)),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _subjectCtrl,
-                decoration: const InputDecoration(labelText: 'المادة', prefixIcon: Icon(Icons.book)),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _levelCtrl,
-                decoration: const InputDecoration(labelText: 'المستوى', prefixIcon: Icon(Icons.school)),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _days.contains(_selectedDay) ? _selectedDay : null,
-                decoration: const InputDecoration(labelText: 'اليوم', prefixIcon: Icon(Icons.calendar_today)),
-                items: _days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                onChanged: (v) => setState(() => _selectedDay = v),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _timeCtrl,
-                decoration: const InputDecoration(labelText: 'الوقت', hintText: 'مثال: 10:00 صباحاً', prefixIcon: Icon(Icons.access_time)),
-                textInputAction: TextInputAction.done,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: GlassTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _nameCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('الاسم *', Icons.group),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
+                  textInputAction: TextInputAction.next,
                 ),
-                child: Text(_saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'), style: const TextStyle(fontSize: 16)),
-              ),
-            ],
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _subjectCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('المادة', Icons.book),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _levelCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('المستوى', Icons.school),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _days.contains(_selectedDay) ? _selectedDay : null,
+                  decoration: GlassTheme.glassFormInput('اليوم', Icons.calendar_today),
+                  dropdownColor: const Color(0xFF1E293B),
+                  style: const TextStyle(color: Colors.white),
+                  items: _days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                  onChanged: (v) => setState(() => _selectedDay = v),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _timeCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('الوقت', Icons.access_time),
+                  textInputAction: TextInputAction.done,
+                ),
+                const SizedBox(height: 28),
+                ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GlassTheme.indigo,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'),
+                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

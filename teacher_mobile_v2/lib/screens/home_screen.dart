@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
+import '../core/glass_theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/update_service.dart';
 import 'dashboard/dashboard_screen.dart';
@@ -136,6 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           return Directionality(
@@ -157,18 +159,29 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: Directionality(
         textDirection: TextDirection.rtl,
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
-          selectedItemColor: AppTheme.accent,
-          unselectedItemColor: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54,
-          items: List.generate(
-            _titles.length,
-            (i) => BottomNavigationBarItem(
-              icon: Icon(_icons[i]),
-              label: _titles[i],
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: GlassTheme.indigo,
+            unselectedItemColor: const Color(0xFF94A3B8),
+            selectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 11),
+            items: List.generate(
+              _titles.length,
+              (i) => BottomNavigationBarItem(
+                icon: Icon(_icons[i]),
+                label: _titles[i],
+              ),
             ),
           ),
         ),
@@ -197,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Expanded(
                 child: Text(
                   'جرب الباقة الأساسية مجاناً لمدة 30 يوم',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
                 ),
               ),
               GestureDetector(
@@ -205,10 +218,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.close, size: 16, color: AppTheme.textSecondary),
+                  child: const Icon(Icons.close, size: 16, color: Color(0xFF94A3B8)),
                 ),
               ),
             ],

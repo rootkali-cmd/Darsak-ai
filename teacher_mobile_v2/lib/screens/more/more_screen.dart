@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../services/update_service.dart';
 import '../profile/profile_screen.dart';
 import '../profile/teacher_code_screen.dart';
@@ -15,26 +16,27 @@ class MoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('المزيد')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('المزيد'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _MoreOption(
             icon: Icons.person,
             label: 'الملف الشخصي',
-            color: AppTheme.primary,
+            color: GlassTheme.indigo,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
           ),
           _MoreOption(
             icon: Icons.settings,
             label: 'الإعدادات',
-            color: AppTheme.textSecondary,
+            color: const Color(0xFF94A3B8),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
           ),
           _MoreOption(
             icon: Icons.video_library,
             label: 'الدروس',
-            color: AppTheme.success,
+            color: GlassTheme.green,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LessonsScreen())),
           ),
           _MoreOption(
@@ -46,19 +48,19 @@ class MoreScreen extends StatelessWidget {
           _MoreOption(
             icon: Icons.quiz,
             label: 'الاختبارات',
-            color: AppTheme.danger,
+            color: GlassTheme.red,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamsScreen())),
           ),
           _MoreOption(
             icon: Icons.qr_code,
             label: 'كود المدرس',
-            color: AppTheme.accent,
+            color: GlassTheme.cyan,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherCodeScreen())),
           ),
           _MoreOption(
             icon: Icons.system_update,
             label: 'تحديث',
-            color: AppTheme.primary,
+            color: GlassTheme.indigo,
             onTap: () async {
               final update = await UpdateService().checkForUpdate();
               if (!context.mounted) return;
@@ -93,7 +95,7 @@ class MoreScreen extends StatelessWidget {
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('لا توجد تحديثات متاحة'), backgroundColor: AppTheme.accent),
+                  const SnackBar(content: Text('لا توجد تحديثات متاحة'), backgroundColor: GlassTheme.indigo),
                 );
               }
             },
@@ -101,13 +103,13 @@ class MoreScreen extends StatelessWidget {
           _MoreOption(
             icon: Icons.developer_mode,
             label: 'المطور',
-            color: AppTheme.textSecondary,
+            color: const Color(0xFF94A3B8),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperScreen())),
           ),
           _MoreOption(
             icon: Icons.info_outline,
             label: 'عن التطبيق',
-            color: AppTheme.textSecondary,
+            color: const Color(0xFF94A3B8),
             onTap: () => showAboutDialog(
               context: context,
               applicationName: 'درسك AI',
@@ -139,16 +141,18 @@ class _MoreOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
+      decoration: GlassTheme.glassCard,
       child: ListTile(
         onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.1),
+          backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color, size: 22),
         ),
-        title: Text(label),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        title: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
       ),
     );
   }

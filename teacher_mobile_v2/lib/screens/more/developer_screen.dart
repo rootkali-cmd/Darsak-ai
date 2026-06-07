@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../services/api_service.dart';
 
 class DeveloperScreen extends StatefulWidget {
@@ -128,35 +129,24 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('المطور')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('المطور'),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _InfoCard(
-                  icon: Icons.info_outline,
-                  label: 'التطبيق',
-                  value: _appName,
-                ),
-                _InfoCard(
-                  icon: Icons.system_update,
-                  label: 'إصدار التطبيق',
-                  value: _appVersion,
-                ),
-                _InfoCard(
-                  icon: Icons.link,
-                  label: 'API URL',
-                  value: _apiUrl,
-                ),
+                _InfoCard(icon: Icons.info_outline, label: 'التطبيق', value: _appName),
+                _InfoCard(icon: Icons.system_update, label: 'إصدار التطبيق', value: _appVersion),
+                _InfoCard(icon: Icons.link, label: 'API URL', value: _apiUrl),
                 _InfoCard(
                   icon: Icons.storage,
                   label: 'حالة قاعدة البيانات',
                   value: _dbStatus,
-                  valueColor: _dbStatus == 'متصل' ? AppTheme.success : AppTheme.danger,
+                  valueColor: _dbStatus == 'متصل' ? GlassTheme.green : GlassTheme.red,
                 ),
                 const SizedBox(height: 24),
-                const Text('التواصل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('التواصل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 12),
                 _ContactCard(
                   icon: Icons.chat,
@@ -176,7 +166,7 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
                   icon: Icons.email,
                   label: 'البريد الإلكتروني',
                   value: _email,
-                  color: AppTheme.accent,
+                  color: GlassTheme.indigo,
                   onTap: _openEmail,
                 ),
                 const SizedBox(height: 24),
@@ -187,6 +177,7 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.warning,
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -195,8 +186,9 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
                   icon: const Icon(Icons.logout),
                   label: const Text('تسجيل الخروج من جميع الجلسات'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.danger,
+                    backgroundColor: GlassTheme.red,
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -220,19 +212,20 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
+      decoration: GlassTheme.glassCard,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-          child: Icon(icon, color: AppTheme.primary, size: 22),
+          backgroundColor: GlassTheme.indigo.withValues(alpha: 0.15),
+          child: Icon(icon, color: GlassTheme.indigo, size: 22),
         ),
-        title: Text(label),
+        title: Text(label, style: const TextStyle(color: Colors.white)),
         trailing: Text(
           value,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: valueColor ?? AppTheme.textSecondary,
+            color: valueColor ?? const Color(0xFF94A3B8),
           ),
         ),
       ),
@@ -257,17 +250,18 @@ class _ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
+      decoration: GlassTheme.glassCard,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: color.withValues(alpha: 0.1),
+                backgroundColor: color.withValues(alpha: 0.15),
                 child: Icon(icon, color: color, size: 22),
               ),
               const SizedBox(width: 16),
@@ -275,9 +269,9 @@ class _ContactCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                     const SizedBox(height: 4),
-                    Text(value, style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                    Text(value, style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 14)),
                   ],
                 ),
               ),

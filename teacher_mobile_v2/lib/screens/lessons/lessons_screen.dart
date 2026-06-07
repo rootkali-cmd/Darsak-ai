@@ -99,55 +99,95 @@ class _LessonsScreenState extends State<LessonsScreen> {
         backgroundColor: AppTheme.accent,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildError()
-              : _lessons.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.video_library, size: 64, color: AppTheme.textMuted),
-                          SizedBox(height: 16),
-                          Text('لا توجد دروس', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _lessons.length,
-                      itemBuilder: (_, i) {
-                        final l = _lessons[i];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            onTap: () => _openLesson(l),
-                            onLongPress: () => _deleteLesson(l),
-                            leading: CircleAvatar(
-                              backgroundColor: l['is_published'] == true
-                                  ? AppTheme.success.withValues(alpha: 0.2)
-                                  : AppTheme.warning.withValues(alpha: 0.2),
-                              child: Icon(
-                                l['tg_file_id'] != null ? Icons.play_circle : Icons.article,
-                                color: l['is_published'] == true ? AppTheme.success : AppTheme.warning,
-                                size: 24,
-                              ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.amber.shade700, Colors.orange.shade600],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.construction, size: 40, color: Colors.white),
+                SizedBox(height: 8),
+                Text(
+                  '🚧 قيد التطوير',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'هذه الشاشة قيد التطوير حالياً. بعض الميزات قد لا تعمل بشكل كامل.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? _buildError()
+                    : _lessons.isEmpty
+                        ? const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.video_library, size: 64, color: AppTheme.textMuted),
+                                SizedBox(height: 16),
+                                Text('لا توجد دروس', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
+                              ],
                             ),
-                            title: Text(l['title'] ?? 'بدون عنوان'),
-                            subtitle: Text(
-                              [
-                                if (l['subject']?.toString().isNotEmpty ?? false) l['subject'],
-                                if (l['week_number'] != null) 'الأسبوع ${l['week_number']}',
-                              ].join(' • '),
-                            ),
-                            trailing: l['tg_file_id'] != null
-                                ? const Icon(Icons.check_circle, color: AppTheme.success, size: 20)
-                                : null,
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _lessons.length,
+                            itemBuilder: (_, i) {
+                              final l = _lessons[i];
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                child: ListTile(
+                                  onTap: () => _openLesson(l),
+                                  onLongPress: () => _deleteLesson(l),
+                                  leading: CircleAvatar(
+                                    backgroundColor: l['is_published'] == true
+                                        ? AppTheme.success.withValues(alpha: 0.2)
+                                        : AppTheme.warning.withValues(alpha: 0.2),
+                                    child: Icon(
+                                      l['tg_file_id'] != null ? Icons.play_circle : Icons.article,
+                                      color: l['is_published'] == true ? AppTheme.success : AppTheme.warning,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  title: Text(l['title'] ?? 'بدون عنوان'),
+                                  subtitle: Text(
+                                    [
+                                      if (l['subject']?.toString().isNotEmpty ?? false) l['subject'],
+                                      if (l['week_number'] != null) 'الأسبوع ${l['week_number']}',
+                                    ].join(' • '),
+                                  ),
+                                  trailing: l['tg_file_id'] != null
+                                      ? const Icon(Icons.check_circle, color: AppTheme.success, size: 20)
+                                      : null,
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+          ),
+        ],
+      ),
     );
   }
 

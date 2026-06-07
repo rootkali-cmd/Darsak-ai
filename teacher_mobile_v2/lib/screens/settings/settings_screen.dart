@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/update_service.dart';
@@ -128,37 +129,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final sub = auth.subscription;
 
     if (sub == null) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(children: [
-                Icon(Icons.subscriptions, color: AppTheme.textSecondary),
-                SizedBox(width: 8),
-                Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ]),
-              const SizedBox(height: 12),
-              const Text('لا يوجد اشتراك نشط', style: TextStyle(color: AppTheme.textSecondary)),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                  },
-                  icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-                  label: const Text('تفعيل مجاني'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.warning,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: GlassTheme.glassCard,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(children: [
+              Icon(Icons.subscriptions, color: Color(0xFF94A3B8)),
+              SizedBox(width: 8),
+              Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            ]),
+            const SizedBox(height: 12),
+            const Text('لا يوجد اشتراك نشط', style: TextStyle(color: Color(0xFF94A3B8))),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                },
+                icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                label: const Text('تفعيل مجاني'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.warning,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -179,137 +180,138 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final Color progressColor;
     if (expired) {
-      progressColor = AppTheme.danger;
+      progressColor = GlassTheme.red;
     } else if (daysRemaining != null && daysRemaining <= 3) {
       progressColor = AppTheme.warning;
     } else {
-      progressColor = AppTheme.success;
+      progressColor = GlassTheme.green;
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(children: [
-              Icon(Icons.subscriptions, color: AppTheme.accent),
-              SizedBox(width: 8),
-              Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ]),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                SizedBox(
-                  width: 52,
-                  height: 52,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 52,
-                        height: 52,
-                        child: CircularProgressIndicator(
-                          value: progress,
-                          strokeWidth: 4,
-                          backgroundColor: progressColor.withValues(alpha: 0.15),
-                          valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: GlassTheme.glassCard,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.subscriptions, color: GlassTheme.indigo),
+            SizedBox(width: 8),
+            Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          ]),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              SizedBox(
+                width: 52,
+                height: 52,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 4,
+                        backgroundColor: progressColor.withValues(alpha: 0.15),
+                        valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                       ),
-                      Text(
-                        daysRemaining != null ? '$daysRemaining' : '—',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: progressColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        planName,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        expired
-                            ? 'منتهي'
-                            : isTrial
-                                ? 'فترة تجريبية'
-                                : 'نشطة',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: expired ? AppTheme.danger : progressColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (daysRemaining != null && daysRemaining <= 3 && !expired) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'سينتهي اشتراكك خلال $daysRemaining أيام. جدده الآن لتجنب انقطاع الخدمة.',
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
                     ),
-                  ),
-                ]),
+                    Text(
+                      daysRemaining != null ? '$daysRemaining' : '—',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: progressColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      planName,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      expired
+                          ? 'منتهي'
+                          : isTrial
+                              ? 'فترة تجريبية'
+                              : 'نشطة',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: expired ? GlassTheme.red : progressColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
-            const SizedBox(height: 14),
-            if (expired)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                  },
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('جدد اشتراكك'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.danger,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          if (daysRemaining != null && daysRemaining <= 3 && !expired) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.warning.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'سينتهي اشتراكك خلال $daysRemaining أيام. جدده الآن لتجنب انقطاع الخدمة.',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
                   ),
                 ),
-              )
-            else if (_canUpgrade(planName))
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                  },
-                  icon: const Icon(Icons.upgrade, size: 18),
-                  label: const Text('ترقية الباقة'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.accent,
-                    side: const BorderSide(color: AppTheme.accent),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+              ]),
+            ),
+          ],
+          const SizedBox(height: 14),
+          if (expired)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('جدد اشتراكك'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: GlassTheme.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-          ],
-        ),
+            )
+          else if (_canUpgrade(planName))
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                },
+                icon: const Icon(Icons.upgrade, size: 18),
+                label: const Text('ترقية الباقة'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: GlassTheme.indigo,
+                  side: const BorderSide(color: GlassTheme.indigo),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -319,36 +321,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = context.watch<ThemeProvider>();
     final auth = context.watch<AuthProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('الإعدادات')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('الإعدادات'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildSectionHeader('المظهر'),
-          Card(
+          Container(
+            decoration: GlassTheme.glassCard,
             child: Column(
               children: [
                 SwitchListTile(
-                  secondary: Icon(themeProvider.isDark ? Icons.dark_mode : Icons.light_mode, color: AppTheme.accent),
-                  title: const Text('الوضع الداكن'),
+                  secondary: Icon(themeProvider.isDark ? Icons.dark_mode : Icons.light_mode, color: GlassTheme.indigo),
+                  title: const Text('الوضع الداكن', style: TextStyle(color: Colors.white)),
                   value: themeProvider.isDark,
                   onChanged: (_) => context.read<ThemeProvider>().toggle(),
-                  activeTrackColor: AppTheme.accent,
+                  activeTrackColor: GlassTheme.indigo,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           _buildSectionHeader('الإشعارات'),
-          Card(
+          Container(
+            decoration: GlassTheme.glassCard,
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.notifications, color: AppTheme.warning),
-                  title: const Text('تفعيل الإشعارات'),
+                  title: const Text('تفعيل الإشعارات', style: TextStyle(color: Colors.white)),
                   trailing: Switch(
                     value: _notificationsEnabled,
                     onChanged: _toggleNotifications,
-                    activeTrackColor: AppTheme.accent,
+                    activeTrackColor: GlassTheme.indigo,
                   ),
                 ),
               ],
@@ -359,42 +364,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSubscriptionSection(auth),
           const SizedBox(height: 16),
           _buildSectionHeader('اللغة'),
-          Card(
+          Container(
+            decoration: GlassTheme.glassCard,
             child: ListTile(
-              leading: const Icon(Icons.language, color: AppTheme.primary),
-              title: const Text('اللغة'),
+              leading: const Icon(Icons.language, color: GlassTheme.cyan),
+              title: const Text('اللغة', style: TextStyle(color: Colors.white)),
               trailing: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('العربية', style: TextStyle(color: AppTheme.textSecondary)),
+                  Text('العربية', style: TextStyle(color: Color(0xFF94A3B8))),
                   SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textSecondary),
+                  Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF94A3B8)),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 24),
           _buildSectionHeader('حول التطبيق'),
-          Card(
+          Container(
+            decoration: GlassTheme.glassCard,
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.info_outline, color: AppTheme.success),
-                  title: const Text('الإصدار'),
-                  trailing: Text(_version, style: const TextStyle(color: AppTheme.textSecondary)),
+                  leading: const Icon(Icons.info_outline, color: GlassTheme.green),
+                  title: const Text('الإصدار', style: TextStyle(color: Colors.white)),
+                  trailing: Text(_version, style: const TextStyle(color: Color(0xFF94A3B8))),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
                 ListTile(
-                  leading: const Icon(Icons.system_update, color: AppTheme.accent),
-                  title: const Text('التحقق من التحديثات'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textSecondary),
+                  leading: const Icon(Icons.system_update, color: GlassTheme.indigo),
+                  title: const Text('التحقق من التحديثات', style: TextStyle(color: Colors.white)),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF94A3B8)),
                   onTap: _checkForUpdate,
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
                 ListTile(
-                  leading: const Icon(Icons.code, color: AppTheme.accent),
-                  title: const Text('تطبيق درسك AI'),
-                  subtitle: const Text('للمدرسين'),
+                  leading: const Icon(Icons.code, color: GlassTheme.indigo),
+                  title: const Text('تطبيق درسك AI', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('للمدرسين', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
                 ),
               ],
             ),
@@ -412,7 +419,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: AppTheme.textSecondary,
+          color: Color(0xFF94A3B8),
         ),
       ),
     );

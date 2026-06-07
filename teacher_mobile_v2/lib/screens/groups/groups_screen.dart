@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 import 'add_edit_group_screen.dart';
 
@@ -108,16 +109,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('المجموعات')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addGroup,
-        backgroundColor: AppTheme.accent,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('المجموعات'),
+      floatingActionButton: GlassTheme.glassFAB(_addGroup),
       body: RefreshIndicator(
         onRefresh: _loadGroups,
+        color: GlassTheme.indigo,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
             : _error != null
                 ? _buildError()
                 : _groups.isEmpty
@@ -125,9 +124,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.group_work_outlined, size: 64, color: AppTheme.textMuted),
+                            Icon(Icons.group_work_outlined, size: 64, color: Color(0xFF94A3B8)),
                             SizedBox(height: 16),
-                            Text('لا توجد مجموعات', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
+                            Text('لا توجد مجموعات', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
                           ],
                         ),
                       )
@@ -137,24 +136,26 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         itemBuilder: (_, i) {
                           final g = _groups[i];
                           final subject = g['subject'] ?? '';
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: GlassTheme.glassCard,
                             child: ListTile(
                               onTap: () => _editGroup(g),
                               onLongPress: () => _deleteGroup(g),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                               leading: CircleAvatar(
-                                backgroundColor: AppTheme.accent.withValues(alpha: 0.1),
-                                child: Icon(_getSubjectIcon(subject), color: AppTheme.accent, size: 24),
+                                backgroundColor: GlassTheme.cyan.withValues(alpha: 0.15),
+                                child: Icon(_getSubjectIcon(subject), color: GlassTheme.cyan, size: 22),
                               ),
-                              title: Text(g['name'] ?? 'بدون اسم'),
-                              subtitle: Text(subject.isNotEmpty ? subject : 'بدون مادة'),
+                              title: Text(g['name'] ?? 'بدون اسم', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                              subtitle: Text(subject.isNotEmpty ? subject : 'بدون مادة', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (g['day_of_week'] != null || g['time_slot'] != null)
                                     Text(
                                       [g['day_of_week'] ?? '', g['time_slot'] ?? ''].where((s) => s.toString().isNotEmpty).join(' • '),
-                                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                                     ),
                                 ],
                               ),
@@ -171,11 +172,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
+          const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center),
+          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: _loadGroups, child: const Text('إعادة المحاولة')),
+          ElevatedButton(onPressed: _loadGroups, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
         ],
       ),
     );

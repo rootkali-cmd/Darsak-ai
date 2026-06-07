@@ -137,7 +137,7 @@ async def update_invoice_put(
     except Exception as exc:
         import logging
         logging.getLogger("darsak").error("Failed to update invoice %s: %s", invoice_id, exc)
-        raise HTTPException(status_code=500, detail="Update failed")
+        raise HTTPException(status_code=500, detail=f"فشل تحديث الفاتورة: {str(exc)[:200]}")
 
 
 @router.delete("/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)

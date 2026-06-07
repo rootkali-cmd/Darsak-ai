@@ -21,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -35,40 +37,45 @@ class _HomeScreenState extends State<HomeScreen> {
     final data = context.watch<DataProvider>();
     final student = auth.student;
 
-    final expiryDays = auth.subscriptionData != null
-        ? _parseRemainingDays(auth.subscriptionData!)
-        : 0;
     final showExpiryBanner = auth.isAuthenticated && !auth.isSubscriptionActive;
 
     return Scaffold(
       drawer: _buildDrawer(context, auth),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => data.loadAll(),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (showExpiryBanner) ...[
-                  _buildExpiryBanner(),
-                  const SizedBox(height: 12),
-                ],
-                _buildHeader(student, data, auth),
-                const SizedBox(height: 24),
-                if (data.isLoading && data.grades.isEmpty)
-                  const ShimmerList(count: 3)
-                else ...[
-                  _buildStatsRow(data),
-                  const SizedBox(height: 24),
-                  _buildTodayStatus(data),
-                  const SizedBox(height: 24),
-                  _buildRecentGrades(data),
-                ],
-              ],
+        child: IndexedStack(
+          index: _currentIndex,
+          children: [
+            RefreshIndicator(
+              onRefresh: () => data.loadAll(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (showExpiryBanner) ...[
+                      _buildExpiryBanner(),
+                      const SizedBox(height: 12),
+                    ],
+                    _buildHeader(student, data, auth),
+                    const SizedBox(height: 24),
+                    if (data.isLoading && data.grades.isEmpty)
+                      const ShimmerList(count: 3)
+                    else ...[
+                      _buildStatsRow(data),
+                      const SizedBox(height: 24),
+                      _buildTodayStatus(data),
+                      const SizedBox(height: 24),
+                      _buildRecentGrades(data),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ),
+            const GradesScreen(),
+            const AttendanceScreen(),
+            const ProfileScreen(),
+          ],
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -186,10 +193,10 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Expanded(
               child: StatCard(
-                label: 'امتحانات pending',
-                value: '${data.pendingExams.length}',
+                label: 'درجات منخفضة',
+                value: '${data.lowGrades.length}',
                 icon: Icons.assignment_late,
-                color: data.pendingExams.isEmpty ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                color: data.lowGrades.isEmpty ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                 valueFontSize: 22,
               ),
             ),
@@ -566,31 +573,16 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: const Color(0xFF0A0A0A),
         selectedItemColor: const Color(0xFF2563EB),
         unselectedItemColor: Colors.grey[600],
-        currentIndex: 0,
+        currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
-          BottomNavigationBarItem(
-            icon: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradesScreen())),
-              child: const Icon(Icons.assignment),
-            ),
-            label: 'الدرجات',
-          ),
-          BottomNavigationBarItem(
-            icon: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
-              child: const Icon(Icons.calendar_month),
-            ),
-            label: 'الحضور',
-          ),
-          BottomNavigationBarItem(
-            icon: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
-              child: const Icon(Icons.person),
-            ),
-            label: 'الملف',
-          ),
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'الدرجات'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'الحضور'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'الملف'),
         ],
       ),
     );

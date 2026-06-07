@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../core/api_service.dart';
+import '../core/constants.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -271,7 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildInfoRow('الاسم', 'DarsakAI'),
             const SizedBox(height: 8),
-            _buildInfoRow('الإصدار', '1.1.0'),
+            _buildInfoRow('الإصدار', AppConstants.appVersion),
             const SizedBox(height: 8),
             _buildInfoRow('المنصة', 'Android'),
             const SizedBox(height: 8),

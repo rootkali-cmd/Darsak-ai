@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 
 class AddEditExamScreen extends StatefulWidget {
@@ -109,26 +110,27 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: questionCtrl, decoration: const InputDecoration(labelText: 'السؤال *')),
+                TextField(controller: questionCtrl, decoration: GlassTheme.glassFormInput('السؤال *', Icons.help_outline)),
                 const SizedBox(height: 8),
-                TextField(controller: opt1Ctrl, decoration: const InputDecoration(labelText: 'الخيار 1 *')),
+                TextField(controller: opt1Ctrl, decoration: GlassTheme.glassFormInput('الخيار 1 *', Icons.looks_one)),
                 const SizedBox(height: 8),
-                TextField(controller: opt2Ctrl, decoration: const InputDecoration(labelText: 'الخيار 2 *')),
+                TextField(controller: opt2Ctrl, decoration: GlassTheme.glassFormInput('الخيار 2 *', Icons.looks_two)),
                 const SizedBox(height: 8),
-                TextField(controller: opt3Ctrl, decoration: const InputDecoration(labelText: 'الخيار 3')),
+                TextField(controller: opt3Ctrl, decoration: GlassTheme.glassFormInput('الخيار 3', Icons.looks_3)),
                 const SizedBox(height: 8),
-                TextField(controller: opt4Ctrl, decoration: const InputDecoration(labelText: 'الخيار 4')),
+                TextField(controller: opt4Ctrl, decoration: GlassTheme.glassFormInput('الخيار 4', Icons.looks_4)),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   value: correctAnswer,
-                  decoration: const InputDecoration(labelText: 'الإجابة الصحيحة'),
+                  decoration: GlassTheme.glassFormInput('الإجابة الصحيحة', Icons.check),
+                  dropdownColor: const Color(0xFF1E293B),
                   items: [1, 2, 3, 4].map((i) => DropdownMenuItem(value: i, child: Text('الخيار $i'))).toList(),
                   onChanged: (v) => setDialogState(() => correctAnswer = v ?? 1),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: pointsCtrl,
-                  decoration: const InputDecoration(labelText: 'النقاط'),
+                  decoration: GlassTheme.glassFormInput('النقاط', Icons.star),
                   keyboardType: TextInputType.number,
                 ),
               ],
@@ -162,80 +164,92 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'تعديل الاختبار' : 'اختبار جديد')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الاختبار' : 'اختبار جديد'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _titleCtrl,
-                decoration: const InputDecoration(labelText: 'العنوان *', prefixIcon: Icon(Icons.title)),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'العنوان مطلوب' : null,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descCtrl,
-                decoration: const InputDecoration(labelText: 'الوصف', prefixIcon: Icon(Icons.description)),
-                maxLines: 3,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _durationCtrl,
-                      decoration: const InputDecoration(labelText: 'المدة (دقيقة)', prefixIcon: Icon(Icons.timer)),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _totalPointsCtrl,
-                      decoration: const InputDecoration(labelText: 'مجموع النقاط', prefixIcon: Icon(Icons.stars)),
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: GlassTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _titleCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('العنوان *', Icons.title),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'العنوان مطلوب' : null,
+                  textInputAction: TextInputAction.next,
                 ),
-                child: Text(_saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'), style: const TextStyle(fontSize: 16)),
-              ),
-              if (_isEdit) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _descCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('الوصف', Icons.description),
+                  maxLines: 3,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('الأسئلة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    TextButton.icon(
-                      onPressed: _showAddQuestionDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text('إضافة سؤال'),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _durationCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: GlassTheme.glassFormInput('المدة (دقيقة)', Icons.timer),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _totalPointsCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: GlassTheme.glassFormInput('مجموع النقاط', Icons.stars),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(
-                      child: Text('سيتم تحميل الأسئلة عند حفظ الاختبار', style: TextStyle(color: AppTheme.textSecondary)),
-                    ),
+                const SizedBox(height: 28),
+                ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GlassTheme.indigo,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'),
+                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
+                if (_isEdit) ...[
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('الأسئلة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      TextButton.icon(
+                        onPressed: _showAddQuestionDialog,
+                        icon: const Icon(Icons.add, color: GlassTheme.indigo),
+                        label: const Text('إضافة سؤال', style: TextStyle(color: GlassTheme.indigo)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: GlassTheme.glassCard,
+                    child: const Center(
+                      child: Text('سيتم تحميل الأسئلة عند حفظ الاختبار', style: TextStyle(color: Color(0xFF94A3B8))),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

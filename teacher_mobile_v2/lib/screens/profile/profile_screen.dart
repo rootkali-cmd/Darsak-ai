@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../login_screen.dart';
@@ -87,41 +87,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الملف الشخصي')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('الملف الشخصي'),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
           : _error != null
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_error!, textAlign: TextAlign.center),
+                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
                       const SizedBox(height: 12),
-                      ElevatedButton(onPressed: _loadProfile, child: const Text('إعادة المحاولة')),
+                      ElevatedButton(onPressed: _loadProfile, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
                     ],
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: _loadProfile,
+                  color: GlassTheme.indigo,
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
                       const SizedBox(height: 24),
                       CircleAvatar(
                         radius: 50,
-                        backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
-                        child: const Icon(Icons.person, size: 50, color: AppTheme.primary),
+                        backgroundColor: GlassTheme.indigo.withValues(alpha: 0.2),
+                        child: const Icon(Icons.person, size: 50, color: GlassTheme.indigo),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         _user?['full_name'] ?? _user?['email'] ?? 'مدرس',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _user?['email'] ?? '',
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
@@ -135,7 +137,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         icon: const Icon(Icons.edit),
                         label: const Text('تعديل الملف الشخصي'),
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: GlassTheme.indigo,
                           padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -144,9 +148,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: ElevatedButton(
                           onPressed: _logout,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.danger,
+                            backgroundColor: GlassTheme.red,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: const Text('تسجيل الخروج'),
                         ),
@@ -167,11 +172,12 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
+      decoration: GlassTheme.glassCard,
       child: ListTile(
-        title: Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-        trailing: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        title: Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+        trailing: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.white)),
       ),
     );
   }
@@ -232,27 +238,43 @@ class _EditProfilePageState extends State<_EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تعديل الملف الشخصي')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('تعديل الملف الشخصي'),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person)),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _emailCtrl,
-              decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email)),
-              keyboardType: TextInputType.emailAddress,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: GlassTheme.glassCard,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _nameCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: GlassTheme.glassFormInput('الاسم الكامل', Icons.person),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _emailCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: GlassTheme.glassFormInput('البريد الإلكتروني', Icons.email),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'جاري الحفظ...' : 'حفظ'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: GlassTheme.indigo,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(_saving ? 'جاري الحفظ...' : 'حفظ', style: const TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
           ],

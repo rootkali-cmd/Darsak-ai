@@ -163,7 +163,7 @@ async def update_attendance(
     except Exception as exc:
         import logging
         logging.getLogger("darsak").error("Failed to update attendance %s: %s", attendance_id, exc)
-        raise HTTPException(status_code=500, detail="Update failed")
+        raise HTTPException(status_code=500, detail=f"فشل تحديث الحضور: {str(exc)[:200]}")
 
 
 class BarcodeScan(BaseModel):

@@ -33,7 +33,7 @@ class DataProvider extends ChangeNotifier {
     return total / _grades.length;
   }
 
-  List<GradeModel> get pendingExams =>
+  List<GradeModel> get lowGrades =>
       _grades.where((g) => g.percentage < 50).toList();
 
   AttendanceModel? get todayAttendance {

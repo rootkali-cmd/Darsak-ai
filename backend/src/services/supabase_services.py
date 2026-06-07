@@ -113,6 +113,9 @@ class AttendanceService:
     def __init__(self):
         self.repo = SupabaseRepository("attendances")
 
+    async def get_by_id(self, attendance_id: str) -> dict | None:
+        return await self.repo.select_one({"id": attendance_id})
+
     async def create(self, **kwargs) -> dict:
         from datetime import date
         kwargs.setdefault("date", date.today().isoformat())
@@ -146,6 +149,12 @@ class GradeService:
     def __init__(self):
         self.repo = SupabaseRepository("grades")
 
+    async def get_by_id(self, grade_id: str) -> dict | None:
+        return await self.repo.select_one({"id": grade_id})
+
+    async def update(self, grade_id: str, data: dict) -> dict:
+        return await self.repo.update({"id": grade_id}, data)
+
     async def create(self, **kwargs) -> dict:
         kwargs.setdefault("max_score", 100)
         return await self.repo.insert(kwargs)
@@ -175,6 +184,9 @@ class GradeService:
 class InvoiceService:
     def __init__(self):
         self.repo = SupabaseRepository("invoices")
+
+    async def get_by_id(self, invoice_id: str) -> dict | None:
+        return await self.repo.select_one({"id": invoice_id})
 
     async def create(self, **kwargs) -> dict:
         kwargs.setdefault("paid", False)

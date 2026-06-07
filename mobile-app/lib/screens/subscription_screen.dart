@@ -19,11 +19,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final _subService = SubscriptionService();
   bool _activating = false;
   bool _refreshing = false;
+  List<dynamic> _plans = [];
+  bool _loadingPlans = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlans();
+  }
 
   @override
   void dispose() {
     _codeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPlans() async {
+    try {
+      final plans = await _subService.getPlans();
+      if (mounted) setState(() { _plans = plans; _loadingPlans = false; });
+    } catch (_) {
+      if (mounted) setState(() { _loadingPlans = false; });
+    }
   }
 
   Future<void> _activateCode() async {
@@ -283,39 +300,53 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           style: TextStyle(color: Color(0xFFF5F5F5), fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        _buildPlanCard(
-          name: 'الباقة الأساسية',
-          price: '199 ج.م/شهر',
-          students: '50 طالب',
-          features: ['حتى 50 طالب', '100 طلب ذكاء اصطناعي/شهر', 'إدارة الدرجات والحضور', 'الفواتير', 'QR Code المعلم'],
-          isPopular: false,
-          color: 0xFF00f3ff,
-          onSubscribe: () => _showPaymentDialog('الباقة الأساسية', 199, '3628fdf5-3a79-43c3-8c04-211f31704e07'),
-        ),
-        const SizedBox(height: 12),
-        _buildPlanCard(
-          name: 'الباقة المتقدمة',
-          price: '499 ج.م/شهر',
-          students: '500 طالب',
-          features: ['حتى 500 طالب', '500 طلب ذكاء اصطناعي/شهر', 'إدارة الدرجات والحضور', 'الفواتير المتقدمة', 'تصدير التقارير', 'دعم فني متميز'],
-          isPopular: true,
-          color: 0xFFccff00,
-          onSubscribe: () => _showPaymentDialog('الباقة المتقدمة', 499, '56b99f07-ea35-46ae-9af6-16b17078c9a7'),
-        ),
-        const SizedBox(height: 12),
-        _buildPlanCard(
-          name: 'الباقة الغير محدودة',
-          price: '999 ج.م/شهر',
-          students: 'غير محدود',
-          features: ['طلاب غير محدود', '2000 طلب ذكاء اصطناعي/شهر', 'جميع المميزات', 'دعم فني متميز', 'أولوية في التحديثات'],
-          isPopular: false,
-          color: 0xFFff003c,
-          onSubscribe: () => _showPaymentDialog('الباقة الغير محدودة', 999, '7bc43f3e-d511-4981-ad71-b3c00b637af4'),
-        ),
+        if (_loadingPlans)
+          const Center(child: CircularProgressIndicator())
+        else if (_plans.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141414),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF2A2A2A)),
+            ),
+            child: Center(
+              child: Text('لا توجد باقات متاحة حالياً', style: TextStyle(color: Colors.grey[600])),
+            ),
+          )
+        else
+          ..._plans.map((plan) {
+            final planId = plan['id'] as String? ?? '';
+            final planName = plan['name'] as String? ?? '';
+            final price = plan['price_egp'] ?? 0;
+            final maxStudents = plan['max_students'] ?? 0;
+            final features = (plan['features'] as List<dynamic>?)?.cast<String>() ?? [];
+            final color = _planColor(planName);
+            final isPopular = planName.toLowerCase().contains('pro') || planName.toLowerCase().contains('advanced');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildPlanCard(
+                name: planName,
+                price: '$price ج.م/شهر',
+                students: maxStudents == -1 ? 'غير محدود' : '$maxStudents طالب',
+                features: features,
+                isPopular: isPopular,
+                color: color,
+                onSubscribe: () => _showPaymentDialog(planName, price, planId),
+              ),
+            );
+          }),
         const SizedBox(height: 16),
         _buildPaymentInfo(),
       ],
     );
+  }
+
+  int _planColor(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('unlimited') || lower.contains('غير محدود')) return 0xFFff003c;
+    if (lower.contains('pro') || lower.contains('advanced') || lower.contains('متقدمة')) return 0xFFccff00;
+    return 0xFF00f3ff;
   }
 
   void _showPaymentDialog(String planName, int amount, String planId) {

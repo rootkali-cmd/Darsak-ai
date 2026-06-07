@@ -61,6 +61,8 @@ darsak_accounts_db/
 # Zip files
 *.zip
 *.apk
+!web-portal/public/teacher-v2.apk
+!web-portal/public/student.apk
 
 # Build artifacts
 desktop_app/build/

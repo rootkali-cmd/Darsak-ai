@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 
 class AddEditGradeScreen extends StatefulWidget {
@@ -106,70 +107,86 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'تعديل الدرجة' : 'درجة جديدة')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الدرجة' : 'درجة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _studentIdCtrl,
-                decoration: const InputDecoration(labelText: 'رقم الطالب', prefixIcon: Icon(Icons.person)),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _subjectCtrl,
-                decoration: const InputDecoration(labelText: 'المادة', prefixIcon: Icon(Icons.book)),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _scoreCtrl,
-                      decoration: const InputDecoration(labelText: 'الدرجة', prefixIcon: Icon(Icons.star)),
-                      keyboardType: TextInputType.number,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _maxScoreCtrl,
-                      decoration: const InputDecoration(labelText: 'الدرجة الكلية', prefixIcon: Icon(Icons.star_border)),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _types.contains(_selectedType) ? _selectedType : null,
-                decoration: const InputDecoration(labelText: 'النوع', prefixIcon: Icon(Icons.category)),
-                items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: (v) => setState(() => _selectedType = v),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _notesCtrl,
-                decoration: const InputDecoration(labelText: 'ملاحظات', prefixIcon: Icon(Icons.notes)),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: GlassTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _studentIdCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('رقم الطالب', Icons.person),
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
                 ),
-                child: Text(_saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'), style: const TextStyle(fontSize: 16)),
-              ),
-            ],
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _subjectCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('المادة', Icons.book),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _scoreCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: GlassTheme.glassFormInput('الدرجة', Icons.star),
+                        keyboardType: TextInputType.number,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _maxScoreCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: GlassTheme.glassFormInput('الدرجة الكلية', Icons.star_border),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _types.contains(_selectedType) ? _selectedType : null,
+                  decoration: GlassTheme.glassFormInput('النوع', Icons.category),
+                  dropdownColor: const Color(0xFF1E293B),
+                  style: const TextStyle(color: Colors.white),
+                  items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  onChanged: (v) => setState(() => _selectedType = v),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _notesCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('ملاحظات', Icons.notes),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 28),
+                ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GlassTheme.indigo,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'),
+                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

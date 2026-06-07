@@ -134,14 +134,14 @@ async def update_student(
         body = await request.json()
         update_dict = {k: v for k, v in body.items() if v is not None and k != "id" and k != "teacher_id"}
         if "pin" in update_dict:
-            update_dict["pin_hash"] = hash_password(update_dict.pop("pin"))
+            update_dict["pin_hash"] = hash_password(sanitize_pin(update_dict.pop("pin")))
         updated = await student_service.update(student_id, update_dict)
         return {"ok": True, "student": _serialize_student(updated)}
     except HTTPException:
         raise
     except Exception as exc:
         logging.getLogger("darsak").error("Failed to update student %s: %s", student_id, exc)
-        raise HTTPException(status_code=500, detail=f"Failed to update student: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"فشل تحديث الطالب: {str(exc)[:200]}")
 
 
 @router.get("/{student_id}/pin")

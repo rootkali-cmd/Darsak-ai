@@ -92,6 +92,11 @@ class SubscriptionService {
     await _storage.delete(key: AppConstants.storageKeySubscription);
   }
 
+  Future<List<dynamic>> getPlans() async {
+    final response = await _dio.get('/subscriptions/plans');
+    return response.data is List ? response.data as List : [];
+  }
+
   Future<Map<String, dynamic>> sendPaymentRequest(String planId, String phoneNumber, int amount, String? screenshot) async {
     final data = {
       'plan_id': planId,

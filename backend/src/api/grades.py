@@ -203,7 +203,7 @@ async def update_grade(
     except Exception as exc:
         import logging
         logging.getLogger("darsak").error("Failed to update grade %s: %s", grade_id, exc)
-        raise HTTPException(status_code=500, detail="Update failed")
+        raise HTTPException(status_code=500, detail=f"فشل تحديث الدرجة: {str(exc)[:200]}")
 
 
 @router.delete("/{grade_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -46,8 +46,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _safeStat(String key) {
     final val = _stats[key];
-    if (val == null) return '—';
-    return val.toString();
+    if (val == null) return '0';
+    if (val is num) return val.toInt().toString();
+    final str = val.toString();
+    if (str.isEmpty || str == 'null') return '0';
+    return str;
   }
 
   @override
@@ -59,8 +62,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return RefreshIndicator(
       onRefresh: _fetchStats,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
+          _buildHeader(),
+          const SizedBox(height: 16),
           _buildGreeting(),
           const SizedBox(height: 20),
           _buildStatsGrid(),
@@ -77,6 +82,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           _buildQuickActions(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return const Padding(
+      padding: EdgeInsets.only(top: 8),
+      child: Text(
+        'الرئيسية',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: AppTheme.textPrimary,
+          fontFamily: 'Cairo',
+        ),
       ),
     );
   }
@@ -157,7 +177,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _StatCard(
           icon: Icons.people_rounded,
           label: 'الطلاب',
-          count: _safeStat('students_count'),
+          count: _safeStat('total_students'),
           subtitle: 'الطلاب المسجلين',
           color: const Color(0xFF3B82F6),
           gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
@@ -165,7 +185,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _StatCard(
           icon: Icons.groups_rounded,
           label: 'المجموعات',
-          count: _safeStat('groups_count'),
+          count: _safeStat('total_groups'),
           subtitle: 'المجموعات الدراسية',
           color: const Color(0xFF8B5CF6),
           gradient: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
@@ -180,19 +200,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         _StatCard(
           icon: Icons.receipt_rounded,
-          label: 'الفواتير',
-          count: _safeStat('pending_invoices'),
-          subtitle: 'فواتير معلقة',
+          label: 'الإيرادات',
+          count: _safeStat('total_revenue'),
+          subtitle: 'إجمالي الإيرادات',
           color: const Color(0xFFF59E0B),
           gradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
-        ),
-        _StatCard(
-          icon: Icons.quiz_rounded,
-          label: 'الاختبارات',
-          count: _safeStat('active_exams'),
-          subtitle: 'اختبارات نشطة',
-          color: const Color(0xFFEF4444),
-          gradient: const [Color(0xFFEF4444), Color(0xFFDC2626)],
         ),
       ],
     );
@@ -353,9 +365,6 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasValidCount = count != '—' && count != '0' && count != 'null' && count.isNotEmpty;
-
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -386,7 +395,7 @@ class _StatCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            hasValidCount ? count : '—',
+            count,
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,

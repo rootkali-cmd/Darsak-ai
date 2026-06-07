@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'constants.dart';
 
 class AiService {
   static String get _apiKey => const String.fromEnvironment('AI_API_KEY', defaultValue: '');
-  static const int _dailyLimit = 5;
   static const String _prefCount = 'ai_chat_count';
   static const String _prefDate = 'ai_chat_date';
 
@@ -14,7 +13,7 @@ class AiService {
     receiveTimeout: const Duration(seconds: 60),
   ));
 
-  int _remaining = _dailyLimit;
+  int _remaining = AppConstants.aiDailyLimit;
 
   int get remaining => _remaining;
 
@@ -25,10 +24,10 @@ class AiService {
     if (savedDate != today) {
       await prefs.setInt(_prefCount, 0);
       await prefs.setString(_prefDate, today);
-      _remaining = _dailyLimit;
+      _remaining = AppConstants.aiDailyLimit;
     } else {
       final count = prefs.getInt(_prefCount) ?? 0;
-      _remaining = _dailyLimit - count;
+      _remaining = AppConstants.aiDailyLimit - count;
     }
   }
 
@@ -56,7 +55,7 @@ class AiService {
       final prefs = await SharedPreferences.getInstance();
       final count = (prefs.getInt(_prefCount) ?? 0) + 1;
       await prefs.setInt(_prefCount, count);
-      _remaining = _dailyLimit - count;
+      _remaining = AppConstants.aiDailyLimit - count;
 
       return content;
     } else {

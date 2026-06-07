@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
-import '../../core/app_theme.dart';
 import '../../core/error_utils.dart';
+import '../../core/glass_theme.dart';
 import 'barcode_scanner_screen.dart';
-import 'manual_attendance_screen.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -31,25 +30,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الحضور'),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar(
+        'الحضور',
         bottom: TabBar(
           controller: _tabCtrl,
+          indicatorColor: GlassTheme.indigo,
+          labelColor: Colors.white,
+          unselectedLabelColor: const Color(0xFF94A3B8),
           tabs: const [
             Tab(text: 'اليوم'),
             Tab(text: 'السجل'),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
+      floatingActionButton: GlassTheme.glassFAB(
+        () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
           );
         },
-        backgroundColor: AppTheme.accent,
-        child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+        icon: Icons.qr_code_scanner,
       ),
       body: TabBarView(
         controller: _tabCtrl,
@@ -108,18 +110,19 @@ class _TodayTabState extends State<_TodayTab> {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: _loadToday,
+      color: GlassTheme.indigo,
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
           : _error != null
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
+                      const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
                       const SizedBox(height: 12),
-                      Text(_error!, textAlign: TextAlign.center),
+                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _loadToday, child: const Text('إعادة المحاولة')),
+                      ElevatedButton(onPressed: _loadToday, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
                     ],
                   ),
                 )
@@ -128,29 +131,14 @@ class _TodayTabState extends State<_TodayTab> {
                     if (_attendance.isNotEmpty)
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: Row(
                           children: [
-                            _FilterChip(
-                              label: 'الكل',
-                              selected: _filter == 'all',
-                              color: AppTheme.primary,
-                              onTap: () => setState(() => _filter = 'all'),
-                            ),
+                            GlassTheme.glassFilterChip('الكل', _filter == 'all', GlassTheme.indigo, () => setState(() => _filter = 'all')),
                             const SizedBox(width: 8),
-                            _FilterChip(
-                              label: 'حاضر',
-                              selected: _filter == 'present',
-                              color: AppTheme.success,
-                              onTap: () => setState(() => _filter = 'present'),
-                            ),
+                            GlassTheme.glassFilterChip('حاضر', _filter == 'present', GlassTheme.green, () => setState(() => _filter = 'present')),
                             const SizedBox(width: 8),
-                            _FilterChip(
-                              label: 'غائب',
-                              selected: _filter == 'absent',
-                              color: AppTheme.danger,
-                              onTap: () => setState(() => _filter = 'absent'),
-                            ),
+                            GlassTheme.glassFilterChip('غائب', _filter == 'absent', GlassTheme.red, () => setState(() => _filter = 'absent')),
                           ],
                         ),
                       ),
@@ -160,9 +148,9 @@ class _TodayTabState extends State<_TodayTab> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.fact_check_outlined, size: 64, color: AppTheme.textMuted),
+                                  Icon(Icons.fact_check_outlined, size: 64, color: Color(0xFF94A3B8)),
                                   SizedBox(height: 16),
-                                  Text('لا يوجد حضور اليوم', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
+                                  Text('لا يوجد حضور اليوم', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
                                 ],
                               ),
                             )
@@ -173,25 +161,26 @@ class _TodayTabState extends State<_TodayTab> {
                                 final a = _filteredAttendance[i];
                                 final status = a['status'] ?? '';
                                 final isPresent = status == 'present';
-                                return Card(
+                                return Container(
                                   margin: const EdgeInsets.only(bottom: 8),
+                                  decoration: GlassTheme.glassCard,
                                   child: ListTile(
                                     leading: Icon(
                                       isPresent ? Icons.check_circle : Icons.cancel,
-                                      color: isPresent ? AppTheme.success : AppTheme.danger,
+                                      color: isPresent ? GlassTheme.green : GlassTheme.red,
                                     ),
-                                    title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—'),
-                                    subtitle: Text(a['date'] ?? ''),
+                                    title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: const TextStyle(color: Colors.white)),
+                                    subtitle: Text(a['date'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8))),
                                     trailing: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: isPresent ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.danger.withValues(alpha: 0.1),
+                                        color: isPresent ? GlassTheme.green.withValues(alpha: 0.15) : GlassTheme.red.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
                                         isPresent ? 'حاضر' : 'غائب',
                                         style: TextStyle(
-                                          color: isPresent ? AppTheme.success : AppTheme.danger,
+                                          color: isPresent ? GlassTheme.green : GlassTheme.red,
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -267,15 +256,12 @@ class _HistoryTabState extends State<_HistoryTab> {
             onTap: _pickDate,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.border),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: GlassTheme.glassCard,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(dateStr, style: const TextStyle(fontSize: 15)),
-                  const Icon(Icons.calendar_today, color: AppTheme.accent),
+                  Text(dateStr, style: const TextStyle(fontSize: 15, color: Colors.white)),
+                  const Icon(Icons.calendar_today, color: GlassTheme.indigo),
                 ],
               ),
             ),
@@ -284,22 +270,23 @@ class _HistoryTabState extends State<_HistoryTab> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadByDate,
+            color: GlassTheme.indigo,
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
                 : _error != null
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(_error!, textAlign: TextAlign.center),
+                            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
                             const SizedBox(height: 12),
-                            ElevatedButton(onPressed: _loadByDate, child: const Text('إعادة المحاولة')),
+                            ElevatedButton(onPressed: _loadByDate, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
                           ],
                         ),
                       )
                     : _attendance.isEmpty
                         ? const Center(
-                            child: Text('لا توجد سجلات حضور', style: TextStyle(color: AppTheme.textSecondary)),
+                            child: Text('لا توجد سجلات حضور', style: TextStyle(color: Color(0xFF94A3B8))),
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -308,25 +295,26 @@ class _HistoryTabState extends State<_HistoryTab> {
                               final a = _attendance[i];
                               final status = a['status'] ?? '';
                               final isPresent = status == 'present';
-                              return Card(
+                              return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
+                                decoration: GlassTheme.glassCard,
                                 child: ListTile(
                                   leading: Icon(
                                     isPresent ? Icons.check_circle : Icons.cancel,
-                                    color: isPresent ? AppTheme.success : AppTheme.danger,
+                                    color: isPresent ? GlassTheme.green : GlassTheme.red,
                                   ),
-                                  title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—'),
-                                  subtitle: Text(a['date'] ?? ''),
+                                  title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: const TextStyle(color: Colors.white)),
+                                  subtitle: Text(a['date'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8))),
                                   trailing: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: isPresent ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.danger.withValues(alpha: 0.1),
+                                      color: isPresent ? GlassTheme.green.withValues(alpha: 0.15) : GlassTheme.red.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
                                       isPresent ? 'حاضر' : 'غائب',
                                       style: TextStyle(
-                                        color: isPresent ? AppTheme.success : AppTheme.danger,
+                                        color: isPresent ? GlassTheme.green : GlassTheme.red,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -339,44 +327,6 @@ class _HistoryTabState extends State<_HistoryTab> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? color : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? color : AppTheme.border),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppTheme.textSecondary,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
     );
   }
 }

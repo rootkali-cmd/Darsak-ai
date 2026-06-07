@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 
 class AddEditStudentScreen extends StatefulWidget {
@@ -131,12 +132,13 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEdit ? 'تعديل الطالب' : 'طالب جديد'),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar(
+        _isEdit ? 'تعديل الطالب' : 'طالب جديد',
         actions: [
           if (_isEdit)
             IconButton(
-              icon: const Icon(Icons.delete, color: AppTheme.danger),
+              icon: const Icon(Icons.delete, color: GlassTheme.red),
               onPressed: _deleting ? null : _delete,
             ),
         ],
@@ -145,56 +147,65 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'الاسم الكامل *', prefixIcon: Icon(Icons.person)),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _codeCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'الكود',
-                  hintText: 'سيتم إنشاؤه تلقائياً إذا ترك فارغاً',
-                  prefixIcon: Icon(Icons.qr_code),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: GlassTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _nameCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('الاسم الكامل *', Icons.person),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
+                  textInputAction: TextInputAction.next,
                 ),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _phoneCtrl,
-                decoration: const InputDecoration(labelText: 'هاتف ولي الأمر', prefixIcon: Icon(Icons.phone)),
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _groupIdCtrl,
-                decoration: const InputDecoration(labelText: 'المجموعة', prefixIcon: Icon(Icons.group)),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _pinCtrl,
-                decoration: const InputDecoration(labelText: 'الرمز السري', prefixIcon: Icon(Icons.lock)),
-                keyboardType: TextInputType.number,
-                obscureText: true,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _codeCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('الكود', Icons.qr_code),
+                  textInputAction: TextInputAction.next,
                 ),
-                child: Text(_saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'), style: const TextStyle(fontSize: 16)),
-              ),
-            ],
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _phoneCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('هاتف ولي الأمر', Icons.phone),
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _groupIdCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('المجموعة', Icons.group),
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _pinCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('الرمز السري', Icons.lock),
+                  keyboardType: TextInputType.number,
+                  obscureText: true,
+                ),
+                const SizedBox(height: 28),
+                ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GlassTheme.indigo,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'),
+                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 
 class AddEditInvoiceScreen extends StatefulWidget {
@@ -113,82 +114,93 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'تعديل الفاتورة' : 'فاتورة جديدة')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الفاتورة' : 'فاتورة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _studentIdCtrl,
-                decoration: const InputDecoration(labelText: 'رقم الطالب', prefixIcon: Icon(Icons.person)),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _amountCtrl,
-                decoration: const InputDecoration(labelText: 'المبلغ *', prefixIcon: Icon(Icons.money)),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'المبلغ مطلوب' : null,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descCtrl,
-                decoration: const InputDecoration(labelText: 'الوصف', prefixIcon: Icon(Icons.description)),
-                maxLines: 2,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _dueDateCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'تاريخ الاستحقاق',
-                  prefixIcon: Icon(Icons.calendar_today),
-                  suffixIcon: Icon(Icons.date_range),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: GlassTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _studentIdCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('رقم الطالب', Icons.person),
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
                 ),
-                readOnly: true,
-                onTap: _pickDueDate,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedStatus,
-                decoration: const InputDecoration(labelText: 'الحالة', prefixIcon: Icon(Icons.flag)),
-                items: _statuses.map((s) {
-                  String label;
-                  switch (s) {
-                    case 'paid':
-                      label = 'مدفوع';
-                      break;
-                    case 'unpaid':
-                      label = 'غير مدفوع';
-                      break;
-                    case 'overdue':
-                      label = 'متأخر';
-                      break;
-                    case 'cancelled':
-                      label = 'ملغي';
-                      break;
-                    default:
-                      label = s;
-                  }
-                  return DropdownMenuItem(value: s, child: Text(label));
-                }).toList(),
-                onChanged: (v) => setState(() => _selectedStatus = v ?? 'unpaid'),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _amountCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('المبلغ *', Icons.money),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'المبلغ مطلوب' : null,
+                  textInputAction: TextInputAction.next,
                 ),
-                child: Text(_saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'), style: const TextStyle(fontSize: 16)),
-              ),
-            ],
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _descCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('الوصف', Icons.description),
+                  maxLines: 2,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _dueDateCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput('تاريخ الاستحقاق', Icons.calendar_today),
+                  readOnly: true,
+                  onTap: _pickDueDate,
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _selectedStatus,
+                  decoration: GlassTheme.glassFormInput('الحالة', Icons.flag),
+                  dropdownColor: const Color(0xFF1E293B),
+                  style: const TextStyle(color: Colors.white),
+                  items: _statuses.map((s) {
+                    String label;
+                    switch (s) {
+                      case 'paid':
+                        label = 'مدفوع';
+                        break;
+                      case 'unpaid':
+                        label = 'غير مدفوع';
+                        break;
+                      case 'overdue':
+                        label = 'متأخر';
+                        break;
+                      case 'cancelled':
+                        label = 'ملغي';
+                        break;
+                      default:
+                        label = s;
+                    }
+                    return DropdownMenuItem(value: s, child: Text(label));
+                  }).toList(),
+                  onChanged: (v) => setState(() => _selectedStatus = v ?? 'unpaid'),
+                ),
+                const SizedBox(height: 28),
+                ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GlassTheme.indigo,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _saving ? 'جاري الحفظ...' : (_isEdit ? 'تحديث' : 'إضافة'),
+                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

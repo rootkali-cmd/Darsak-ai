@@ -155,7 +155,7 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
             return
 
         code = generate_license_key()
-        expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
         plan_id = plan["id"]
         plan_id_str = plan_id.hex if hasattr(plan_id, "hex") else str(plan_id)
 
@@ -165,7 +165,7 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
             f"📌 الباقة: {plan['name']}\n"
             f"🔑 الكود: `{code}`\n"
             f"💰 السعر: {plan['price_egp']} ج.م\n"
-            f"📅 الصلاحية: شهر من تاريخ التفعيل\n\n"
+            f"📅 الصلاحية: سنة من تاريخ التفعيل\n\n"
             f"أرسل هذا الكود للمدرس لتفعيل اشتراكه.",
             parse_mode="Markdown")
 
@@ -337,7 +337,11 @@ async def telegram_status(admin: dict = Depends(get_current_admin)):
 async def notify_admin_payment_request(payment_request: dict, plan: dict, user: dict | None = None):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
-    chat_id = int(TELEGRAM_CHAT_ID)
+    try:
+        chat_id = int(TELEGRAM_CHAT_ID)
+    except (ValueError, TypeError):
+        logger.error("TELEGRAM_CHAT_ID is not a valid numeric chat ID: %s", TELEGRAM_CHAT_ID)
+        return
     payment_id = payment_request["id"]
     payment_id_str = payment_id.hex if hasattr(payment_id, "hex") else str(payment_id)
 

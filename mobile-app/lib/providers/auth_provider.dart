@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/local_db.dart';
@@ -12,12 +13,14 @@ class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   final SubscriptionService _subscriptionService = SubscriptionService();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final Connectivity _connectivity = Connectivity();
   AuthStatus _status = AuthStatus.uninitialized;
   StudentModel? _student;
   String? _error;
   String? _teacherCode;
   bool _isSubscriptionActive = false;
   Map<String, dynamic>? _subscriptionData;
+  bool _isOnline = true;
 
   AuthStatus get status => _status;
   StudentModel? get student => _student;
@@ -25,8 +28,26 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   String? get teacherCode => _teacherCode;
   bool get isSubscriptionActive => _isSubscriptionActive;
-  bool get isOnline => true;
+  bool get isOnline => _isOnline;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
+
+  AuthProvider() {
+    _initConnectivity();
+  }
+
+  void _initConnectivity() {
+    _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      _isOnline = results.any((r) => r != ConnectivityResult.none);
+      notifyListeners();
+    });
+    _checkConnectivity();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final results = await _connectivity.checkConnectivity();
+    _isOnline = results.any((r) => r != ConnectivityResult.none);
+    notifyListeners();
+  }
 
   Future<void> tryAutoLogin() async {
     final token = await _storage.read(key: AppConstants.storageKeyToken);

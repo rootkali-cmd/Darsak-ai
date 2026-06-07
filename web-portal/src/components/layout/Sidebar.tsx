@@ -19,7 +19,6 @@ import {
   X,
   UserCog,
   CreditCard,
-  BarChart3,
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
 
@@ -34,7 +33,6 @@ const navItems = [
   { href: '/dashboard/downloads', label: 'التطبيقات', icon: Download },
   { href: '/dashboard/subscription', label: 'الاشتراكات', icon: CreditCard },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
-  { href: '/admin/analytics', label: 'التحليلات', icon: BarChart3 },
 ]
 
 export function Sidebar() {

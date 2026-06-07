@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 
 class TeacherQrScreen extends StatefulWidget {
   const TeacherQrScreen({super.key});
@@ -64,13 +65,13 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      appBar: AppBar(title: const Text('رمز QR للمدرس')),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('رمز QR للمدرس'),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
           : _error != null
-              ? _buildError(isDark)
+              ? _buildError()
               : Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(32),
@@ -79,17 +80,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
+                          decoration: GlassTheme.glassCard,
                           child: QrImageView(
                             data: _code,
                             version: QrVersions.auto,
@@ -97,11 +88,11 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                             backgroundColor: Colors.white,
                             eyeStyle: QrEyeStyle(
                               eyeShape: QrEyeShape.square,
-                              color: AppTheme.primary,
+                              color: GlassTheme.indigo,
                             ),
                             dataModuleStyle: QrDataModuleStyle(
                               dataModuleShape: QrDataModuleShape.square,
-                              color: AppTheme.primary,
+                              color: GlassTheme.indigo,
                             ),
                           ),
                         ),
@@ -109,9 +100,9 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                           decoration: BoxDecoration(
-                            color: AppTheme.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+                            color: GlassTheme.indigo.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
+                            border: Border.all(color: GlassTheme.indigo.withValues(alpha: 0.25)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -123,7 +114,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                                   fontSize: 30,
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'Cairo',
-                                  color: AppTheme.primary,
+                                  color: GlassTheme.indigo,
                                   letterSpacing: 4,
                                 ),
                               ),
@@ -133,10 +124,10 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primary.withValues(alpha: 0.12),
+                                    color: GlassTheme.indigo.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(Icons.copy, color: AppTheme.primary, size: 20),
+                                  child: const Icon(Icons.copy, color: GlassTheme.indigo, size: 20),
                                 ),
                               ),
                             ],
@@ -150,7 +141,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                             icon: const Icon(Icons.share),
                             label: const Text('مشاركة الكود'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.accent,
+                              backgroundColor: GlassTheme.indigo,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -159,12 +150,9 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        Text(
+                        const Text(
                           'اطلب من طلابك مسح رمز QR للانضمام إلى مجموعاتك',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? AppTheme.textMuted : AppTheme.textSecondary,
-                          ),
+                          style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -174,7 +162,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
     );
   }
 
-  Widget _buildError(bool isDark) {
+  Widget _buildError() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -192,10 +180,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
             const SizedBox(height: 20),
             Text(
               _error!,
-              style: TextStyle(
-                fontSize: 15,
-                color: isDark ? Colors.white70 : AppTheme.textSecondary,
-              ),
+              style: const TextStyle(fontSize: 15, color: Colors.white70),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -209,6 +194,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
               },
               icon: const Icon(Icons.refresh),
               label: const Text('إعادة المحاولة'),
+              style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo),
             ),
           ],
         ),

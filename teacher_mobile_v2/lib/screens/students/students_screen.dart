@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 import 'add_edit_student_screen.dart';
 import 'student_detail_screen.dart';
@@ -116,30 +117,26 @@ class _StudentsScreenState extends State<StudentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الطلاب')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addStudent,
-        backgroundColor: AppTheme.accent,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: GlassTheme.glassAppBar('الطلاب'),
+      floatingActionButton: GlassTheme.glassFAB(_addStudent),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
               controller: _searchCtrl,
               onChanged: _onSearchChanged,
-              decoration: const InputDecoration(
-                hintText: 'بحث عن طالب...',
-                prefixIcon: Icon(Icons.search),
-              ),
+              style: const TextStyle(color: Colors.white),
+              decoration: GlassTheme.glassInput('بحث عن طالب...', Icons.search),
             ),
           ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => _loadStudents(),
+              color: GlassTheme.indigo,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
                   : _error != null
                       ? _buildError()
                       : _students.isEmpty
@@ -147,32 +144,34 @@ class _StudentsScreenState extends State<StudentsScreen> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.people_outline, size: 64, color: AppTheme.textMuted),
+                                  Icon(Icons.people_outline, size: 64, color: Color(0xFF94A3B8)),
                                   SizedBox(height: 16),
-                                  Text('لا يوجد طلاب', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
+                                  Text('لا يوجد طلاب', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
                                 ],
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: _students.length,
                               itemBuilder: (_, i) {
                                 final s = _students[i];
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  decoration: GlassTheme.glassCard,
                                   child: ListTile(
                                     onTap: () => _openStudent(s),
                                     onLongPress: () => _deleteStudent(s),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                     leading: CircleAvatar(
-                                      backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
+                                      backgroundColor: GlassTheme.indigo.withValues(alpha: 0.2),
                                       child: Text(
                                         _getInitials(s['full_name'] ?? ''),
-                                        style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(color: GlassTheme.indigo, fontWeight: FontWeight.bold, fontSize: 14),
                                       ),
                                     ),
-                                    title: Text(s['full_name'] ?? 'بدون اسم'),
-                                    subtitle: Text(s['code'] ?? ''),
-                                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                                    title: Text(s['full_name'] ?? 'بدون اسم', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                    subtitle: Text(s['code'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                    trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
                                   ),
                                 );
                               },
@@ -189,11 +188,15 @@ class _StudentsScreenState extends State<StudentsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
+          const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center),
+          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: () => _loadStudents(), child: const Text('إعادة المحاولة')),
+          ElevatedButton(
+            onPressed: () => _loadStudents(),
+            style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo),
+            child: const Text('إعادة المحاولة'),
+          ),
         ],
       ),
     );
