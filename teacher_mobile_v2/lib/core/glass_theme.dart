@@ -8,30 +8,45 @@ class GlassTheme {
   static const Color green = Color(0xFF10B981);
   static const Color red = Color(0xFFEF4444);
 
-  static BoxDecoration get glassCard => BoxDecoration(
-    color: Colors.white.withValues(alpha: 0.07),
-    borderRadius: BorderRadius.circular(20),
-    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-  );
+  static bool _isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
 
-  static BoxDecoration glassCardLight(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (isDark) {
-      return glassCard;
-    }
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFE2E8F0)),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 12,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    );
-  }
+  static Color cardBg(BuildContext context) => _isDark(context)
+      ? Colors.white.withValues(alpha: 0.07)
+      : Colors.white;
+  static Color cardBorder(BuildContext context) => _isDark(context)
+      ? Colors.white.withValues(alpha: 0.12)
+      : const Color(0xFFE2E8F0);
+  static Color textPrimary(BuildContext context) => _isDark(context)
+      ? Colors.white
+      : const Color(0xFF111111);
+  static Color textSecondary(BuildContext context) => _isDark(context)
+      ? const Color(0xFF94A3B8)
+      : const Color(0xFF64748B);
+  static Color textMuted(BuildContext context) => _isDark(context)
+      ? Colors.white.withValues(alpha: 0.7)
+      : const Color(0xFF94A3B8);
+  static Color iconPrimary(BuildContext context) => _isDark(context)
+      ? Colors.white
+      : const Color(0xFF111111);
+  static Color iconSecondary(BuildContext context) => _isDark(context)
+      ? Colors.white54
+      : Colors.black45;
+  static Color chipUnselected(BuildContext context) => _isDark(context)
+      ? Colors.white.withValues(alpha: 0.06)
+      : const Color(0xFFF1F5F9);
+
+  static BoxDecoration glassCard(BuildContext context) => BoxDecoration(
+    color: cardBg(context),
+    borderRadius: BorderRadius.circular(20),
+    border: Border.all(color: cardBorder(context)),
+    boxShadow: _isDark(context) ? null : [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.04),
+        blurRadius: 12,
+        offset: const Offset(0, 2),
+      ),
+    ],
+  );
 
   static BoxDecoration glassCardColored(Color color) => BoxDecoration(
     color: color.withValues(alpha: 0.10),
@@ -39,19 +54,19 @@ class GlassTheme {
     border: Border.all(color: color.withValues(alpha: 0.25)),
   );
 
-  static InputDecoration glassInput(String hint, IconData icon, {bool isDark = true}) => InputDecoration(
+  static InputDecoration glassInput(BuildContext context, String hint, IconData icon) => InputDecoration(
     hintText: hint,
-    hintStyle: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-    prefixIcon: Icon(icon, color: isDark ? Colors.white54 : Colors.black45),
+    hintStyle: TextStyle(color: textSecondary(context)),
+    prefixIcon: Icon(icon, color: iconSecondary(context)),
     filled: true,
-    fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
+    fillColor: _isDark(context) ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF8FAFC),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
+      borderSide: BorderSide(color: cardBorder(context)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
+      borderSide: BorderSide(color: cardBorder(context)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -60,19 +75,19 @@ class GlassTheme {
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   );
 
-  static InputDecoration glassFormInput(String label, IconData icon, {bool isDark = true}) => InputDecoration(
+  static InputDecoration glassFormInput(BuildContext context, String label, IconData icon) => InputDecoration(
     labelText: label,
-    labelStyle: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-    prefixIcon: Icon(icon, color: isDark ? Colors.white54 : Colors.black45),
+    labelStyle: TextStyle(color: textSecondary(context)),
+    prefixIcon: Icon(icon, color: iconSecondary(context)),
     filled: true,
-    fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
+    fillColor: _isDark(context) ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF8FAFC),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
+      borderSide: BorderSide(color: cardBorder(context)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
+      borderSide: BorderSide(color: cardBorder(context)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -83,7 +98,7 @@ class GlassTheme {
 
   static PreferredSizeWidget glassAppBar(String title, {List<Widget>? actions, PreferredSizeWidget? bottom}) {
     return AppBar(
-      title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: true,
@@ -101,23 +116,23 @@ class GlassTheme {
     );
   }
 
-  static Widget glassFilterChip(String label, bool selected, Color color, VoidCallback onTap) {
+  static Widget glassFilterChip(BuildContext context, String label, bool selected, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? color : Colors.white.withValues(alpha: 0.06),
+          color: selected ? color : chipUnselected(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? color : Colors.white.withValues(alpha: 0.10),
+            color: selected ? color : cardBorder(context),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF94A3B8),
+            color: selected ? Colors.white : textSecondary(context),
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),

@@ -113,8 +113,9 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الفاتورة' : 'فاتورة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -122,22 +123,22 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
           key: _formKey,
           child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormField(
                   controller: _studentIdCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('رقم الطالب', Icons.person),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'رقم الطالب', Icons.person),
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _amountCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('المبلغ *', Icons.money),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'المبلغ *', Icons.money),
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'المبلغ مطلوب' : null,
                   textInputAction: TextInputAction.next,
@@ -145,25 +146,25 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _descCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الوصف', Icons.description),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'الوصف', Icons.description),
                   maxLines: 2,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _dueDateCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('تاريخ الاستحقاق', Icons.calendar_today),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'تاريخ الاستحقاق', Icons.calendar_today),
                   readOnly: true,
                   onTap: _pickDueDate,
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   value: _selectedStatus,
-                  decoration: GlassTheme.glassFormInput('الحالة', Icons.flag),
-                  dropdownColor: const Color(0xFF111111),
-                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput(context, 'الحالة', Icons.flag),
+                  dropdownColor: isDark ? const Color(0xFF111111) : Colors.white,
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
                   items: _statuses.map((s) {
                     String label;
                     switch (s) {

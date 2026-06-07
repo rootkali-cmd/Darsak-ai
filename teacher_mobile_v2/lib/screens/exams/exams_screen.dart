@@ -87,9 +87,9 @@ class _ExamsScreenState extends State<ExamsScreen> {
         return AppTheme.warning;
       case 'closed':
       case 'مغلق':
-        return const Color(0xFF94A3B8);
+        return GlassTheme.textSecondary(context);
       default:
-        return const Color(0xFF94A3B8);
+        return GlassTheme.textSecondary(context);
     }
   }
 
@@ -108,8 +108,9 @@ class _ExamsScreenState extends State<ExamsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('الاختبارات'),
       floatingActionButton: GlassTheme.glassFAB(_addExam),
       body: RefreshIndicator(
@@ -120,13 +121,13 @@ class _ExamsScreenState extends State<ExamsScreen> {
             : _error != null
                 ? _buildError()
                 : _exams.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.quiz_outlined, size: 64, color: Color(0xFF94A3B8)),
-                            SizedBox(height: 16),
-                            Text('لا توجد اختبارات', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
+                            Icon(Icons.quiz_outlined, size: 64, color: GlassTheme.textSecondary(context)),
+                            const SizedBox(height: 16),
+                            Text('لا توجد اختبارات', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 16)),
                           ],
                         ),
                       )
@@ -139,7 +140,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
                           final statusColor = _getStatusColor(status);
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
-                            decoration: GlassTheme.glassCard,
+                            decoration: GlassTheme.glassCard(context),
                             child: ListTile(
                               onTap: () async {
                                 await Navigator.push(
@@ -154,13 +155,13 @@ class _ExamsScreenState extends State<ExamsScreen> {
                                 backgroundColor: statusColor.withValues(alpha: 0.15),
                                 child: Icon(Icons.quiz, color: statusColor, size: 22),
                               ),
-                              title: Text(e['title'] ?? 'بدون عنوان', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                              title: Text(e['title'] ?? 'بدون عنوان', style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w500)),
                               subtitle: Text(
                                 [
                                   if (e['duration_minutes'] != null) '${e['duration_minutes']} دقيقة',
                                   if (e['question_count'] != null) '${e['question_count']} سؤال',
                                 ].join(' • '),
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                                style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13),
                               ),
                               trailing: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -188,7 +189,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: _loadExams, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
         ],

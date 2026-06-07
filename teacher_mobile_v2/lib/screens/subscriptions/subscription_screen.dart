@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -226,7 +227,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('$planName - $planPrice ج.م/شهر', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+            Text('$planName - $planPrice ج.م/شهر', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 14)),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -280,7 +281,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('دفع عبر فودافون كاش', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          title: const Text('دفع عبر فودافون كاش', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -294,7 +295,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
                   ),
                   child: Column(children: [
-                    const Text('حول إلى رقم فودافون كاش', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    Text('حول إلى رقم فودافون كاش', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
                     const SizedBox(height: 4),
                     GestureDetector(
                       onTap: () {
@@ -318,7 +319,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   keyboardType: TextInputType.phone,
                 ),
                 const SizedBox(height: 12),
-                const Text('صورة الإيصال', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                Text('صورة الإيصال', style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
                 const SizedBox(height: 6),
                 GestureDetector(
                   onTap: () async {
@@ -352,10 +353,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               ),
                             ),
                           ])
-                        : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(Icons.camera_alt, size: 32, color: AppTheme.textMuted),
-                            SizedBox(height: 4),
-                            Text('اضغط لرفع صورة الإيReceipt', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                        : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.camera_alt, size: 32, color: GlassTheme.textMuted(context)),
+                            const SizedBox(height: 4),
+                            Text('اضغط لرفع صورة الإيصال', style: TextStyle(fontSize: 13, color: GlassTheme.textMuted(context))),
                           ]),
                   ),
                 ),
@@ -415,11 +416,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(height: 16),
             const Text('تم الإرسال بنجاح!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('سيتم التحقق من الدفع خلال 10 دقائق', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+            Text('سيتم التحقق من الدفع خلال 10 دقائق', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
             const SizedBox(height: 4),
-            const Text('وبحد أقصى ساعتين', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+            Text('وبحد أقصى ساعتين', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
             const SizedBox(height: 12),
-            const Text('لو فيه مشكلة أو تأخير تواصل معانا عبر الواتساب', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+            Text('لو فيه مشكلة أو تأخير تواصل معانا عبر الواتساب', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: GlassTheme.textMuted(context))),
           ],
         ),
         actions: [
@@ -490,6 +491,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: const Text('الاشتراكات', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -501,7 +503,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
                     const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(color: AppTheme.textSecondary)),
+                    Text(_error!, style: TextStyle(color: GlassTheme.textSecondary(context))),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: _loadData,
@@ -524,7 +526,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       const SizedBox(height: 24),
                       const Text('الباقات المتاحة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      const Text('اختر الباقة المناسبة لك', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                      Text('اختر الباقة المناسبة لك', style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
                       const SizedBox(height: 12),
                       ..._plansToShow.asMap().entries.map((e) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -565,7 +567,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (n['title'] != null) Text(n['title'].toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                if (n['body'] != null) Text(n['body'].toString(), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                if (n['body'] != null) Text(n['body'].toString(), style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
               ]),
             ),
           ]),
@@ -579,12 +581,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildCurrentSubscriptionCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: GlassTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _subscription != null
               ? (_isActive ? AppTheme.success.withValues(alpha: 0.3) : AppTheme.danger.withValues(alpha: 0.3))
-              : AppTheme.border.withValues(alpha: 0.15),
+              : GlassTheme.cardBorder(context),
         ),
       ),
       padding: const EdgeInsets.all(20),
@@ -599,7 +601,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: const Icon(Icons.card_membership, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 12),
-          const Expanded(child: Text('الاشتراك الحالي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          Expanded(child: Text('الاشتراك الحالي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context)))),
           if (_subscription != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -640,7 +642,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           if (_daysLeft > 0) ...[
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('الأيام المتبقية', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+              Text('الأيام المتبقية', style: TextStyle(fontSize: 11, color: GlassTheme.textSecondary(context))),
               Text('$_daysLeft يوم', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ]),
             const SizedBox(height: 6),
@@ -656,7 +658,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ],
         ] else ...[
           const SizedBox(height: 8),
-          const Text('لا يوجد اشتراك نشط. اختر باقة للاشتراك أو استخدم كود تفعيل.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text('لا يوجد اشتراك نشط. اختر باقة للاشتراك أو استخدم كود تفعيل.', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13)),
         ],
       ]),
     );
@@ -669,28 +671,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (userId == null || userId.isEmpty) return const SizedBox.shrink();
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: GlassTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.15)),
+        border: Border.all(color: GlassTheme.cardBorder(context)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.fingerprint, size: 20, color: AppTheme.accent.withValues(alpha: 0.8)),
           const SizedBox(width: 8),
-          const Text('معرف الحساب', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('معرف الحساب', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
         ]),
         const SizedBox(height: 4),
-        const Text('استخدم هذا المعرف عند التواصل مع الدعم الفني', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+        Text('استخدم هذا المعرف عند التواصل مع الدعم الفني', style: TextStyle(fontSize: 11, color: GlassTheme.textSecondary(context))),
         const SizedBox(height: 10),
         Row(children: [
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.03),
+                color: GlassTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.border.withValues(alpha: 0.15)),
+                border: Border.all(color: GlassTheme.cardBorder(context)),
               ),
               child: Text(userId, style: const TextStyle(fontSize: 13, fontFamily: 'monospace', letterSpacing: 1), textDirection: TextDirection.ltr),
             ),
@@ -701,11 +703,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.03),
+                color: GlassTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.border.withValues(alpha: 0.15)),
+                border: Border.all(color: GlassTheme.cardBorder(context)),
               ),
-              child: const Icon(Icons.copy, size: 18, color: AppTheme.textSecondary),
+              child: Icon(Icons.copy, size: 18, color: GlassTheme.textSecondary(context)),
             ),
           ),
         ]),
@@ -718,16 +720,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildActivateCodeSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: GlassTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.15)),
+        border: Border.all(color: GlassTheme.cardBorder(context)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.vpn_key, size: 20, color: AppTheme.accent.withValues(alpha: 0.8)),
           const SizedBox(width: 8),
-          const Text('تفعيل كود اشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('تفعيل كود اشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
         ]),
         const SizedBox(height: 12),
         Row(children: [
@@ -782,10 +784,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: GlassTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isPopular ? AppTheme.accent.withValues(alpha: 0.4) : AppTheme.border.withValues(alpha: 0.15),
+          color: isPopular ? AppTheme.accent.withValues(alpha: 0.4) : GlassTheme.cardBorder(context),
           width: isPopular ? 1.5 : 1,
         ),
         boxShadow: isPopular ? [BoxShadow(color: AppTheme.accent.withValues(alpha: 0.08), blurRadius: 20, spreadRadius: 0)] : null,
@@ -818,21 +820,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   Text('30 يوم مجاناً', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                 ]),
               ),
-            Text(name.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(name.toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
             const SizedBox(height: 4),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('$price', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              Text('$price', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
               const SizedBox(width: 4),
-              const Padding(padding: EdgeInsets.only(bottom: 3), child: Text('ج.م/شهر', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary))),
+              Padding(padding: const EdgeInsets.only(bottom: 3), child: Text('ج.م/شهر', style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context)))),
             ]),
             if (maxStudents != null) ...[
               const SizedBox(height: 6),
               Row(children: [
-                const Icon(Icons.people, size: 16, color: AppTheme.textSecondary),
+                Icon(Icons.people, size: 16, color: GlassTheme.textSecondary(context)),
                 const SizedBox(width: 6),
                 Text(
                   maxStudents == 0 || maxStudents == -1 ? 'طلاب غير محدود' : 'حتى $maxStudents طالب',
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context)),
                 ),
               ]),
             ],
@@ -897,16 +899,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildPaymentInfoSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: GlassTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.15)),
+        border: Border.all(color: GlassTheme.cardBorder(context)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Icon(Icons.info_outline, size: 20, color: AppTheme.accent),
           const SizedBox(width: 8),
-          const Text('طرق الدفع', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('طرق الدفع', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
         ]),
         const SizedBox(height: 16),
         const Text('فودافون كاش', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -962,7 +964,7 @@ class _InfoTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
         Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: valueColor)),
       ]),
     );

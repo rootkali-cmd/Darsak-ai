@@ -110,27 +110,27 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: questionCtrl, decoration: GlassTheme.glassFormInput('السؤال *', Icons.help_outline)),
+                TextField(controller: questionCtrl, decoration: GlassTheme.glassFormInput(ctx, 'السؤال *', Icons.help_outline)),
                 const SizedBox(height: 8),
-                TextField(controller: opt1Ctrl, decoration: GlassTheme.glassFormInput('الخيار 1 *', Icons.looks_one)),
+                TextField(controller: opt1Ctrl, decoration: GlassTheme.glassFormInput(ctx, 'الخيار 1 *', Icons.looks_one)),
                 const SizedBox(height: 8),
-                TextField(controller: opt2Ctrl, decoration: GlassTheme.glassFormInput('الخيار 2 *', Icons.looks_two)),
+                TextField(controller: opt2Ctrl, decoration: GlassTheme.glassFormInput(ctx, 'الخيار 2 *', Icons.looks_two)),
                 const SizedBox(height: 8),
-                TextField(controller: opt3Ctrl, decoration: GlassTheme.glassFormInput('الخيار 3', Icons.looks_3)),
+                TextField(controller: opt3Ctrl, decoration: GlassTheme.glassFormInput(ctx, 'الخيار 3', Icons.looks_3)),
                 const SizedBox(height: 8),
-                TextField(controller: opt4Ctrl, decoration: GlassTheme.glassFormInput('الخيار 4', Icons.looks_4)),
+                TextField(controller: opt4Ctrl, decoration: GlassTheme.glassFormInput(ctx, 'الخيار 4', Icons.looks_4)),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   value: correctAnswer,
-                  decoration: GlassTheme.glassFormInput('الإجابة الصحيحة', Icons.check),
-                  dropdownColor: const Color(0xFF111111),
+                  decoration: GlassTheme.glassFormInput(ctx, 'الإجابة الصحيحة', Icons.check),
+                  dropdownColor: Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF111111) : Colors.white,
                   items: [1, 2, 3, 4].map((i) => DropdownMenuItem(value: i, child: Text('الخيار $i'))).toList(),
                   onChanged: (v) => setDialogState(() => correctAnswer = v ?? 1),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: pointsCtrl,
-                  decoration: GlassTheme.glassFormInput('النقاط', Icons.star),
+                  decoration: GlassTheme.glassFormInput(ctx, 'النقاط', Icons.star),
                   keyboardType: TextInputType.number,
                 ),
               ],
@@ -163,8 +163,9 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الاختبار' : 'اختبار جديد'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -172,22 +173,22 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
           key: _formKey,
           child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormField(
                   controller: _titleCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('العنوان *', Icons.title),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'العنوان *', Icons.title),
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'العنوان مطلوب' : null,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _descCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الوصف', Icons.description),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'الوصف', Icons.description),
                   maxLines: 3,
                   textInputAction: TextInputAction.next,
                 ),
@@ -197,8 +198,8 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _durationCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: GlassTheme.glassFormInput('المدة (دقيقة)', Icons.timer),
+                        style: TextStyle(color: GlassTheme.textPrimary(context)),
+                        decoration: GlassTheme.glassFormInput(context, 'المدة (دقيقة)', Icons.timer),
                         keyboardType: TextInputType.number,
                       ),
                     ),
@@ -206,8 +207,8 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _totalPointsCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: GlassTheme.glassFormInput('مجموع النقاط', Icons.stars),
+                        style: TextStyle(color: GlassTheme.textPrimary(context)),
+                        decoration: GlassTheme.glassFormInput(context, 'مجموع النقاط', Icons.stars),
                         keyboardType: TextInputType.numberWithOptions(decimal: true),
                       ),
                     ),
@@ -231,7 +232,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('الأسئلة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text('الأسئلة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
                       TextButton.icon(
                         onPressed: _showAddQuestionDialog,
                         icon: const Icon(Icons.add, color: GlassTheme.indigo),
@@ -242,9 +243,9 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(24),
-                    decoration: GlassTheme.glassCard,
-                    child: const Center(
-                      child: Text('سيتم تحميل الأسئلة عند حفظ الاختبار', style: TextStyle(color: Color(0xFF94A3B8))),
+                    decoration: GlassTheme.glassCard(context),
+                    child: Center(
+                      child: Text('سيتم تحميل الأسئلة عند حفظ الاختبار', style: TextStyle(color: GlassTheme.textSecondary(context))),
                     ),
                   ),
                 ],

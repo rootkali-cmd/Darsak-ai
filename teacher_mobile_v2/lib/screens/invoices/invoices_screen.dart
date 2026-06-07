@@ -62,8 +62,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('الفواتير'),
       floatingActionButton: GlassTheme.glassFAB(_addInvoice),
       body: RefreshIndicator(
@@ -74,13 +75,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             : _error != null
                 ? _buildError()
                 : _invoices.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.receipt_long_outlined, size: 64, color: Color(0xFF94A3B8)),
-                            SizedBox(height: 16),
-                            Text('لا توجد فواتير', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
+                            Icon(Icons.receipt_long_outlined, size: 64, color: GlassTheme.textSecondary(context)),
+                            const SizedBox(height: 16),
+                            Text('لا توجد فواتير', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 16)),
                           ],
                         ),
                       )
@@ -102,7 +103,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                             final isPaid = status == 'paid';
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
-                              decoration: GlassTheme.glassCard,
+                              decoration: GlassTheme.glassCard(context),
                               child: ListTile(
                                 onTap: () async {
                                   await Navigator.push(
@@ -120,15 +121,15 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     size: 22,
                                   ),
                                 ),
-                                title: Text(inv['student_name'] ?? inv['student']?['full_name'] ?? '—', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                                subtitle: Text(inv['description'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                title: Text(inv['student_name'] ?? inv['student']?['full_name'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w500)),
+                                subtitle: Text(inv['description'] ?? '', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13)),
                                 trailing: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
                                       '${inv['amount'] ?? 0} ج.م',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                      style: TextStyle(fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context)),
                                     ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -163,7 +164,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: _loadInvoices, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
         ],

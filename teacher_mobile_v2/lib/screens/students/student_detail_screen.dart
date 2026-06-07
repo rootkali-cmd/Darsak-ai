@@ -69,18 +69,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
   @override
   Widget build(BuildContext context) {
     final s = widget.student;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(
         s['full_name'] ?? 'تفاصيل الطالب',
         actions: [
-          IconButton(icon: const Icon(Icons.edit, color: Colors.white70), onPressed: _editStudent),
+          IconButton(icon: Icon(Icons.edit, color: GlassTheme.iconSecondary(context)), onPressed: _editStudent),
         ],
         bottom: TabBar(
           controller: _tabCtrl,
           indicatorColor: GlassTheme.indigo,
-          labelColor: Colors.white,
-          unselectedLabelColor: const Color(0xFF94A3B8),
+          labelColor: GlassTheme.textPrimary(context),
+          unselectedLabelColor: GlassTheme.textSecondary(context),
           tabs: const [
             Tab(text: 'المعلومات'),
             Tab(text: 'الحضور'),
@@ -105,7 +106,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
       children: [
         Container(
           padding: const EdgeInsets.all(24),
-          decoration: GlassTheme.glassCard,
+          decoration: GlassTheme.glassCard(context),
           child: Column(
             children: [
               CircleAvatar(
@@ -114,12 +115,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                 child: const Icon(Icons.person, size: 40, color: GlassTheme.indigo),
               ),
               const SizedBox(height: 12),
-              Text(s['full_name'] ?? '—', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(s['full_name'] ?? '—', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
               const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(s['code'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
+                  Text(s['code'] ?? '', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 14)),
                   if ((s['code'] ?? '').toString().isNotEmpty) ...[
                     const SizedBox(width: 6),
                     GestureDetector(
@@ -132,10 +133,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: GlassTheme.cardBg(context),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.copy, size: 14, color: Color(0xFF94A3B8)),
+                        child: Icon(Icons.copy, size: 14, color: GlassTheme.textSecondary(context)),
                       ),
                     ),
                   ],
@@ -157,8 +158,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
       return const Center(child: CircularProgressIndicator(color: GlassTheme.indigo));
     }
     if (_attendance.isEmpty) {
-      return const Center(
-        child: Text('لا توجد سجلات حضور', style: TextStyle(color: Color(0xFF94A3B8))),
+      return Center(
+        child: Text('لا توجد سجلات حضور', style: TextStyle(color: GlassTheme.textSecondary(context))),
       );
     }
     return RefreshIndicator(
@@ -173,14 +174,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
           final isPresent = status == 'present';
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: ListTile(
               leading: Icon(
                 isPresent ? Icons.check_circle : Icons.cancel,
                 color: isPresent ? GlassTheme.green : GlassTheme.red,
               ),
-              title: Text(a['date'] ?? '—', style: const TextStyle(color: Colors.white)),
-              subtitle: Text(isPresent ? 'حاضر' : 'غائب', style: const TextStyle(color: Color(0xFF94A3B8))),
+              title: Text(a['date'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context))),
+              subtitle: Text(isPresent ? 'حاضر' : 'غائب', style: TextStyle(color: GlassTheme.textSecondary(context))),
             ),
           );
         },
@@ -193,8 +194,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
       return const Center(child: CircularProgressIndicator(color: GlassTheme.indigo));
     }
     if (_grades.isEmpty) {
-      return const Center(
-        child: Text('لا توجد درجات', style: TextStyle(color: Color(0xFF94A3B8))),
+      return Center(
+        child: Text('لا توجد درجات', style: TextStyle(color: GlassTheme.textSecondary(context))),
       );
     }
     return RefreshIndicator(
@@ -207,7 +208,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
           final g = _grades[i];
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: GlassTheme.indigo.withValues(alpha: 0.2),
@@ -216,11 +217,11 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                   style: const TextStyle(color: GlassTheme.indigo, fontWeight: FontWeight.bold),
                 ),
               ),
-              title: Text(g['subject'] ?? '—', style: const TextStyle(color: Colors.white)),
-              subtitle: Text(g['type'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8))),
+              title: Text(g['subject'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context))),
+              subtitle: Text(g['type'] ?? '', style: TextStyle(color: GlassTheme.textSecondary(context))),
               trailing: Text(
                 '${g['score']} / ${g['max_score']}',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context)),
               ),
             ),
           );
@@ -240,10 +241,10 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: GlassTheme.glassCard,
+      decoration: GlassTheme.glassCard(context),
       child: ListTile(
-        title: Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
-        trailing: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.white)),
+        title: Text(label, style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
+        trailing: Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: GlassTheme.textPrimary(context))),
       ),
     );
   }

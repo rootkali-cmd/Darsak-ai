@@ -86,8 +86,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('الملف الشخصي'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
@@ -96,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                      Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
                       const SizedBox(height: 12),
                       ElevatedButton(onPressed: _loadProfile, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
                     ],
@@ -117,13 +118,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 16),
                       Text(
                         _user?['full_name'] ?? _user?['email'] ?? 'مدرس',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context)),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _user?['email'] ?? '',
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                        style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
@@ -174,10 +175,10 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: GlassTheme.glassCard,
+      decoration: GlassTheme.glassCard(context),
       child: ListTile(
-        title: Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
-        trailing: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.white)),
+        title: Text(label, style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
+        trailing: Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: GlassTheme.textPrimary(context))),
       ),
     );
   }
@@ -237,8 +238,9 @@ class _EditProfilePageState extends State<_EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('تعديل الملف الشخصي'),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -246,19 +248,19 @@ class _EditProfilePageState extends State<_EditProfilePage> {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: GlassTheme.glassCard,
+              decoration: GlassTheme.glassCard(context),
               child: Column(
                 children: [
                   TextField(
                     controller: _nameCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: GlassTheme.glassFormInput('الاسم الكامل', Icons.person),
+                    style: TextStyle(color: GlassTheme.textPrimary(context)),
+                    decoration: GlassTheme.glassFormInput(context, 'الاسم الكامل', Icons.person),
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: _emailCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: GlassTheme.glassFormInput('البريد الإلكتروني', Icons.email),
+                    style: TextStyle(color: GlassTheme.textPrimary(context)),
+                    decoration: GlassTheme.glassFormInput(context, 'البريد الإلكتروني', Icons.email),
                     keyboardType: TextInputType.emailAddress,
                   ),
                 ],

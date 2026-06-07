@@ -147,8 +147,9 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الدرجة' : 'درجة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -156,15 +157,15 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
           key: _formKey,
           child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 DropdownButtonFormField<String>(
                   value: _students.any((s) => s['id']?.toString() == _studentIdCtrl.text) ? _studentIdCtrl.text : null,
-                  decoration: GlassTheme.glassFormInput('الطالب', Icons.person),
-                  dropdownColor: const Color(0xFF111111),
-                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput(context, 'الطالب', Icons.person),
+                  dropdownColor: isDark ? const Color(0xFF111111) : Colors.white,
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
                   items: _students.map<DropdownMenuItem<String>>((s) {
                     return DropdownMenuItem<String>(
                       value: s['id']?.toString(),
@@ -176,9 +177,9 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   value: _selectedSubject,
-                  decoration: GlassTheme.glassFormInput('المادة', Icons.book),
-                  dropdownColor: const Color(0xFF111111),
-                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput(context, 'المادة', Icons.book),
+                  dropdownColor: isDark ? const Color(0xFF111111) : Colors.white,
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
                   items: _subjects.map<DropdownMenuItem<String>>((s) {
                     return DropdownMenuItem<String>(
                       value: s,
@@ -193,8 +194,8 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _scoreCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: GlassTheme.glassFormInput('الدرجة', Icons.star),
+                        style: TextStyle(color: GlassTheme.textPrimary(context)),
+                        decoration: GlassTheme.glassFormInput(context, 'الدرجة', Icons.star),
                         keyboardType: TextInputType.number,
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
                       ),
@@ -203,8 +204,8 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _maxScoreCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: GlassTheme.glassFormInput('الدرجة الكلية', Icons.star_border),
+                        style: TextStyle(color: GlassTheme.textPrimary(context)),
+                        decoration: GlassTheme.glassFormInput(context, 'الدرجة الكلية', Icons.star_border),
                         keyboardType: TextInputType.number,
                       ),
                     ),
@@ -213,17 +214,17 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   value: _types.contains(_selectedType) ? _selectedType : null,
-                  decoration: GlassTheme.glassFormInput('النوع', Icons.category),
-                  dropdownColor: const Color(0xFF111111),
-                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput(context, 'النوع', Icons.category),
+                  dropdownColor: isDark ? const Color(0xFF111111) : Colors.white,
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
                   items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                   onChanged: (v) => setState(() => _selectedType = v),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _notesCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('ملاحظات', Icons.notes),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'ملاحظات', Icons.notes),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 28),

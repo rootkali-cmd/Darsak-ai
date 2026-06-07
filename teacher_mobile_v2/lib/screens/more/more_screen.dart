@@ -150,7 +150,7 @@ class _MoreOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: GlassTheme.glassCard,
+      decoration: GlassTheme.glassCard(context),
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -158,8 +158,8 @@ class _MoreOption extends StatelessWidget {
           backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color, size: 22),
         ),
-        title: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
+        title: Text(label, style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w500)),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: GlassTheme.iconSecondary(context)),
       ),
     );
   }

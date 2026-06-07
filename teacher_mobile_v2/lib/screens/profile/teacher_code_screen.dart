@@ -62,8 +62,9 @@ class _TeacherCodeScreenState extends State<TeacherCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('كود المدرس'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
@@ -83,7 +84,7 @@ class _TeacherCodeScreenState extends State<TeacherCodeScreen> {
                           child: const Icon(Icons.error_outline, size: 56, color: AppTheme.warning),
                         ),
                         const SizedBox(height: 16),
-                        Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                        Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
@@ -105,7 +106,7 @@ class _TeacherCodeScreenState extends State<TeacherCodeScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(16),
-                          decoration: GlassTheme.glassCard,
+                          decoration: GlassTheme.glassCard(context),
                           child: QrImageView(
                             data: _code,
                             version: QrVersions.auto,
@@ -174,9 +175,9 @@ class _TeacherCodeScreenState extends State<TeacherCodeScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'شارك هذا الكود مع طلابك للانضمام لمجموعاتك',
-                          style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                          style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context)),
                           textAlign: TextAlign.center,
                         ),
                       ],

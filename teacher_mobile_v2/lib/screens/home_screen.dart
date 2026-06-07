@@ -212,10 +212,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.local_offer_rounded, color: AppTheme.warning, size: 22),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'جرب الباقة الأساسية مجاناً لمدة 30 يوم',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context)),
                 ),
               ),
               GestureDetector(
@@ -223,10 +223,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: GlassTheme.cardBg(context),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.close, size: 16, color: Color(0xFF94A3B8)),
+                  child: Icon(Icons.close, size: 16, color: GlassTheme.textSecondary(context)),
                 ),
               ),
             ],

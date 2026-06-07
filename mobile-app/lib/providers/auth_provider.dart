@@ -119,10 +119,21 @@ class AuthProvider extends ChangeNotifier {
         _teacherCode = teacherCode;
       }
 
-      // Fetch full profile
-      final profile = await _api.getProfile();
-      _student = StudentModel.fromJson(profile);
-      LocalDB.saveProfile(profile);
+      // Fetch full profile — if this fails, still treat login as successful
+      // (the profile can be loaded later from tryAutoLogin)
+      try {
+        final profile = await _api.getProfile();
+        _student = StudentModel.fromJson(profile);
+        LocalDB.saveProfile(profile);
+      } catch (_) {
+        // Profile fetch failed after login — build minimal student from login data
+        _student = StudentModel(
+          id: response['student_id']?.toString() ?? '',
+          code: response['student_code']?.toString() ?? code,
+          fullName: '',
+          createdAt: DateTime.now(),
+        );
+      }
 
       // Check subscription
       try {
@@ -155,30 +166,61 @@ class AuthProvider extends ChangeNotifier {
   }
 
   String _mapLoginError(dynamic e) {
-    String raw = 'خطأ في كود الطالب أو PIN';
     if (e is DioException && e.response != null) {
       final data = e.response?.data;
       final statusCode = e.response?.statusCode;
+
+      // Extract the detail/message string from the response
+      String raw = '';
       if (data is Map<String, dynamic>) {
         raw = data['detail'] as String? ??
             data['message'] as String? ??
             data['error'] as String? ??
-            raw;
+            '';
       } else if (data is String && data.isNotEmpty) {
         raw = data;
       }
-      // Map by status code for reliable Arabic messages
-      if (statusCode == 404 || raw.toLowerCase().contains('not found') || raw.contains('غير موجود')) {
-        return 'الحساب غير موجود';
+
+      // Rate limiting (429)
+      if (statusCode == 429) {
+        // Backend returns specific Arabic messages for rate limiting
+        if (raw.isNotEmpty) return raw;
+        return 'تم حظر حسابك مؤقتاً بسبب محاولات كثيرة. حاول مرة أخرى لاحقاً.';
       }
-      if (statusCode == 403 || raw.toLowerCase().contains('suspend') || raw.contains('معلّق') || raw.contains('محظور')) {
+
+      // Suspended / banned (403)
+      if (statusCode == 403 || raw.contains('معلّق') || raw.contains('محظور') || raw.toLowerCase().contains('suspend')) {
         return 'تم تعليق الحساب';
       }
-      if (statusCode == 401 || raw.toLowerCase().contains('invalid') || raw.toLowerCase().contains('incorrect') || raw.contains('غير صحيحة') || raw.contains('خطأ')) {
+
+      // Specific backend Arabic messages for 401 errors — match exactly what the backend sends
+      if (raw == 'الكود غير صحيح') return 'كود الطالب غير صحيح';
+      if (raw == 'الرمز السري غير صحيح') return 'كلمة المرور غير صحيحة';
+      if (raw == 'الرمز السري غير مُعيّن') return 'لم يتم تعيين رمز سري لهذا الحساب';
+      if (raw == 'الطالب غير مسجل لدى هذا المعلم') return 'الطالب غير مسجل لدى هذا المعلم';
+
+      // Fallback for any other 401
+      if (statusCode == 401) {
+        if (raw.isNotEmpty) return raw;
         return 'الكود أو كلمة المرور غير صحيحة';
       }
+
+      // Any other error with a message — show the backend message
+      if (raw.isNotEmpty) return raw;
     }
-    return 'الكود أو كلمة المرور غير صحيحة';
+
+    // Non-Dio errors (timeout, no internet, etc.)
+    if (e is DioException) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return 'انتهت مهلة الاتصال. تحقق من اتصال الإنترنت وحاول مرة أخرى.';
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        return 'لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت.';
+      }
+    }
+
+    return 'حدث خطأ غير متوقع. حاول مرة أخرى.';
   }
 
   Future<void> refreshSubscription() async {

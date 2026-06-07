@@ -108,8 +108,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('المجموعات'),
       floatingActionButton: GlassTheme.glassFAB(_addGroup),
       body: RefreshIndicator(
@@ -120,13 +121,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
             : _error != null
                 ? _buildError()
                 : _groups.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.group_work_outlined, size: 64, color: Color(0xFF94A3B8)),
-                            SizedBox(height: 16),
-                            Text('لا توجد مجموعات', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
+                            Icon(Icons.group_work_outlined, size: 64, color: GlassTheme.textSecondary(context)),
+                            const SizedBox(height: 16),
+                            Text('لا توجد مجموعات', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 16)),
                           ],
                         ),
                       )
@@ -138,7 +139,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                           final subject = g['subject'] ?? '';
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
-                            decoration: GlassTheme.glassCard,
+                            decoration: GlassTheme.glassCard(context),
                             child: ListTile(
                               onTap: () => _editGroup(g),
                               onLongPress: () => _deleteGroup(g),
@@ -147,15 +148,15 @@ class _GroupsScreenState extends State<GroupsScreen> {
                                 backgroundColor: GlassTheme.cyan.withValues(alpha: 0.15),
                                 child: Icon(_getSubjectIcon(subject), color: GlassTheme.cyan, size: 22),
                               ),
-                              title: Text(g['name'] ?? 'بدون اسم', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                              subtitle: Text(subject.isNotEmpty ? subject : 'بدون مادة', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                              title: Text(g['name'] ?? 'بدون اسم', style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w500)),
+                              subtitle: Text(subject.isNotEmpty ? subject : 'بدون مادة', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13)),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (g['day_of_week'] != null || g['time_slot'] != null)
                                     Text(
                                       [g['day_of_week'] ?? '', g['time_slot'] ?? ''].where((s) => s.toString().isNotEmpty).join(' • '),
-                                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                      style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context)),
                                     ),
                                 ],
                               ),
@@ -174,7 +175,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: _loadGroups, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
         ],

@@ -154,8 +154,9 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(
         _isEdit ? 'تعديل الطالب' : 'طالب جديد',
         actions: [
@@ -172,42 +173,42 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
           key: _formKey,
           child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormField(
                   controller: _nameCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الاسم الكامل *', Icons.person),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'الاسم الكامل *', Icons.person),
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _codeCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الكود (اختياري)', Icons.qr_code),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'الكود (اختياري)', Icons.qr_code),
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _phoneCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('هاتف ولي الأمر', Icons.phone),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'هاتف ولي الأمر', Icons.phone),
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   value: _selectedGroupId,
-                  decoration: GlassTheme.glassFormInput('المجموعة', Icons.group),
-                  dropdownColor: const Color(0xFF111111),
-                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput(context, 'المجموعة', Icons.group),
+                  dropdownColor: isDark ? const Color(0xFF111111) : Colors.white,
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
                   items: [
-                    const DropdownMenuItem<String>(
+                    DropdownMenuItem<String>(
                       value: null,
-                      child: Text('بدون مجموعة', style: TextStyle(color: Color(0xFF94A3B8))),
+                      child: Text('بدون مجموعة', style: TextStyle(color: GlassTheme.textSecondary(context))),
                     ),
                     ..._groups.map<DropdownMenuItem<String>>((g) {
                       return DropdownMenuItem<String>(
@@ -221,8 +222,8 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _pinCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الرمز السري', Icons.lock),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'الرمز السري', Icons.lock),
                   keyboardType: TextInputType.number,
                   obscureText: true,
                 ),

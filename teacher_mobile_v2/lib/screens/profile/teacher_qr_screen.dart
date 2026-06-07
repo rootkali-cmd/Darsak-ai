@@ -65,8 +65,9 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('رمز QR للمدرس'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
@@ -80,7 +81,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(16),
-                          decoration: GlassTheme.glassCard,
+                          decoration: GlassTheme.glassCard(context),
                           child: QrImageView(
                             data: _code,
                             version: QrVersions.auto,
@@ -150,9 +151,9 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
+                        Text(
                           'اطلب من طلابك مسح رمز QR للانضمام إلى مجموعاتك',
-                          style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                          style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context)),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -180,7 +181,7 @@ class _TeacherQrScreenState extends State<TeacherQrScreen> {
             const SizedBox(height: 20),
             Text(
               _error!,
-              style: const TextStyle(fontSize: 15, color: Colors.white70),
+              style: TextStyle(fontSize: 15, color: GlassTheme.textMuted(context)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),

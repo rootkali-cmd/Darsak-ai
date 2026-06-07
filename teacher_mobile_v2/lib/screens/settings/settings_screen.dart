@@ -131,17 +131,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (sub == null) {
       return Container(
         padding: const EdgeInsets.all(16),
-        decoration: GlassTheme.glassCard,
+        decoration: GlassTheme.glassCard(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(children: [
-              Icon(Icons.subscriptions, color: Color(0xFF94A3B8)),
-              SizedBox(width: 8),
-              Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            Row(children: [
+              const Icon(Icons.subscriptions, color: Color(0xFF94A3B8)),
+              const SizedBox(width: 8),
+              Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
             ]),
             const SizedBox(height: 12),
-            const Text('لا يوجد اشتراك نشط', style: TextStyle(color: Color(0xFF94A3B8))),
+            Text('لا يوجد اشتراك نشط', style: TextStyle(color: GlassTheme.textSecondary(context))),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -189,14 +189,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: GlassTheme.glassCard,
+      decoration: GlassTheme.glassCard(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(children: [
-            Icon(Icons.subscriptions, color: GlassTheme.indigo),
-            SizedBox(width: 8),
-            Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          Row(children: [
+            const Icon(Icons.subscriptions, color: GlassTheme.indigo),
+            const SizedBox(width: 8),
+            Text('الاشتراك', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
           ]),
           const SizedBox(height: 16),
           Row(
@@ -235,7 +235,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Text(
                       planName,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context)),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -270,7 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Expanded(
                   child: Text(
                     'سينتهي اشتراكك خلال $daysRemaining أيام. جدده الآن لتجنب انقطاع الخدمة.',
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    style: TextStyle(fontSize: 12, color: GlassTheme.textMuted(context)),
                   ),
                 ),
               ]),
@@ -329,12 +329,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildSectionHeader('المظهر'),
           Container(
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               children: [
                 SwitchListTile(
                   secondary: Icon(themeProvider.isDark ? Icons.dark_mode : Icons.light_mode, color: GlassTheme.indigo),
-                  title: const Text('الوضع الداكن', style: TextStyle(color: Colors.white)),
+                  title: Text('الوضع الداكن', style: TextStyle(color: GlassTheme.textPrimary(context))),
                   value: themeProvider.isDark,
                   onChanged: (_) => context.read<ThemeProvider>().toggle(),
                   activeTrackColor: GlassTheme.indigo,
@@ -345,12 +345,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 16),
           _buildSectionHeader('الإشعارات'),
           Container(
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.notifications, color: AppTheme.warning),
-                  title: const Text('تفعيل الإشعارات', style: TextStyle(color: Colors.white)),
+                  title: Text('تفعيل الإشعارات', style: TextStyle(color: GlassTheme.textPrimary(context))),
                   trailing: Switch(
                     value: _notificationsEnabled,
                     onChanged: _toggleNotifications,
@@ -366,16 +366,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 16),
           _buildSectionHeader('اللغة'),
           Container(
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: ListTile(
               leading: const Icon(Icons.language, color: GlassTheme.cyan),
-              title: const Text('اللغة', style: TextStyle(color: Colors.white)),
-              trailing: const Row(
+              title: Text('اللغة', style: TextStyle(color: GlassTheme.textPrimary(context))),
+              trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('العربية', style: TextStyle(color: Color(0xFF94A3B8))),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF94A3B8)),
+                  Text('العربية', style: TextStyle(color: GlassTheme.textSecondary(context))),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward_ios, size: 14, color: GlassTheme.textSecondary(context)),
                 ],
               ),
             ),
@@ -383,26 +383,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           _buildSectionHeader('حول التطبيق'),
           Container(
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline, color: GlassTheme.green),
-                  title: const Text('الإصدار', style: TextStyle(color: Colors.white)),
-                  trailing: Text(_version, style: const TextStyle(color: Color(0xFF94A3B8))),
+                  title: Text('الإصدار', style: TextStyle(color: GlassTheme.textPrimary(context))),
+                  trailing: Text(_version, style: TextStyle(color: GlassTheme.textSecondary(context))),
                 ),
-                Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+                Divider(height: 1, color: GlassTheme.cardBorder(context)),
                 ListTile(
                   leading: const Icon(Icons.system_update, color: GlassTheme.indigo),
-                  title: const Text('التحقق من التحديثات', style: TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF94A3B8)),
+                  title: Text('التحقق من التحديثات', style: TextStyle(color: GlassTheme.textPrimary(context))),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 14, color: GlassTheme.textSecondary(context)),
                   onTap: _checkForUpdate,
                 ),
-                Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+                Divider(height: 1, color: GlassTheme.cardBorder(context)),
                 ListTile(
                   leading: const Icon(Icons.code, color: GlassTheme.indigo),
-                  title: const Text('تطبيق درسك AI', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('للمدرسين', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                  title: Text('تطبيق درسك AI', style: TextStyle(color: GlassTheme.textPrimary(context))),
+                  subtitle: Text('للمدرسين', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 12)),
                 ),
               ],
             ),
@@ -417,10 +417,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF94A3B8),
+          color: GlassTheme.textSecondary(context),
         ),
       ),
     );

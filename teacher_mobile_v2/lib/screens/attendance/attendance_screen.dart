@@ -29,15 +29,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(
         'الحضور',
         bottom: TabBar(
           controller: _tabCtrl,
           indicatorColor: GlassTheme.indigo,
-          labelColor: Colors.white,
-          unselectedLabelColor: const Color(0xFF94A3B8),
+          labelColor: GlassTheme.textPrimary(context),
+          unselectedLabelColor: GlassTheme.textSecondary(context),
           tabs: const [
             Tab(text: 'اليوم'),
             Tab(text: 'السجل'),
@@ -120,7 +121,7 @@ class _TodayTabState extends State<_TodayTab> {
                     children: [
                       const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
                       const SizedBox(height: 12),
-                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                      Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
                       const SizedBox(height: 16),
                       ElevatedButton(onPressed: _loadToday, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
                     ],
@@ -134,23 +135,23 @@ class _TodayTabState extends State<_TodayTab> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: Row(
                           children: [
-                            GlassTheme.glassFilterChip('الكل', _filter == 'all', GlassTheme.indigo, () => setState(() => _filter = 'all')),
+                            GlassTheme.glassFilterChip(context, 'الكل', _filter == 'all', GlassTheme.indigo, () => setState(() => _filter = 'all')),
                             const SizedBox(width: 8),
-                            GlassTheme.glassFilterChip('حاضر', _filter == 'present', GlassTheme.green, () => setState(() => _filter = 'present')),
+                            GlassTheme.glassFilterChip(context, 'حاضر', _filter == 'present', GlassTheme.green, () => setState(() => _filter = 'present')),
                             const SizedBox(width: 8),
-                            GlassTheme.glassFilterChip('غائب', _filter == 'absent', GlassTheme.red, () => setState(() => _filter = 'absent')),
+                            GlassTheme.glassFilterChip(context, 'غائب', _filter == 'absent', GlassTheme.red, () => setState(() => _filter = 'absent')),
                           ],
                         ),
                       ),
                     Expanded(
                       child: _filteredAttendance.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.fact_check_outlined, size: 64, color: Color(0xFF94A3B8)),
-                                  SizedBox(height: 16),
-                                  Text('لا يوجد حضور اليوم', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
+                                  Icon(Icons.fact_check_outlined, size: 64, color: GlassTheme.textSecondary(context)),
+                                  const SizedBox(height: 16),
+                                  Text('لا يوجد حضور اليوم', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 16)),
                                 ],
                               ),
                             )
@@ -163,14 +164,14 @@ class _TodayTabState extends State<_TodayTab> {
                                 final isPresent = status == 'present';
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 8),
-                                  decoration: GlassTheme.glassCard,
+                                  decoration: GlassTheme.glassCard(context),
                                   child: ListTile(
                                     leading: Icon(
                                       isPresent ? Icons.check_circle : Icons.cancel,
                                       color: isPresent ? GlassTheme.green : GlassTheme.red,
                                     ),
-                                    title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: const TextStyle(color: Colors.white)),
-                                    subtitle: Text(a['date'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8))),
+                                    title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context))),
+                                    subtitle: Text(a['date'] ?? '', style: TextStyle(color: GlassTheme.textSecondary(context))),
                                     trailing: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
@@ -256,11 +257,11 @@ class _HistoryTabState extends State<_HistoryTab> {
             onTap: _pickDate,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: GlassTheme.glassCard,
+              decoration: GlassTheme.glassCard(context),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(dateStr, style: const TextStyle(fontSize: 15, color: Colors.white)),
+                  Text(dateStr, style: TextStyle(fontSize: 15, color: GlassTheme.textPrimary(context))),
                   const Icon(Icons.calendar_today, color: GlassTheme.indigo),
                 ],
               ),
@@ -278,15 +279,15 @@ class _HistoryTabState extends State<_HistoryTab> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                            Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
                             const SizedBox(height: 12),
                             ElevatedButton(onPressed: _loadByDate, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
                           ],
                         ),
                       )
                     : _attendance.isEmpty
-                        ? const Center(
-                            child: Text('لا توجد سجلات حضور', style: TextStyle(color: Color(0xFF94A3B8))),
+                        ? Center(
+                            child: Text('لا توجد سجلات حضور', style: TextStyle(color: GlassTheme.textSecondary(context))),
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -297,14 +298,14 @@ class _HistoryTabState extends State<_HistoryTab> {
                               final isPresent = status == 'present';
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
-                                decoration: GlassTheme.glassCard,
+                                decoration: GlassTheme.glassCard(context),
                                 child: ListTile(
                                   leading: Icon(
                                     isPresent ? Icons.check_circle : Icons.cancel,
                                     color: isPresent ? GlassTheme.green : GlassTheme.red,
                                   ),
-                                  title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: const TextStyle(color: Colors.white)),
-                                  subtitle: Text(a['date'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8))),
+                                  title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context))),
+                                  subtitle: Text(a['date'] ?? '', style: TextStyle(color: GlassTheme.textSecondary(context))),
                                   trailing: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(

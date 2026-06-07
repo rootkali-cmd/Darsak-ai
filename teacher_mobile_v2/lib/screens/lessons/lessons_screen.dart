@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../core/glass_theme.dart';
 
 class LessonsScreen extends StatelessWidget {
   const LessonsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text('الدروس', style: TextStyle(color: Colors.white)),
+        title: Text('الدروس', style: TextStyle(color: GlassTheme.textPrimary(context))),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -22,19 +24,19 @@ class LessonsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.07),
+                  color: GlassTheme.cardBg(context),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  border: Border.all(color: GlassTheme.cardBorder(context)),
                 ),
                 child: const Icon(Icons.construction, size: 48, color: Color(0xFFF59E0B)),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'قريباً إن شاء الله',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: GlassTheme.textPrimary(context),
                   fontFamily: 'Cairo',
                 ),
               ),
@@ -44,7 +46,7 @@ class LessonsScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: GlassTheme.textMuted(context),
                   fontFamily: 'Cairo',
                   height: 1.5,
                 ),

@@ -127,8 +127,9 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('المطور'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
@@ -144,7 +145,7 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
                   valueColor: _dbStatus == 'متصل' ? GlassTheme.green : GlassTheme.red,
                 ),
                 const SizedBox(height: 24),
-                const Text('التواصل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text('التواصل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
                 const SizedBox(height: 12),
                 _ContactCard(
                   icon: Icons.chat,
@@ -212,18 +213,18 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: GlassTheme.glassCard,
+      decoration: GlassTheme.glassCard(context),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: GlassTheme.indigo.withValues(alpha: 0.15),
           child: Icon(icon, color: GlassTheme.indigo, size: 22),
         ),
-        title: Text(label, style: const TextStyle(color: Colors.white)),
+        title: Text(label, style: TextStyle(color: GlassTheme.textPrimary(context))),
         trailing: Text(
           value,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: valueColor ?? const Color(0xFF94A3B8),
+            color: valueColor ?? GlassTheme.textSecondary(context),
           ),
         ),
       ),
@@ -250,7 +251,7 @@ class _ContactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: GlassTheme.glassCard,
+      decoration: GlassTheme.glassCard(context),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
@@ -267,9 +268,9 @@ class _ContactCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
                     const SizedBox(height: 4),
-                    Text(value, style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 14)),
+                    Text(value, style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 14)),
                   ],
                 ),
               ),

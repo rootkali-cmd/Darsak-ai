@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
+import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../attendance/attendance_screen.dart';
@@ -69,12 +70,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
           _buildStatsGrid(),
           const SizedBox(height: 28),
-          const Text(
+          Text(
             'إجراءات سريعة',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
+              color: GlassTheme.textPrimary(context),
               fontFamily: 'Cairo',
             ),
           ),
@@ -86,14 +87,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHeader() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 8),
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
       child: Text(
         'الرئيسية',
         style: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.bold,
-          color: AppTheme.textPrimary,
+          color: GlassTheme.textPrimary(context),
           fontFamily: 'Cairo',
         ),
       ),
@@ -110,9 +111,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
+        color: GlassTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: GlassTheme.cardBorder(context)),
       ),
       child: Row(
         children: [
@@ -122,10 +123,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   greeting,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: GlassTheme.textPrimary(context),
                     fontFamily: 'Cairo',
                   ),
                 ),
@@ -134,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   dateStr,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: GlassTheme.textSecondary(context),
                     fontFamily: 'Cairo',
                   ),
                 ),
@@ -144,10 +145,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: GlassTheme.cardBg(context),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.dashboard_rounded, color: Colors.white, size: 28),
+            child: Icon(Icons.dashboard_rounded, color: GlassTheme.iconPrimary(context), size: 28),
           ),
         ],
       ),
@@ -244,7 +245,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: AppTheme.textSecondary, fontFamily: 'Cairo'),
+              style: TextStyle(fontSize: 15, color: GlassTheme.textSecondary(context), fontFamily: 'Cairo'),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
@@ -279,21 +280,21 @@ class _QuickActionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.07),
+          color: GlassTheme.cardBg(context),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          border: Border.all(color: GlassTheme.cardBorder(context)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 28),
+            Icon(icon, color: GlassTheme.iconPrimary(context), size: 28),
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: GlassTheme.textPrimary(context),
                 fontFamily: 'Cairo',
               ),
               textAlign: TextAlign.center,
@@ -324,9 +325,9 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
+        color: GlassTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: GlassTheme.cardBorder(context)),
       ),
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -343,20 +344,20 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             count,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: GlassTheme.textPrimary(context),
               fontFamily: 'Cairo',
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: GlassTheme.textPrimary(context),
               fontFamily: 'Cairo',
             ),
           ),
@@ -365,7 +366,7 @@ class _StatCard extends StatelessWidget {
             subtitle,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: GlassTheme.textMuted(context),
               fontFamily: 'Cairo',
             ),
           ),

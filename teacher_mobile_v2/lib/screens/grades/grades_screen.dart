@@ -108,13 +108,13 @@ class _GradesScreenState extends State<GradesScreen> {
             : _error != null
                 ? _buildError()
                 : _grades.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.grade_outlined, size: 64, color: Color(0xFF94A3B8)),
-                            SizedBox(height: 16),
-                            Text('لا توجد درجات', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
+                            Icon(Icons.grade_outlined, size: 64, color: GlassTheme.textSecondary(context)),
+                            const SizedBox(height: 16),
+                            Text('لا توجد درجات', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 16)),
                           ],
                         ),
                       )
@@ -127,7 +127,7 @@ class _GradesScreenState extends State<GradesScreen> {
                           final typeColor = _getTypeColor(type);
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
-                            decoration: GlassTheme.glassCard,
+                            decoration: GlassTheme.glassCard(context),
                             child: ListTile(
                               onTap: () async {
                                 await Navigator.push(
@@ -145,8 +145,8 @@ class _GradesScreenState extends State<GradesScreen> {
                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: GlassTheme.cyan),
                                 ),
                               ),
-                              title: Text(g['student_name'] ?? g['student']?['full_name'] ?? '—', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                              subtitle: Text(g['subject'] ?? '—', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                              title: Text(g['student_name'] ?? g['student']?['full_name'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w500)),
+                              subtitle: Text(g['subject'] ?? '—', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13)),
                               trailing: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
@@ -173,7 +173,7 @@ class _GradesScreenState extends State<GradesScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: _loadGrades, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
         ],

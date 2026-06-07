@@ -102,8 +102,9 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل المجموعة' : 'مجموعة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -111,45 +112,45 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
           key: _formKey,
           child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: GlassTheme.glassCard,
+            decoration: GlassTheme.glassCard(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormField(
                   controller: _nameCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الاسم *', Icons.group),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'الاسم *', Icons.group),
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _subjectCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('المادة', Icons.book),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'المادة', Icons.book),
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _levelCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('المستوى', Icons.school),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'المستوى', Icons.school),
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   value: _days.contains(_selectedDay) ? _selectedDay : null,
-                  decoration: GlassTheme.glassFormInput('اليوم', Icons.calendar_today),
-                  dropdownColor: const Color(0xFF111111),
-                  style: const TextStyle(color: Colors.white),
+                  decoration: GlassTheme.glassFormInput(context, 'اليوم', Icons.calendar_today),
+                  dropdownColor: isDark ? const Color(0xFF111111) : Colors.white,
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
                   items: _days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                   onChanged: (v) => setState(() => _selectedDay = v),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _timeCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الوقت', Icons.access_time),
+                  style: TextStyle(color: GlassTheme.textPrimary(context)),
+                  decoration: GlassTheme.glassFormInput(context, 'الوقت', Icons.access_time),
                   textInputAction: TextInputAction.done,
                 ),
                 const SizedBox(height: 28),
