@@ -46,7 +46,14 @@ class StudentService:
 
     async def create(self, teacher_id: str, full_name: str, **kwargs) -> dict:
         import uuid
-        code = f"ST{uuid.uuid4().hex[:7].upper()}"
+        from src.core.security.sanitizer import sanitize_student_code
+
+        custom_code = kwargs.pop("code", None)
+        if custom_code:
+            code = sanitize_student_code(custom_code)
+        else:
+            code = f"ST{uuid.uuid4().hex[:7].upper()}"
+
         pin_hash = hash_password(kwargs.pop("pin")) if kwargs.get("pin") else None
 
         return await self.repo.insert({

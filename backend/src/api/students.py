@@ -120,6 +120,7 @@ async def create_student(
     student = await student_service.create(
         teacher_id=current_user["id"],
         full_name=sanitize_text(student_data.full_name) or student_data.full_name,
+        code=sanitize_student_code(student_data.code) if student_data.code else None,
         phone=sanitize_text(student_data.phone) if student_data.phone else None,
         parent_phone=sanitize_text(student_data.parent_phone) if student_data.parent_phone else None,
         grade_level=sanitize_text(student_data.grade_level) if student_data.grade_level else None,

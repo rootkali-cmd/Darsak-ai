@@ -8,6 +8,7 @@ PIN_PATTERN = r'^[A-Za-z0-9]{6,8}$'
 
 class StudentCreate(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=255)
+    code: str | None = None
     phone: str | None = None
     parent_phone: str | None = None
     grade_level: str | None = None

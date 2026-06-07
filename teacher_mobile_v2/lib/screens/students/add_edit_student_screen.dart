@@ -84,7 +84,47 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
       if (_isEdit) {
         await ApiService().dio.put('/students/${widget.student!['id']}', data: body);
       } else {
-        await ApiService().dio.post('/students/', data: body);
+        final resp = await ApiService().dio.post('/students/', data: body);
+        final created = resp.data;
+        final studentCode = created['code'] ?? '';
+
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('تم إضافة الطالب'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('كود الطالب:', style: TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      studentCode,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('أرسل هذا الكود للطالب لتسجيل الدخول', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  if (_pinCtrl.text.trim().isEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text('⚠️ لم يتم تعيين رمز سري. الطالب لن يتمكن من الدخول حتى يتم تعيين رمز.', style: TextStyle(fontSize: 11, color: AppTheme.warning)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً')),
+              ],
+            ),
+          );
+          Navigator.pop(context);
+        }
+        return;
       }
 
       if (mounted) {
