@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
@@ -17,10 +18,8 @@ class AddEditGradeScreen extends StatefulWidget {
 class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _studentIdCtrl = TextEditingController();
-  final _subjectCtrl = TextEditingController();
   final _scoreCtrl = TextEditingController();
   final _maxScoreCtrl = TextEditingController(text: '100');
-  final _typeCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   bool _saving = false;
 
@@ -29,17 +28,23 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   final List<String> _types = ['امتحان', 'واجب', 'اختبار', 'مشروع', 'شفوي'];
   String? _selectedType;
 
+  List<String> _subjects = [];
+  String? _selectedSubject;
+
+  List<dynamic> _students = [];
+
   @override
   void initState() {
     super.initState();
+    _loadSubjects();
+    _loadStudents();
     if (_isEdit) {
       final g = widget.grade!;
       _studentIdCtrl.text = g['student_id']?.toString() ?? '';
-      _subjectCtrl.text = g['subject'] ?? '';
+      _selectedSubject = g['subject'];
       _scoreCtrl.text = g['score']?.toString() ?? '';
       _maxScoreCtrl.text = g['max_score']?.toString() ?? '100';
       _selectedType = _types.contains(g['type']) ? g['type'] : null;
-      _typeCtrl.text = g['type'] ?? '';
       _notesCtrl.text = g['notes'] ?? '';
     }
   }
@@ -47,12 +52,45 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   @override
   void dispose() {
     _studentIdCtrl.dispose();
-    _subjectCtrl.dispose();
     _scoreCtrl.dispose();
     _maxScoreCtrl.dispose();
-    _typeCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSubjects() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final subjects = prefs.getStringList('onboarding_subjects');
+      if (subjects != null && subjects.isNotEmpty) {
+        _subjects = subjects;
+      } else {
+        _subjects = ['رياضيات', 'فيزياء', 'كيمياء', 'أحياء', 'عربي', 'إنجليزي', 'فرنساوي', 'ألماني', 'تاريخ', 'جغرافيا', 'فلسفة', 'علوم', 'دراسات', 'حاسب آلي'];
+      }
+      if (_isEdit && _selectedSubject != null && !_subjects.contains(_selectedSubject)) {
+        _subjects.insert(0, _selectedSubject!);
+      }
+      if (mounted) setState(() {});
+    } catch (_) {
+      _subjects = ['رياضيات', 'فيزياء', 'كيمياء', 'أحياء', 'عربي', 'إنجليزي'];
+    }
+  }
+
+  Future<void> _loadStudents() async {
+    try {
+      final resp = await ApiService().dio.get('/students/');
+      final data = resp.data;
+      if (data is Map && data.containsKey('data')) {
+        _students = data['data'] as List<dynamic>;
+      } else if (data is List) {
+        _students = data;
+      } else {
+        _students = [];
+      }
+      if (mounted) setState(() {});
+    } catch (_) {
+      _students = [];
+    }
   }
 
   Future<void> _save() async {
@@ -62,7 +100,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
     try {
       final body = {
         'student_id': int.tryParse(_studentIdCtrl.text.trim()),
-        'subject': _subjectCtrl.text.trim().isEmpty ? null : _subjectCtrl.text.trim(),
+        'subject': _selectedSubject,
         'score': int.tryParse(_scoreCtrl.text.trim()) ?? 0,
         'max_score': int.tryParse(_maxScoreCtrl.text.trim()) ?? 100,
         'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
@@ -85,17 +123,21 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
       }
     } on DioException catch (e) {
       if (mounted) {
+        String msg = 'فشل الحفظ';
+        final detail = e.response?.data;
+        if (detail is Map && detail['detail'] != null) {
+          msg = detail['detail'].toString();
+        } else {
+          msg = 'فشل الحفظ: ${getDioErrorMessage(e)}';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('فشل الحفظ: ${getDioErrorMessage(e)}'),
-            backgroundColor: AppTheme.danger,
-          ),
+          SnackBar(content: Text(msg), backgroundColor: AppTheme.danger),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.danger),
+          const SnackBar(content: Text('حدث خطأ غير متوقع. حاول مرة أخرى'), backgroundColor: AppTheme.danger),
         );
       }
     } finally {
@@ -118,19 +160,32 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
-                  controller: _studentIdCtrl,
+                DropdownButtonFormField<String>(
+                  value: _students.any((s) => s['id']?.toString() == _studentIdCtrl.text) ? _studentIdCtrl.text : null,
+                  decoration: GlassTheme.glassFormInput('الطالب', Icons.person),
+                  dropdownColor: const Color(0xFF111111),
                   style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('رقم الطالب', Icons.person),
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.next,
+                  items: _students.map<DropdownMenuItem<String>>((s) {
+                    return DropdownMenuItem<String>(
+                      value: s['id']?.toString(),
+                      child: Text(s['full_name'] ?? 'طالب'),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setState(() => _studentIdCtrl.text = v ?? ''),
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
-                  controller: _subjectCtrl,
-                  style: const TextStyle(color: Colors.white),
+                DropdownButtonFormField<String>(
+                  value: _selectedSubject,
                   decoration: GlassTheme.glassFormInput('المادة', Icons.book),
-                  textInputAction: TextInputAction.next,
+                  dropdownColor: const Color(0xFF111111),
+                  style: const TextStyle(color: Colors.white),
+                  items: _subjects.map<DropdownMenuItem<String>>((s) {
+                    return DropdownMenuItem<String>(
+                      value: s,
+                      child: Text(s),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setState(() => _selectedSubject = v),
                 ),
                 const SizedBox(height: 14),
                 Row(

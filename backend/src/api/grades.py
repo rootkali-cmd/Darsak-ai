@@ -28,7 +28,7 @@ async def _enrich_grade(g: dict) -> GradeResponse:
 
 
 async def _enrich_grades(grades: list[dict]) -> list[GradeResponse]:
-    student_ids = list({g["student_id"] for g in grades if g.get("student_id")})
+    student_ids = list({str(g["student_id"]) for g in grades if g.get("student_id")})
     students_map = {}
     for sid in student_ids:
         try:
@@ -44,11 +44,14 @@ async def _enrich_grades(grades: list[dict]) -> list[GradeResponse]:
             pass
     result = []
     for g in grades:
-        resp = GradeResponse(**g)
-        sid = str(g["student_id"])
-        if sid in students_map:
-            resp.student = students_map[sid]
-        result.append(resp)
+        try:
+            resp = GradeResponse(**g)
+            sid = str(g.get("student_id", ""))
+            if sid in students_map:
+                resp.student = students_map[sid]
+            result.append(resp)
+        except Exception:
+            continue
     return result
 
 
@@ -59,6 +62,9 @@ async def create_grade(
     current_user: dict = Depends(get_current_teacher),
 ):
     try:
+        if not grade_data.student_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="student_id is required")
+
         await enforce_grade_limit(current_user["id"])
 
         student = await student_service.get_by_id(str(grade_data.student_id))

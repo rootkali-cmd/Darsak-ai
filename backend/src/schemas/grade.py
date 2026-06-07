@@ -4,8 +4,8 @@ from datetime import datetime
 
 
 class GradeCreate(BaseModel):
-    student_id: UUID
-    exam_name: str = Field(..., min_length=1, max_length=255)
+    student_id: UUID | None = None
+    exam_name: str = Field(default="Exam", min_length=1, max_length=255)
     subject: str = Field(..., min_length=2, max_length=100)
     score: float = Field(..., ge=0)
     max_score: float = Field(default=100.0, gt=0)
@@ -38,13 +38,13 @@ class GradeResponse(BaseModel):
     id: UUID
     student_id: UUID
     teacher_id: UUID
-    exam_name: str
-    subject: str
-    score: float
-    max_score: float
+    exam_name: str = ""
+    subject: str = ""
+    score: float = 0
+    max_score: float = 100
     wrong_questions: list[int] | None = None
     notes: str | None = None
-    created_at: datetime
+    created_at: datetime | None = None
     student: StudentBrief | None = None
 
     model_config = {"from_attributes": True}

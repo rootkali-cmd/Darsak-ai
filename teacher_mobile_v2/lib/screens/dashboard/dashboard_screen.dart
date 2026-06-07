@@ -7,7 +7,6 @@ import '../../core/error_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../attendance/attendance_screen.dart';
 import '../students/add_edit_student_screen.dart';
-import '../lessons/lesson_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -111,19 +110,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
@@ -155,7 +144,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: Colors.white.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.dashboard_rounded, color: Colors.white, size: 28),
@@ -180,7 +169,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           count: _safeStat('total_students'),
           subtitle: 'الطلاب المسجلين',
           color: const Color(0xFF3B82F6),
-          gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
         ),
         _StatCard(
           icon: Icons.groups_rounded,
@@ -188,7 +176,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           count: _safeStat('total_groups'),
           subtitle: 'المجموعات الدراسية',
           color: const Color(0xFF8B5CF6),
-          gradient: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
         ),
         _StatCard(
           icon: Icons.fact_check_rounded,
@@ -196,7 +183,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           count: _safeStat('today_attendance'),
           subtitle: 'حضور اليوم',
           color: const Color(0xFF10B981),
-          gradient: const [Color(0xFF10B981), Color(0xFF059669)],
         ),
         _StatCard(
           icon: Icons.receipt_rounded,
@@ -204,7 +190,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           count: _safeStat('total_revenue'),
           subtitle: 'إجمالي الإيرادات',
           color: const Color(0xFFF59E0B),
-          gradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
         ),
       ],
     );
@@ -233,30 +218,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AddEditStudentScreen()),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.play_circle_fill,
-            label: 'إضافة درس',
-            color: AppTheme.accent,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LessonDetailScreen()),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.upload_file,
-            label: 'رفع فيديو',
-            color: AppTheme.danger,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LessonDetailScreen()),
             ),
           ),
         ),
@@ -318,23 +279,21 @@ class _QuickActionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? color.withValues(alpha: 0.1)
-              : color.withValues(alpha: 0.06),
+          color: Colors.white.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 28),
+            Icon(icon, color: Colors.white, size: 28),
             const SizedBox(height: 8),
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: color,
+                color: Colors.white,
                 fontFamily: 'Cairo',
               ),
               textAlign: TextAlign.center,
@@ -352,7 +311,6 @@ class _StatCard extends StatelessWidget {
   final String count;
   final String subtitle;
   final Color color;
-  final List<Color> gradient;
 
   const _StatCard({
     required this.icon,
@@ -360,26 +318,15 @@ class _StatCard extends StatelessWidget {
     required this.count,
     required this.subtitle,
     required this.color,
-    required this.gradient,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -388,10 +335,10 @@ class _StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 26),
+            child: Icon(icon, color: color, size: 26),
           ),
           const SizedBox(height: 10),
           Text(
@@ -418,7 +365,7 @@ class _StatCard extends StatelessWidget {
             subtitle,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withValues(alpha: 0.7),
               fontFamily: 'Cairo',
             ),
           ),

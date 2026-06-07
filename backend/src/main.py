@@ -32,6 +32,7 @@ from src.api import (
     whatsapp_router,
     quiz_router,
     admin_router,
+    subjects_router,
 )
 
 settings = get_settings()
@@ -48,6 +49,8 @@ async def _run_schema_migrations():
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);"))
+            await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES groups(id) ON DELETE SET NULL;"))
+            await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;"))
 
             # Force groups.level from enum to text
             await conn.execute(text("""
@@ -68,7 +71,7 @@ async def _run_schema_migrations():
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS payment_requests (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
                     phone_number VARCHAR(20) NOT NULL,
                     amount DECIMAL(10,2) NOT NULL,
@@ -82,7 +85,7 @@ async def _run_schema_migrations():
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS notifications (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     title VARCHAR(255) NOT NULL,
                     body TEXT NOT NULL,
                     type VARCHAR(50) DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error')),
@@ -93,7 +96,7 @@ async def _run_schema_migrations():
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS exams (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     title VARCHAR(255) NOT NULL,
                     description TEXT,
                     duration_minutes INT NOT NULL DEFAULT 30,
@@ -201,6 +204,15 @@ async def _run_schema_migrations():
             await conn.execute(text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_channel_id VARCHAR(100);"
             ))
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS subjects JSONB DEFAULT '[]'::jsonb;"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS levels JSONB DEFAULT '[]'::jsonb;"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;"
+            ))
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS quizzes (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -269,6 +281,44 @@ async def _run_schema_migrations():
                 ('notification', 'payment_approved', 'تم تأكيد الدفع', '✅ تم تأكيد الدفع بقيمة {amount} ج.م للطالب {student_name}'),
                 ('notification', 'payment_rejected', 'تم رفض الدفع', '❌ تم رفض الدفع بقيمة {amount} ج.م للطالب {student_name}')
                 ON CONFLICT DO NOTHING;
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS subscription_plans (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    description TEXT,
+                    price_egp DECIMAL(10,2) DEFAULT 0,
+                    max_students INT DEFAULT 100,
+                    ai_requests_per_month INT DEFAULT 10,
+                    storage_limit_gb INT DEFAULT 2,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS subscription_codes (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    code VARCHAR(100) NOT NULL UNIQUE,
+                    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+                    is_used BOOLEAN DEFAULT FALSE,
+                    used_by_teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    used_at TIMESTAMPTZ,
+                    expires_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS teacher_subscriptions (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+                    code_id VARCHAR(255),
+                    is_active BOOLEAN DEFAULT TRUE,
+                    expires_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
             """))
             await conn.commit()
             # Refresh Supabase PostgREST schema cache
@@ -559,3 +609,4 @@ app.include_router(video_analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)
 app.include_router(quiz_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
+app.include_router(subjects_router, prefix=settings.API_V1_PREFIX)

@@ -14,25 +14,44 @@ class GlassTheme {
     border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
   );
 
+  static BoxDecoration glassCardLight(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (isDark) {
+      return glassCard;
+    }
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFE2E8F0)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 12,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
+  }
+
   static BoxDecoration glassCardColored(Color color) => BoxDecoration(
     color: color.withValues(alpha: 0.10),
     borderRadius: BorderRadius.circular(20),
     border: Border.all(color: color.withValues(alpha: 0.25)),
   );
 
-  static InputDecoration glassInput(String hint, IconData icon) => InputDecoration(
+  static InputDecoration glassInput(String hint, IconData icon, {bool isDark = true}) => InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-    prefixIcon: Icon(icon, color: Colors.white54),
+    hintStyle: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+    prefixIcon: Icon(icon, color: isDark ? Colors.white54 : Colors.black45),
     filled: true,
-    fillColor: Colors.white.withValues(alpha: 0.06),
+    fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -41,19 +60,19 @@ class GlassTheme {
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   );
 
-  static InputDecoration glassFormInput(String label, IconData icon) => InputDecoration(
+  static InputDecoration glassFormInput(String label, IconData icon, {bool isDark = true}) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
-    prefixIcon: Icon(icon, color: Colors.white54),
+    labelStyle: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+    prefixIcon: Icon(icon, color: isDark ? Colors.white54 : Colors.black45),
     filled: true,
-    fillColor: Colors.white.withValues(alpha: 0.06),
+    fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),

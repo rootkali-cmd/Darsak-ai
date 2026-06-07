@@ -24,9 +24,9 @@ class AttendanceResponse(BaseModel):
     student_id: UUID
     group_id: UUID | None = None
     teacher_id: UUID
-    status: AttendanceStatus
-    date: date_type
+    status: AttendanceStatus = AttendanceStatus.absent
+    date: date_type | None = None
     notes: str | None = None
-    created_at: datetime
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}

@@ -19,22 +19,25 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
   final _nameCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _groupIdCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
   bool _saving = false;
   bool _deleting = false;
+
+  List<dynamic> _groups = [];
+  String? _selectedGroupId;
 
   bool get _isEdit => widget.student != null;
 
   @override
   void initState() {
     super.initState();
+    _loadGroups();
     if (_isEdit) {
       final s = widget.student!;
       _nameCtrl.text = s['full_name'] ?? '';
       _codeCtrl.text = s['code'] ?? '';
       _phoneCtrl.text = s['parent_phone'] ?? '';
-      _groupIdCtrl.text = s['group_id']?.toString() ?? '';
+      _selectedGroupId = s['group_id']?.toString();
       _pinCtrl.text = s['pin']?.toString() ?? '';
     }
   }
@@ -44,9 +47,25 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
     _nameCtrl.dispose();
     _codeCtrl.dispose();
     _phoneCtrl.dispose();
-    _groupIdCtrl.dispose();
     _pinCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadGroups() async {
+    try {
+      final resp = await ApiService().dio.get('/groups/');
+      final data = resp.data;
+      if (data is Map && data.containsKey('data')) {
+        _groups = data['data'] as List<dynamic>;
+      } else if (data is List) {
+        _groups = data;
+      } else {
+        _groups = [];
+      }
+      if (mounted) setState(() {});
+    } catch (_) {
+      _groups = [];
+    }
   }
 
   Future<void> _save() async {
@@ -54,11 +73,11 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
 
     setState(() => _saving = true);
     try {
-      final body = {
+      final body = <String, dynamic>{
         'full_name': _nameCtrl.text.trim(),
         'code': _codeCtrl.text.trim().isEmpty ? null : _codeCtrl.text.trim(),
         'parent_phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        'group_id': _groupIdCtrl.text.trim().isEmpty ? null : _groupIdCtrl.text.trim(),
+        'group_id': _selectedGroupId,
         'pin': _pinCtrl.text.trim().isEmpty ? null : _pinCtrl.text.trim(),
       };
 
@@ -79,17 +98,21 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
       }
     } on DioException catch (e) {
       if (mounted) {
+        String msg = 'فشل الحفظ';
+        final detail = e.response?.data;
+        if (detail is Map && detail['detail'] != null) {
+          msg = detail['detail'].toString();
+        } else {
+          msg = 'فشل الحفظ: ${getDioErrorMessage(e)}';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('فشل الحفظ: ${getDioErrorMessage(e)}'),
-            backgroundColor: AppTheme.danger,
-          ),
+          SnackBar(content: Text(msg), backgroundColor: AppTheme.danger),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.danger),
+          const SnackBar(content: Text('حدث خطأ غير متوقع. حاول مرة أخرى'), backgroundColor: AppTheme.danger),
         );
       }
     } finally {
@@ -164,7 +187,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                 TextFormField(
                   controller: _codeCtrl,
                   style: const TextStyle(color: Colors.white),
-                  decoration: GlassTheme.glassFormInput('الكود', Icons.qr_code),
+                  decoration: GlassTheme.glassFormInput('الكود (اختياري)', Icons.qr_code),
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
@@ -176,12 +199,24 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
-                  controller: _groupIdCtrl,
-                  style: const TextStyle(color: Colors.white),
+                DropdownButtonFormField<String>(
+                  value: _selectedGroupId,
                   decoration: GlassTheme.glassFormInput('المجموعة', Icons.group),
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.next,
+                  dropdownColor: const Color(0xFF111111),
+                  style: const TextStyle(color: Colors.white),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('بدون مجموعة', style: TextStyle(color: Color(0xFF94A3B8))),
+                    ),
+                    ..._groups.map<DropdownMenuItem<String>>((g) {
+                      return DropdownMenuItem<String>(
+                        value: g['id']?.toString(),
+                        child: Text(g['name'] ?? 'مجموعة'),
+                      );
+                    }),
+                  ],
+                  onChanged: (v) => setState(() => _selectedGroupId = v),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

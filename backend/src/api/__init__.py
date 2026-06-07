@@ -19,10 +19,12 @@ from src.api.video_analytics import router as video_analytics_router
 from src.api.whatsapp_notifications import router as whatsapp_router
 from src.api.quiz import router as quiz_router
 from src.api.admin import router as admin_router
+from src.api.subjects import router as subjects_router
 
 __all__ = [
     "admin_router",
     "audit_router",
     "dashboard_router",
     "quiz_router",
+    "subjects_router",
 ]

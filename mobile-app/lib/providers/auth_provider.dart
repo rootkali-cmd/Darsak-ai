@@ -101,10 +101,13 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> login(String code, String pin, {String? teacherCode}) async {
     _error = null;
-    // Don't change status to loading — AuthGate would rebuild and break the flow.
-    // LoginScreen manages its own loading indicator locally.
 
     try {
+      // Clear stale token so the interceptor won't send it during login
+      await _storage.delete(key: AppConstants.storageKeyToken);
+      // Clear cached profile so old data isn't shown
+      LocalDB.clearAll();
+
       final response = await _api.login(code, pin, teacherCode: teacherCode);
       final token = response['access_token'] as String;
 
@@ -141,23 +144,41 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      String message = 'خطأ في كود الطالب أو PIN';
-      if (e is DioException && e.response != null) {
-        final data = e.response?.data;
-        if (data is Map<String, dynamic>) {
-          message = data['detail'] as String? ??
-              data['message'] as String? ??
-              data['error'] as String? ??
-              message;
-        } else if (data is String && data.isNotEmpty) {
-          message = data;
-        }
-      }
+      String message = _mapLoginError(e);
       _error = message;
+      // Clear any leftover token on failure
+      await _storage.delete(key: AppConstants.storageKeyToken);
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
     }
+  }
+
+  String _mapLoginError(dynamic e) {
+    String raw = 'خطأ في كود الطالب أو PIN';
+    if (e is DioException && e.response != null) {
+      final data = e.response?.data;
+      final statusCode = e.response?.statusCode;
+      if (data is Map<String, dynamic>) {
+        raw = data['detail'] as String? ??
+            data['message'] as String? ??
+            data['error'] as String? ??
+            raw;
+      } else if (data is String && data.isNotEmpty) {
+        raw = data;
+      }
+      // Map by status code for reliable Arabic messages
+      if (statusCode == 404 || raw.toLowerCase().contains('not found') || raw.contains('غير موجود')) {
+        return 'الحساب غير موجود';
+      }
+      if (statusCode == 403 || raw.toLowerCase().contains('suspend') || raw.contains('معلّق') || raw.contains('محظور')) {
+        return 'تم تعليق الحساب';
+      }
+      if (statusCode == 401 || raw.toLowerCase().contains('invalid') || raw.toLowerCase().contains('incorrect') || raw.contains('غير صحيحة') || raw.contains('خطأ')) {
+        return 'الكود أو كلمة المرور غير صحيحة';
+      }
+    }
+    return 'الكود أو كلمة المرور غير صحيحة';
   }
 
   Future<void> refreshSubscription() async {

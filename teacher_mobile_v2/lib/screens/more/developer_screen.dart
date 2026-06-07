@@ -20,7 +20,6 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
   bool _loading = true;
 
   static const _appName = 'درسك AI';
-  static const _apiUrl = 'https://darsak-backend.fly.dev/api';
   static const _whatsappNumber = '01031524947';
   static const _telegramUser = 'G_M_L_M';
   static const _email = 'support@darsakai.com';
@@ -138,7 +137,6 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
               children: [
                 _InfoCard(icon: Icons.info_outline, label: 'التطبيق', value: _appName),
                 _InfoCard(icon: Icons.system_update, label: 'إصدار التطبيق', value: _appVersion),
-                _InfoCard(icon: Icons.link, label: 'API URL', value: _apiUrl),
                 _InfoCard(
                   icon: Icons.storage,
                   label: 'حالة قاعدة البيانات',

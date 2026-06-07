@@ -5,7 +5,6 @@ import '../../services/update_service.dart';
 import '../profile/profile_screen.dart';
 import '../profile/teacher_code_screen.dart';
 import '../settings/settings_screen.dart';
-import '../lessons/lessons_screen.dart';
 import '../subscriptions/subscription_screen.dart';
 import '../exams/exams_screen.dart';
 import 'developer_screen.dart';
@@ -15,8 +14,9 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('المزيد'),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -36,8 +36,15 @@ class MoreScreen extends StatelessWidget {
           _MoreOption(
             icon: Icons.video_library,
             label: 'الدروس',
-            color: GlassTheme.green,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LessonsScreen())),
+            color: const Color(0xFF94A3B8),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('قريباً إن شاء الله'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
           ),
           _MoreOption(
             icon: Icons.card_membership,
@@ -113,7 +120,7 @@ class MoreScreen extends StatelessWidget {
             onTap: () => showAboutDialog(
               context: context,
               applicationName: 'درسك AI',
-              applicationVersion: '1.0.0',
+              applicationVersion: '3.0.1',
               applicationLegalese: '© 2025 DarsakAI',
               children: [
                 const Text('التطبيق الذكي لإدارة التدريس'),

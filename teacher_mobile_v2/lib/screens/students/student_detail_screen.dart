@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../services/api_service.dart';
 import '../../core/glass_theme.dart';
 import 'add_edit_student_screen.dart';
@@ -115,7 +116,31 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
               const SizedBox(height: 12),
               Text(s['full_name'] ?? '—', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 4),
-              Text(s['code'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(s['code'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
+                  if ((s['code'] ?? '').toString().isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: s['code'].toString()));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('تم النسخ'), duration: Duration(seconds: 1)),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.copy, size: 14, color: Color(0xFF94A3B8)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),

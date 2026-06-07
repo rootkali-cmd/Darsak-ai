@@ -10,12 +10,14 @@ class AppTheme {
 
   static ThemeData get darkTheme {
     return ThemeData(
+      useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: Colors.black,
       colorScheme: const ColorScheme.dark(
         primary: accent,
         onPrimary: Colors.white,
         secondary: accentLight,
+        onSecondary: Colors.white,
         error: danger,
         surface: Color(0xFF0A0A0A),
         onSurface: Color(0xFFF5F5F5),
@@ -26,6 +28,21 @@ class AppTheme {
         backgroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
+      ),
+      cardTheme: const CardThemeData(color: Color(0xFF0A0A0A)),
+      dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF141414)),
+      snackBarTheme: const SnackBarThemeData(backgroundColor: Color(0xFF1E1E1E)),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.black,
+        selectedItemColor: accent,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF0A0A0A),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
       textTheme: GoogleFonts.cairoTextTheme(
         const TextTheme(
@@ -39,14 +56,16 @@ class AppTheme {
 
   static ThemeData get lightTheme {
     return ThemeData(
+      useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: Colors.white,
       colorScheme: const ColorScheme.light(
         primary: accent,
         onPrimary: Colors.white,
         secondary: accentLight,
+        onSecondary: Colors.white,
         error: danger,
-        surface: Color(0xFFF8F9FA),
+        surface: Colors.white,
         onSurface: Color(0xFF111827),
       ),
       cardColor: Colors.white,
@@ -56,6 +75,21 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         foregroundColor: Color(0xFF111827),
+      ),
+      cardTheme: const CardThemeData(color: Colors.white),
+      dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
+      snackBarTheme: const SnackBarThemeData(backgroundColor: Color(0xFFF3F4F6)),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: accent,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFF3F4F6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
       textTheme: GoogleFonts.cairoTextTheme(
         const TextTheme(

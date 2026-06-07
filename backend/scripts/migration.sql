@@ -142,6 +142,78 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Exams
+CREATE TABLE IF NOT EXISTS exams (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    duration_minutes INT NOT NULL DEFAULT 30,
+    total_points INT DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed')),
+    source_type VARCHAR(20) CHECK (source_type IN ('pdf', 'images')),
+    source_data JSONB,
+    answer_key TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Questions
+CREATE TABLE IF NOT EXISTS questions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('multiple_choice', 'essay')),
+    question_text TEXT NOT NULL,
+    options JSONB,
+    correct_answer TEXT,
+    points INT DEFAULT 1,
+    order_index INT NOT NULL,
+    page_number INT DEFAULT 1,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Student Exams
+CREATE TABLE IF NOT EXISTS student_exams (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    submitted_at TIMESTAMP WITH TIME ZONE,
+    duration_seconds INT,
+    status VARCHAR(20) DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'graded')),
+    total_score DECIMAL(10,2),
+    max_score DECIMAL(10,2),
+    UNIQUE(exam_id, student_id)
+);
+
+-- Student Answers
+CREATE TABLE IF NOT EXISTS student_answers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    student_exam_id UUID NOT NULL REFERENCES student_exams(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    answer TEXT,
+    is_correct BOOLEAN,
+    score DECIMAL(10,2),
+    feedback TEXT,
+    UNIQUE(student_exam_id, question_id)
+);
+
+-- Exam Results
+CREATE TABLE IF NOT EXISTS exam_results (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    student_exam_id UUID NOT NULL REFERENCES student_exams(id) ON DELETE CASCADE UNIQUE,
+    total_score DECIMAL(10,2),
+    max_score DECIMAL(10,2),
+    correct_count INT DEFAULT 0,
+    wrong_count INT DEFAULT 0,
+    essay_score DECIMAL(10,2),
+    strengths TEXT,
+    weaknesses TEXT,
+    recommendations TEXT,
+    ai_analysis_raw JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =====================================================
 -- INDEXES
 -- =====================================================
@@ -163,6 +235,54 @@ CREATE INDEX IF NOT EXISTS idx_encrypted_payloads_teacher_id ON encrypted_payloa
 CREATE INDEX IF NOT EXISTS idx_encrypted_payloads_sync_status ON encrypted_payloads(sync_status);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_type, actor_id);
+CREATE INDEX IF NOT EXISTS idx_exams_teacher_id ON exams(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_exams_status ON exams(status);
+CREATE INDEX IF NOT EXISTS idx_questions_exam_id ON questions(exam_id);
+CREATE INDEX IF NOT EXISTS idx_student_exams_exam_id ON student_exams(exam_id);
+CREATE INDEX IF NOT EXISTS idx_student_exams_student_id ON student_exams(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_answers_student_exam_id ON student_answers(student_exam_id);
+
+-- Subscription plans
+CREATE TABLE IF NOT EXISTS subscription_plans (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    price_egp DECIMAL(10,2) DEFAULT 0,
+    max_students INT DEFAULT 100,
+    ai_requests_per_month INT DEFAULT 10,
+    storage_limit_gb INT DEFAULT 2,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Subscription codes
+CREATE TABLE IF NOT EXISTS subscription_codes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+    is_used BOOLEAN DEFAULT FALSE,
+    used_by_teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    used_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Teacher subscriptions
+CREATE TABLE IF NOT EXISTS teacher_subscriptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+    code_id VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add group_id and is_active to students if missing
+ALTER TABLE students ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES groups(id) ON DELETE SET NULL;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 -- =====================================================
 -- TRIGGERS (auto-update updated_at)

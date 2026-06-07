@@ -1,4 +1,6 @@
 import uuid
+import logging
+import time
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.models.audit_log import ActorType
@@ -13,6 +15,66 @@ from src.services import student_service, grade_service, ai_analyzer, audit_serv
 from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_usage
 
 router = APIRouter(prefix="/students", tags=["Students"])
+
+log = logging.getLogger("darsak")
+
+
+# ─── Rate Limiting & Ban System for Student Login ──────────────────────
+
+_student_login_attempts: dict[str, dict] = {}
+
+LOGIN_ATTEMPTS_PER_WINDOW = 4
+LOGIN_WINDOW_SECONDS = 60
+LOGIN_BAN_DURATIONS = [300, 600]  # 5 min, 10 min
+
+
+def _get_login_state(code: str) -> dict:
+    if code not in _student_login_attempts:
+        _student_login_attempts[code] = {
+            "attempts": [],
+            "banned_until": 0,
+            "ban_level": 0,
+        }
+    return _student_login_attempts[code]
+
+
+def _check_rate_limit(code: str) -> None:
+    state = _get_login_state(code)
+    now = time.time()
+
+    if state["banned_until"] > now:
+        remaining = int(state["banned_until"] - now)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"تم حظر حسابك مؤقتاً. حاول مرة أخرى بعد {remaining} ثانية.",
+        )
+
+    state["attempts"] = [t for t in state["attempts"] if now - t < LOGIN_WINDOW_SECONDS]
+    if len(state["attempts"]) >= LOGIN_ATTEMPTS_PER_WINDOW:
+        ban_level = state["ban_level"]
+        if ban_level < len(LOGIN_BAN_DURATIONS):
+            ban_duration = LOGIN_BAN_DURATIONS[ban_level]
+            state["banned_until"] = now + ban_duration
+            state["ban_level"] += 1
+            state["attempts"] = []
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"تم حظر حسابك مؤقتاً بسبب محاولات كثيرة. حاول مرة أخرى بعد {ban_duration // 60} دقائق.",
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="تم حظر حسابك نهائياً due to repeated failed login attempts. تواصل مع المعلم.",
+            )
+
+
+def _record_failed_attempt(code: str) -> None:
+    state = _get_login_state(code)
+    state["attempts"].append(time.time())
+
+
+def _clear_attempts(code: str) -> None:
+    _student_login_attempts.pop(code, None)
 
 
 def get_client_ip(request: Request) -> str:
@@ -116,7 +178,6 @@ async def get_student(
     except HTTPException:
         raise
     except Exception as exc:
-        import logging
         logging.getLogger("darsak").error("Failed to get student %s: %s", student_id, exc)
         raise HTTPException(status_code=500, detail=f"Failed to get student: {str(exc)}")
 
@@ -225,28 +286,34 @@ async def verify_teacher(request: TeacherVerifyRequest):
 
 @router.post("/login", response_model=StudentTokenResponse)
 async def student_login(credentials: StudentLogin):
-    import logging
-    log = logging.getLogger("darsak")
     sanitized_code = sanitize_student_code(credentials.code)
     log.info("Student login attempt: code=%s", sanitized_code)
+
+    _check_rate_limit(sanitized_code)
+
     student = await student_service.get_by_code(sanitized_code)
     if not student:
+        _record_failed_attempt(sanitized_code)
         log.warning("Student login failed: no student found for code=%s", sanitized_code)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الكود غير صحيح")
+
     if not student.get("pin_hash"):
+        _record_failed_attempt(sanitized_code)
         log.warning("Student login failed: no pin_hash for student_id=%s code=%s", student.get("id"), sanitized_code)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الرمز السري غير مُعيّن")
 
     sanitized_pin = sanitize_pin(credentials.pin)
     if not verify_password(sanitized_pin, student["pin_hash"]):
+        _record_failed_attempt(sanitized_code)
         log.warning("Student login failed: PIN mismatch for student_id=%s code=%s", student.get("id"), sanitized_code)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code or PIN")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الرمز السري غير صحيح")
 
-    # If teacher_code provided, verify student belongs to that teacher
     if credentials.teacher_code:
         teacher = await user_service.repo.select_one({"teacher_code": credentials.teacher_code})
         if not teacher or str(student.get("teacher_id")) != str(teacher["id"]):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student does not belong to this teacher")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الطالب غير مسجل لدى هذا المعلم")
+
+    _clear_attempts(sanitized_code)
 
     token = create_access_token(student["id"], expires_delta=None)
 

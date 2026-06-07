@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
@@ -116,8 +117,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('الطلاب'),
       floatingActionButton: GlassTheme.glassFAB(_addStudent),
       body: Column(
@@ -170,7 +172,24 @@ class _StudentsScreenState extends State<StudentsScreen> {
                                       ),
                                     ),
                                     title: Text(s['full_name'] ?? 'بدون اسم', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                                    subtitle: Text(s['code'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                    subtitle: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(s['code'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                        if ((s['code'] ?? '').toString().isNotEmpty) ...[
+                                          const SizedBox(width: 4),
+                                          GestureDetector(
+                                            onTap: () {
+                                              Clipboard.setData(ClipboardData(text: s['code'].toString()));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('تم النسخ'), duration: Duration(seconds: 1)),
+                                              );
+                                            },
+                                            child: const Icon(Icons.copy, size: 14, color: Color(0xFF94A3B8)),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                     trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
                                   ),
                                 );

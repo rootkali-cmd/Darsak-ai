@@ -37,11 +37,17 @@ async def get_my_grades(
     limit: int = Query(100, ge=1, le=200),
     current_student: dict = Depends(get_current_student),
 ):
-    filters = {"student_id": current_student["id"]}
+    filters = {"student_id": str(current_student["id"])}
     if subject:
         filters["subject"] = subject
     grades = await grade_service.list(filters, limit=limit)
-    return [GradeResponse(**g) for g in grades]
+    result = []
+    for g in grades:
+        try:
+            result.append(GradeResponse(**g))
+        except Exception:
+            continue
+    return result
 
 
 @router.get("/attendance", response_model=list[AttendanceResponse])
@@ -51,13 +57,19 @@ async def get_my_attendance(
     limit: int = Query(200, ge=1, le=500),
     current_student: dict = Depends(get_current_student),
 ):
-    filters = {"student_id": current_student["id"]}
+    filters = {"student_id": str(current_student["id"])}
     records = await attendance_service.list(filters, limit=limit)
     if from_date:
         records = [r for r in records if r["date"] >= from_date]
     if to_date:
         records = [r for r in records if r["date"] <= to_date]
-    return [AttendanceResponse(**r) for r in records]
+    result = []
+    for r in records:
+        try:
+            result.append(AttendanceResponse(**r))
+        except Exception:
+            continue
+    return result
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse])
