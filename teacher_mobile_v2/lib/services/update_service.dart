@@ -57,7 +57,7 @@ class UpdateService {
       final filePath = '${dir.path}/DarsakAI-Teacher-v$version.apk';
       final file = File(filePath);
 
-      final downloadUrl = 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.2/teacher-v3.0.2.apk';
+      final downloadUrl = 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.2/teacher-v3.apk';
 
       final api = ApiService();
       await api.dio.download(
