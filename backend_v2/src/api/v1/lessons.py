@@ -87,8 +87,12 @@ async def get_lesson(
         lesson = await lesson_service.get_by_id(lesson_id)
         if lesson is None:
             raise NotFoundException("Lesson not found")
+        if str(lesson.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your lesson")
         return lesson
     except NotFoundException:
+        raise
+    except ForbiddenException:
         raise
     except Exception as e:
         logger.error(f"Error getting lesson: {e}", exc_info=True)
@@ -105,6 +109,8 @@ async def update_lesson(
         existing = await lesson_service.get_by_id(lesson_id)
         if existing is None:
             raise NotFoundException("Lesson not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your lesson")
 
         data = {}
         if body.title is not None:
@@ -125,6 +131,8 @@ async def update_lesson(
         return result
     except NotFoundException:
         raise
+    except ForbiddenException:
+        raise
     except Exception as e:
         logger.error(f"Error updating lesson: {e}", exc_info=True)
         raise BadRequestException("Failed to update lesson")
@@ -139,10 +147,14 @@ async def delete_lesson(
         existing = await lesson_service.get_by_id(lesson_id)
         if existing is None:
             raise NotFoundException("Lesson not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your lesson")
 
         await lesson_service.delete(lesson_id)
         return {"detail": "Lesson deleted"}
     except NotFoundException:
+        raise
+    except ForbiddenException:
         raise
     except Exception as e:
         logger.error(f"Error deleting lesson: {e}", exc_info=True)

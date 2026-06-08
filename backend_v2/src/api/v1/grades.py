@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from src.api.deps import get_current_teacher
-from src.core.exceptions import BadRequestException, NotFoundException
+from src.core.exceptions import BadRequestException, NotFoundException, ForbiddenException
 from src.services.grade_service import grade_service
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,12 @@ async def update_grade(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        existing = await grade_service.get_by_id(grade_id)
+        if not existing:
+            raise NotFoundException("Grade not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your grade")
+
         data = {}
         if body.student_id is not None:
             data["student_id"] = body.student_id
@@ -96,6 +102,10 @@ async def update_grade(
             raise BadRequestException("No fields to update")
         grade = await grade_service.update(grade_id, data)
         return grade
+    except NotFoundException:
+        raise
+    except ForbiddenException:
+        raise
     except BadRequestException:
         raise
     except Exception as e:
@@ -109,11 +119,19 @@ async def delete_grade(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        existing = await grade_service.get_by_id(grade_id)
+        if not existing:
+            raise NotFoundException("Grade not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your grade")
+
         deleted = await grade_service.delete(grade_id)
         if not deleted:
             raise NotFoundException("Grade not found")
         return {"deleted": True}
     except NotFoundException:
+        raise
+    except ForbiddenException:
         raise
     except Exception as e:
         logger.error(f"Error deleting grade {grade_id}: {e}", exc_info=True)

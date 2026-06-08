@@ -21,13 +21,13 @@ export default function SettingsPage() {
   const { data: user, isLoading } = useQuery({ queryKey: ['user'], queryFn: () => authApi.getMe().then((r) => r.data) })
 
   const updateMutation = useMutation({
-    mutationFn: (data: { full_name?: string; password?: string }) => authApi.updateMe(data),
+    mutationFn: (data: { full_name?: string; password?: string; current_password?: string }) => authApi.updateMe(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['user'] }); toast.success('تم تحديث البيانات بنجاح ') },
     onError: () => toast.error('فشل تحديث البيانات'),
   })
 
   const handleUpdateProfile = (e: React.FormEvent) => { e.preventDefault(); if (!fullName.trim()) return; updateMutation.mutate({ full_name: fullName }) }
-  const handleChangePassword = (e: React.FormEvent) => { e.preventDefault(); if (!currentPassword || !newPassword) { toast.error('يرجى ملء جميع الحقول'); return }; updateMutation.mutate({ password: newPassword }); setCurrentPassword(''); setNewPassword('') }
+  const handleChangePassword = (e: React.FormEvent) => { e.preventDefault(); if (!currentPassword || !newPassword) { toast.error('يرجى ملء جميع الحقول'); return }; updateMutation.mutate({ password: newPassword, current_password: currentPassword }); setCurrentPassword(''); setNewPassword('') }
 
   if (isLoading) return (
     <div className="flex justify-center py-24">

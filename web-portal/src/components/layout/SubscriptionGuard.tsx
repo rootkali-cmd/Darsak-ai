@@ -8,9 +8,11 @@ import { subscriptionsApi } from '@/lib/api'
 export default function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
-  const { data: sub, isLoading } = useQuery({
+  const { data: sub, isLoading, isError } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => subscriptionsApi.my().then((r) => r.data),
+    retry: 1,
+    refetchOnWindowFocus: false,
   })
 
   if (isLoading) {
@@ -19,6 +21,10 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
         <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <>{children}</>
   }
 
   const isActive = sub?.is_active && !sub?.is_expired

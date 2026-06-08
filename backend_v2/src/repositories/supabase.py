@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Any
 from sqlalchemy import text
 from src.core.database import get_engine
@@ -6,10 +7,18 @@ from src.core.config import get_settings
 
 settings = get_settings()
 
+SAFE_IDENTIFIER = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+
+def _validate_identifier(name: str) -> str:
+    if not SAFE_IDENTIFIER.match(name):
+        raise ValueError(f"Invalid identifier: {name}")
+    return name
+
 
 class SupabaseRepository:
     def __init__(self, table_name: str):
-        self.table_name = table_name
+        self.table_name = _validate_identifier(table_name)
 
     async def _execute(self, query, params=None):
         engine = get_engine()
@@ -35,6 +44,7 @@ class SupabaseRepository:
         if filters:
             conditions = []
             for k, v in filters.items():
+                _validate_identifier(k)
                 param_key = f"p_{k}"
                 conditions.append(f"{k} = :{param_key}")
                 params[param_key] = v
@@ -48,6 +58,8 @@ class SupabaseRepository:
 
     async def insert(self, data: dict) -> dict:
         engine = get_engine()
+        for k in data.keys():
+            _validate_identifier(k)
         columns = ", ".join(data.keys())
         placeholders = ", ".join([f":{k}" for k in data.keys()])
         returning = "id, " + ", ".join(data.keys())
@@ -69,6 +81,8 @@ class SupabaseRepository:
 
     async def update(self, filters: dict, data: dict):
         engine = get_engine()
+        for k in list(data.keys()) + list(filters.keys()):
+            _validate_identifier(k)
         set_parts = [f"{k} = :s_{k}" for k in data.keys()]
         cond_parts = [f"{k} = :c_{k}" for k in filters.keys()]
         params = {}
@@ -87,6 +101,8 @@ class SupabaseRepository:
 
     async def delete(self, filters: dict) -> bool:
         engine = get_engine()
+        for k in filters.keys():
+            _validate_identifier(k)
         cond_parts = [f"{k} = :c_{k}" for k in filters.keys()]
         params = {f"c_{k}": v for k, v in filters.items()}
         query = f"DELETE FROM {self.table_name} WHERE {' AND '.join(cond_parts)}"
@@ -102,6 +118,7 @@ class SupabaseRepository:
         if filters:
             conditions = []
             for k, v in filters.items():
+                _validate_identifier(k)
                 conditions.append(f"{k} = :p_{k}")
                 params[f"p_{k}"] = v
             query += " WHERE " + " AND ".join(conditions)
@@ -116,11 +133,13 @@ class SupabaseRepository:
         all_conditions = []
         if filters:
             for k, v in filters.items():
+                _validate_identifier(k)
                 all_conditions.append(f"{k} = :p_{k}")
                 params[f"p_{k}"] = v
         if text_search:
             search_conditions = []
             for field, val in text_search.items():
+                _validate_identifier(field)
                 search_conditions.append(f"{field} ILIKE :s_{field}")
                 params[f"s_{field}"] = f"%{val}%"
             if search_conditions:

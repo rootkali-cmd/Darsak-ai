@@ -36,10 +36,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS.split(","),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 from src.api.v1.auth import router as auth_router
@@ -67,12 +67,7 @@ app.include_router(exams_router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/health")
 async def health():
-    return {
-        "status": "healthy",
-        "service": "DarsakAI Hub v2",
-        "version": "2.0.0",
-        "database": "supabase",
-    }
+    return {"status": "healthy"}
 
 
 @app.exception_handler(AppException)
@@ -83,7 +78,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception: %s", repr(exc))
-    return JSONResponse(status_code=500, content={"detail": str(exc)})
+    return JSONResponse(status_code=500, content={"detail": "An internal error occurred"})
 
 
 sentry_dsn = os.getenv("SENTRY_DSN")

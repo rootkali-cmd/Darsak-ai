@@ -1,1 +1,7 @@
-// Vercel redeploy trigger
+User-agent: *
+Allow: /dashboard/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /static/
+
+Sitemap: https://darsak-ai.vercel.app/sitemap.xml

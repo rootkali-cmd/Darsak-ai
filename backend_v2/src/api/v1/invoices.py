@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from src.api.deps import get_current_teacher
-from src.core.exceptions import BadRequestException, NotFoundException
+from src.core.exceptions import BadRequestException, NotFoundException, ForbiddenException
 from src.services.invoice_service import invoice_service
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,12 @@ async def update_invoice(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        existing = await invoice_service.get_by_id(invoice_id)
+        if not existing:
+            raise NotFoundException("Invoice not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your invoice")
+
         data = {}
         if body.student_id is not None:
             data["student_id"] = body.student_id
@@ -96,6 +102,10 @@ async def update_invoice(
             raise BadRequestException("No fields to update")
         invoice = await invoice_service.update(invoice_id, data)
         return invoice
+    except NotFoundException:
+        raise
+    except ForbiddenException:
+        raise
     except BadRequestException:
         raise
     except Exception as e:
@@ -109,11 +119,19 @@ async def delete_invoice(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        existing = await invoice_service.get_by_id(invoice_id)
+        if not existing:
+            raise NotFoundException("Invoice not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your invoice")
+
         deleted = await invoice_service.delete(invoice_id)
         if not deleted:
             raise NotFoundException("Invoice not found")
         return {"deleted": True}
     except NotFoundException:
+        raise
+    except ForbiddenException:
         raise
     except Exception as e:
         logger.error(f"Error deleting invoice {invoice_id}: {e}", exc_info=True)

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from src.api.deps import get_current_teacher
-from src.core.exceptions import BadRequestException, NotFoundException
+from src.core.exceptions import BadRequestException, NotFoundException, ForbiddenException
 from src.services.exam_service import exam_service
 
 logger = logging.getLogger(__name__)
@@ -92,8 +92,12 @@ async def get_exam(
         exam = await exam_service.get_by_id(exam_id)
         if not exam:
             raise NotFoundException("Exam not found")
+        if str(exam.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your exam")
         return exam
     except NotFoundException:
+        raise
+    except ForbiddenException:
         raise
     except Exception as e:
         logger.error(f"Error getting exam {exam_id}: {e}", exc_info=True)
@@ -107,6 +111,12 @@ async def update_exam(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        existing = await exam_service.get_by_id(exam_id)
+        if not existing:
+            raise NotFoundException("Exam not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your exam")
+
         data = {}
         if body.title is not None:
             data["title"] = body.title
@@ -120,6 +130,10 @@ async def update_exam(
             raise BadRequestException("No fields to update")
         exam = await exam_service.update(exam_id, data)
         return exam
+    except NotFoundException:
+        raise
+    except ForbiddenException:
+        raise
     except BadRequestException:
         raise
     except Exception as e:
@@ -133,11 +147,19 @@ async def delete_exam(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        existing = await exam_service.get_by_id(exam_id)
+        if not existing:
+            raise NotFoundException("Exam not found")
+        if str(existing.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your exam")
+
         deleted = await exam_service.delete(exam_id)
         if not deleted:
             raise NotFoundException("Exam not found")
         return {"deleted": True}
     except NotFoundException:
+        raise
+    except ForbiddenException:
         raise
     except Exception as e:
         logger.error(f"Error deleting exam {exam_id}: {e}", exc_info=True)
@@ -151,6 +173,12 @@ async def add_question(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        exam = await exam_service.get_by_id(exam_id)
+        if not exam:
+            raise NotFoundException("Exam not found")
+        if str(exam.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your exam")
+
         data = {"question_text": body.question_text}
         if body.options is not None:
             data["options"] = body.options
@@ -162,6 +190,10 @@ async def add_question(
             data["order_num"] = body.order_num
         question = await exam_service.add_question(exam_id, data)
         return question
+    except NotFoundException:
+        raise
+    except ForbiddenException:
+        raise
     except Exception as e:
         logger.error(f"Error adding question to exam {exam_id}: {e}", exc_info=True)
         raise BadRequestException("Failed to add question")

@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/static'))
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith('/_next') || pathname.startsWith('/static'))
   if (isPublic) return NextResponse.next()
 
   const token = request.cookies.get('access_token')?.value
