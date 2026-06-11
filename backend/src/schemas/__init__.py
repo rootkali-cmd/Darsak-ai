@@ -5,7 +5,7 @@ from src.schemas.attendance import AttendanceCreate, AttendanceBulkCreate, Atten
 from src.schemas.grade import (
     GradeCreate, GradeBulkUpload, GradeResponse, AIAnalysisRequest, AIAnalysisResponse,
 )
-from src.schemas.invoice import InvoiceCreate, InvoiceUpdate, InvoiceResponse
+from src.schemas.invoice import InvoiceCreateRequest, InvoiceResponse
 from src.schemas.sync import SyncPushRequest, SyncPushResponse, SyncPullResponse, SyncAckRequest, SyncAckResponse
 
 __all__ = [
@@ -14,6 +14,6 @@ __all__ = [
     "GroupCreate", "GroupUpdate", "GroupResponse",
     "AttendanceCreate", "AttendanceBulkCreate", "AttendanceResponse",
     "GradeCreate", "GradeBulkUpload", "GradeResponse", "AIAnalysisRequest", "AIAnalysisResponse",
-    "InvoiceCreate", "InvoiceUpdate", "InvoiceResponse",
+    "InvoiceCreateRequest", "InvoiceResponse",
     "SyncPushRequest", "SyncPushResponse", "SyncPullResponse", "SyncAckRequest", "SyncAckResponse",
 ]

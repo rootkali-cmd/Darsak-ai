@@ -63,6 +63,11 @@ class StudentLogin(BaseModel):
 
 class StudentTokenResponse(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
     student_id: UUID
     student_code: str
+
+
+class StudentTokenRefresh(BaseModel):
+    refresh_token: str

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/app_theme.dart';
 import 'providers/auth_provider.dart';
@@ -8,6 +9,7 @@ import 'screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const DarsakApp());
 }
 
@@ -30,6 +32,10 @@ class DarsakApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.mode,
             home: const SplashScreen(),
+            builder: (context, child) => Directionality(
+              textDirection: TextDirection.rtl,
+              child: child!,
+            ),
           );
         },
       ),

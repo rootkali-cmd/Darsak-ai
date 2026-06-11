@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../services/update_service.dart';
@@ -7,10 +8,31 @@ import '../profile/teacher_code_screen.dart';
 import '../settings/settings_screen.dart';
 import '../subscriptions/subscription_screen.dart';
 import '../exams/exams_screen.dart';
+import '../reports/ai_reports_screen.dart';
+import '../invoices/teacher_invoices_screen.dart';
 import 'developer_screen.dart';
 
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
+  @override
+  State<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends State<MoreScreen> {
+  String _version = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _version = '${info.version}+${info.buildNumber}');
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +79,18 @@ class MoreScreen extends StatelessWidget {
             label: 'الاختبارات',
             color: GlassTheme.red,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamsScreen())),
+          ),
+          _MoreOption(
+            icon: Icons.bar_chart,
+            label: 'التقارير',
+            color: GlassTheme.indigo,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiReportsScreen())),
+          ),
+          _MoreOption(
+            icon: Icons.receipt_long_rounded,
+            label: 'الفواتير',
+            color: AppTheme.warning,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherInvoicesScreen())),
           ),
           _MoreOption(
             icon: Icons.qr_code,
@@ -120,7 +154,7 @@ class MoreScreen extends StatelessWidget {
             onTap: () => showAboutDialog(
               context: context,
               applicationName: 'درسك AI',
-              applicationVersion: '3.0.1',
+              applicationVersion: _version,
               applicationLegalese: '© 2025 DarsakAI',
               children: [
                 const Text('التطبيق الذكي لإدارة التدريس'),

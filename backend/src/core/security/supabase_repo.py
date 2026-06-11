@@ -83,7 +83,7 @@ async def _execute_with_retry(coro_factory, description: str = "Supabase operati
         raise SupabaseError(f"Database error: {err_msg}", original=e)
     if isinstance(last_error, (HTTPError, TimeoutException)):
         raise SupabaseError(f"Network error connecting to database: {last_error}", original=last_error)
-    raise SupabaseError(msg, original=last_error)
+    raise SupabaseError(f"{msg}: {last_error}", original=last_error)
 
 
 class SupabaseRepository:
@@ -112,7 +112,10 @@ class SupabaseRepository:
                     q = q.eq(key, value)
             q = q.limit(limit).offset(offset)
             if order:
-                q = q.order(order, desc=True)
+                parts = order.split()
+                col = parts[0]
+                desc = len(parts) > 1 and parts[1].lower() == "desc"
+                q = q.order(col, desc=desc)
             else:
                 q = q.order("created_at", desc=True)
             return q

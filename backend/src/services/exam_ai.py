@@ -35,7 +35,7 @@ QUESTION_GEN_PROMPT = """أنت معلم خبير في المناهج التعل
 6. الأسئلة المقالية يجب أن تكون مفتوحة تتطلب تفكيراً وتكون لها إجابة نموذجية مفصلة.
 
 المطلوب:
-- توليد 5-10 أسئلة متنوعة تغطي أهم نقاط المحتوى
+- توليد {question_count} أسئلة متنوعة تغطي أهم نقاط المحتوى
 - مزيج بين أسئلة الاختيار المتعدد والأسئلة المقالية (سؤالين مقاليين على الأقل)
 - تحديد عدد النقاط لكل سؤال حسب صعوبته (5-15 نقطة)
 - الإجابة النموذجية للأسئلة المقالية تكون مفصلة (3-5 جمل على الأقل)
@@ -218,12 +218,13 @@ class ExamAIService:
     def _image_to_base64(self, image_bytes: bytes) -> str:
         return base64.b64encode(image_bytes).decode("utf-8")
 
-    async def generate_questions_from_text(self, text: str, subject: str | None = None) -> dict[str, Any]:
+    async def generate_questions_from_text(self, text: str, subject: str | None = None, question_count: int = 10) -> dict[str, Any]:
         if not text.strip():
             return self._fallback_questions()
         subject_ctx = f"\nالمادة: {subject}" if subject else ""
+        prompt = QUESTION_GEN_PROMPT.replace("{question_count}", str(question_count))
         messages = [
-            {"role": "system", "content": QUESTION_GEN_PROMPT},
+            {"role": "system", "content": prompt},
             {
                 "role": "user",
                 "content": f"اقرأ المحتوى الدراسي التالي بعناية شديدة ثم استخرج أهم المعلومات وولّد أسئلة امتحان شاملة تغطي جميع النقاط الهامة.{subject_ctx}\n\n{text[:15000]}",
@@ -231,11 +232,12 @@ class ExamAIService:
         ]
         return await self._call_best(messages)
 
-    async def generate_questions_from_image(self, image_bytes: bytes, subject: str | None = None) -> dict[str, Any]:
+    async def generate_questions_from_image(self, image_bytes: bytes, subject: str | None = None, question_count: int = 10) -> dict[str, Any]:
         b64 = self._image_to_base64(image_bytes)
         subject_ctx = f"\nالمادة: {subject}" if subject else ""
+        prompt = QUESTION_GEN_PROMPT.replace("{question_count}", str(question_count))
         messages = [
-            {"role": "system", "content": QUESTION_GEN_PROMPT},
+            {"role": "system", "content": prompt},
             {
                 "role": "user",
                 "content": [
@@ -246,11 +248,11 @@ class ExamAIService:
         ]
         return await self._call_best(messages, use_vision=True)
 
-    async def generate_questions_from_pdf(self, pdf_bytes: bytes, subject: str | None = None) -> dict[str, Any]:
+    async def generate_questions_from_pdf(self, pdf_bytes: bytes, subject: str | None = None, question_count: int = 10) -> dict[str, Any]:
         text = await self.extract_text_from_pdf(pdf_bytes)
         if text:
-            return await self.generate_questions_from_text(text, subject)
-        return await self.generate_questions_from_image(pdf_bytes, subject)
+            return await self.generate_questions_from_text(text, subject, question_count=question_count)
+        return await self.generate_questions_from_image(pdf_bytes, subject, question_count=question_count)
 
     async def analyze_student_exam(
         self,

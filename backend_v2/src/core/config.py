@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = ""
 
-    ALLOWED_ORIGINS: str = "https://darsak-ai.vercel.app,http://localhost:3000"
+    ALLOWED_ORIGINS: str = "https://darsak-ai.vercel.app"
 
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"

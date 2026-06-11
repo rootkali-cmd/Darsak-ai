@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../core/error_utils.dart';
 import '../../core/glass_theme.dart';
@@ -46,11 +48,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         ),
       ),
       floatingActionButton: GlassTheme.glassFAB(
-        () {
-          Navigator.push(
+        () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
           );
+          // Reload attendance after returning from scanner
+          if (mounted) setState(() {});
         },
         icon: Icons.qr_code_scanner,
       ),
@@ -75,6 +79,7 @@ class _TodayTabState extends State<_TodayTab> {
   bool _loading = true;
   String? _error;
   String _filter = 'all';
+  static const _cacheKey = 'attendance_today_cache';
 
   List<dynamic> get _filteredAttendance {
     if (_filter == 'all') return _attendance;
@@ -90,21 +95,61 @@ class _TodayTabState extends State<_TodayTab> {
   }
 
   Future<void> _loadToday() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
     try {
       final today = DateTime.now().toIso8601String().split('T')[0];
       final resp = await ApiService().dio.get('/attendance/', queryParameters: {'date': today});
       final data = resp.data;
-      _attendance = data is List ? data : [];
-    } on DioException catch (e) {
-      _error = 'فشل تحميل الحضور: ${getDioErrorMessage(e)}';
-    } catch (e) {
-      _error = 'حدث خطأ: $e';
+      if (data is List) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_cacheKey, jsonEncode(data));
+        if (mounted) setState(() { _attendance = data; _loading = false; });
+      }
+    } catch (_) {
+      // Try loading from cache
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cached = prefs.getString(_cacheKey);
+        if (cached != null) {
+          final data = jsonDecode(cached);
+          if (data is List && mounted) setState(() { _attendance = data; _loading = false; });
+          return;
+        }
+      } catch (_) {}
+      if (mounted) setState(() => _loading = false);
     }
-    if (mounted) setState(() => _loading = false);
+  }
+
+  String _getStudentName(dynamic a) {
+    // Try multiple possible fields for student name
+    if (a['student_name'] != null && a['student_name'].toString().isNotEmpty) {
+      return a['student_name'].toString();
+    }
+    if (a['student'] != null && a['student'] is Map) {
+      final student = a['student'] as Map;
+      if (student['full_name'] != null) return student['full_name'].toString();
+      if (student['name'] != null) return student['name'].toString();
+    }
+    if (a['full_name'] != null && a['full_name'].toString().isNotEmpty) {
+      return a['full_name'].toString();
+    }
+    if (a['name'] != null && a['name'].toString().isNotEmpty) {
+      return a['name'].toString();
+    }
+    // Show code if name not available
+    if (a['student_code'] != null) return 'كود: ${a['student_code']}';
+    if (a['code'] != null) return 'كود: ${a['code']}';
+    if (a['student_id'] != null) return 'ID: ${a['student_id'].toString().substring(0, 8)}';
+    return 'غير معروف';
+  }
+
+  String _getStudentCode(dynamic a) {
+    if (a['student_code'] != null) return a['student_code'].toString();
+    if (a['code'] != null) return a['code'].toString();
+    if (a['student'] != null && a['student'] is Map) {
+      final student = a['student'] as Map;
+      if (student['code'] != null) return student['code'].toString();
+    }
+    return '';
   }
 
   @override
@@ -112,37 +157,38 @@ class _TodayTabState extends State<_TodayTab> {
     return RefreshIndicator(
       onRefresh: _loadToday,
       color: GlassTheme.indigo,
-      child: _loading
+      child: _loading && _attendance.isEmpty
           ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline, size: 48, color: GlassTheme.red),
-                      const SizedBox(height: 12),
-                      Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
-                      const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _loadToday, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
-                    ],
-                  ),
-                )
-              : Column(
+          : Column(
                   children: [
-                    if (_attendance.isNotEmpty)
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            GlassTheme.glassFilterChip(context, 'الكل', _filter == 'all', GlassTheme.indigo, () => setState(() => _filter = 'all')),
-                            const SizedBox(width: 8),
-                            GlassTheme.glassFilterChip(context, 'حاضر', _filter == 'present', GlassTheme.green, () => setState(() => _filter = 'present')),
-                            const SizedBox(width: 8),
-                            GlassTheme.glassFilterChip(context, 'غائب', _filter == 'absent', GlassTheme.red, () => setState(() => _filter = 'absent')),
-                          ],
-                        ),
+                    // Stats summary
+                    Container(
+                      margin: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: GlassTheme.glassCard(context),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStat('الكل', '${_attendance.length}', GlassTheme.indigo),
+                          _buildStat('حاضر', '${_attendance.where((a) => a['status'] == 'present').length}', GlassTheme.green),
+                          _buildStat('غائب', '${_attendance.where((a) => a['status'] == 'absent').length}', GlassTheme.red),
+                        ],
                       ),
+                    ),
+                    // Filter chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          GlassTheme.glassFilterChip(context, 'الكل', _filter == 'all', GlassTheme.indigo, () => setState(() => _filter = 'all')),
+                          const SizedBox(width: 8),
+                          GlassTheme.glassFilterChip(context, 'حاضر', _filter == 'present', GlassTheme.green, () => setState(() => _filter = 'present')),
+                          const SizedBox(width: 8),
+                          GlassTheme.glassFilterChip(context, 'غائب', _filter == 'absent', GlassTheme.red, () => setState(() => _filter = 'absent')),
+                        ],
+                      ),
+                    ),
                     Expanded(
                       child: _filteredAttendance.isEmpty
                           ? Center(
@@ -162,6 +208,8 @@ class _TodayTabState extends State<_TodayTab> {
                                 final a = _filteredAttendance[i];
                                 final status = a['status'] ?? '';
                                 final isPresent = status == 'present';
+                                final studentName = _getStudentName(a);
+                                final studentCode = _getStudentCode(a);
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 8),
                                   decoration: GlassTheme.glassCard(context),
@@ -170,8 +218,10 @@ class _TodayTabState extends State<_TodayTab> {
                                       isPresent ? Icons.check_circle : Icons.cancel,
                                       color: isPresent ? GlassTheme.green : GlassTheme.red,
                                     ),
-                                    title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context))),
-                                    subtitle: Text(a['date'] ?? '', style: TextStyle(color: GlassTheme.textSecondary(context))),
+                                    title: Text(studentName, style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w600)),
+                                    subtitle: studentCode.isNotEmpty 
+                                      ? Text(studentCode, style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 12))
+                                      : null,
                                     trailing: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
@@ -196,6 +246,16 @@ class _TodayTabState extends State<_TodayTab> {
                 ),
     );
   }
+
+  Widget _buildStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 12)),
+      ],
+    );
+  }
 }
 
 class _HistoryTab extends StatefulWidget {
@@ -207,22 +267,20 @@ class _HistoryTabState extends State<_HistoryTab> {
   List<dynamic> _attendance = [];
   bool _loading = true;
   String? _error;
-  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _loadByDate();
+    _loadAllHistory();
   }
 
-  Future<void> _loadByDate() async {
+  Future<void> _loadAllHistory() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final date = _selectedDate.toIso8601String().split('T')[0];
-      final resp = await ApiService().dio.get('/attendance/', queryParameters: {'date': date});
+      final resp = await ApiService().dio.get('/attendance/');
       final data = resp.data;
       _attendance = data is List ? data : [];
     } on DioException catch (e) {
@@ -233,101 +291,154 @@ class _HistoryTabState extends State<_HistoryTab> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-      _loadByDate();
+  String _getStudentName(dynamic a) {
+    if (a['student_name'] != null && a['student_name'].toString().isNotEmpty) {
+      return a['student_name'].toString();
+    }
+    if (a['student'] != null && a['student'] is Map) {
+      final student = a['student'] as Map;
+      if (student['full_name'] != null) return student['full_name'].toString();
+      if (student['name'] != null) return student['name'].toString();
+    }
+    if (a['full_name'] != null && a['full_name'].toString().isNotEmpty) {
+      return a['full_name'].toString();
+    }
+    if (a['student_code'] != null) return 'كود: ${a['student_code']}';
+    if (a['student_id'] != null) return 'ID: ${a['student_id'].toString().substring(0, 8)}';
+    return 'غير معروف';
+  }
+
+  String _getStudentCode(dynamic a) {
+    if (a['student_code'] != null) return a['student_code'].toString();
+    if (a['code'] != null) return a['code'].toString();
+    if (a['student'] != null && a['student'] is Map) {
+      final student = a['student'] as Map;
+      if (student['code'] != null) return student['code'].toString();
+    }
+    return '';
+  }
+
+  Map<String, List<dynamic>> _groupByDate() {
+    final map = <String, List<dynamic>>{};
+    for (final a in _attendance) {
+      final d = a['date'] ?? 'غير محدد';
+      map.putIfAbsent(d, () => []).add(a);
+    }
+    final sortedKeys = map.keys.toList()..sort((a, b) => b.compareTo(a));
+    return {for (final k in sortedKeys) k: map[k]!};
+  }
+
+  String _formatDateArabic(String dateStr) {
+    try {
+      final parts = dateStr.split('-');
+      if (parts.length != 3) return dateStr;
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      final months = [
+        '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+      ];
+      return '$day ${months[month]} $year';
+    } catch (_) {
+      return dateStr;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-    return Column(
-      children: [
+    return RefreshIndicator(
+      onRefresh: _loadAllHistory,
+      color: GlassTheme.indigo,
+      child: _loading
+          ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _loadAllHistory, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
+                    ],
+                  ),
+                )
+              : _attendance.isEmpty
+                  ? Center(
+                      child: Text('لا توجد سجلات حضور', style: TextStyle(color: GlassTheme.textSecondary(context))),
+                    )
+                  : _buildGroupedList(),
+    );
+  }
+
+  Widget _buildGroupedList() {
+    final grouped = _groupByDate();
+    final sections = <Widget>[];
+    for (final entry in grouped.entries) {
+      final dateLabel = _formatDateArabic(entry.key);
+      final records = entry.value;
+      sections.add(
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: InkWell(
-            onTap: _pickDate,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: GlassTheme.glassCard(context),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(dateStr, style: TextStyle(fontSize: 15, color: GlassTheme.textPrimary(context))),
-                  const Icon(Icons.calendar_today, color: GlassTheme.indigo),
-                ],
-              ),
+          padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: GlassTheme.indigo.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today, size: 16, color: GlassTheme.indigo),
+                const SizedBox(width: 8),
+                Text(dateLabel, style: TextStyle(color: GlassTheme.indigo, fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(width: 8),
+                Text('(${records.length})', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 12)),
+              ],
             ),
           ),
         ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadByDate,
-            color: GlassTheme.indigo,
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
-                : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: GlassTheme.textMuted(context))),
-                            const SizedBox(height: 12),
-                            ElevatedButton(onPressed: _loadByDate, style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo), child: const Text('إعادة المحاولة')),
-                          ],
-                        ),
-                      )
-                    : _attendance.isEmpty
-                        ? Center(
-                            child: Text('لا توجد سجلات حضور', style: TextStyle(color: GlassTheme.textSecondary(context))),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: _attendance.length,
-                            itemBuilder: (_, i) {
-                              final a = _attendance[i];
-                              final status = a['status'] ?? '';
-                              final isPresent = status == 'present';
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: GlassTheme.glassCard(context),
-                                child: ListTile(
-                                  leading: Icon(
-                                    isPresent ? Icons.check_circle : Icons.cancel,
-                                    color: isPresent ? GlassTheme.green : GlassTheme.red,
-                                  ),
-                                  title: Text(a['student_name'] ?? a['student']?['full_name'] ?? '—', style: TextStyle(color: GlassTheme.textPrimary(context))),
-                                  subtitle: Text(a['date'] ?? '', style: TextStyle(color: GlassTheme.textSecondary(context))),
-                                  trailing: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: isPresent ? GlassTheme.green.withValues(alpha: 0.15) : GlassTheme.red.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      isPresent ? 'حاضر' : 'غائب',
-                                      style: TextStyle(
-                                        color: isPresent ? GlassTheme.green : GlassTheme.red,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+      );
+      for (final a in records) {
+        final status = a['status'] ?? '';
+        final isPresent = status == 'present';
+        final studentName = _getStudentName(a);
+        final studentCode = _getStudentCode(a);
+        sections.add(
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: GlassTheme.glassCard(context),
+            child: ListTile(
+              leading: Icon(
+                isPresent ? Icons.check_circle : Icons.cancel,
+                color: isPresent ? GlassTheme.green : GlassTheme.red,
+              ),
+              title: Text(studentName, style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w600)),
+              subtitle: studentCode.isNotEmpty
+                  ? Text(studentCode, style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 12))
+                  : null,
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isPresent ? GlassTheme.green.withValues(alpha: 0.15) : GlassTheme.red.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isPresent ? 'حاضر' : 'غائب',
+                  style: TextStyle(
+                    color: isPresent ? GlassTheme.green : GlassTheme.red,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
+        );
+      }
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 12),
+      children: sections,
     );
   }
 }

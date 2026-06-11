@@ -1,0 +1,1452 @@
+version: "2"
+components:
+
+# ============================================================
+# COMPONENT 1: BACKEND V2 (Python FastAPI)
+# ============================================================
+- type: backend
+  component_name: backend_v2
+  tech_stack:
+    - Python 3.11+
+    - FastAPI
+    - PostgreSQL (via Supabase/SQLAlchemy async)
+    - Pydantic v2 (pydantic-settings)
+    - python-jose (JWT)
+    - bcrypt (password hashing)
+    - Sentry (error tracking)
+    - Telegram Bot API (video hosting)
+  base_url: https://darsak-backend.fly.dev
+  api_prefix: /api/v1
+
+  features:
+    # ─── Authentication ───
+    - name: User Registration
+      description: Register a new teacher account with email, full name, and password. Auto-generates teacher code (TCH-XXXXXXXX) and creates a 30-day trial subscription.
+      files:
+        - backend_v2/src/api/v1/auth.py
+        - backend_v2/src/services/user_service.py
+      endpoints:
+        - method: POST
+          path: /api/v1/auth/register
+          description: Register a new teacher account
+          auth_required: false
+          request_schema:
+            email: string
+            full_name: string (min 2, max 255)
+            password: string (min 6, max 128)
+          response_schema:
+            "200":
+              id: UUID
+              email: string
+              full_name: string
+              role: string
+              teacher_code: string
+              is_active: boolean
+              onboarding_completed: boolean
+          depends_on:
+            - user_service
+            - plans table
+            - subscriptions table
+      known_limitations:
+        - issue: Trial subscription creation failure is silently logged, user still registered
+          location: auth.py:107
+          impact: User may not get trial period without notification
+
+    - name: User Login
+      description: Authenticate user with email and password. Returns JWT access and refresh tokens.
+      files:
+        - backend_v2/src/api/v1/auth.py
+        - backend_v2/src/core/security/auth.py
+      endpoints:
+        - method: POST
+          path: /api/v1/auth/login
+          description: Authenticate and get JWT tokens
+          auth_required: false
+          request_schema:
+            email: string
+            password: string
+          response_schema:
+            "200":
+              access_token: string
+              refresh_token: string
+              token_type: "bearer"
+      known_limitations:
+        - issue: Generic error messages prevent brute-force detection visibility
+          location: auth.py:125
+          impact: Security monitoring is limited
+
+    - name: Get Current User Profile
+      description: Retrieve the authenticated user's profile data.
+      files:
+        - backend_v2/src/api/v1/auth.py
+      endpoints:
+        - method: GET
+          path: /api/v1/auth/me
+          description: Get current user profile
+          auth_required: true
+          response_schema:
+            "200":
+              id: UUID
+              email: string
+              full_name: string
+              role: string
+              teacher_code: string
+              is_active: boolean
+              onboarding_completed: boolean
+              subjects: array
+              levels: array
+              created_at: datetime
+              telegram_channel_id: string
+
+    - name: Token Refresh
+      description: Exchange a valid refresh token for new access and refresh tokens.
+      files:
+        - backend_v2/src/api/v1/auth.py
+      endpoints:
+        - method: POST
+          path: /api/v1/auth/refresh
+          description: Refresh JWT tokens
+          auth_required: false
+          request_schema:
+            refresh_token: string
+          response_schema:
+            "200":
+              access_token: string
+              refresh_token: string
+              token_type: "bearer"
+      known_limitations:
+        - issue: No token rotation revocation - old refresh tokens may still be valid briefly
+          location: auth.py:176-213
+          impact: Slight security window after refresh
+
+    # ─── Students ───
+    - name: List Students
+      description: List all students for the authenticated teacher with search, pagination.
+      files:
+        - backend_v2/src/api/v1/students.py
+        - backend_v2/src/services/student_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/students/
+          description: List students with optional search and pagination
+          auth_required: true
+          request_schema:
+            search: string (optional)
+            limit: integer (1-1000, default 100)
+            offset: integer (>=0, default 0)
+          response_schema:
+            "200":
+              data: array of student objects
+
+    - name: Create Student
+      description: Create a new student record. Auto-generates student code (STU-xxxxxxxx) if not provided. PIN is bcrypt hashed.
+      files:
+        - backend_v2/src/api/v1/students.py
+      endpoints:
+        - method: POST
+          path: /api/v1/students/
+          description: Create a new student
+          auth_required: true
+          request_schema:
+            full_name: string (min 2, max 255)
+            code: string (optional)
+            parent_phone: string (optional)
+            group_id: UUID (optional)
+            pin: string (optional, bcrypt hashed)
+          response_schema:
+            "200": student object with id, full_name, code, teacher_id, etc.
+
+    - name: Get Student Count
+      description: Get total count of students for the authenticated teacher.
+      files:
+        - backend_v2/src/api/v1/students.py
+      endpoints:
+        - method: GET
+          path: /api/v1/students/count
+          description: Get student count
+          auth_required: true
+          response_schema:
+            "200":
+              count: integer
+
+    - name: Get Student by ID
+      description: Retrieve a single student by ID. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/students.py
+      endpoints:
+        - method: GET
+          path: /api/v1/students/{student_id}
+          description: Get student by ID
+          auth_required: true
+          response_schema:
+            "200": student object
+
+    - name: Update Student
+      description: Update student fields (full_name, code, parent_phone, group_id, pin). Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/students.py
+      endpoints:
+        - method: PUT
+          path: /api/v1/students/{student_id}
+          description: Update student
+          auth_required: true
+          request_schema:
+            full_name: string (optional)
+            code: string (optional)
+            parent_phone: string (optional)
+            group_id: UUID (optional)
+            pin: string (optional)
+          response_schema:
+            "200": updated student object
+
+    - name: Delete Student
+      description: Delete a student record. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/students.py
+      endpoints:
+        - method: DELETE
+          path: /api/v1/students/{student_id}
+          description: Delete student
+          auth_required: true
+          response_schema:
+            "200":
+              deleted: boolean
+
+    - name: Get Student Attendance
+      description: Get all attendance records for a specific student.
+      files:
+        - backend_v2/src/api/v1/students.py
+      endpoints:
+        - method: GET
+          path: /api/v1/students/{student_id}/attendance
+          description: Get student attendance records
+          auth_required: true
+          response_schema:
+            "200":
+              data: array of attendance records
+
+    - name: Get Student Grades
+      description: Get all grade records for a specific student.
+      files:
+        - backend_v2/src/api/v1/students.py
+      endpoints:
+        - method: GET
+          path: /api/v1/students/{student_id}/grades
+          description: Get student grade records
+          auth_required: true
+          response_schema:
+            "200":
+              data: array of grade records
+      known_limitations:
+        - issue: No ownership validation on student_attendance and student_grades sub-endpoints beyond student lookup
+          location: students.py:187-226
+          impact: Could potentially access attendance/grades if student ID is known
+
+    # ─── Groups ───
+    - name: List Groups
+      description: List all groups for the authenticated teacher.
+      files:
+        - backend_v2/src/api/v1/groups.py
+        - backend_v2/src/services/group_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/groups/
+          description: List all groups
+          auth_required: true
+          response_schema:
+            "200":
+              data: array of group objects
+
+    - name: Create Group
+      description: Create a new group with optional subject, level, day_of_week, time_slot.
+      files:
+        - backend_v2/src/api/v1/groups.py
+      endpoints:
+        - method: POST
+          path: /api/v1/groups/
+          description: Create a new group
+          auth_required: true
+          request_schema:
+            name: string (min 1, max 255)
+            subject: string (optional)
+            level: string (optional)
+            day_of_week: string (optional)
+            time_slot: string (optional)
+          response_schema:
+            "200": group object
+
+    - name: Get Group by ID
+      description: Retrieve a single group by ID. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/groups.py
+      endpoints:
+        - method: GET
+          path: /api/v1/groups/{group_id}
+          description: Get group by ID
+          auth_required: true
+          response_schema:
+            "200": group object
+
+    - name: Update Group
+      description: Update group fields. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/groups.py
+      endpoints:
+        - method: PUT
+          path: /api/v1/groups/{group_id}
+          description: Update group
+          auth_required: true
+          request_schema:
+            name: string (optional)
+            subject: string (optional)
+            level: string (optional)
+            day_of_week: string (optional)
+            time_slot: string (optional)
+          response_schema:
+            "200": updated group object
+
+    - name: Delete Group
+      description: Delete a group. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/groups.py
+      endpoints:
+        - method: DELETE
+          path: /api/v1/groups/{group_id}
+          description: Delete group
+          auth_required: true
+          response_schema:
+            "200":
+              deleted: boolean
+
+    # ─── Attendance ───
+    - name: List Attendance
+      description: List attendance records with optional date and student_id filters.
+      files:
+        - backend_v2/src/api/v1/attendance.py
+        - backend_v2/src/services/attendance_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/attendance/
+          description: List attendance records
+          auth_required: true
+          request_schema:
+            date: string (optional, ISO date)
+            student_id: UUID (optional)
+          response_schema:
+            "200":
+              data: array of attendance records
+
+    - name: Mark Attendance
+      description: Create a single attendance record for a student.
+      files:
+        - backend_v2/src/api/v1/attendance.py
+      endpoints:
+        - method: POST
+          path: /api/v1/attendance/
+          description: Mark attendance for a student
+          auth_required: true
+          request_schema:
+            student_id: UUID
+            date: string (ISO date)
+            time: string (optional)
+            status: string (default "present")
+          response_schema:
+            "200": attendance record
+
+    - name: Mark Attendance by Barcode
+      description: Mark attendance using a student barcode. Auto-sets today's date and "present" status.
+      files:
+        - backend_v2/src/api/v1/attendance.py
+      endpoints:
+        - method: POST
+          path: /api/v1/attendance/barcode
+          description: Mark attendance via student barcode scan
+          auth_required: true
+          request_schema:
+            barcode: string
+          response_schema:
+            "200": attendance record
+      known_limitations:
+        - issue: Barcode attendance always marks "present" - no way to mark absent/late via barcode
+          location: attendance.py:101
+          impact: Limited attendance marking flexibility
+
+    - name: Bulk Mark Attendance
+      description: Create multiple attendance records in one request.
+      files:
+        - backend_v2/src/api/v1/attendance.py
+      endpoints:
+        - method: POST
+          path: /api/v1/attendance/bulk
+          description: Bulk mark attendance
+          auth_required: true
+          request_schema:
+            records: "array of {student_id: UUID, date: string, status: string}"
+          response_schema:
+            "200":
+              data: array of created attendance records
+
+    - name: Attendance Stats
+      description: Get today's attendance statistics for the teacher.
+      files:
+        - backend_v2/src/api/v1/attendance.py
+      endpoints:
+        - method: GET
+          path: /api/v1/attendance/stats
+          description: Get attendance statistics
+          auth_required: true
+          response_schema:
+            "200": stats object (present, absent, late counts)
+
+    # ─── Grades ───
+    - name: List Grades
+      description: List grade records with optional subject and student_id filters.
+      files:
+        - backend_v2/src/api/v1/grades.py
+        - backend_v2/src/services/grade_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/grades/
+          description: List grades
+          auth_required: true
+          request_schema:
+            subject: string (optional)
+            student_id: UUID (optional)
+            limit: integer (<=2000, default 200)
+          response_schema:
+            "200":
+              data: array of grade objects
+
+    - name: Create Grade
+      description: Create a grade record for a student.
+      files:
+        - backend_v2/src/api/v1/grades.py
+      endpoints:
+        - method: POST
+          path: /api/v1/grades/
+          description: Create a grade
+          auth_required: true
+          request_schema:
+            student_id: UUID
+            subject: string (optional)
+            score: float
+            max_score: float (optional)
+            type: string (optional)
+          response_schema:
+            "200": grade object
+
+    - name: Update Grade
+      description: Update an existing grade. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/grades.py
+      endpoints:
+        - method: PUT
+          path: /api/v1/grades/{grade_id}
+          description: Update grade
+          auth_required: true
+          request_schema:
+            student_id: UUID (optional)
+            subject: string (optional)
+            score: float (optional)
+            max_score: float (optional)
+            type: string (optional)
+          response_schema:
+            "200": updated grade object
+
+    - name: Delete Grade
+      description: Delete a grade record. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/grades.py
+      endpoints:
+        - method: DELETE
+          path: /api/v1/grades/{grade_id}
+          description: Delete grade
+          auth_required: true
+          response_schema:
+            "200":
+              deleted: boolean
+
+    # ─── Invoices ───
+    - name: List Invoices
+      description: List invoices with optional status and student_id filters.
+      files:
+        - backend_v2/src/api/v1/invoices.py
+        - backend_v2/src/services/invoice_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/invoices/
+          description: List invoices
+          auth_required: true
+          request_schema:
+            status: string (optional)
+            student_id: UUID (optional)
+            limit: integer (<=2000, default 200)
+          response_schema:
+            "200":
+              data: array of invoice objects
+
+    - name: Create Invoice
+      description: Create an invoice for a student.
+      files:
+        - backend_v2/src/api/v1/invoices.py
+      endpoints:
+        - method: POST
+          path: /api/v1/invoices/
+          description: Create an invoice
+          auth_required: true
+          request_schema:
+            student_id: UUID
+            amount: float
+            description: string (optional)
+            due_date: string (optional)
+            status: string (optional)
+          response_schema:
+            "200": invoice object
+
+    - name: Update Invoice
+      description: Update an invoice. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/invoices.py
+      endpoints:
+        - method: PUT
+          path: /api/v1/invoices/{invoice_id}
+          description: Update invoice
+          auth_required: true
+          request_schema:
+            student_id: UUID (optional)
+            amount: float (optional)
+            description: string (optional)
+            due_date: string (optional)
+            status: string (optional)
+          response_schema:
+            "200": updated invoice object
+
+    - name: Delete Invoice
+      description: Delete an invoice. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/invoices.py
+      endpoints:
+        - method: DELETE
+          path: /api/v1/invoices/{invoice_id}
+          description: Delete invoice
+          auth_required: true
+          response_schema:
+            "200":
+              deleted: boolean
+
+    - name: Invoice Stats
+      description: Get invoice statistics for the teacher.
+      files:
+        - backend_v2/src/api/v1/invoices.py
+      endpoints:
+        - method: GET
+          path: /api/v1/invoices/stats
+          description: Get invoice statistics
+          auth_required: true
+          response_schema:
+            "200": stats object (total, paid, pending, etc.)
+
+    # ─── Exams ───
+    - name: List Exams
+      description: List all exams for the authenticated teacher.
+      files:
+        - backend_v2/src/api/v1/exams.py
+        - backend_v2/src/services/exam_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/exams/
+          description: List exams
+          auth_required: true
+          request_schema:
+            limit: integer (<=1000, default 100)
+          response_schema:
+            "200":
+              data: array of exam objects
+
+    - name: Create Exam
+      description: Create a new exam.
+      files:
+        - backend_v2/src/api/v1/exams.py
+      endpoints:
+        - method: POST
+          path: /api/v1/exams/
+          description: Create an exam
+          auth_required: true
+          request_schema:
+            title: string
+            description: string (optional)
+            duration_minutes: integer (optional)
+            total_points: float (optional)
+          response_schema:
+            "200": exam object
+
+    - name: Get Exam by ID
+      description: Get a single exam with its details. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/exams.py
+      endpoints:
+        - method: GET
+          path: /api/v1/exams/{exam_id}
+          description: Get exam by ID
+          auth_required: true
+          response_schema:
+            "200": exam object
+
+    - name: Update Exam
+      description: Update an exam. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/exams.py
+      endpoints:
+        - method: PUT
+          path: /api/v1/exams/{exam_id}
+          description: Update exam
+          auth_required: true
+          request_schema:
+            title: string (optional)
+            description: string (optional)
+            duration_minutes: integer (optional)
+            total_points: float (optional)
+          response_schema:
+            "200": updated exam object
+
+    - name: Delete Exam
+      description: Delete an exam. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/exams.py
+      endpoints:
+        - method: DELETE
+          path: /api/v1/exams/{exam_id}
+          description: Delete exam
+          auth_required: true
+          response_schema:
+            "200":
+              deleted: boolean
+
+    - name: Add Exam Question
+      description: Add a question to an exam. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/exams.py
+      endpoints:
+        - method: POST
+          path: /api/v1/exams/{exam_id}/questions
+          description: Add question to exam
+          auth_required: true
+          request_schema:
+            question_text: string
+            options: array (optional)
+            correct_answer: string (optional)
+            points: float (optional)
+            order_num: integer (optional)
+          response_schema:
+            "200": question object
+
+    - name: Update Exam Question
+      description: Update an exam question.
+      files:
+        - backend_v2/src/api/v1/exams.py
+      endpoints:
+        - method: PUT
+          path: /api/v1/exams/questions/{question_id}
+          description: Update question
+          auth_required: true
+          request_schema:
+            question_text: string (optional)
+            options: array (optional)
+            correct_answer: string (optional)
+            points: float (optional)
+            order_num: integer (optional)
+          response_schema:
+            "200": updated question object
+      known_limitations:
+        - issue: Question update/delete endpoints do not validate exam ownership - only question existence
+          location: exams.py:202-245
+          impact: Teacher could potentially modify another teacher's exam questions
+
+    - name: Delete Exam Question
+      description: Delete an exam question.
+      files:
+        - backend_v2/src/api/v1/exams.py
+      endpoints:
+        - method: DELETE
+          path: /api/v1/exams/questions/{question_id}
+          description: Delete question
+          auth_required: true
+          response_schema:
+            "200":
+              deleted: boolean
+
+    # ─── Lessons ───
+    - name: List Lessons
+      description: List lessons with optional group_id and is_published filters.
+      files:
+        - backend_v2/src/api/v1/lessons.py
+        - backend_v2/src/services/lesson_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/lessons/
+          description: List lessons
+          auth_required: true
+          request_schema:
+            group_id: UUID (optional)
+            is_published: boolean (optional)
+            skip: integer (default 0)
+            limit: integer (default 50)
+          response_schema:
+            "200": paginated lessons result
+
+    - name: Create Lesson
+      description: Create a new lesson with optional description, subject, group_id, week_number.
+      files:
+        - backend_v2/src/api/v1/lessons.py
+      endpoints:
+        - method: POST
+          path: /api/v1/lessons/
+          description: Create a lesson
+          auth_required: true
+          request_schema:
+            title: string
+            description: string (optional)
+            subject: string (optional)
+            group_id: UUID (optional)
+            week_number: integer (optional)
+          response_schema:
+            "200": lesson object
+
+    - name: Get Lesson by ID
+      description: Get a single lesson. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/lessons.py
+      endpoints:
+        - method: GET
+          path: /api/v1/lessons/{lesson_id}
+          description: Get lesson by ID
+          auth_required: true
+          response_schema:
+            "200": lesson object
+
+    - name: Update Lesson
+      description: Update a lesson. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/lessons.py
+      endpoints:
+        - method: PUT
+          path: /api/v1/lessons/{lesson_id}
+          description: Update lesson
+          auth_required: true
+          request_schema:
+            title: string (optional)
+            description: string (optional)
+            subject: string (optional)
+            is_published: boolean (optional)
+            week_number: integer (optional)
+          response_schema:
+            "200": updated lesson object
+
+    - name: Delete Lesson
+      description: Delete a lesson. Validates teacher ownership.
+      files:
+        - backend_v2/src/api/v1/lessons.py
+      endpoints:
+        - method: DELETE
+          path: /api/v1/lessons/{lesson_id}
+          description: Delete lesson
+          auth_required: true
+          response_schema:
+            "200":
+              detail: "Lesson deleted"
+
+    - name: Upload Lesson Video
+      description: Upload a video file to a lesson via Telegram channel. Max 2GB. Auto-publishes lesson on upload.
+      files:
+        - backend_v2/src/api/v1/lessons.py
+        - backend_v2/src/services/video_bot.py
+      endpoints:
+        - method: POST
+          path: /api/v1/lessons/{lesson_id}/upload-video
+          description: Upload video to lesson via Telegram
+          auth_required: true
+          request_schema:
+            file: UploadFile (multipart)
+            caption: string (Form, optional)
+          response_schema:
+            "200":
+              ok: boolean
+              message_id: integer
+              file_id: string
+              duration: integer
+      known_limitations:
+        - issue: Video upload depends on external Telegram Bot API availability
+          location: lessons.py:164-228
+          impact: Service degradation if Telegram API is down
+        - issue: 2GB file limit enforced at application level only
+          location: lessons.py:194
+          impact: Large video uploads may timeout before reaching the limit check
+
+    - name: Get Lesson Stream URL
+      description: Get the streaming URL for a lesson video (cached or fresh from Telegram).
+      files:
+        - backend_v2/src/api/v1/lessons.py
+      endpoints:
+        - method: GET
+          path: /api/v1/lessons/{lesson_id}/stream-url
+          description: Get video stream URL
+          auth_required: true
+          response_schema:
+            "200":
+              stream_url: string
+
+    - name: Setup Teacher Channel
+      description: Create or retrieve the teacher's Telegram channel for video hosting.
+      files:
+        - backend_v2/src/api/v1/lessons.py
+      endpoints:
+        - method: POST
+          path: /api/v1/lessons/setup-channel
+          description: Setup Telegram channel for video hosting
+          auth_required: true
+          response_schema:
+            "200":
+              ok: boolean
+              channel_id: string
+              title: string
+
+    # ─── Subscriptions ───
+    - name: List Plans
+      description: List all active subscription plans.
+      files:
+        - backend_v2/src/api/v1/subscriptions.py
+        - backend_v2/src/services/subscription_service.py
+      endpoints:
+        - method: GET
+          path: /api/v1/subscriptions/plans
+          description: List active subscription plans
+          auth_required: true
+          response_schema:
+            "200": array of plan objects
+
+    - name: Get My Subscription
+      description: Get the current teacher's subscription and plan details.
+      files:
+        - backend_v2/src/api/v1/subscriptions.py
+      endpoints:
+        - method: GET
+          path: /api/v1/subscriptions/my
+          description: Get current subscription
+          auth_required: true
+          response_schema:
+            "200":
+              subscription: object or null
+              plan: object or null
+
+    - name: Activate Subscription Code
+      description: Activate a subscription using a code. Creates subscription and marks code as used.
+      files:
+        - backend_v2/src/api/v1/subscriptions.py
+      endpoints:
+        - method: POST
+          path: /api/v1/subscriptions/activate
+          description: Activate subscription code
+          auth_required: true
+          request_schema:
+            code: string
+          response_schema:
+            "200":
+              subscription: subscription object
+              plan: plan object
+      known_limitations:
+        - issue: No concurrent activation protection - race condition possible
+          location: subscriptions.py:50-91
+          impact: Code could be activated twice under heavy concurrent load
+
+    - name: Payment Request
+      description: Create a payment request for a subscription plan.
+      files:
+        - backend_v2/src/api/v1/subscriptions.py
+      endpoints:
+        - method: POST
+          path: /api/v1/subscriptions/payment-request
+          description: Create payment request
+          auth_required: true
+          request_schema:
+            plan_id: UUID
+            phone_number: string
+            amount: float
+          response_schema:
+            "200": payment request object
+      known_limitations:
+        - issue: Payment request has no actual payment gateway integration
+          location: subscriptions.py:94-118
+          impact: Manual processing required
+
+    # ─── Dashboard ───
+    - name: Dashboard Stats
+      description: Get aggregated dashboard statistics (student count, group count, attendance, pending invoices, active exams).
+      files:
+        - backend_v2/src/api/v1/dashboard.py
+      endpoints:
+        - method: GET
+          path: /api/v1/dashboard/stats
+          description: Get dashboard statistics
+          auth_required: true
+          response_schema:
+            "200":
+              students: integer
+              groups: integer
+              today_attendance: integer
+              pending_invoices: integer
+              active_exams: integer
+
+    # ─── Health ───
+    - name: Health Check
+      description: Basic health check endpoint.
+      files:
+        - backend_v2/src/main.py
+      endpoints:
+        - method: GET
+          path: /health
+          description: Health check
+          auth_required: false
+          response_schema:
+            "200":
+              status: "healthy"
+
+  known_limitations:
+    - issue: Migrations run as background task on startup - no migration status tracking
+      location: main.py:24
+      impact: No visibility into migration failures
+    - issue: SupabaseRepository builds raw SQL queries with parameterized values but table names are interpolated directly
+      location: repositories/supabase.py:42
+      impact: Mitigated by identifier validation, but no ORM-level protection
+    - issue: CORS allows localhost:3000 in production config
+      location: config.py:20
+      impact: Development origin allowed in all environments
+    - issue: No rate limiting on any endpoints
+      location: main.py
+      impact: Vulnerable to abuse/DoS
+
+# ============================================================
+# COMPONENT 2: WEB PORTAL (Next.js Frontend)
+# ============================================================
+- type: frontend
+  component_name: web_portal
+  tech_stack:
+    - TypeScript
+    - Next.js 14 (App Router)
+    - React 18
+    - Tailwind CSS
+    - TanStack React Query
+    - Axios
+    - Framer Motion
+    - Recharts
+    - react-hook-form + Zod
+    - react-hot-toast
+    - Sentry
+  base_url: https://darsak-ai.vercel.app
+  api_url: https://darsak-backend.fly.dev/api
+
+  features:
+    # ─── Public Pages ───
+    - name: Landing Page
+      description: Public marketing landing page.
+      files:
+        - web-portal/src/app/page.tsx
+      endpoints: []
+
+    - name: Login Page
+      description: User login form with email/password. Uses Zod validation. Stores tokens in localStorage and cookies.
+      files:
+        - web-portal/src/app/login/page.tsx
+        - web-portal/src/lib/auth.ts
+        - web-portal/src/lib/api.ts
+      endpoints: []
+      known_limitations:
+        - issue: Tokens stored in both localStorage and cookies - potential XSS surface
+          location: auth.ts:15-21
+          impact: Security consideration for token storage
+
+    - name: Register Page
+      description: User registration form with name, email, password, confirm password. Uses Zod validation.
+      files:
+        - web-portal/src/app/register/page.tsx
+      endpoints: []
+
+    - name: Pricing Page
+      description: Public subscription pricing comparison page.
+      files:
+        - web-portal/src/app/pricing/page.tsx
+      endpoints: []
+
+    - name: About Page
+      description: Public about page.
+      files:
+        - web-portal/src/app/about/page.tsx
+      endpoints: []
+
+    - name: Contact Page
+      description: Public contact page.
+      files:
+        - web-portal/src/app/contact/page.tsx
+      endpoints: []
+
+    - name: FAQ Page
+      description: Public FAQ page.
+      files:
+        - web-portal/src/app/faq/page.tsx
+      endpoints: []
+
+    - name: Terms Page
+      description: Terms of service page.
+      files:
+        - web-portal/src/app/terms/page.tsx
+      endpoints: []
+
+    - name: Privacy Page
+      description: Privacy policy page.
+      files:
+        - web-portal/src/app/privacy/page.tsx
+      endpoints: []
+
+    - name: Download Page
+      description: Public download page for teacher, student, and desktop apps. Lists APKs and Windows builds.
+      files:
+        - web-portal/src/app/download/page.tsx
+      endpoints: []
+
+    # ─── Middleware / Auth ───
+    - name: Route Protection Middleware
+      description: Next.js middleware that checks access_token cookie. Public paths are whitelisted. Redirects unauthenticated users to /login.
+      files:
+        - web-portal/src/middleware.ts
+      endpoints: []
+      known_limitations:
+        - issue: Cookie-based auth check only - no server-side token verification
+          location: middleware.ts:16
+          impact: Expired tokens may allow page access until API call fails
+
+    # ─── Dashboard Pages ───
+    - name: Dashboard Overview
+      description: Main dashboard with stats cards (students, grades average, attendance, exams), weekly attendance chart, new students bar chart, quick actions.
+      files:
+        - web-portal/src/app/dashboard/page.tsx
+        - web-portal/src/app/dashboard/layout.tsx
+      endpoints: []
+
+    - name: Students Management
+      description: CRUD operations for students. List with search, add modal with form, delete with confirmation, student count display.
+      files:
+        - web-portal/src/app/dashboard/students/page.tsx
+      endpoints: []
+
+    - name: Student Profile & Report
+      description: Individual student page with grades, AI analysis, PDF export capability.
+      files:
+        - web-portal/src/app/dashboard/students/[id]/page.tsx
+      endpoints: []
+      known_limitations:
+        - issue: AI analysis depends on external API call - no offline fallback
+          location: students/[id]/page.tsx
+          impact: Feature unavailable without backend AI service
+
+    - name: Groups Management
+      description: CRUD operations for groups. Create with name, subject, level, day, time. Shows student count per group.
+      files:
+        - web-portal/src/app/dashboard/groups/page.tsx
+      endpoints: []
+
+    - name: Attendance Management
+      description: Mark attendance per student with present/absent/late options. Filter by group and date. Shows attendance stats.
+      files:
+        - web-portal/src/app/dashboard/attendance/page.tsx
+      endpoints: []
+
+    - name: Grades Management
+      description: CRUD operations for grades. Add by student code/name search. Shows grade stats. Group filtering.
+      files:
+        - web-portal/src/app/dashboard/grades/page.tsx
+      endpoints: []
+
+    - name: Invoices Management
+      description: CRUD operations for invoices. Add by student code/name. Toggle paid status. Shows invoice stats.
+      files:
+        - web-portal/src/app/dashboard/invoices/page.tsx
+      endpoints: []
+
+    - name: QR Code Page
+      description: Generate and display teacher QR code for student attendance scanning. Download and share capabilities.
+      files:
+        - web-portal/src/app/dashboard/qr/page.tsx
+      endpoints: []
+
+    - name: Subscription Management
+      description: View subscription plans, activate codes, submit payment requests, view current subscription status.
+      files:
+        - web-portal/src/app/dashboard/subscription/page.tsx
+      endpoints: []
+
+    - name: Settings Page
+      description: User profile settings - update name, change password, dark mode toggle, notification toggle.
+      files:
+        - web-portal/src/app/dashboard/settings/page.tsx
+      endpoints: []
+
+    - name: Assistants Page
+      description: Manage teaching assistants (placeholder/stub - hardcoded demo data).
+      files:
+        - web-portal/src/app/dashboard/assistants/page.tsx
+      endpoints: []
+      known_limitations:
+        - issue: Assistants page uses hardcoded demo data - not connected to backend
+          location: assistants/page.tsx:40-43
+          impact: Feature is non-functional
+
+    - name: Downloads Page
+      description: Download center for Teacher APK, Student APK, Desktop Windows builds.
+      files:
+        - web-portal/src/app/dashboard/downloads/page.tsx
+      endpoints: []
+
+    # ─── API Routes ───
+    - name: Update Check API
+      description: Server-side route that returns latest version info for desktop app update checking.
+      files:
+        - web-portal/src/app/api/update/check/route.ts
+      endpoints:
+        - method: GET
+          path: /api/update/check
+          description: Check for app updates
+          auth_required: false
+          response_schema:
+            "200":
+              latest_version: string
+              download_url: string
+              changelog: string
+
+    - name: Download Proxy API
+      description: Server-side route that redirects to GitHub releases for file downloads. Maps filenames to release tags.
+      files:
+        - web-portal/src/app/api/download/[file]/route.ts
+      endpoints:
+        - method: GET
+          path: /api/download/{file}
+          description: Redirect to GitHub release download
+          auth_required: false
+          response_schema:
+            "302": redirect to GitHub URL
+      known_limitations:
+        - issue: Download proxy only redirects - does not validate file existence before redirect
+          location: download/[file]/route.ts:57
+          impact: 404 from GitHub if file doesn't exist
+
+    # ─── Components ───
+    - name: Protected Route Component
+      description: Client-side auth guard that checks authentication state.
+      files:
+        - web-portal/src/components/layout/ProtectedRoute.tsx
+      endpoints: []
+
+    - name: Subscription Guard
+      description: Wraps dashboard content to enforce subscription validity. Exempts subscription page.
+      files:
+        - web-portal/src/components/layout/SubscriptionGuard.tsx
+      endpoints: []
+
+    - name: Sidebar Navigation
+      description: Dashboard sidebar navigation with links to all sections.
+      files:
+        - web-portal/src/components/layout/Sidebar.tsx
+      endpoints: []
+
+    - name: Header Component
+      description: Dashboard header with user info and actions.
+      files:
+        - web-portal/src/components/layout/Header.tsx
+      endpoints: []
+
+    - name: UI Components Library
+      description: Reusable UI components - GlassCard, ThemeToggle, ProgressRing, ErrorBoundary, PageTransition, CountUp, Section, NeonButton.
+      files:
+        - web-portal/src/components/ui/GlassCard.tsx
+        - web-portal/src/components/ui/ThemeToggle.tsx
+        - web-portal/src/components/ui/ProgressRing.tsx
+        - web-portal/src/components/ui/ErrorBoundary.tsx
+        - web-portal/src/components/ui/PageTransition.tsx
+        - web-portal/src/components/ui/CountUp.tsx
+        - web-portal/src/components/ui/Section.tsx
+        - web-portal/src/components/ui/NeonButton.tsx
+      endpoints: []
+
+  known_limitations:
+    - issue: Token refresh interceptor does not queue concurrent 401s
+      location: lib/api.ts:38-68
+      impact: Multiple simultaneous 401s may cause redirect race conditions
+    - issue: No server-side rendering for dashboard pages - all client-side
+      location: dashboard/**/*.tsx
+      impact: SEO limited, initial load shows loading spinners
+    - issue: Chart data on dashboard is hardcoded - not fetched from API
+      location: dashboard/page.tsx:26-33
+      impact: Dashboard charts show static demo data
+
+# ============================================================
+# COMPONENT 3: DESKTOP APP (Flutter)
+# ============================================================
+- type: frontend
+  component_name: desktop_app
+  tech_stack:
+    - Dart
+    - Flutter 3.x
+    - SQLite (local database via sqlite3 package)
+    - Dio (HTTP client)
+    - Provider (state management)
+    - flutter_secure_storage
+    - shared_preferences
+    - window_manager
+    - connectivity_plus
+    - uuid
+  api_url: https://darsak-backend.fly.dev/api
+  platform: Windows, macOS, Linux
+
+  features:
+    # ─── Authentication ───
+    - name: Login Screen
+      description: Email/password login with RTL layout. Stores tokens in SharedPreferences and FlutterSecureStorage.
+      files:
+        - desktop_app/lib/ui/screens/login/login_screen.dart
+        - desktop_app/lib/providers/auth_provider.dart
+      endpoints: []
+      known_limitations:
+        - issue: Token stored in both SharedPreferences and SecureStorage - redundant storage
+          location: auth_provider.dart:141-155
+          impact: Minor storage redundancy
+
+    - name: Onboarding Screen
+      description: First-time user setup for name, subjects, and levels.
+      files:
+        - desktop_app/lib/ui/screens/onboarding/onboarding_screen.dart
+      endpoints: []
+
+    - name: Auth Provider
+      description: Manages authentication state, token persistence, user caching, login/logout flows.
+      files:
+        - desktop_app/lib/providers/auth_provider.dart
+      endpoints: []
+
+    # ─── Dashboard ───
+    - name: Dashboard Screen
+      description: Main dashboard with sidebar navigation, stat cards, quick actions. Supports dark/light theme toggle.
+      files:
+        - desktop_app/lib/ui/screens/dashboard/dashboard_screen.dart
+      endpoints: []
+
+    - name: Sidebar Widget
+      description: Navigation sidebar with screen switching.
+      files:
+        - desktop_app/lib/ui/widgets/sidebar.dart
+      endpoints: []
+
+    # ─── Students ───
+    - name: Students Screen
+      description: List, search, and manage students.
+      files:
+        - desktop_app/lib/ui/screens/students/students_screen.dart
+      endpoints: []
+
+    - name: Student Profile Screen
+      description: Individual student profile view.
+      files:
+        - desktop_app/lib/ui/screens/students/student_profile_screen.dart
+      endpoints: []
+
+    # ─── Groups ───
+    - name: Groups Screen
+      description: Manage student groups.
+      files:
+        - desktop_app/lib/ui/screens/groups/groups_screen.dart
+      endpoints: []
+
+    # ─── Attendance ───
+    - name: Attendance Screen
+      description: Mark and view attendance records.
+      files:
+        - desktop_app/lib/ui/screens/attendance/attendance_screen.dart
+      endpoints: []
+
+    - name: QR Camera Screen
+      description: Camera-based QR/barcode scanning for attendance.
+      files:
+        - desktop_app/lib/ui/screens/attendance/qr_camera_screen.dart
+      endpoints: []
+
+    # ─── Grades ───
+    - name: Grades Screen
+      description: Manage student grades.
+      files:
+        - desktop_app/lib/ui/screens/grades/grades_screen.dart
+      endpoints: []
+
+    # ─── Invoices ───
+    - name: Invoices Screen
+      description: Manage student invoices and payments.
+      files:
+        - desktop_app/lib/ui/screens/invoices/invoices_screen.dart
+      endpoints: []
+
+    # ─── Exams ───
+    - name: Exam List Screen
+      description: List and manage exams.
+      files:
+        - desktop_app/lib/ui/screens/exams/exam_list_screen.dart
+      endpoints: []
+
+    - name: Exam Questions Screen
+      description: Manage exam questions.
+      files:
+        - desktop_app/lib/ui/screens/exams/exam_questions_screen.dart
+      endpoints: []
+
+    - name: Exam Results Screen
+      description: View exam results and analytics.
+      files:
+        - desktop_app/lib/ui/screens/exams/exam_results_screen.dart
+      endpoints: []
+
+    # ─── QR Code ───
+    - name: QR Screen
+      description: Generate and display teacher QR code.
+      files:
+        - desktop_app/lib/ui/screens/qr/qr_screen.dart
+      endpoints: []
+
+    # ─── Subscription ───
+    - name: Subscription Screen
+      description: View and manage subscription plans and activation.
+      files:
+        - desktop_app/lib/ui/screens/subscription/subscription_screen.dart
+      endpoints: []
+
+    # ─── Settings ───
+    - name: Settings Screen
+      description: App settings - theme, account, preferences.
+      files:
+        - desktop_app/lib/ui/screens/settings/settings_screen.dart
+      endpoints: []
+
+    # ─── Core Services ───
+    - name: API Client
+      description: HTTP client with JWT auth interceptor, auto-refresh on 401.
+      files:
+        - desktop_app/lib/core/api/api_client.dart
+      endpoints: []
+
+    - name: API Service
+      description: All API endpoint wrappers - auth, students, groups, attendance, grades, invoices, exams, subscriptions, QR, analytics, health.
+      files:
+        - desktop_app/lib/core/api/api_service.dart
+      endpoints: []
+
+    - name: Database Service
+      description: Local SQLite database with WAL mode, CRUD for students, groups, attendance, grades, invoices, exams, sync queue.
+      files:
+        - desktop_app/lib/core/database/database_service.dart
+      endpoints: []
+
+    - name: Sync Service
+      description: Bidirectional sync between local SQLite and remote API. Queue-based with retry logic, connectivity monitoring.
+      files:
+        - desktop_app/lib/core/sync/sync_service.dart
+        - desktop_app/lib/core/sync/sync_queue_manager.dart
+        - desktop_app/lib/core/sync/conflict_resolver.dart
+      endpoints: []
+      known_limitations:
+        - issue: Sync uses polling timer rather than WebSocket for real-time updates
+          location: sync_service.dart:24-35
+          impact: Delay between local changes and server sync
+
+    - name: Local Sync Service
+      description: WebSocket-based local network sync between desktop instances (mDNS discovery).
+      files:
+        - desktop_app/lib/core/local_sync/local_sync_service.dart
+        - desktop_app/lib/core/local_sync/local_sync_server.dart
+        - desktop_app/lib/core/local_sync/local_sync_client.dart
+      endpoints: []
+
+    - name: Analytics Service
+      description: App usage analytics tracking.
+      files:
+        - desktop_app/lib/core/services/analytics_service.dart
+      endpoints: []
+
+    - name: Remote Config Service
+      description: Fetches remote configuration from server.
+      files:
+        - desktop_app/lib/core/services/remote_config_service.dart
+      endpoints: []
+
+    - name: Update Service
+      description: Checks for and manages app updates.
+      files:
+        - desktop_app/lib/core/services/update_service.dart
+      endpoints: []
+
+    - name: Notification Service
+      description: Local notification handling.
+      files:
+        - desktop_app/lib/core/services/notification_service.dart
+      endpoints: []
+
+    - name: Telegram Service
+      description: Telegram integration for notifications.
+      files:
+        - desktop_app/lib/core/services/telegram_service.dart
+      endpoints: []
+
+    - name: Debug Tracker
+      description: Debug logging and tracking.
+      files:
+        - desktop_app/lib/core/services/debug_tracker.dart
+      endpoints: []
+
+    # ─── Models ───
+    - name: Data Models
+      description: Data models for User, Student, Group, Attendance, Grade, Invoice, Exam, SyncOperation.
+      files:
+        - desktop_app/lib/core/models/user.dart
+        - desktop_app/lib/core/models/student.dart
+        - desktop_app/lib/core/models/group.dart
+        - desktop_app/lib/core/models/attendance.dart
+        - desktop_app/lib/core/models/grade.dart
+        - desktop_app/lib/core/models/invoice.dart
+        - desktop_app/lib/core/models/exam.dart
+        - desktop_app/lib/core/models/sync_operation.dart
+      endpoints: []
+
+    # ─── Widgets ───
+    - name: UI Widgets
+      description: Reusable widgets - StatCard, QuickAction, QR code widget, SubscriptionOverlay, SyncIndicator, DebugOverlay, GlassNotificationOverlay, UpdateDialog.
+      files:
+        - desktop_app/lib/ui/widgets/stat_card.dart
+        - desktop_app/lib/ui/widgets/quick_action.dart
+        - desktop_app/lib/ui/widgets/qr_code_widget.dart
+        - desktop_app/lib/ui/widgets/subscription_overlay.dart
+        - desktop_app/lib/ui/widgets/sync_indicator.dart
+        - desktop_app/lib/ui/widgets/sync_status_indicator.dart
+        - desktop_app/lib/ui/widgets/debug_overlay.dart
+        - desktop_app/lib/ui/widgets/glass_notification_overlay.dart
+        - desktop_app/lib/ui/widgets/update_dialog.dart
+      endpoints: []
+
+  known_limitations:
+    - issue: SQLite database is file-based with no encryption at rest
+      location: database_service.dart:31
+      impact: Data accessible if file system is compromised
+    - issue: Sync conflict resolution is simplified - last-write-wins strategy
+      location: conflict_resolver.dart
+      impact: Data loss possible during concurrent edits
+    - issue: No automated database migration system
+      location: database_service.dart:46
+      impact: Schema changes require manual handling
+    - issue: API base URL is hardcoded in constants
+      location: constants.dart:2
+      impact: Cannot switch environments without rebuild
+    - issue: Desktop app uses polling for sync instead of push notifications
+      location: sync_service.dart
+      impact: Delay in data synchronization between devices

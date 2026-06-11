@@ -1,10 +1,12 @@
 import logging
-import random
+import secrets
 import string
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from src.api.deps import get_current_user
 from src.core.security.auth import (
@@ -24,11 +26,12 @@ from src.services.user_service import user_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth")
+limiter = Limiter(key_func=get_remote_address)
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., min_length=3, max_length=255)
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class RegisterRequest(BaseModel):
@@ -39,13 +42,17 @@ class RegisterRequest(BaseModel):
 
 def _generate_teacher_code() -> str:
     chars = string.ascii_uppercase + string.digits
-    suffix = "".join(random.choices(chars, k=8))
+    suffix = "".join(secrets.choice(chars) for _ in range(8))
     return f"TCH-{suffix}"
 
+
+_SENSITIVE_FIELDS = {"hashed_password", "reset_token"}
 
 def _serialize_user(user: dict) -> dict:
     result = {}
     for key, value in user.items():
+        if key in _SENSITIVE_FIELDS:
+            continue
         if hasattr(value, "isoformat"):
             result[key] = value.isoformat()
         elif isinstance(value, str):
@@ -56,7 +63,8 @@ def _serialize_user(user: dict) -> dict:
 
 
 @router.post("/register")
-async def register(body: RegisterRequest):
+@limiter.limit("3/hour")
+async def register(request: Request, body: RegisterRequest):
     try:
         email = body.email.strip().lower()
 
@@ -116,7 +124,8 @@ async def register(body: RegisterRequest):
 
 
 @router.post("/login")
-async def login(body: LoginRequest):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest):
     try:
         email = body.email.strip().lower()
 

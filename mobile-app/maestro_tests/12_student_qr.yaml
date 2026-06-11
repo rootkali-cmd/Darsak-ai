@@ -1,0 +1,32 @@
+# QR Code & Student Check-in Test
+
+appId: com.darsak.ai
+---
+- runFlow: shared_login.yaml
+
+# Open drawer → QR Code
+- tapOn:
+    text: "?"
+
+- extendedWaitUntil:
+    visible:
+      text: "كود الحضور (QR)"
+    timeout: 5000
+
+- tapOn:
+    text: "كود الحضور (QR)"
+
+- extendedWaitUntil:
+    visible:
+      text: "كود الحضور"
+    timeout: 5000
+
+- assertVisible:
+    text: "كود الحضور"
+
+- pressKey: Back
+
+- extendedWaitUntil:
+    visible:
+      text: "ST000001"
+    timeout: 5000

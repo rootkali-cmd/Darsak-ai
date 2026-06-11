@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../providers/auth_provider.dart';
+import '../../screens/subscriptions/subscription_screen.dart';
 
 class AddEditExamScreen extends StatefulWidget {
   final dynamic exam;
@@ -27,6 +30,13 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
   @override
   void initState() {
     super.initState();
+    final auth = context.read<AuthProvider>();
+    if (!auth.hasSubscription) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSubscriptionRequiredDialog();
+      });
+      return;
+    }
     if (_isEdit) {
       final e = widget.exam!;
       _titleCtrl.text = e['title'] ?? '';
@@ -34,6 +44,28 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
       _durationCtrl.text = e['duration_minutes']?.toString() ?? '';
       _totalPointsCtrl.text = e['total_points']?.toString() ?? '';
     }
+  }
+
+  void _showSubscriptionRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('اشتراك مطلوب', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('يجب الاشتراك في باقة أولاً لإنشاء أو تعديل اختبارات'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionScreen()));
+            },
+            child: const Text('الذهاب للاشتراكات'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

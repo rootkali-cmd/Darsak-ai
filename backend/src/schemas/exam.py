@@ -45,6 +45,7 @@ class ExamCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     duration_minutes: int = Field(default=30, ge=1, le=180)
+    deadline_at: str | None = None
 
 
 class ExamUpdate(BaseModel):
@@ -52,6 +53,7 @@ class ExamUpdate(BaseModel):
     description: str | None = None
     duration_minutes: int | None = Field(default=None, ge=1, le=180)
     status: str | None = Field(default=None, pattern=r"^(draft|published|closed)$")
+    deadline_at: str | None = None
 
 
 class ExamResponse(BaseModel):

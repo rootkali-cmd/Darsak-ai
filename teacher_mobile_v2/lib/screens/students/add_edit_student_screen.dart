@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../providers/auth_provider.dart';
+import '../../screens/subscriptions/subscription_screen.dart';
 
 class AddEditStudentScreen extends StatefulWidget {
   final dynamic student;
@@ -31,6 +34,13 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
   @override
   void initState() {
     super.initState();
+    final auth = context.read<AuthProvider>();
+    if (!auth.hasSubscription) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSubscriptionRequiredDialog();
+      });
+      return;
+    }
     _loadGroups();
     if (_isEdit) {
       final s = widget.student!;
@@ -40,6 +50,28 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
       _selectedGroupId = s['group_id']?.toString();
       _pinCtrl.text = s['pin']?.toString() ?? '';
     }
+  }
+
+  void _showSubscriptionRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('اشتراك مطلوب', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('يجب الاشتراك في باقة أولاً لإضافة أو تعديل طلاب'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionScreen()));
+            },
+            child: const Text('الذهاب للاشتراكات'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/ai_service.dart';
 import '../core/theme.dart';
 
@@ -17,6 +19,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   bool _hasError = false;
+  static const String _storageKey = 'ai_chat_messages';
 
   @override
   void initState() {
@@ -27,22 +30,54 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Future<void> _init() async {
     try {
       await _ai.loadUsage();
-      setState(() {
-        _isLoading = false;
+      await _loadMessages();
+      if (_messages.isEmpty) {
         _messages.add(_ChatMessage(
           text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك، '
-              'المناهج التعليمية، أو أي موضوع يهمك. سأبحث وأحضر لك إجابة '
-              'مفصلة مع المصادر.\n\n'
+              'المناهج التعليمية، أو أي موضوع يهمك.\n\n'
               'لديك ${_ai.remaining} أسئلة متبقية اليوم',
           isUser: false,
         ));
-      });
+      }
+      setState(() => _isLoading = false);
     } catch (_) {
       setState(() {
         _isLoading = false;
         _hasError = true;
       });
     }
+  }
+
+  Future<void> _loadMessages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey);
+      if (raw != null) {
+        final List<dynamic> decoded = jsonDecode(raw);
+        _messages.clear();
+        for (final item in decoded) {
+          _messages.add(_ChatMessage(
+            text: item['text'] ?? '',
+            isUser: item['isUser'] ?? false,
+            isError: item['isError'] ?? false,
+            isSmall: item['isSmall'] ?? false,
+          ));
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveMessages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = jsonEncode(_messages.map((m) => {
+        'text': m.text,
+        'isUser': m.isUser,
+        'isError': m.isError,
+        'isSmall': m.isSmall,
+      }).toList());
+      await prefs.setString(_storageKey, encoded);
+    } catch (_) {}
   }
 
   Future<void> _send() async {
@@ -54,6 +89,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       _messages.add(_ChatMessage(text: text, isUser: true));
       _isSending = true;
     });
+    _saveMessages();
     _scrollDown();
 
     try {
@@ -77,6 +113,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
         _isSending = false;
       });
     }
+    _saveMessages();
     _scrollDown();
   }
 
@@ -105,6 +142,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
       appBar: AppBar(
         title: const Text('مساعد درسك AI'),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+            onPressed: _messages.isEmpty ? null : _clearChat,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -147,7 +190,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                           if (index == _messages.length) {
                             return _buildTypingIndicator();
                           }
-                          return _buildMessage(_messages[index]);
+                          return _buildMessage(_messages[index], index);
                         },
                       ),
           ),
@@ -174,10 +217,42 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
-  Widget _buildMessage(_ChatMessage msg) {
+  void _clearChat() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dialogBackground(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('مسح المحادثة', style: TextStyle(color: AppColors.textPrimary(context))),
+        content: Text('هل تريد مسح جميع الرسائل؟', style: TextStyle(color: AppColors.textSecondary(context))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _messages.clear();
+                _messages.add(_ChatMessage(
+                  text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك.\n\n'
+                      'لديك ${_ai.remaining} أسئلة متبقية اليوم',
+                  isUser: false,
+                ));
+              });
+              _saveMessages();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            child: const Text('مسح'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessage(_ChatMessage msg, int index) {
     return Align(
-      alignment: msg.isUser ? Alignment.centerLeft : Alignment.centerRight,
+      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
+        key: ValueKey('msg_$index'),
         margin: const EdgeInsets.only(bottom: 8),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
         padding: EdgeInsets.all(msg.isSmall ? 8 : 14),
@@ -192,22 +267,164 @@ class _AiChatScreenState extends State<AiChatScreen> {
             bottomRight: msg.isUser ? const Radius.circular(16) : const Radius.circular(4),
           ),
         ),
-        child: Text(
-          msg.text,
-          style: TextStyle(
-            color: msg.isUser
-                ? Colors.white
-                : msg.isError
-                    ? AppTheme.danger
-                    : msg.isSmall
-                        ? AppColors.textSecondary(context)
-                        : AppColors.textPrimary(context),
-            fontSize: msg.isSmall ? 11 : 14,
-            height: 1.5,
-          ),
+        child: msg.isUser || msg.isSmall || msg.isError
+            ? Text(
+                msg.text,
+                style: TextStyle(
+                  color: msg.isUser
+                      ? Colors.white
+                      : msg.isError
+                          ? AppTheme.danger
+                          : msg.isSmall
+                              ? AppColors.textSecondary(context)
+                              : AppColors.textPrimary(context),
+                  fontSize: msg.isSmall ? 11 : 14,
+                  height: 1.5,
+                ),
+              )
+            : _buildFormattedText(msg.text),
+      ),
+    );
+  }
+
+  Widget _buildFormattedText(String text) {
+    final spans = _parseMarkdown(text);
+    return RichText(
+      textDirection: TextDirection.rtl,
+      text: TextSpan(
+        children: spans,
+        style: TextStyle(
+          color: AppColors.textPrimary(context),
+          fontSize: 14,
+          height: 1.6,
         ),
       ),
     );
+  }
+
+  List<TextSpan> _parseMarkdown(String text) {
+    final List<TextSpan> spans = [];
+    final lines = text.split('\n');
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      // Header (# ## ###)
+      if (line.startsWith('### ')) {
+        spans.add(TextSpan(
+          text: '${line.substring(4)}\n',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF818cf8)),
+        ));
+      } else if (line.startsWith('## ')) {
+        spans.add(TextSpan(
+          text: '${line.substring(3)}\n',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF818cf8)),
+        ));
+      } else if (line.startsWith('# ')) {
+        spans.add(TextSpan(
+          text: '${line.substring(2)}\n',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF818cf8)),
+        ));
+      }
+      // Bullet points
+      else if (line.startsWith('- ') || line.startsWith('• ')) {
+        spans.add(const TextSpan(text: '  •  '));
+        spans.addAll(_parseInline(line.substring(2)));
+        spans.add(const TextSpan(text: '\n'));
+      }
+      // Numbered list
+      else if (RegExp(r'^\d+[\.\)]\s').hasMatch(line)) {
+        final match = RegExp(r'^(\d+[\.\)])\s(.+)').firstMatch(line);
+        if (match != null) {
+          spans.add(TextSpan(
+            text: '  ${match.group(1)} ',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF818cf8)),
+          ));
+          spans.addAll(_parseInline(match.group(2)!));
+          spans.add(const TextSpan(text: '\n'));
+        } else {
+          spans.addAll(_parseInline(line));
+          if (i < lines.length - 1) spans.add(const TextSpan(text: '\n'));
+        }
+      }
+      // Regular line
+      else {
+        spans.addAll(_parseInline(line));
+        if (i < lines.length - 1) spans.add(const TextSpan(text: '\n'));
+      }
+    }
+
+    return spans;
+  }
+
+  List<TextSpan> _parseInline(String text) {
+    final List<TextSpan> spans = [];
+    // Bold **text**
+    final boldRegex = RegExp(r'\*\*(.+?)\*\*');
+    // Italic *text*
+    final italicRegex = RegExp(r'\*(.+?)\*');
+    // Code `text`
+    final codeRegex = RegExp(r'`(.+?)`');
+
+    int lastEnd = 0;
+
+    // Find all patterns
+    final allMatches = <_InlineMatch>[];
+
+    for (final m in boldRegex.allMatches(text)) {
+      allMatches.add(_InlineMatch(m.start, m.end, m.group(1)!, _InlineType.bold));
+    }
+    for (final m in italicRegex.allMatches(text)) {
+      if (!allMatches.any((a) => a.start <= m.start && a.end >= m.end)) {
+        allMatches.add(_InlineMatch(m.start, m.end, m.group(1)!, _InlineType.italic));
+      }
+    }
+    for (final m in codeRegex.allMatches(text)) {
+      allMatches.add(_InlineMatch(m.start, m.end, m.group(1)!, _InlineType.code));
+    }
+
+    allMatches.sort((a, b) => a.start.compareTo(b.start));
+
+    for (final match in allMatches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+      }
+      switch (match.type) {
+        case _InlineType.bold:
+          spans.add(TextSpan(
+            text: match.content,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ));
+          break;
+        case _InlineType.italic:
+          spans.add(TextSpan(
+            text: match.content,
+            style: const TextStyle(fontStyle: FontStyle.italic),
+          ));
+          break;
+        case _InlineType.code:
+          spans.add(TextSpan(
+            text: match.content,
+            style: TextStyle(
+              backgroundColor: AppColors.surfaceHigher(context).withValues(alpha: 0.5),
+              fontFamily: 'monospace',
+              fontSize: 13,
+            ),
+          ));
+          break;
+      }
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: text));
+    }
+
+    return spans;
   }
 
   Widget _buildTypingIndicator() {
@@ -310,4 +527,15 @@ class _ChatMessage {
     this.isError = false,
     this.isSmall = false,
   });
+}
+
+enum _InlineType { bold, italic, code }
+
+class _InlineMatch {
+  final int start;
+  final int end;
+  final String content;
+  final _InlineType type;
+
+  _InlineMatch(this.start, this.end, this.content, this.type);
 }

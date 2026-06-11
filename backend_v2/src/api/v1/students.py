@@ -1,5 +1,5 @@
 import logging
-import random
+import secrets
 import string
 
 from fastapi import APIRouter, Depends, Query
@@ -32,13 +32,17 @@ class UpdateStudentBody(BaseModel):
 
 
 def _generate_student_code() -> str:
-    suffix = "".join(random.choices("0123456789abcdef", k=8))
+    suffix = "".join(secrets.choice("0123456789abcdef") for _ in range(8))
     return f"STU-{suffix}"
 
+
+_SENSITIVE_FIELDS = {"pin_hash", "hashed_password"}
 
 def _serialize(obj: dict) -> dict:
     result = {}
     for key, value in obj.items():
+        if key in _SENSITIVE_FIELDS:
+            continue
         if hasattr(value, "isoformat"):
             result[key] = value.isoformat()
         elif isinstance(value, str) and len(value) == 36 and value.count("-") == 4:

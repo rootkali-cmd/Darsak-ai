@@ -812,27 +812,27 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return [
       {
         'name': 'Basic',
-        'price': '200',
+        'price': '199',
         'duration': 'شهر',
-        'student_limit': '50',
+        'student_limit': '2',
         'popular': false,
-        'features': ['إدارة الطلاب', 'تسجيل الحضور', 'المجموعات', 'تقارير أساسية'],
+        'features': ['2 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'دعم فني'],
       },
       {
         'name': 'Pro',
-        'price': '600',
+        'price': '499',
         'duration': 'شهر',
-        'student_limit': '150',
+        'student_limit': '6',
         'popular': true,
-        'features': ['كل مزايا Basic', 'تحليل الأداء', 'الفواتير', 'QR Code', 'تقارير متقدمة'],
+        'features': ['6 اختبارات شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'دعم فني'],
       },
       {
-        'name': 'Enterprise',
-        'price': '1100',
+        'name': 'Premium',
+        'price': '999',
         'duration': 'شهر',
-        'student_limit': '300',
+        'student_limit': '15',
         'popular': false,
-        'features': ['كل المزايا', '300 طالب', 'دعم فني مميز', 'تصدير البيانات', 'امتيازات حصرية'],
+        'features': ['15 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'دعم فني أولوية'],
       },
     ];
   }

@@ -38,3 +38,11 @@ async def get_current_teacher(
     if role not in ("teacher", "admin"):
         raise HTTPException(status_code=403, detail="Teachers only")
     return current_user
+
+
+async def get_current_admin(
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    return current_user

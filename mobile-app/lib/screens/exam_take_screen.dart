@@ -54,7 +54,12 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
       _startTimer();
     } catch (e) {
       if (!mounted) return;
+      final isDeadlineError = e.toString().contains('الامتحان انتهى') ||
+          (e is dynamic && e.toString().contains('403'));
       setState(() => _isLoading = false);
+      if (isDeadlineError && mounted) {
+        _showDeadlineExpiredDialog();
+      }
     }
   }
 
@@ -96,10 +101,42 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل التسليم: $e'), backgroundColor: AppTheme.danger),
-      );
+      final isDeadlineError = e.toString().contains('الامتحان انتهى') ||
+          (e is dynamic && e.toString().contains('403'));
+      if (isDeadlineError && mounted) {
+        _showDeadlineExpiredDialog();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل التسليم: $e'), backgroundColor: AppTheme.danger),
+        );
+      }
     }
+  }
+
+  void _showDeadlineExpiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dialogBackground(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border(context)),
+        ),
+        title: Text('الامتحان انتهى', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold)),
+        content: Text('انتهت مهلة هذا الاختبار ولا يمكن تسليمه.', style: TextStyle(color: AppColors.textSecondary(context))),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+            child: const Text('حسناً', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   String get _formattedTime {

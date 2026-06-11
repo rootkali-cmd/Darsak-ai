@@ -206,6 +206,13 @@ async def update_question(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        question = await exam_service.get_question_by_id(question_id)
+        if not question:
+            raise NotFoundException("Question not found")
+        exam = await exam_service.get_by_id(question.get("exam_id"))
+        if not exam or str(exam.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your exam")
+
         data = {}
         if body.question_text is not None:
             data["question_text"] = body.question_text
@@ -219,8 +226,12 @@ async def update_question(
             data["order_num"] = body.order_num
         if not data:
             raise BadRequestException("No fields to update")
-        question = await exam_service.update_question(question_id, data)
-        return question
+        updated = await exam_service.update_question(question_id, data)
+        return updated
+    except NotFoundException:
+        raise
+    except ForbiddenException:
+        raise
     except BadRequestException:
         raise
     except Exception as e:
@@ -234,11 +245,20 @@ async def delete_question(
     teacher: dict = Depends(get_current_teacher),
 ):
     try:
+        question = await exam_service.get_question_by_id(question_id)
+        if not question:
+            raise NotFoundException("Question not found")
+        exam = await exam_service.get_by_id(question.get("exam_id"))
+        if not exam or str(exam.get("teacher_id")) != str(teacher["id"]):
+            raise ForbiddenException("Not your exam")
+
         deleted = await exam_service.delete_question(question_id)
         if not deleted:
             raise NotFoundException("Question not found")
         return {"deleted": True}
     except NotFoundException:
+        raise
+    except ForbiddenException:
         raise
     except Exception as e:
         logger.error(f"Error deleting question {question_id}: {e}", exc_info=True)

@@ -28,5 +28,7 @@ class AttendanceResponse(BaseModel):
     date: date_type | None = None
     notes: str | None = None
     created_at: datetime | None = None
+    student_name: str | None = None
+    student_code: str | None = None
 
     model_config = {"from_attributes": True}

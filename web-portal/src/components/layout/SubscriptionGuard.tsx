@@ -24,7 +24,11 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   }
 
   if (isError) {
-    return <>{children}</>
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
+      </div>
+    )
   }
 
   const isActive = sub?.is_active && !sub?.is_expired

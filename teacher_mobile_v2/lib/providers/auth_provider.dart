@@ -30,6 +30,13 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(_tokenKey);
+    
+    // Load cached subscription immediately
+    final cachedSub = prefs.getString('subscription_cache');
+    if (cachedSub != null) {
+      try { _subscription = jsonDecode(cachedSub); } catch (_) {}
+    }
+    
     if (_token != null && _token!.isNotEmpty) {
       final jwt = _parseJwt(_token!);
       if (jwt != null && jwt['expired'] != true && jwt['id'] != null) {
@@ -111,9 +118,18 @@ class AuthProvider extends ChangeNotifier {
   Future<void> refreshSubscription() async {
     if (!isAuthenticated) return;
     try {
-      final meResp = await _api.dio.get('/auth/me');
+      final meResp = await _api.dio.get('/auth/me',
+        options: Options(receiveTimeout: const Duration(seconds: 10), sendTimeout: const Duration(seconds: 10)),
+      );
       final me = meResp.data is Map ? meResp.data as Map<String, dynamic> : <String, dynamic>{};
       _subscription = me['subscription'] is Map ? Map<String, dynamic>.from(me['subscription']) : null;
+      
+      // Cache subscription status
+      if (_subscription != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('subscription_cache', jsonEncode(_subscription));
+      }
+      
       notifyListeners();
     } catch (_) {}
   }

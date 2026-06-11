@@ -42,6 +42,11 @@ dependencies:
   url_launcher: ^6.2.4
   shared_preferences: ^2.3.3
   path_provider: ^2.1.5
+  barcode_widget: ^2.0.4
+
+  # Notifications
+  flutter_local_notifications: ^18.0.0
+  timezone: ^0.10.0
 
 dev_dependencies:
   flutter_test:

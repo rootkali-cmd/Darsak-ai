@@ -1,0 +1,47 @@
+# Shared Login Flow - reusable by other tests
+# Credentials: Teacher=TCH-228A5540, Student=ST000001, PIN=123456
+
+appId: com.darsak.ai
+---
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "الاتصال بالمعلم"
+    timeout: 15000
+
+# Enter teacher code first
+- tapOn:
+    text: "كود المعلم"
+
+- inputText: "TCH-228A5540"
+
+- tapOn:
+    text: "اتصال"
+
+# App navigates to login after valid teacher code
+- extendedWaitUntil:
+    visible:
+      text: "كود الطالب"
+    timeout: 10000
+
+- tapOn:
+    text: "كود الطالب"
+
+- inputText: "ST000001"
+
+- tapOn:
+    text: "PIN"
+
+- inputText: "123456"
+
+# Dismiss keyboard first, then tap login
+- pressKey: Back
+
+- tapOn:
+    text: "تسجيل الدخول"
+
+- extendedWaitUntil:
+    visible:
+      text: "ST000001"
+    timeout: 15000

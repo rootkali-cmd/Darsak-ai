@@ -191,8 +191,8 @@ async def upload_lesson_video(
             await user_service.update(teacher["id"], {"telegram_channel_id": channel_id})
 
         content = await file.read()
-        if len(content) > 2 * 1024 * 1024 * 1024:
-            raise BadRequestException("File size exceeds 2GB limit")
+        if len(content) > 500 * 1024 * 1024:
+            raise BadRequestException("File size exceeds 500MB limit")
 
         upload_result = await video_bot_service.send_video(
             chat_id=channel_id,

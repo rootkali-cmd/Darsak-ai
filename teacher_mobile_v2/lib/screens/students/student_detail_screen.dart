@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/api_service.dart';
+import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import 'add_edit_student_screen.dart';
 
@@ -66,6 +67,67 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
     if (mounted) setState(() {});
   }
 
+  void _deleteStudent() {
+    final studentName = widget.student['full_name'] ?? 'هذا الطالب';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('حذف الطالب', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'هل أنت متأكد من حذف "$studentName"؟\n\nسيتم حذف جميع بياناته نهائياً:\n• سجل الحضور\n• الدرجات\n• الاختبارات\n• الفواتير\n\nلا يمكن التراجع عن هذا الإجراء.',
+          style: const TextStyle(color: Color(0xFF94A3B8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _performDelete();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            child: const Text('حذف نهائي', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performDelete() async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: AppTheme.danger)),
+    );
+
+    try {
+      await ApiService().deleteStudent(widget.student['id'].toString());
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+      Navigator.pop(context, true); // Go back with result=true
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم حذف الطالب بنجاح', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('فشل حذف الطالب: ${e.toString()}', style: const TextStyle(color: Colors.white)),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.student;
@@ -76,6 +138,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
         s['full_name'] ?? 'تفاصيل الطالب',
         actions: [
           IconButton(icon: Icon(Icons.edit, color: GlassTheme.iconSecondary(context)), onPressed: _editStudent),
+          IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.danger), onPressed: _deleteStudent),
         ],
         bottom: TabBar(
           controller: _tabCtrl,
@@ -149,6 +212,21 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
         _InfoRow(label: 'هاتف ولي الأمر', value: s['parent_phone'] ?? '—'),
         _InfoRow(label: 'المجموعة', value: s['group']?['name'] ?? s['group_id']?.toString() ?? '—'),
         _InfoRow(label: 'الرمز السري', value: s['pin']?.toString() ?? '—'),
+        const SizedBox(height: 24),
+        // Delete button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _deleteStudent,
+            icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
+            label: const Text('حذف الطالب', style: TextStyle(color: AppTheme.danger, fontSize: 15, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppTheme.danger, width: 1.5),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
       ],
     );
   }

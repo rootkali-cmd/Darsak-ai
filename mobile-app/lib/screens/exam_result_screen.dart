@@ -29,14 +29,10 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
 
   Future<void> _loadResult() async {
     try {
-      final results = await _api.getMyExamResults();
+      final result = await _api.getStudentExamResult(widget.studentExamId);
       if (!mounted) return;
-      final found = results.firstWhere(
-        (r) => r is Map && r['id'] == widget.studentExamId,
-        orElse: () => <String, dynamic>{},
-      );
       setState(() {
-        _result = found;
+        _result = result;
         _isLoading = false;
       });
     } catch (e) {
@@ -58,42 +54,43 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
   }
 
   Widget _buildResult() {
-    final score = _result!['total_score'];
-    final maxScore = _result!['max_score'];
     final status = _result!['status'] ?? '';
+    final scorePercentage = (_result!['score_percentage'] as num?)?.toDouble() ?? 0;
+    final correctPercentage = (_result!['correct_percentage'] as num?)?.toDouble() ?? 0;
+    final wrongPercentage = (_result!['wrong_percentage'] as num?)?.toDouble() ?? 0;
 
-    double pct = 0;
-    if (score != null && maxScore != null && maxScore > 0) {
-      pct = (score as num).toDouble() / (maxScore as num).toDouble() * 100;
+    if (status == 'graded') {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _buildScoreCircle(scorePercentage),
+            const SizedBox(height: 24),
+            _buildPercentagesCard(correctPercentage, wrongPercentage),
+          ],
+        ),
+      );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          if (status == 'graded') ...[
-            _buildScoreCircle(pct),
-            const SizedBox(height: 24),
-            _buildScoreDetails(score, maxScore, pct),
-          ] else
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceElevated(context),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border(context)),
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.hourglass_empty, color: AppTheme.warning, size: 48),
-                  const SizedBox(height: 12),
-                  Text('الاختبار في انتظار التصحيح', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text('سيتم إشعارك بنتيجة الاختبار بعد مراجعته', style: TextStyle(color: AppColors.textSecondary(context))),
-                ],
-              ),
-            ),
-        ],
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        margin: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border(context)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.hourglass_empty, color: AppTheme.warning, size: 48),
+            const SizedBox(height: 12),
+            Text('الاختبار في انتظار التصحيح', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('سيتم إشعارك بنتيجة الاختبار بعد مراجعته', style: TextStyle(color: AppColors.textSecondary(context))),
+          ],
+        ),
       ),
     );
   }
@@ -164,7 +161,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
     );
   }
 
-  Widget _buildScoreDetails(dynamic score, dynamic maxScore, double pct) {
+  Widget _buildPercentagesCard(double correctPct, double wrongPct) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -174,22 +171,38 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
       ),
       child: Column(
         children: [
-          _buildDetailRow('الدرجة', '$score / $maxScore'),
+          _buildPercentageRow(
+            'صحيحة',
+            correctPct,
+            AppTheme.success,
+            Icons.check_circle_outline,
+          ),
           Divider(color: AppColors.border(context), height: 1),
-          _buildDetailRow('النسبة', '${pct.toStringAsFixed(1)}%'),
+          _buildPercentageRow(
+            'خاطئة',
+            wrongPct,
+            AppTheme.danger,
+            Icons.cancel_outlined,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildPercentageRow(String label, double pct, Color color, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14)),
-          Text(value, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 16)),
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 15)),
+          ),
+          Text(
+            '${pct.toStringAsFixed(1)}%',
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
         ],
       ),
     );

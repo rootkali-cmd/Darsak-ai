@@ -27,12 +27,12 @@ router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
 def _get_limit(name: str, basic: int, pro: int, enterprise: int):
-    if "unlimited" in name or "enterprise" in name: return enterprise if enterprise > 0 else "غير محدود"
     if "pro" in name: return pro
+    if "premium" in name: return enterprise if enterprise > 0 else pro
     return basic
 
 def _get_limit_gb(name: str, basic: int, pro: int, enterprise: int):
-    if "unlimited" in name or "enterprise" in name: return "غير محدود"
+    if "premium" in name: return enterprise if enterprise > 0 else pro
     if "pro" in name: return pro
     return basic
 
@@ -42,34 +42,14 @@ def _get_features(plan: dict) -> list:
     if isinstance(features, str):
         import json
         features = json.loads(features)
-    if not features:
-        features = []
+    if features:
+        return features
     name = (plan.get("name") or "").lower()
-    base_features = [
-        "إدارة الطلاب",
-        "تسجيل الحضور",
-        "الدرجات والامتحانات",
-    ]
-    if "pro" in name or "enterprise" in name or "unlimited" in name:
-        base_features.extend([
-            "فيديوهات تعليمية (تخزين 6GB)",
-            "تحليلات AI (30 طلب/شهر)",
-            "فواتير ومصاريف",
-            "تقارير متقدمة",
-        ])
-    if "enterprise" in name or "unlimited" in name:
-        base_features.extend([
-            "فيديوهات غير محدودة",
-            "AI غير محدود",
-            "دعم فني مباشر",
-            "تخصيص كامل",
-        ])
-    else:
-        base_features.extend([
-            "فيديوهات تعليمية (تخزين 2GB)",
-            "تحليلات AI (5 طلب/شهر)",
-        ])
-    return base_features
+    if "pro" in name:
+        return ["6 اختبارات شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "دعم فني"]
+    if "premium" in name:
+        return ["15 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "دعم فني أولوية"]
+    return ["2 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "دعم فني"]
 
 
 def _to_plan_response(plan: dict) -> dict:
@@ -78,9 +58,9 @@ def _to_plan_response(plan: dict) -> dict:
         "id": str(plan.get("id", "")),
         "name": plan.get("name", ""),
         "price_egp": plan.get("price_egp", 0),
-        "max_students": _get_limit(name, 100, 400, -1),
-        "ai_requests_per_month": _get_limit(name, 5, 30, -1),
-        "storage_limit_gb": _get_limit_gb(name, 2, 6, -1),
+        "max_students": plan.get("max_students") or _get_limit(name, 2, 6, 15),
+        "ai_requests_per_month": plan.get("ai_requests_per_month") or _get_limit(name, 5, 30, 100),
+        "storage_limit_gb": plan.get("storage_limit_gb") or _get_limit_gb(name, 2, 6, 10),
         "features": _get_features(plan),
         "is_active": plan.get("is_active", True),
     }
@@ -94,6 +74,56 @@ async def list_plans():
     except Exception as exc:
         logger.error("Failed to list plans: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to list plans: {str(exc)}")
+
+
+@router.post("/activate-trial")
+async def activate_trial(
+    current_user: dict = Depends(get_current_teacher),
+):
+    try:
+        plans = await subscription_plan_service.list_active()
+        basic_plan = None
+        for p in plans:
+            name = (p.get("name") or "").lower()
+            if "basic" in name or "أساسي" in name:
+                basic_plan = p
+                break
+        if not basic_plan:
+            raise HTTPException(status_code=404, detail="Basic plan not found")
+
+        existing_sub = await teacher_subscription_service.get_by_teacher(current_user["id"])
+        if existing_sub:
+            # Allow trial if existing subscription is expired/inactive
+            if existing_sub.get("is_active"):
+                expires_at = existing_sub.get("expires_at")
+                if expires_at:
+                    from datetime import datetime, timezone
+                    if isinstance(expires_at, str):
+                        expires_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+                    else:
+                        expires_dt = expires_at
+                    if expires_dt.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc):
+                        raise HTTPException(status_code=400, detail="You already have an active subscription")
+                else:
+                    raise HTTPException(status_code=400, detail="You already have a subscription")
+
+        import uuid
+        trial_code_id = f"trial-{uuid.uuid4().hex[:12]}"
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+
+        await teacher_subscription_service.create(
+            teacher_id=current_user["id"],
+            plan_id=basic_plan["id"],
+            code_id=trial_code_id,
+            expires_at=expires_at,
+        )
+
+        return {"success": True, "days_remaining": 30, "expires_at": expires_at}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to activate trial: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to activate trial: {str(exc)}")
 
 
 @router.post("/activate")

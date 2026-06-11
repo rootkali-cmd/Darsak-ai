@@ -1,0 +1,14 @@
+# Attendance Screen Test
+
+appId: com.darsak.ai
+---
+- runFlow: shared_login.yaml
+
+# Verify attendance section exists on home
+- assertVisible:
+    text: "الحضور"
+
+- assertVisible:
+    text: "لم تسجل بعد"
+
+- takeScreenshot: attendance_home.png

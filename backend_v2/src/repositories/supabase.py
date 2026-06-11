@@ -141,7 +141,8 @@ class SupabaseRepository:
             for field, val in text_search.items():
                 _validate_identifier(field)
                 search_conditions.append(f"{field} ILIKE :s_{field}")
-                params[f"s_{field}"] = f"%{val}%"
+                escaped = val.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                params[f"s_{field}"] = f"%{escaped}%"
             if search_conditions:
                 all_conditions.append("(" + " OR ".join(search_conditions) + ")")
         if all_conditions:

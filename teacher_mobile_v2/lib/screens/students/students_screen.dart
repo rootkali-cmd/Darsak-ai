@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../providers/auth_provider.dart';
+import '../../screens/subscriptions/subscription_screen.dart';
 import 'add_edit_student_screen.dart';
 import 'student_detail_screen.dart';
 
@@ -99,11 +102,37 @@ class _StudentsScreenState extends State<StudentsScreen> {
   }
 
   void _addStudent() async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.hasSubscription) {
+      _showSubscriptionRequiredDialog();
+      return;
+    }
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AddEditStudentScreen()),
     );
     _loadStudents();
+  }
+
+  void _showSubscriptionRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('اشتراك مطلوب', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('يجب الاشتراك في باقة أولاً لإضافة طلاب'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionScreen()));
+            },
+            child: const Text('الذهاب للاشتراكات'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getInitials(String name) {

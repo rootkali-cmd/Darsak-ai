@@ -11,9 +11,9 @@ class ApiService {
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 120),
-      receiveTimeout: const Duration(seconds: 120),
-      sendTimeout: const Duration(seconds: 120),
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
 
@@ -31,6 +31,14 @@ class ApiService {
   }
 
   Dio get dio => _dio;
+
+  Dio get aiDio {
+    final ai = Dio(_dio.options);
+    ai.options.receiveTimeout = const Duration(seconds: 180);
+    ai.options.sendTimeout = const Duration(seconds: 180);
+    ai.interceptors.addAll(_dio.interceptors);
+    return ai;
+  }
 
   Future<Map<String, dynamic>> _parseResponse(Response response) async {
     if (response.data is Map<String, dynamic>) return response.data;
@@ -206,6 +214,22 @@ class ApiService {
 
   Future<Map<String, dynamic>> getInvoiceStats() async {
     final res = await _dio.get('/invoices/stats');
+    return _parseResponse(res);
+  }
+
+  // Invoice Actions
+  Future<Map<String, dynamic>> getPendingInvoices() async {
+    final res = await _dio.get('/invoices/pending');
+    return _parseResponse(res);
+  }
+
+  Future<Map<String, dynamic>> approveInvoice(String id) async {
+    final res = await _dio.post('/invoices/$id/approve');
+    return _parseResponse(res);
+  }
+
+  Future<Map<String, dynamic>> rejectInvoice(String id) async {
+    final res = await _dio.post('/invoices/$id/reject');
     return _parseResponse(res);
   }
 

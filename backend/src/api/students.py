@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.models.audit_log import ActorType
 from src.schemas.student import (
-    StudentCreate, StudentUpdate, StudentResponse, StudentLogin, StudentTokenResponse,
+    StudentCreate, StudentUpdate, StudentResponse, StudentLogin, StudentTokenResponse, StudentTokenRefresh,
     StudentPinUpdate, TeacherVerifyRequest, TeacherVerifyResponse,
 )
 from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
-from src.core.security.auth import create_access_token, verify_password, hash_password
+from src.core.security.auth import create_access_token, create_refresh_token, verify_password, hash_password, decode_token
 from src.core.security.sanitizer import sanitize_text, sanitize_student_code, sanitize_pin, sanitize_teacher_code
 from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service, teacher_subscription_service, subscription_plan_service
 from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_usage
@@ -317,12 +317,35 @@ async def student_login(credentials: StudentLogin):
     _clear_attempts(sanitized_code)
 
     token = create_access_token(student["id"], expires_delta=None)
+    refresh = create_refresh_token(student["id"])
 
     return StudentTokenResponse(
         access_token=token,
+        refresh_token=refresh,
         student_id=student["id"],
         student_code=student["code"],
     )
+
+
+@router.post("/refresh")
+async def student_refresh_token(body: StudentTokenRefresh):
+    decoded = decode_token(body.refresh_token)
+    if not decoded or decoded.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    student_id = decoded.get("sub")
+    student = await student_service.get_by_id(student_id)
+    if not student:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student not found")
+
+    new_access = create_access_token(student["id"], expires_delta=None)
+    new_refresh = create_refresh_token(student["id"])
+
+    return {
+        "access_token": new_access,
+        "refresh_token": new_refresh,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/analyze", response_model=AIAnalysisResponse)

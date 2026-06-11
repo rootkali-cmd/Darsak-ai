@@ -13,27 +13,36 @@ import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/update_service.dart';
+import 'services/notification_service.dart';
 import 'screens/teacher_connect_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/subscription_screen.dart';
 import 'widgets/update_dialog.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await LocalDB.init();
-  await AnalyticsService.instance.init();
-  await StructuredLogger.instance.init();
-  await initializeDateFormatting('ar');
-  Intl.defaultLocale = 'ar';
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  runApp(const DarsakMobileApp());
+
+  // Initialize services in background AFTER app is shown
+  _initBackground();
+}
+
+Future<void> _initBackground() async {
+  // Run all initializations in parallel
+  await Future.wait([
+    LocalDB.init(),
+    AnalyticsService.instance.init(),
+    StructuredLogger.instance.init(),
+    initializeDateFormatting('ar'),
+    NotificationService().initialize(),
+  ]);
+  Intl.defaultLocale = 'ar';
   AnalyticsService.instance.appOpened();
   StructuredLogger.instance.info('app_started', data: {
     'version': AppConstants.appVersion,
     'platform': 'android',
   });
-
-  runApp(const DarsakMobileApp());
 }
 
 class DarsakMobileApp extends StatelessWidget {
@@ -103,37 +112,12 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
-    switch (auth.status) {
-      case AuthStatus.uninitialized:
-        return Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 80, height: 80,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                  ),
-                  child: const Icon(Icons.school, color: Colors.white, size: 40),
-                ),
-                const SizedBox(height: 24),
-                Text('DarsakAI', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 28, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-              ],
-            ),
-          ),
-        );
-      case AuthStatus.authenticated:
-        WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
-        return const HomeScreen();
-      case AuthStatus.subscriptionExpired:
-        return const SubscriptionScreen();
-      case AuthStatus.unauthenticated:
-      case AuthStatus.loading:
-        return const TeacherConnectScreen();
+    if (auth.status == AuthStatus.authenticated) {
+      return const HomeScreen();
     }
+
+    // Show TeacherConnect immediately for all other states
+    // (uninitialized, unauthenticated, loading)
+    return const TeacherConnectScreen();
   }
 }

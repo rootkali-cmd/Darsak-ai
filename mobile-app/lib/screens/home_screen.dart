@@ -8,10 +8,10 @@ import '../widgets/shimmer_loading.dart';
 import 'grades_screen.dart';
 import 'attendance_screen.dart';
 import 'profile_screen.dart';
-import 'subscription_screen.dart';
-import 'exam_list_screen.dart';
 import 'ai_chat_screen.dart';
+import 'exam_list_screen.dart';
 import 'student_qr_screen.dart';
+import 'invoices/invoices_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,8 +37,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final data = context.watch<DataProvider>();
     final student = auth.student;
 
-    final showExpiryBanner = auth.isAuthenticated && !auth.isSubscriptionActive;
-
     return Scaffold(
       drawer: _buildDrawer(context, auth),
       body: SafeArea(
@@ -50,14 +48,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (showExpiryBanner) ...[
-                      _buildExpiryBanner(),
-                      const SizedBox(height: 12),
-                    ],
-                    _buildHeader(student, data, auth),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(student, data, auth),
                     const SizedBox(height: 24),
                     if (data.isLoading && data.grades.isEmpty)
                       const ShimmerList(count: 3)
@@ -67,6 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       _buildTodayStatus(data),
                       const SizedBox(height: 24),
                       _buildRecentGrades(data),
+                      const SizedBox(height: 24),
+                      _buildQuickSections(),
                     ],
                   ],
                 ),
@@ -83,81 +79,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader(dynamic student, DataProvider data, AuthProvider auth) {
-    final initials = student?.fullName?.isNotEmpty == true ? student.fullName[0] : '?';
     final name = student?.fullName ?? 'طالب';
     final code = student?.code ?? '';
     return Row(
       children: [
-        Builder(
-          builder: (ctx) => GestureDetector(
-            onTap: () => Scaffold.of(ctx).openDrawer(),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
-                borderRadius: BorderRadius.all(Radius.circular(14)),
-              ),
-              child: Center(
-                child: Text(
-                  initials,
-                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(code, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
+            Text(name, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text(code, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13)),
           ],
         ),
         const Spacer(),
-        if (!auth.isSubscriptionActive)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.danger.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
-            ),
-            child: const Text(
-              'اشتراك منتهي',
-              style: TextStyle(color: AppTheme.danger, fontSize: 10, fontWeight: FontWeight.bold),
-            ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.success.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6, height: 6,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: data.isOffline ? AppTheme.danger : AppTheme.success,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  data.isOffline ? 'غير متصل' : 'متصل',
-                  style: TextStyle(
-                    color: data.isOffline ? AppTheme.danger : AppTheme.success,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
           ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6, height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: data.isOffline ? AppTheme.danger : AppTheme.success,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                data.isOffline ? 'غير متصل' : 'متصل',
+                style: TextStyle(
+                  color: data.isOffline ? AppTheme.danger : AppTheme.success,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -371,6 +333,98 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildQuickSections() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('الأقسام', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        _buildSectionCard(
+          icon: Icons.qr_code,
+          iconColor: AppTheme.accent,
+          title: 'كود الحضور',
+          subtitle: 'اعرض كود QR الخاص بتسجيل الحضور',
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentQrScreen())),
+        ),
+        const SizedBox(height: 10),
+        _buildSectionCard(
+          icon: Icons.quiz_outlined,
+          iconColor: AppTheme.success,
+          title: 'الاختبارات',
+          subtitle: 'شاهد الاختبارات المتاحة وأداءك',
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamListScreen())),
+        ),
+        const SizedBox(height: 10),
+        _buildSectionCard(
+          icon: Icons.auto_awesome,
+          iconColor: const Color(0xFFF59E0B),
+          title: 'مساعد AI',
+          subtitle: 'اسأل أي سؤال عن دراستك',
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text('جديد', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiChatScreen())),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    Widget? trailing,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated(context),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border(context)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(title, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 15, fontWeight: FontWeight.bold)),
+                      if (trailing != null) ...[const SizedBox(width: 8), trailing],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_back_ios, color: AppColors.textSecondary(context), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDrawer(BuildContext context, AuthProvider auth) {
     return Drawer(
       backgroundColor: AppColors.background(context),
@@ -451,6 +505,14 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           _DrawerItem(
+            icon: Icons.receipt_long,
+            label: 'الفواتير',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const InvoicesScreen()));
+            },
+          ),
+          _DrawerItem(
             icon: Icons.person,
             label: 'الملف الشخصي',
             onTap: () {
@@ -472,25 +534,6 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AiChatScreen()));
-            },
-          ),
-          Divider(color: AppColors.border(context), height: 1),
-          _DrawerItem(
-            icon: Icons.card_membership,
-            label: 'الاشتراك',
-            trailing: !auth.isSubscriptionActive
-                ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text('منتهي', style: TextStyle(color: AppTheme.danger, fontSize: 10)),
-                  )
-                : null,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
             },
           ),
           Divider(color: AppColors.border(context), height: 1),
@@ -524,34 +567,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildExpiryBanner() {
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen())),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.danger.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline, color: AppTheme.danger, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'اشتراكك منتهٍ. فعّل اشتراكك الآن للاستمرار.',
-                style: TextStyle(color: AppTheme.danger, fontSize: 12),
-              ),
-            ),
-            const Icon(Icons.arrow_back_ios, color: AppTheme.danger, size: 14),
-          ],
-        ),
       ),
     );
   }

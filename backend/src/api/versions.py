@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from datetime import datetime, timezone
 import logging
 import json
@@ -61,8 +61,8 @@ CHANNELS: dict[str, dict[str, dict]] = {
             "release_date": "2026-05-26",
         },
         "android": {
-            "version": "3.0.2",
-            "build": 34,
+            "version": "2.1.1",
+            "build": 37,
             "mandatory": False,
             "min_supported_version": "2.0.0",
             "rollout": 100,
@@ -72,16 +72,26 @@ CHANNELS: dict[str, dict[str, dict]] = {
                 "نظام حظر المحاولات",
                 "إصلاح تسجيل دخول الطلاب",
                 "تحسين رسائل الخطأ بالعربية",
+                "إصلاح مشكلة التحديث المتكرر",
+                "تسريع فتح التطبيق",
+                "إصلاح overflow error في الكروت",
+                "إصلاح الكاميرا والباركود",
+                "تصميم جديد لصفحة الهبوط",
             ],
             "changelog_en": [
                 "Fixed light and dark mode",
                 "Rate limiting and ban system",
                 "Fixed student login",
                 "Improved Arabic error messages",
+                "Fixed repeated update notification",
+                "Faster app startup",
+                "Fixed overflow error in cards",
+                "Fixed camera and barcode scanning",
+                "New landing page design",
             ],
-            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.2/teacher-v3.0.2.apk",
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.1.1/teacher-v2.1.1.apk",
             "size_mb": 75,
-            "release_date": "2026-06-07",
+            "release_date": "2026-06-09",
         },
         "accounts": {
             "version": "1.0.0",
@@ -386,3 +396,34 @@ async def set_blocked_versions(data: dict, admin: dict = Depends(get_current_adm
     REMOTE_CONFIG["blocked_versions"] = versions
     logger.info("Blocked versions updated: %s", versions)
     return {"status": "ok", "blocked_versions": versions}
+
+
+@router.get("/instapay-barcode")
+async def get_instapay_barcode():
+    barcode_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "instapay_barcode.jpg")
+    barcode_path = os.path.normpath(barcode_path)
+    if not os.path.exists(barcode_path):
+        raise HTTPException(status_code=404, detail="InstaPay barcode not found")
+    return FileResponse(barcode_path, media_type="image/jpeg", filename="instapay_barcode.jpg")
+
+
+@router.get("/instapay-config")
+async def get_instapay_config():
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        result = client.table("instapay_config").select("barcode_url, username").eq("is_active", True).limit(1).execute()
+        rows = result.data if hasattr(result, "data") else []
+        if not rows:
+            return {
+                "barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode",
+                "username": "ahmed-mahmoud-1@instapay",
+            }
+        row = rows[0]
+        return {"barcode_url": row["barcode_url"], "username": row["username"]}
+    except Exception as e:
+        logger.error("Failed to fetch instapay config: %s", e, exc_info=True)
+        return {
+            "barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode",
+            "username": "ahmed-mahmoud-1@instapay",
+        }

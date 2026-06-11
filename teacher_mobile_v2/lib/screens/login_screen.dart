@@ -4,6 +4,7 @@ import '../core/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'home_screen.dart';
 import 'onboarding/onboarding_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -62,17 +63,14 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<AuthProvider>().isLoading;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: isDark
-                ? [const Color(0xFF000000), const Color(0xFF0A0A0A)]
-                : [const Color(0xFFF5F5F5), const Color(0xFFEEEEEE)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0a0a1a), Color(0xFF0a0a1a)],
           ),
         ),
         child: Directionality(
@@ -86,15 +84,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // Logo
                       Container(
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: AppTheme.accent,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                          ),
                           borderRadius: BorderRadius.circular(22),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.accent.withValues(alpha: 0.4),
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
@@ -106,41 +107,116 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'درسك AI',
+                      const SizedBox(height: 24),
+                      const Text(
+                        'مرحباً بعودتك',
                         style: TextStyle(
-                          fontSize: 32,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppTheme.textPrimary,
+                          color: Colors.white,
                           fontFamily: 'Cairo',
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'تسجيل الدخول للمدرس',
+                      const SizedBox(height: 8),
+                      const Text(
+                        'سجل دخولك للوصول إلى لوحة التحكم',
                         style: TextStyle(
                           fontSize: 15,
-                          color: isDark ? AppTheme.textMuted : AppTheme.textSecondary,
+                          color: Color(0xFF94A3B8),
                           fontFamily: 'Cairo',
                         ),
                       ),
                       const SizedBox(height: 40),
-                      _buildEmailField(isDark),
+                      // Email
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        textDirection: TextDirection.ltr,
+                        style: const TextStyle(fontFamily: 'Cairo', color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'البريد الإلكتروني',
+                          hintStyle: const TextStyle(color: Color(0xFF64748B), fontFamily: 'Cairo'),
+                          prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF64748B)),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.06),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'يرجى إدخال البريد الإلكتروني';
+                          if (!value.contains('@')) return 'يرجى إدخال بريد إلكتروني صحيح';
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: 16),
-                      _buildPasswordField(isDark),
+                      // Password
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        textInputAction: TextInputAction.done,
+                        textDirection: TextDirection.ltr,
+                        style: const TextStyle(fontFamily: 'Cairo', color: Colors.white),
+                        onFieldSubmitted: (_) => _handleLogin(),
+                        decoration: InputDecoration(
+                          hintText: 'كلمة المرور',
+                          hintStyle: const TextStyle(color: Color(0xFF64748B), fontFamily: 'Cairo'),
+                          prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF64748B)),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              color: const Color(0xFF64748B),
+                            ),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.06),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'يرجى إدخال كلمة المرور';
+                          if (value.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: 28),
+                      // Login Button
                       SizedBox(
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
                           onPressed: isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.accent,
-                            disabledBackgroundColor: AppTheme.accent.withValues(alpha: 0.6),
+                            backgroundColor: const Color(0xFF6366F1),
+                            disabledBackgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.6),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
+                            elevation: 8,
+                            shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.4),
                           ),
                           child: isLoading
                               ? const SizedBox(
@@ -162,15 +238,34 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 48),
-                      Text(
-                        '© 2025 DarsakAI',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? AppTheme.textMuted : AppTheme.textSecondary,
-                          fontFamily: 'Cairo',
-                        ),
+                      const SizedBox(height: 24),
+                      // Register link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'ليس لديك حساب؟ ',
+                            style: TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              );
+                            },
+                            child: const Text(
+                              'إنشاء حساب مجاني',
+                              style: TextStyle(
+                                color: Color(0xFF818CF8),
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Cairo',
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -179,104 +274,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildEmailField(bool isDark) {
-    return TextFormField(
-      controller: _emailController,
-      keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.next,
-      textDirection: TextDirection.ltr,
-      style: TextStyle(
-        fontFamily: 'Cairo',
-        color: isDark ? Colors.white : AppTheme.textPrimary,
-      ),
-      decoration: InputDecoration(
-        hintText: 'البريد الإلكتروني',
-        hintStyle: TextStyle(
-          color: isDark ? AppTheme.textMuted : AppTheme.textSecondary,
-          fontFamily: 'Cairo',
-        ),
-        prefixIcon: Icon(Icons.email_outlined, color: isDark ? AppTheme.textMuted : AppTheme.textSecondary),
-        filled: true,
-        fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppTheme.accent, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppTheme.danger),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) return 'يرجى إدخال البريد الإلكتروني';
-        if (!value.contains('@')) return 'يرجى إدخال بريد إلكتروني صحيح';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPasswordField(bool isDark) {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: _obscurePassword,
-      textInputAction: TextInputAction.done,
-      textDirection: TextDirection.ltr,
-      style: TextStyle(
-        fontFamily: 'Cairo',
-        color: isDark ? Colors.white : AppTheme.textPrimary,
-      ),
-      onFieldSubmitted: (_) => _handleLogin(),
-      decoration: InputDecoration(
-        hintText: 'كلمة المرور',
-        hintStyle: TextStyle(
-          color: isDark ? AppTheme.textMuted : AppTheme.textSecondary,
-          fontFamily: 'Cairo',
-        ),
-        prefixIcon: Icon(Icons.lock_outlined, color: isDark ? AppTheme.textMuted : AppTheme.textSecondary),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            color: isDark ? AppTheme.textMuted : AppTheme.textSecondary,
-          ),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-        ),
-        filled: true,
-        fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.10) : AppTheme.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppTheme.accent, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppTheme.danger),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) return 'يرجى إدخال كلمة المرور';
-        if (value.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-        return null;
-      },
     );
   }
 }

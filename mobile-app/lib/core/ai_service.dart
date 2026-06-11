@@ -1,33 +1,41 @@
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'constants.dart';
 
 class AiService {
-  static String get _apiKey => const String.fromEnvironment('AI_API_KEY', defaultValue: '');
-  static const String _prefCount = 'ai_chat_count';
-  static const String _prefDate = 'ai_chat_date';
-
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: const String.fromEnvironment('AI_API_BASE_URL', defaultValue: 'https://api.you.com'),
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 60),
-  ));
-
+  late final Dio _dio;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   int _remaining = AppConstants.aiDailyLimit;
+
+  AiService() {
+    _dio = Dio(BaseOptions(
+      baseUrl: AppConstants.apiBaseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 90),
+      headers: {'Content-Type': 'application/json'},
+    ));
+
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await _storage.read(key: AppConstants.storageKeyToken);
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ));
+  }
 
   int get remaining => _remaining;
 
   Future<void> loadUsage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedDate = prefs.getString(_prefDate) ?? '';
-    final today = DateTime.now().toIso8601String().split('T').first;
-    if (savedDate != today) {
-      await prefs.setInt(_prefCount, 0);
-      await prefs.setString(_prefDate, today);
-      _remaining = AppConstants.aiDailyLimit;
-    } else {
-      final count = prefs.getInt(_prefCount) ?? 0;
-      _remaining = AppConstants.aiDailyLimit - count;
+    try {
+      final response = await _dio.get('/students/me/ai-usage');
+      if (response.statusCode == 200) {
+        _remaining = response.data['remaining'] as int? ?? _remaining;
+      }
+    } catch (_) {
+      // Keep default if fetch fails
     }
   }
 
@@ -37,27 +45,16 @@ class AiService {
     }
 
     final response = await _dio.post(
-      '/v1/research',
+      '/students/me/ai-chat',
       data: {
-        'input': question,
-        'research_effort': 'lite',
+        'question': question,
       },
-      options: Options(headers: {
-        'X-API-Key': _apiKey,
-        'Content-Type': 'application/json',
-      }),
     );
 
     if (response.statusCode == 200) {
       final data = response.data;
-      final content = data['output']['content'] as String? ?? 'لم أتمكن من العثور على إجابة';
-
-      final prefs = await SharedPreferences.getInstance();
-      final count = (prefs.getInt(_prefCount) ?? 0) + 1;
-      await prefs.setInt(_prefCount, count);
-      _remaining = AppConstants.aiDailyLimit - count;
-
-      return content;
+      _remaining = data['remaining'] as int? ?? _remaining - 1;
+      return data['answer'] as String? ?? 'لم أتمكن من العثور على إجابة';
     } else {
       throw Exception('حدث خطأ في الاتصال، حاول مرة أخرى');
     }

@@ -28,6 +28,9 @@ class ExamService:
         data["exam_id"] = exam_id
         return await self.q_repo.insert(data)
 
+    async def get_question_by_id(self, q_id):
+        return await self.q_repo.select_one({"id": q_id})
+
     async def update_question(self, q_id, data):
         return await self.q_repo.update({"id": q_id}, data)
 

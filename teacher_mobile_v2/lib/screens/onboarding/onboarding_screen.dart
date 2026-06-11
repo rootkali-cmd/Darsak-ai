@@ -27,7 +27,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
     'دراسات', 'حاسب آلي',
   ];
 
-  final _levelOptions = ['ابتدائي', 'إعدادي', 'ثانوي', 'جامعي'];
+  final _levelOptions = [
+    'الصف الأول الإعدادي', 'الصف الثاني الإعدادي', 'الصف الثالث الإعدادي',
+    'الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي',
+  ];
 
   @override
   void initState() {

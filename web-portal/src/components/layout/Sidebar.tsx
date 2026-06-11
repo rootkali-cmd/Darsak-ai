@@ -21,6 +21,7 @@ import {
   CreditCard,
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
+import { api } from '@/lib/api'
 
 const navItems = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -39,8 +40,13 @@ export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
+      try {
+        await api.post('/auth/logout')
+      } catch {
+        // proceed with client-side logout even if server call fails
+      }
       auth.clearTokens()
       window.location.href = '/login'
     }

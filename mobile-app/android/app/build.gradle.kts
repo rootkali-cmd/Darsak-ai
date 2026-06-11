@@ -17,6 +17,7 @@ android {
     ndkVersion = "28.2.13676358"
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -44,11 +45,11 @@ android {
         release {
             isDebuggable = false
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
         debug {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
@@ -69,4 +70,5 @@ flutter {
 dependencies {
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:review:2.0.2")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

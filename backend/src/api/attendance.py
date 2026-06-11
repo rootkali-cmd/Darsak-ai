@@ -105,6 +105,7 @@ async def mark_bulk_attendance(
 async def get_attendance(
     student_id: str | None = None,
     group_id: str | None = None,
+    date: date = Query(default_factory=date.today),
     from_date: date | None = None,
     to_date: date | None = None,
     current_user: dict = Depends(get_current_teacher),
@@ -114,24 +115,45 @@ async def get_attendance(
         filters["student_id"] = student_id
     if group_id:
         filters["group_id"] = group_id
+    filters["date"] = date.isoformat()
 
-    records = await attendance_service.list(filters, limit=200)
+    records = await attendance_service.list(filters, limit=500)
 
     if from_date:
-        records = [r for r in records if r["date"] >= from_date.isoformat()]
+        from_str = from_date.isoformat()
+        records = [r for r in records if r.get("date", "") >= from_str]
     if to_date:
-        records = [r for r in records if r["date"] <= to_date.isoformat()]
+        to_str = to_date.isoformat()
+        records = [r for r in records if r.get("date", "") <= to_str]
 
-    return [AttendanceResponse(**r) for r in records]
+    student_ids = list({r["student_id"] for r in records if r.get("student_id")})
+    student_map = {}
+    if student_ids:
+        students = await student_service.list_by_teacher(
+            teacher_id=current_user["id"], limit=500
+        )
+        student_map = {s["id"]: s for s in students}
+
+    enriched = []
+    for r in records:
+        sid = r.get("student_id")
+        stu = student_map.get(str(sid), {}) if sid else {}
+        enriched.append({
+            **r,
+            "student_name": stu.get("full_name"),
+            "student_code": stu.get("code"),
+        })
+
+    return [AttendanceResponse(**r) for r in enriched]
 
 
 @router.get("/stats")
 async def attendance_stats(
     group_id: str | None = None,
-    date: date | None = None,
+    date: date = Query(default_factory=date.today),
     current_user: dict = Depends(get_current_teacher),
 ):
-    target_date = date.isoformat() if date else None
+    target_date = date.isoformat()
     stats = await attendance_service.get_stats(current_user["id"], target_date)
     return stats
 

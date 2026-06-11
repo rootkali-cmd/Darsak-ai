@@ -35,8 +35,8 @@ const plans = [
   {
     id: '3628fdf5-3a79-43c3-8c04-211f31704e07',
     name: 'الباقة الأساسية',
-    price: 200,
-    label: '200 ج.م/شهر',
+    price: 199,
+    label: '199 ج.م/شهر',
     students: 50,
     ai: 100,
     color: '#00f3ff',
@@ -46,8 +46,8 @@ const plans = [
   {
     id: '56b99f07-ea35-46ae-9af6-16b17078c9a7',
     name: 'الباقة المتقدمة',
-    price: 600,
-    label: '600 ج.م/شهر',
+    price: 499,
+    label: '499 ج.م/شهر',
     students: 500,
     ai: 500,
     color: '#ccff00',
@@ -58,8 +58,8 @@ const plans = [
   {
     id: '7bc43f3e-d511-4981-ad71-b3c00b637af4',
     name: 'الباقة المتكاملة',
-    price: 1100,
-    label: '1100 ج.م/شهر',
+    price: 999,
+    label: '999 ج.م/شهر',
     students: 0,
     ai: 2000,
     color: '#ff003c',

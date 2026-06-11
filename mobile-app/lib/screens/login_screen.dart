@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../core/theme.dart';
 import 'teacher_connect_screen.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? teacherCode;
@@ -76,6 +77,12 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         );
       }
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -157,6 +164,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       const SizedBox(height: 40),
                       TextFormField(
+                        key: const Key('student_code_field'),
                         controller: _codeController,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.center,
@@ -185,10 +193,11 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         textInputAction: TextInputAction.next,
                         validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'أدخل كود الطالب' : null,
+                            v == null || v.trim().isEmpty ? 'هذا الحقل مطلوب' : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
+                        key: const Key('student_pin_field'),
                         controller: _pinController,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.center,
@@ -220,15 +229,15 @@ class _LoginScreenState extends State<LoginScreen>
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _login(),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\u0660-\u0669]')),
                         ],
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'أدخل PIN';
+                          if (v == null || v.trim().isEmpty) return 'هذا الحقل مطلوب';
                           final pin = v.trim();
                           if (pin.length < 6 || pin.length > 8) {
                             return 'PIN يجب أن يكون 6-8 أحرف وأرقام';
                           }
-                          if (!RegExp(r'^[A-Za-z0-9]{6,8}$').hasMatch(pin)) {
+                          if (!RegExp(r'^[A-Za-z0-9\u0660-\u0669]{6,8}$').hasMatch(pin)) {
                             return 'PIN: أحرف وأرقام فقط';
                           }
                           return null;

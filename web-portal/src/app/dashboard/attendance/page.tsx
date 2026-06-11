@@ -2,8 +2,8 @@
 
 import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, useEffect } from 'react'
-import { Check, X, Minus, Loader2, Users } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Check, X, Minus, Loader2, Users, Camera, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Section } from '@/components/ui'
 import { attendanceApi, studentsApi, groupsApi } from '@/lib/api'
@@ -12,6 +12,11 @@ export default function AttendancePage() {
   const [selectedGroup, setSelectedGroup] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, string>>({})
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scanStatus, setScanStatus] = useState('')
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const queryClient = useQueryClient()
 
   const { data: students } = useQuery({
@@ -69,6 +74,75 @@ export default function AttendancePage() {
     markMutation.mutate({ student_id: studentId, status, group_id: selectedGroup || undefined, date: selectedDate })
   }
 
+  const startScanner = useCallback(async () => {
+    setScannerOpen(true)
+    setScanStatus('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+
+      // Use BarcodeDetector API if available
+      if ('BarcodeDetector' in window) {
+        const detector = new (window as any).BarcodeDetector({ formats: ['code_128', 'code_39', 'qr_code', 'ean_13'] })
+        scanIntervalRef.current = setInterval(async () => {
+          if (!videoRef.current || videoRef.current.paused) return
+          try {
+            const barcodes = await detector.detect(videoRef.current)
+            if (barcodes.length > 0) {
+              const code = barcodes[0].rawValue
+              handleBarcodeScan(code)
+            }
+          } catch (_) {}
+        }, 300)
+      } else {
+        setScanStatus('المتصفح لا يدعم المسح. جرب Chrome')
+      }
+    } catch (err) {
+      setScanStatus('لا يمكن الوصول للكاميرا. تأكد من الإذن')
+    }
+  }, [])
+
+  const stopScanner = useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    setScannerOpen(false)
+    setScanStatus('')
+  }, [])
+
+  const handleBarcodeScan = (code: string) => {
+    const cleanCode = code.trim().toUpperCase()
+    // Find student by code
+    const student = students?.find((s: any) => s.code?.toUpperCase() === cleanCode)
+    if (student) {
+      handleMarkAttendance(student.id, 'present')
+      setScanStatus(`✓ ${student.full_name} - حاضر`)
+      toast.success(`${student.full_name} - تم تسجيل الحضور`)
+    } else {
+      setScanStatus(`✗ طالب غير مسجل: ${cleanCode}`)
+      toast.error(`طالب بالكود ${cleanCode} غير موجود`)
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current)
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
+    }
+  }, [])
+
   const filteredStudents = students?.filter((s: any) => !selectedGroup || s.group_id === selectedGroup)
 
   const statusConfig = {
@@ -81,9 +155,43 @@ export default function AttendancePage() {
     <div className="space-y-6">
 
       <Section>
-        <h1 className="text-2xl md:text-3xl font-bold text-white">الحضور والغياب</h1>
-        <p className="text-slate-400 mt-1">تسجيل ومتابعة حضور الطلاب</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">الحضور والغياب</h1>
+            <p className="text-slate-400 mt-1">تسجيل ومتابعة حضور الطلاب</p>
+          </div>
+          <motion.button
+            onClick={scannerOpen ? stopScanner : startScanner}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${scannerOpen ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30'}`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {scannerOpen ? <XCircle size={18} /> : <Camera size={18} />}
+            {scannerOpen ? 'إيقاف المسح' : 'مسح الباركود'}
+          </motion.button>
+        </div>
       </Section>
+
+      {/* Scanner Modal */}
+      {scannerOpen && (
+        <Section delay={0}>
+          <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
+            <div className="relative max-w-lg mx-auto">
+              <video ref={videoRef} className="w-full rounded-xl bg-black" autoPlay playsInline muted />
+              {/* Scan overlay */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-64 h-40 border-2 border-indigo-500 rounded-2xl" />
+              </div>
+              {scanStatus && (
+                <div className={`mt-3 text-center text-sm font-medium ${scanStatus.startsWith('✓') ? 'text-emerald-400' : scanStatus.startsWith('✗') ? 'text-red-400' : 'text-amber-400'}`}>
+                  {scanStatus}
+                </div>
+              )}
+              <p className="text-xs text-slate-500 text-center mt-2">وجّه الكاميرا نحو باركود الطالب</p>
+            </div>
+          </div>
+        </Section>
+      )}
 
       <Section delay={0.1}>
         <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">

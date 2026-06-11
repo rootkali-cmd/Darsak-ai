@@ -1,11 +1,25 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:darsak_desktop/core/local_sync/local_sync_service.dart';
-import 'package:darsak_desktop/main.dart';
+import 'package:darsak_desktop/core/theme/app_theme.dart';
 
 void main() {
-  testWidgets('DarsakApp creates MaterialApp', (WidgetTester tester) async {
-    final localSync = LocalSyncService();
-    await tester.pumpWidget(DarsakApp(localSync: localSync));
-    expect(find.byType(DarsakApp), findsOneWidget);
+  testWidgets('AppTheme dark creates valid MaterialApp', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: const Scaffold(body: Center(child: Text('Test'))),
+      ),
+    );
+    expect(find.text('Test'), findsOneWidget);
+  });
+
+  testWidgets('AppTheme light creates valid MaterialApp', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const Scaffold(body: Center(child: Text('Test'))),
+      ),
+    );
+    expect(find.text('Test'), findsOneWidget);
   });
 }

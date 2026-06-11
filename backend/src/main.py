@@ -33,6 +33,8 @@ from src.api import (
     quiz_router,
     admin_router,
     subjects_router,
+    payments_router,
+    reports_router,
 )
 
 settings = get_settings()
@@ -42,291 +44,312 @@ logger = setup_logging(settings.LOG_LEVEL)
 # ── Startup Tasks ──
 
 async def _run_schema_migrations():
-    """Run auto-migrations in background. Non-blocking startup."""
+    """Run auto-migrations via Supabase RPC. Non-blocking startup."""
+    SQL_STATEMENTS = [
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES groups(id) ON DELETE SET NULL;",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;",
+        """DO $$ BEGIN
+            ALTER TABLE groups ALTER COLUMN level TYPE TEXT USING level::TEXT;
+        EXCEPTION WHEN others THEN NULL; END $$;""",
+        """DO $$ BEGIN
+            DROP TYPE IF EXISTS education_level;
+        EXCEPTION WHEN others THEN NULL; END $$;""",
+        """CREATE TABLE IF NOT EXISTS payment_requests (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+            phone_number VARCHAR(20) NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            screenshot TEXT,
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+            admin_message TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS notifications (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            body TEXT NOT NULL,
+            type VARCHAR(50) DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error')),
+            read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS exams (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            duration_minutes INT NOT NULL DEFAULT 30,
+            total_points INT DEFAULT 0,
+            status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed')),
+            source_type VARCHAR(20) CHECK (source_type IN ('pdf', 'images')),
+            source_data JSONB,
+            answer_key TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS questions (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+            type VARCHAR(20) NOT NULL CHECK (type IN ('multiple_choice', 'essay')),
+            question_text TEXT NOT NULL,
+            options JSONB,
+            correct_answer TEXT,
+            points INT DEFAULT 1,
+            order_index INT NOT NULL,
+            page_number INT DEFAULT 1,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS student_exams (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            submitted_at TIMESTAMP WITH TIME ZONE,
+            duration_seconds INT,
+            status VARCHAR(20) DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'graded')),
+            total_score DECIMAL(10,2),
+            max_score DECIMAL(10,2),
+            UNIQUE(exam_id, student_id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS student_answers (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_exam_id UUID NOT NULL REFERENCES student_exams(id) ON DELETE CASCADE,
+            question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+            answer TEXT,
+            is_correct BOOLEAN,
+            score DECIMAL(10,2),
+            feedback TEXT,
+            UNIQUE(student_exam_id, question_id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS exam_results (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_exam_id UUID NOT NULL REFERENCES student_exams(id) ON DELETE CASCADE UNIQUE,
+            total_score DECIMAL(10,2),
+            max_score DECIMAL(10,2),
+            correct_count INT DEFAULT 0,
+            wrong_count INT DEFAULT 0,
+            essay_score DECIMAL(10,2),
+            strengths TEXT,
+            weaknesses TEXT,
+            recommendations TEXT,
+            ai_analysis_raw JSONB,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS lessons (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            subject VARCHAR(100),
+            week_number INT,
+            duration_seconds INT,
+            video_url TEXT,
+            tg_message_id VARCHAR(100),
+            tg_file_id TEXT,
+            is_published BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS video_analytics (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            video_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            last_position INT DEFAULT 0,
+            max_watched_duration INT DEFAULT 0,
+            current_speed FLOAT DEFAULT 1.0,
+            is_completed BOOLEAN DEFAULT FALSE,
+            is_flagged_cheated BOOLEAN DEFAULT FALSE,
+            is_delayed BOOLEAN DEFAULT FALSE,
+            delay_reason VARCHAR(100),
+            last_event_type VARCHAR(50),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_channel_id VARCHAR(100);",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS subjects JSONB DEFAULT '[]'::jsonb;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS levels JSONB DEFAULT '[]'::jsonb;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;",
+        """CREATE TABLE IF NOT EXISTS quizzes (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+            total_questions INT DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS quiz_questions (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+            question_text TEXT NOT NULL,
+            options JSONB DEFAULT '[]',
+            correct_answer INT DEFAULT 0
+        );""",
+        """CREATE TABLE IF NOT EXISTS admin_users (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            hashed_password VARCHAR(255) NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS admin_templates (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            type VARCHAR(50) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            pattern TEXT,
+            template TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS payment_transactions (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_id UUID REFERENCES students(id) ON DELETE SET NULL,
+            phone_number VARCHAR(20),
+            amount DECIMAL(10,2),
+            method VARCHAR(20),
+            reference TEXT,
+            status VARCHAR(20) DEFAULT 'pending',
+            matched_by VARCHAR(50),
+            approved_at TIMESTAMPTZ,
+            rejected_at TIMESTAMPTZ,
+            notes TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS subscription_plans (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            description TEXT,
+            price_egp DECIMAL(10,2) DEFAULT 0,
+            max_students INT DEFAULT 100,
+            ai_requests_per_month INT DEFAULT 10,
+            storage_limit_gb INT DEFAULT 2,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS subscription_codes (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            code VARCHAR(100) NOT NULL UNIQUE,
+            plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+            is_used BOOLEAN DEFAULT FALSE,
+            used_by_teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            used_at TIMESTAMPTZ,
+            expires_at TIMESTAMPTZ,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS teacher_subscriptions (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+            code_id VARCHAR(255),
+            is_active BOOLEAN DEFAULT TRUE,
+            expires_at TIMESTAMPTZ,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS features_json JSONB DEFAULT '[]'::jsonb;",
+        """DELETE FROM subscription_plans WHERE name NOT IN ('Basic', 'Pro', 'Premium');""",
+        """INSERT INTO subscription_plans (name, description, price_egp, max_students, ai_requests_per_month, storage_limit_gb, features_json)
+         VALUES
+            ('Basic', 'الأساسية - 199ج/شهر', 199.00, 2, 5, 2, '["2 اختبار شهرياً","حضور وغياب","درجات الطلاب","دعم فني"]'::jsonb),
+            ('Pro', 'الاحترافية - 499ج/شهر - الأكثر شعبية', 499.00, 6, 30, 6, '["6 اختبارات شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","دعم فني"]'::jsonb),
+            ('Premium', 'المتكاملة - 999ج/شهر', 999.00, 15, 100, 10, '["15 اختبار شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني أولوية"]'::jsonb)
+         ON CONFLICT (name) DO UPDATE SET
+            price_egp = EXCLUDED.price_egp,
+            max_students = EXCLUDED.max_students,
+            ai_requests_per_month = EXCLUDED.ai_requests_per_month,
+            storage_limit_gb = EXCLUDED.storage_limit_gb,
+            description = EXCLUDED.description,
+            features_json = EXCLUDED.features_json;""",
+        "ALTER TABLE exams ADD COLUMN IF NOT EXISTS deadline_at TIMESTAMP WITH TIME ZONE;",
+        """CREATE TABLE IF NOT EXISTS instapay_config (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            barcode_url TEXT NOT NULL,
+            username VARCHAR(255) NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """INSERT INTO instapay_config (barcode_url, username, is_active)
+         SELECT 'https://example.com/instapay-barcode.png', 'ahmed_instapay', TRUE
+         WHERE NOT EXISTS (SELECT 1 FROM instapay_config WHERE is_active = TRUE);""",
+        "UPDATE instapay_config SET barcode_url='https://api.darsak-backend.fly.dev/api/instapay-barcode', username='ahmed-mahmoud-1@instapay' WHERE is_active=TRUE;",
+        "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) CHECK (payment_method IN ('vodafone_cash', 'instapay', 'cash'));",
+        "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS screenshot_url TEXT;",
+        """CREATE TABLE IF NOT EXISTS invoices (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            amount DECIMAL(10,2) NOT NULL,
+            currency VARCHAR(10) DEFAULT 'EGP',
+            payment_method VARCHAR(20) CHECK (payment_method IN ('vodafone_cash', 'instapay', 'bank_transfer', 'cash')),
+            screenshot_url TEXT,
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'rejected')),
+            teacher_note TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+    ]
+
     try:
-        from sqlalchemy import text
-        from src.utils.database import get_engine
-        engine = get_engine()
-        async with engine.connect() as conn:
-            await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);"))
-            await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES groups(id) ON DELETE SET NULL;"))
-            await conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;"))
+        from src.core.security.supabase_repo import get_supabase
+        import httpx
 
-            # Force groups.level from enum to text
-            await conn.execute(text("""
-                DO $$
-                BEGIN
-                    ALTER TABLE groups ALTER COLUMN level TYPE TEXT USING level::TEXT;
-                EXCEPTION WHEN others THEN NULL;
-                END $$;
-            """))
-            await conn.execute(text("""
-                DO $$
-                BEGIN
-                    DROP TYPE IF EXISTS education_level;
-                EXCEPTION WHEN others THEN NULL;
-                END $$;
-            """))
+        client = await get_supabase()
+        url = settings.SUPABASE_URL.rstrip("/")
+        key = settings.SUPABASE_SERVICE_ROLE_KEY
 
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS payment_requests (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
-                    phone_number VARCHAR(20) NOT NULL,
-                    amount DECIMAL(10,2) NOT NULL,
-                    screenshot TEXT,
-                    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-                    admin_message TEXT,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS notifications (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    title VARCHAR(255) NOT NULL,
-                    body TEXT NOT NULL,
-                    type VARCHAR(50) DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error')),
-                    read BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS exams (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    title VARCHAR(255) NOT NULL,
-                    description TEXT,
-                    duration_minutes INT NOT NULL DEFAULT 30,
-                    total_points INT DEFAULT 0,
-                    status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed')),
-                    source_type VARCHAR(20) CHECK (source_type IN ('pdf', 'images')),
-                    source_data JSONB,
-                    answer_key TEXT,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS questions (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
-                    type VARCHAR(20) NOT NULL CHECK (type IN ('multiple_choice', 'essay')),
-                    question_text TEXT NOT NULL,
-                    options JSONB,
-                    correct_answer TEXT,
-                    points INT DEFAULT 1,
-                    order_index INT NOT NULL,
-                    page_number INT DEFAULT 1,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS student_exams (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
-                    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-                    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    submitted_at TIMESTAMP WITH TIME ZONE,
-                    duration_seconds INT,
-                    status VARCHAR(20) DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'graded')),
-                    total_score DECIMAL(10,2),
-                    max_score DECIMAL(10,2),
-                    UNIQUE(exam_id, student_id)
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS student_answers (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    student_exam_id UUID NOT NULL REFERENCES student_exams(id) ON DELETE CASCADE,
-                    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-                    answer TEXT,
-                    is_correct BOOLEAN,
-                    score DECIMAL(10,2),
-                    feedback TEXT,
-                    UNIQUE(student_exam_id, question_id)
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS exam_results (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    student_exam_id UUID NOT NULL REFERENCES student_exams(id) ON DELETE CASCADE UNIQUE,
-                    total_score DECIMAL(10,2),
-                    max_score DECIMAL(10,2),
-                    correct_count INT DEFAULT 0,
-                    wrong_count INT DEFAULT 0,
-                    essay_score DECIMAL(10,2),
-                    strengths TEXT,
-                    weaknesses TEXT,
-                    recommendations TEXT,
-                    ai_analysis_raw JSONB,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS lessons (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
-                    title VARCHAR(255) NOT NULL,
-                    description TEXT,
-                    subject VARCHAR(100),
-                    week_number INT,
-                    duration_seconds INT,
-                    video_url TEXT,
-                    tg_message_id VARCHAR(100),
-                    tg_file_id TEXT,
-                    is_published BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS video_analytics (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-                    video_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    last_position INT DEFAULT 0,
-                    max_watched_duration INT DEFAULT 0,
-                    current_speed FLOAT DEFAULT 1.0,
-                    is_completed BOOLEAN DEFAULT FALSE,
-                    is_flagged_cheated BOOLEAN DEFAULT FALSE,
-                    is_delayed BOOLEAN DEFAULT FALSE,
-                    delay_reason VARCHAR(100),
-                    last_event_type VARCHAR(50),
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text(
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_channel_id VARCHAR(100);"
-            ))
-            await conn.execute(text(
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS subjects JSONB DEFAULT '[]'::jsonb;"
-            ))
-            await conn.execute(text(
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS levels JSONB DEFAULT '[]'::jsonb;"
-            ))
-            await conn.execute(text(
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;"
-            ))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS quizzes (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-                    lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-                    total_questions INT DEFAULT 0,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS quiz_questions (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-                    question_text TEXT NOT NULL,
-                    options JSONB DEFAULT '[]',
-                    correct_answer INT DEFAULT 0
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS admin_users (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    full_name VARCHAR(255) NOT NULL,
-                    hashed_password VARCHAR(255) NOT NULL,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                INSERT INTO admin_users (email, full_name, hashed_password) 
-                VALUES ('ahmedtelly32@gmail.com', 'Ahmed Telly', '$2b$12$PM2Utvl9zS4V4LzLv2Y4weh5xR/bF9BefAu97v44Qq.XntEcO/3Zq')
-                ON CONFLICT (email) DO NOTHING;
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS admin_templates (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    type VARCHAR(50) NOT NULL,
-                    name VARCHAR(255) NOT NULL,
-                    pattern TEXT,
-                    template TEXT,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS payment_transactions (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    student_id UUID REFERENCES students(id) ON DELETE SET NULL,
-                    phone_number VARCHAR(20),
-                    amount DECIMAL(10,2),
-                    method VARCHAR(20),
-                    reference TEXT,
-                    status VARCHAR(20) DEFAULT 'pending',
-                    matched_by VARCHAR(50),
-                    approved_at TIMESTAMPTZ,
-                    rejected_at TIMESTAMPTZ,
-                    notes TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                INSERT INTO admin_templates (type, name, pattern, template) VALUES 
-                ('sms_regex', 'vodafone_cash', 'Vodafone Cash.*?(\\d{11}).*?(\\d+)\\.?\\d*\\s?(EGP|LE|ج\\.م)', '{"phone_group":1,"amount_group":2}'),
-                ('sms_regex', 'instapay', 'InstaPay.*?(\\d{11}).*?(\\d+)\\.?\\d*\\s?(EGP|LE|ج\\.م)', '{"phone_group":1,"amount_group":2}'),
-                ('notification', 'payment_approved', 'تم تأكيد الدفع', '✅ تم تأكيد الدفع بقيمة {amount} ج.م للطالب {student_name}'),
-                ('notification', 'payment_rejected', 'تم رفض الدفع', '❌ تم رفض الدفع بقيمة {amount} ج.م للطالب {student_name}')
-                ON CONFLICT DO NOTHING;
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS subscription_plans (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    name VARCHAR(100) NOT NULL UNIQUE,
-                    description TEXT,
-                    price_egp DECIMAL(10,2) DEFAULT 0,
-                    max_students INT DEFAULT 100,
-                    ai_requests_per_month INT DEFAULT 10,
-                    storage_limit_gb INT DEFAULT 2,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS subscription_codes (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    code VARCHAR(100) NOT NULL UNIQUE,
-                    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
-                    is_used BOOLEAN DEFAULT FALSE,
-                    used_by_teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
-                    used_at TIMESTAMPTZ,
-                    expires_at TIMESTAMPTZ,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """))
-            await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS teacher_subscriptions (
-                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                    teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
-                    code_id VARCHAR(255),
-                    is_active BOOLEAN DEFAULT TRUE,
-                    expires_at TIMESTAMPTZ,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """))
-            await conn.commit()
-            # Refresh Supabase PostgREST schema cache
+        created = 0
+        skipped = 0
+
+        for i, sql in enumerate(SQL_STATEMENTS):
             try:
-                await conn.execute(text("NOTIFY pgrst, 'reload schema'"))
-            except Exception:
-                pass
-            logger.info("Schema check: all tables OK")
+                async with httpx.AsyncClient(timeout=30.0) as http:
+                    resp = await http.post(
+                        f"{url}/rest/v1/rpc/exec_sql",
+                        json={"query": sql.strip()},
+                        headers={
+                            "apikey": key,
+                            "Authorization": f"Bearer {key}",
+                            "Content-Type": "application/json",
+                        },
+                    )
+                if resp.status_code == 200:
+                    created += 1
+                elif "already exists" in resp.text.lower() or "duplicate" in resp.text.lower():
+                    skipped += 1
+                else:
+                    logger.warning("Migration [%d] warning: %s", i, resp.text[:200])
+                    skipped += 1
+            except Exception as e:
+                logger.warning("Migration [%d] failed: %s", i, str(e)[:200])
+                skipped += 1
+
+        # Ensure Premium plan exists
+        try:
+            client2 = await get_supabase()
+            existing = client2.table("subscription_plans").select("name").eq("name", "Premium").execute()
+            if not existing.data:
+                client2.table("subscription_plans").insert({
+                    "name": "Premium",
+                    "description": "المتكاملة - 999ج/شهر",
+                    "price_egp": 999.00,
+                    "max_students": 15,
+                    "ai_requests_per_month": 100,
+                    "storage_limit_gb": 10,
+                    "features_json": ["15 اختبار شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني أولوية"],
+                    "is_active": True,
+                }).execute()
+                logger.info("Premium plan created via direct insert")
+        except Exception as pre_ex:
+            logger.warning("Premium plan insert check: %s", pre_ex)
+
+        logger.info("Schema migration done: %d created, %d skipped", created, skipped)
     except Exception as e:
         logger.warning("Schema migration skipped: %s", e)
 
@@ -589,6 +612,7 @@ async def cors_debug(request: Request):
 # ── Router Registration ──
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+app.include_router(student_me_router, prefix=settings.API_V1_PREFIX)
 app.include_router(students_router, prefix=settings.API_V1_PREFIX)
 app.include_router(groups_router, prefix=settings.API_V1_PREFIX)
 app.include_router(attendance_router, prefix=settings.API_V1_PREFIX)
@@ -596,7 +620,6 @@ app.include_router(grades_router, prefix=settings.API_V1_PREFIX)
 app.include_router(invoices_router, prefix=settings.API_V1_PREFIX)
 app.include_router(qr_router, prefix=settings.API_V1_PREFIX)
 app.include_router(sync_router, prefix=settings.API_V1_PREFIX)
-app.include_router(student_me_router, prefix=settings.API_V1_PREFIX)
 app.include_router(subscriptions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(versions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(webhook_router, prefix=settings.API_V1_PREFIX)
@@ -610,3 +633,5 @@ app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)
 app.include_router(quiz_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
 app.include_router(subjects_router, prefix=settings.API_V1_PREFIX)
+app.include_router(payments_router, prefix=settings.API_V1_PREFIX)
+app.include_router(reports_router, prefix=settings.API_V1_PREFIX)

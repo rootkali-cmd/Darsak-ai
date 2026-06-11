@@ -59,7 +59,7 @@ const plans = [
   {
     id: 'unlimited',
     nameAr: 'الباقة المتكاملة',
-    nameEn: 'Unlimited',
+    nameEn: 'Premium',
     price: '999',
     currency: 'ج.م',
     period: '/شهر',

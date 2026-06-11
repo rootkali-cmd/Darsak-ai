@@ -1,0 +1,27 @@
+# Exam Screens Test
+
+appId: com.darsak.ai
+---
+- runFlow: shared_login.yaml
+
+# Open drawer → Exams
+- tapOn:
+    text: "?"
+
+- extendedWaitUntil:
+    visible:
+      text: "الاختبارات"
+    timeout: 5000
+
+- tapOn:
+    text: "الاختبارات"
+
+- extendedWaitUntil:
+    visible:
+      text: "الاختبارات المتاحة"
+    timeout: 5000
+
+- assertVisible:
+    text: "الاختبارات المتاحة"
+
+- takeScreenshot: exam_screen.png

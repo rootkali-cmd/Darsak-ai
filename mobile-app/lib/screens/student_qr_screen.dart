@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:barcode_widget/barcode_widget.dart';
 import '../providers/auth_provider.dart';
 import '../core/theme.dart';
 
@@ -13,8 +13,6 @@ class StudentQrScreen extends StatelessWidget {
     final student = auth.student;
     final studentCode = student?.code ?? '';
     final studentName = student?.fullName ?? 'طالب';
-    
-    final qrData = 'darsak://student/${student?.id ?? ''}/$studentCode';
 
     return Scaffold(
       appBar: AppBar(
@@ -40,16 +38,11 @@ class StudentQrScreen extends StatelessWidget {
                     Container(
                       width: 48,
                       height: 48,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
-                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accent.withValues(alpha: 0.15),
+                        borderRadius: const BorderRadius.all(Radius.circular(14)),
                       ),
-                      child: Center(
-                        child: Text(
-                          studentName.isNotEmpty ? studentName[0] : '?',
-                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                      ),
+                      child: const Icon(Icons.person, color: AppTheme.accent, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -72,29 +65,43 @@ class StudentQrScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.accent.withValues(alpha: 0.2),
+                      color: AppTheme.accent.withValues(alpha: 0.15),
                       blurRadius: 30,
                       offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-                child: QrImageView(
-                  data: qrData,
-                  version: QrVersions.auto,
-                  size: 260,
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  errorStateBuilder: (ctx, err) {
-                    return const Center(
-                      child: Text('خطأ في إنشاء QR', style: TextStyle(color: Colors.red)),
-                    );
-                  },
+                child: Column(
+                  children: [
+                    BarcodeWidget(
+                      barcode: Barcode.code128(),
+                      data: studentCode,
+                      width: 280,
+                      height: 100,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                      color: Colors.black,
+                      drawText: true,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      studentName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 32),
@@ -113,7 +120,7 @@ class StudentQrScreen extends StatelessWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'ارفع QR Code أمام كاميرا المدرس',
+                            'ارفع الباركود أمام كاميرا المدرس',
                             style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
                           ),
                         ),

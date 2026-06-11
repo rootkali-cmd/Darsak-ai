@@ -8,6 +8,7 @@ import 'dashboard/dashboard_screen.dart';
 import 'students/students_screen.dart';
 import 'attendance/attendance_screen.dart';
 import 'grades/grades_screen.dart';
+import 'groups/groups_screen.dart';
 import 'more/more_screen.dart';
 import 'subscriptions/subscription_screen.dart';
 
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'الطلاب',
     'الحضور',
     'الدرجات',
+    'المجموعات',
     'المزيد',
   ];
 
@@ -35,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Icons.people_rounded,
     Icons.today_rounded,
     Icons.grade_rounded,
+    Icons.group_rounded,
     Icons.more_horiz_rounded,
   ];
 
@@ -43,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     StudentsScreen(),
     AttendanceScreen(),
     GradesScreen(),
+    GroupsScreen(),
     MoreScreen(),
   ];
 
@@ -139,6 +143,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: Text(_titles[_currentIndex], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           return Directionality(

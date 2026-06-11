@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -5,49 +7,62 @@ import 'package:dio/dio.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/local_db.dart';
-import '../core/subscription_service.dart';
 import '../models/student.dart';
 
-enum AuthStatus { uninitialized, authenticated, unauthenticated, loading, subscriptionExpired }
+enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
-  final SubscriptionService _subscriptionService = SubscriptionService();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final Connectivity _connectivity = Connectivity();
   AuthStatus _status = AuthStatus.uninitialized;
   StudentModel? _student;
   String? _error;
   String? _teacherCode;
-  bool _isSubscriptionActive = false;
-  Map<String, dynamic>? _subscriptionData;
   bool _isOnline = true;
+  Map<String, dynamic>? _subscriptionData;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   AuthStatus get status => _status;
   StudentModel? get student => _student;
   String? get error => _error;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   String? get teacherCode => _teacherCode;
-  bool get isSubscriptionActive => _isSubscriptionActive;
   bool get isOnline => _isOnline;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
+  bool get isSubscriptionActive => _subscriptionData != null && (_subscriptionData!['is_active'] ?? false) == true;
 
   AuthProvider() {
     _initConnectivity();
   }
 
   void _initConnectivity() {
-    _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
       _isOnline = results.any((r) => r != ConnectivityResult.none);
       notifyListeners();
     });
     _checkConnectivity();
   }
 
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _checkConnectivity() async {
     final results = await _connectivity.checkConnectivity();
     _isOnline = results.any((r) => r != ConnectivityResult.none);
     notifyListeners();
+  }
+
+  Future<void> refreshSubscription() async {
+    try {
+      _subscriptionData = await _api.getMySubscription();
+      notifyListeners();
+    } catch (_) {
+      // Silently fail — subscription state stays unchanged
+    }
   }
 
   Future<void> tryAutoLogin() async {
@@ -61,42 +76,69 @@ class AuthProvider extends ChangeNotifier {
     _teacherCode =
         await _storage.read(key: AppConstants.storageKeyTeacherCode);
 
-    // Verify token is still valid before logging in
+    // Load cached profile immediately so the UI has something to show
+    final cached = LocalDB.getProfile();
+    if (cached != null) {
+      _student = StudentModel.fromJson(cached);
+    }
+
+    // Show the app — don't block on network
+    _status = AuthStatus.authenticated;
+    notifyListeners();
+
+    // Load subscription data in background
+    refreshSubscription();
+
+    // Verify token and refresh data in background
     try {
       final data = await _api.getProfile();
       _student = StudentModel.fromJson(data);
       LocalDB.saveProfile(data);
-    } catch (_) {
-      // Token expired or invalid — clear and go to login
-      await _storage.delete(key: AppConstants.storageKeyToken);
-      await _storage.delete(key: AppConstants.storageKeyTeacherCode);
-      _status = AuthStatus.unauthenticated;
-      notifyListeners();
-      return;
-    }
-
-    // Check subscription from cache (will be refreshed later)
-    final subActive = await _subscriptionService.isSubscriptionActive();
-    _isSubscriptionActive = subActive;
-    _subscriptionData = await _subscriptionService.getCachedSubscription();
-
-    if (!subActive) {
-      // Still allow login but mark subscription expired — overlay will show
-    }
-
-    _status = AuthStatus.authenticated;
-    notifyListeners();
-
-    // Refresh subscription in background
-    try {
-      final subData = await _subscriptionService.getMySubscription();
-      _subscriptionData = subData;
-      _isSubscriptionActive = await _subscriptionService.isSubscriptionActive();
-      if (!_isSubscriptionActive) {
-        _status = AuthStatus.subscriptionExpired;
+    } catch (e) {
+      if (e is DioException && e.response != null) {
+        final code = e.response?.statusCode;
+        if (code == 401 || code == 403) {
+          // Try manual refresh as fallback
+          final refreshToken = await _storage.read(key: AppConstants.storageKeyRefreshToken);
+          bool refreshed = false;
+          if (refreshToken != null) {
+            try {
+              final dio = Dio(BaseOptions(
+                baseUrl: AppConstants.apiBaseUrl,
+                connectTimeout: const Duration(seconds: 10),
+                receiveTimeout: const Duration(seconds: 30),
+                headers: {'Content-Type': 'application/json'},
+              ));
+              final resp = await dio.post('/students/refresh', data: {
+                'refresh_token': refreshToken,
+              });
+              final newAccess = resp.data['access_token'] as String?;
+              final newRefresh = resp.data['refresh_token'] as String?;
+              if (newAccess != null) {
+                await _storage.write(key: AppConstants.storageKeyToken, value: newAccess);
+                if (newRefresh != null) {
+                  await _storage.write(key: AppConstants.storageKeyRefreshToken, value: newRefresh);
+                }
+                try {
+                  final data2 = await _api.getProfile();
+                  _student = StudentModel.fromJson(data2);
+                  LocalDB.saveProfile(data2);
+                  refreshed = true;
+                } catch (_) {}
+              }
+            } catch (_) {}
+          }
+          if (!refreshed) {
+            await _storage.delete(key: AppConstants.storageKeyToken);
+            await _storage.delete(key: AppConstants.storageKeyRefreshToken);
+            await _storage.delete(key: AppConstants.storageKeyTeacherCode);
+            _status = AuthStatus.unauthenticated;
+            notifyListeners();
+            return;
+          }
+        }
       }
-      notifyListeners();
-    } catch (_) {}
+    }
   }
 
   Future<bool> login(String code, String pin, {String? teacherCode}) async {
@@ -110,8 +152,12 @@ class AuthProvider extends ChangeNotifier {
 
       final response = await _api.login(code, pin, teacherCode: teacherCode);
       final token = response['access_token'] as String;
+      final refreshToken = response['refresh_token'] as String?;
 
       await _storage.write(key: AppConstants.storageKeyToken, value: token);
+      if (refreshToken != null) {
+        await _storage.write(key: AppConstants.storageKeyRefreshToken, value: refreshToken);
+      }
       await _storage.write(key: AppConstants.storageKeyCode, value: code);
       if (teacherCode != null) {
         await _storage.write(
@@ -120,13 +166,11 @@ class AuthProvider extends ChangeNotifier {
       }
 
       // Fetch full profile — if this fails, still treat login as successful
-      // (the profile can be loaded later from tryAutoLogin)
       try {
         final profile = await _api.getProfile();
         _student = StudentModel.fromJson(profile);
         LocalDB.saveProfile(profile);
       } catch (_) {
-        // Profile fetch failed after login — build minimal student from login data
         _student = StudentModel(
           id: response['student_id']?.toString() ?? '',
           code: response['student_code']?.toString() ?? code,
@@ -135,29 +179,13 @@ class AuthProvider extends ChangeNotifier {
         );
       }
 
-      // Check subscription
-      try {
-        final subData = await _subscriptionService.getMySubscription();
-        _subscriptionData = subData;
-        _isSubscriptionActive = await _subscriptionService.isSubscriptionActive();
-      } catch (_) {
-        _isSubscriptionActive = false;
-        _subscriptionData = null;
-      }
-
-      if (!_isSubscriptionActive) {
-        _status = AuthStatus.subscriptionExpired;
-        notifyListeners();
-        return true;
-      }
-
       _status = AuthStatus.authenticated;
       notifyListeners();
+      refreshSubscription();
       return true;
     } catch (e) {
       String message = _mapLoginError(e);
       _error = message;
-      // Clear any leftover token on failure
       await _storage.delete(key: AppConstants.storageKeyToken);
       _status = AuthStatus.unauthenticated;
       notifyListeners();
@@ -170,7 +198,6 @@ class AuthProvider extends ChangeNotifier {
       final data = e.response?.data;
       final statusCode = e.response?.statusCode;
 
-      // Extract the detail/message string from the response
       String raw = '';
       if (data is Map<String, dynamic>) {
         raw = data['detail'] as String? ??
@@ -181,35 +208,28 @@ class AuthProvider extends ChangeNotifier {
         raw = data;
       }
 
-      // Rate limiting (429)
       if (statusCode == 429) {
-        // Backend returns specific Arabic messages for rate limiting
         if (raw.isNotEmpty) return raw;
         return 'تم حظر حسابك مؤقتاً بسبب محاولات كثيرة. حاول مرة أخرى لاحقاً.';
       }
 
-      // Suspended / banned (403)
       if (statusCode == 403 || raw.contains('معلّق') || raw.contains('محظور') || raw.toLowerCase().contains('suspend')) {
         return 'تم تعليق الحساب';
       }
 
-      // Specific backend Arabic messages for 401 errors — match exactly what the backend sends
       if (raw == 'الكود غير صحيح') return 'كود الطالب غير صحيح';
       if (raw == 'الرمز السري غير صحيح') return 'كلمة المرور غير صحيحة';
       if (raw == 'الرمز السري غير مُعيّن') return 'لم يتم تعيين رمز سري لهذا الحساب';
       if (raw == 'الطالب غير مسجل لدى هذا المعلم') return 'الطالب غير مسجل لدى هذا المعلم';
 
-      // Fallback for any other 401
       if (statusCode == 401) {
         if (raw.isNotEmpty) return raw;
         return 'الكود أو كلمة المرور غير صحيحة';
       }
 
-      // Any other error with a message — show the backend message
       if (raw.isNotEmpty) return raw;
     }
 
-    // Non-Dio errors (timeout, no internet, etc.)
     if (e is DioException) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
@@ -223,26 +243,12 @@ class AuthProvider extends ChangeNotifier {
     return 'حدث خطأ غير متوقع. حاول مرة أخرى.';
   }
 
-  Future<void> refreshSubscription() async {
-    try {
-      final subData = await _subscriptionService.getMySubscription();
-      _subscriptionData = subData;
-      _isSubscriptionActive = await _subscriptionService.isSubscriptionActive();
-      if (_isSubscriptionActive) {
-        _status = AuthStatus.authenticated;
-      }
-      notifyListeners();
-    } catch (_) {}
-  }
-
   Future<void> logout() async {
     await _storage.deleteAll();
-    await _subscriptionService.clearCache();
     LocalDB.clearAll();
     _student = null;
     _teacherCode = null;
     _subscriptionData = null;
-    _isSubscriptionActive = false;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }

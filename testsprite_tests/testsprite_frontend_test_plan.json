@@ -1,0 +1,1847 @@
+[
+  {
+    "id": "TC001",
+    "title": "Register and enter the protected dashboard",
+    "description": "A new teacher can register with valid details, log in, and reach the protected dashboard with a visible profile state.",
+    "category": "Teacher Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the public registration page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a full name into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the same email address into the login email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the same password into the login password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the protected dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the teacher profile state is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Block dashboard statistics without a valid session",
+    "description": "This test verifies that an unauthenticated visitor cannot access teacher dashboard statistics and is kept out of the protected view.",
+    "category": "Dashboard Statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the dashboard statistics view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an authentication error or access restriction is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dashboard statistics are not displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Log in and continue an existing session",
+    "description": "A teacher can log in with valid credentials, reach the protected dashboard, and retain access after refreshing session tokens through the UI.",
+    "category": "Teacher Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile or session area"
+      },
+      {
+        "type": "action",
+        "description": "Trigger session refresh from the account controls"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the protected dashboard remains displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the teacher profile state is still visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Create a student and assign them to a group",
+    "description": "A teacher can create a student, assign the student to an existing group, and see the student in the list.",
+    "category": "Student Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the students section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new student"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a student full name into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing group for the student"
+      },
+      {
+        "type": "action",
+        "description": "Submit the student form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new student appears in the student list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student is assigned to a group"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Show dashboard statistics after teacher login",
+    "description": "This test verifies that a teacher can log in and then access the dashboard statistics view from the protected app shell.",
+    "category": "Dashboard Statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the dashboard view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard statistics are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the core operational counts are visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Update and delete a student record",
+    "description": "A teacher can edit a student’s details and then remove the student from the system.",
+    "category": "Student Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the students section"
+      },
+      {
+        "type": "action",
+        "description": "Create a new student if no student exists"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved student for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the student details"
+      },
+      {
+        "type": "action",
+        "description": "Save the student changes"
+      },
+      {
+        "type": "action",
+        "description": "Delete the student"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student is removed from the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student list remains accessible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Create an exam successfully",
+    "description": "This test verifies that a teacher can create a new exam and see it available afterward.",
+    "category": "Exams and Questions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the exams page"
+      },
+      {
+        "type": "action",
+        "description": "Create a new exam with a title and optional duration and total points"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the created exam is displayed in the exam list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam details are available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "View dashboard statistics successfully",
+    "description": "This test verifies that an authenticated teacher can load the dashboard statistics endpoint and see the core operational counts needed for daily work.",
+    "category": "Dashboard Statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the dashboard statistics view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify students, groups, today attendance, pending invoices, and active exams counts are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Upload a lesson video and open the stream",
+    "description": "This test verifies that a teacher can upload a valid lesson video and retrieve the playable stream for that lesson.",
+    "category": "Lessons and Video Hosting",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the lessons page"
+      },
+      {
+        "type": "action",
+        "description": "Create a new lesson with a title"
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid video file for the lesson"
+      },
+      {
+        "type": "action",
+        "description": "Open the lesson stream view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify stream access is available for the lesson"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the uploaded video is associated with the lesson"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Create a group and see it in the group list",
+    "description": "A teacher can create a group with core details and then see the new group in the saved groups list.",
+    "category": "Groups Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the groups section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new group"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a group name into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in optional group details into the remaining fields"
+      },
+      {
+        "type": "action",
+        "description": "Submit the group form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new group appears in the group list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group details are available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Add a question to an exam",
+    "description": "This test verifies that a teacher can add a question with options to an exam and see it included in the exam content.",
+    "category": "Exams and Questions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the exams page"
+      },
+      {
+        "type": "action",
+        "description": "Create a new exam with a title"
+      },
+      {
+        "type": "action",
+        "description": "Add a question with question text and multiple options to the exam"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new question is displayed in the exam"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam reflects the added question"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Edit and remove a group",
+    "description": "A teacher can update an existing group and then delete it from the groups area.",
+    "category": "Groups Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the groups section"
+      },
+      {
+        "type": "action",
+        "description": "Create a new group if no group exists"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved group for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the group details"
+      },
+      {
+        "type": "action",
+        "description": "Save the group changes"
+      },
+      {
+        "type": "action",
+        "description": "Delete the group"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group is removed from the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state or remaining groups are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Create and review an attendance record",
+    "description": "This test verifies that a teacher can record attendance for a student and then see the new record in the attendance list for the selected date.",
+    "category": "Attendance Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the attendance section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new attendance record"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing student"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the attendance date field"
+      },
+      {
+        "type": "action",
+        "description": "Choose present as the attendance status"
+      },
+      {
+        "type": "action",
+        "description": "Save the attendance record"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new attendance record is displayed in the attendance list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify attendance statistics are shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Create a grade and review it for a student",
+    "description": "This test verifies that a teacher can add a grade for a student and then see that grade in the student's grade list.",
+    "category": "Grades Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the grades section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new grade"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing student"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid score into the grade score field"
+      },
+      {
+        "type": "action",
+        "description": "Save the grade"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new grade is displayed in the student's grade list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the grade appears in the grades view"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Create and review an invoice for a student",
+    "description": "This test verifies that a teacher can create an invoice for a student and then see it in the student's invoice list.",
+    "category": "Invoices Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the invoices section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new invoice"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing student"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid amount into the invoice amount field"
+      },
+      {
+        "type": "action",
+        "description": "Save the invoice"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new invoice is displayed in the student's invoice list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the invoice appears in the invoices view"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Create a lesson and publish it",
+    "description": "This test verifies that a teacher can create a lesson and mark it as published.",
+    "category": "Lessons and Video Hosting",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the lessons page"
+      },
+      {
+        "type": "action",
+        "description": "Create a new lesson with a title and optional group or subject"
+      },
+      {
+        "type": "action",
+        "description": "Mark the lesson as published"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lesson appears in the published lessons list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lesson details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Refresh dashboard statistics after returning to the page",
+    "description": "This test verifies that a teacher can revisit the dashboard and still see current operational counts rendered in the statistics area.",
+    "category": "Dashboard Statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the dashboard statistics view"
+      },
+      {
+        "type": "action",
+        "description": "Return to the dashboard view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard statistics remain visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the operational counts are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Reject invalid registration details",
+    "description": "Registration fails when required fields are missing or too short and the user stays on the public auth flow.",
+    "category": "Teacher Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the public registration page"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form without entering required details"
+      },
+      {
+        "type": "action",
+        "description": "Fill in an invalid short password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the protected dashboard is not displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Record attendance by barcode",
+    "description": "This test verifies that a teacher can scan or enter a valid student barcode and create today's present attendance automatically.",
+    "category": "Attendance Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the attendance section"
+      },
+      {
+        "type": "action",
+        "description": "Start barcode attendance entry"
+      },
+      {
+        "type": "action",
+        "description": "Provide a valid student barcode"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the barcode attendance entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a present attendance record is created for today"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student's attendance history is available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "View the exam list and details",
+    "description": "This test verifies that a teacher can open the exams area, see existing exams, and inspect one exam's details.",
+    "category": "Exams and Questions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the exams page"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing exam from the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam list is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected exam details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Record multiple attendance entries at once",
+    "description": "This test verifies that a teacher can submit a bulk attendance update and see the created records reflected in the attendance list.",
+    "category": "Attendance Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the attendance section"
+      },
+      {
+        "type": "action",
+        "description": "Start bulk attendance entry"
+      },
+      {
+        "type": "action",
+        "description": "Add attendance for multiple existing students"
+      },
+      {
+        "type": "action",
+        "description": "Save the bulk attendance update"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the bulk attendance records are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the attendance list reflects the selected students"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "View a student profile with attendance and grades",
+    "description": "A teacher can open a student profile and review the student’s attendance and grade history.",
+    "category": "Student Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the students section"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing student profile"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the attendance history view"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the grades history view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student profile is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify attendance and grade history are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Update and remove an exam question",
+    "description": "This test verifies that a teacher can edit an existing exam question and then delete it from the exam.",
+    "category": "Exams and Questions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the exams page"
+      },
+      {
+        "type": "action",
+        "description": "Open an exam that contains a question"
+      },
+      {
+        "type": "action",
+        "description": "Edit the question text or points"
+      },
+      {
+        "type": "action",
+        "description": "Delete the question"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the question is no longer displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam still opens successfully"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "Review dashboard stats and subscription status",
+    "description": "A teacher can open the dashboard and see current class statistics and subscription status.",
+    "category": "Teacher Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the dashboard overview"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dashboard statistics are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify subscription status is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC025",
+    "title": "Update an existing grade",
+    "description": "This test verifies that a teacher can edit an existing grade and see the updated score or notes reflected in the grade details.",
+    "category": "Grades Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the grades section"
+      },
+      {
+        "type": "action",
+        "description": "Create a grade for an existing student"
+      },
+      {
+        "type": "action",
+        "description": "Open the created grade for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the score"
+      },
+      {
+        "type": "action",
+        "description": "Save the grade changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the grade shows the updated values"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the edited grade remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC026",
+    "title": "Browse plans and activate a subscription code",
+    "description": "This test verifies that a teacher can view available plans, activate a code, and see the subscription update.",
+    "category": "Subscription Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the subscriptions page"
+      },
+      {
+        "type": "action",
+        "description": "Review the available subscription plans"
+      },
+      {
+        "type": "action",
+        "description": "Activate a valid subscription code"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the current subscription is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the activated plan information is shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC027",
+    "title": "Reject an incorrect password on login",
+    "description": "Login fails with an incorrect password and the teacher is not signed into the dashboard.",
+    "category": "Teacher Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in an incorrect password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify authentication errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the protected dashboard is not displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC028",
+    "title": "Update an existing invoice",
+    "description": "This test verifies that a teacher can edit an invoice amount or status and see the updated invoice reflected in the invoice details.",
+    "category": "Invoices Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the invoices section"
+      },
+      {
+        "type": "action",
+        "description": "Create an invoice for an existing student"
+      },
+      {
+        "type": "action",
+        "description": "Open the created invoice for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the amount or status"
+      },
+      {
+        "type": "action",
+        "description": "Save the invoice changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the invoice shows the updated values"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the edited invoice remains visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "Request manual payment for a subscription plan",
+    "description": "This test verifies that a teacher can submit a subscription payment request and see it reflected in subscription status.",
+    "category": "Subscription Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the subscriptions page"
+      },
+      {
+        "type": "action",
+        "description": "Choose a plan and enter a phone number and amount"
+      },
+      {
+        "type": "action",
+        "description": "Submit the payment request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a payment request confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the subscription status is shown"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "Filter attendance by date and student",
+    "description": "This test verifies that a teacher can narrow attendance records by date and by student and see only the matching results.",
+    "category": "Attendance Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the attendance section"
+      },
+      {
+        "type": "action",
+        "description": "Apply a date filter"
+      },
+      {
+        "type": "action",
+        "description": "Apply a student filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only matching attendance records are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the filtered attendance view remains visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "Show student validation errors for missing name",
+    "description": "Student creation shows validation feedback when the required name is missing and no student is created.",
+    "category": "Student Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the students section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new student"
+      },
+      {
+        "type": "action",
+        "description": "Submit the student form without entering a name"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify student validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new student is added"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "View attendance summary counts",
+    "description": "This test verifies that a teacher can open attendance statistics and see the present, absent, and late totals for the selected period.",
+    "category": "Attendance Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the attendance section"
+      },
+      {
+        "type": "action",
+        "description": "Open attendance statistics"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify attendance totals are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify present, absent, and late counts are shown"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC033",
+    "title": "Block invalid group creation",
+    "description": "Creating a group without a name shows validation feedback and does not save a group.",
+    "category": "Groups Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid email address into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the groups section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new group"
+      },
+      {
+        "type": "action",
+        "description": "Submit the group form without entering a name"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify group validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new group is added"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "View invoice totals and payment counts",
+    "description": "This test verifies that a teacher can open invoice statistics and see totals with paid and pending counts.",
+    "category": "Invoices Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the invoices section"
+      },
+      {
+        "type": "action",
+        "description": "Open invoice statistics"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify invoice totals are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify paid and pending counts are shown"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "See empty dashboard statistics state when no data exists",
+    "description": "This test verifies that the dashboard statistics area still renders a usable empty state when the teacher has no operational data yet.",
+    "category": "Dashboard Statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the dashboard statistics view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty or zero-state presentation is visible for dashboard statistics"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC036",
+    "title": "Filter grades by student or subject",
+    "description": "This test verifies that a teacher can filter the grades list and see only grades matching the chosen student or subject.",
+    "category": "Grades Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the grades section"
+      },
+      {
+        "type": "action",
+        "description": "Apply a student filter"
+      },
+      {
+        "type": "action",
+        "description": "Apply a subject filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only matching grades are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the filtered grade list is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC037",
+    "title": "Delete a grade",
+    "description": "This test verifies that a teacher can remove an existing grade and no longer see it in the grades list.",
+    "category": "Grades Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the grades section"
+      },
+      {
+        "type": "action",
+        "description": "Create a grade for an existing student"
+      },
+      {
+        "type": "action",
+        "description": "Open the created grade actions"
+      },
+      {
+        "type": "action",
+        "description": "Delete the grade"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the grade is no longer displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the grades list remains accessible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC038",
+    "title": "Reject an exam without a title",
+    "description": "This test verifies that the teacher cannot save an exam when the required title is missing.",
+    "category": "Exams and Questions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the exams page"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new exam without entering a title"
+      },
+      {
+        "type": "action",
+        "description": "Submit the exam form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam is not created"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC039",
+    "title": "Delete an invoice",
+    "description": "This test verifies that a teacher can remove an existing invoice and no longer see it in the invoice list.",
+    "category": "Invoices Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the invoices section"
+      },
+      {
+        "type": "action",
+        "description": "Create an invoice for an existing student"
+      },
+      {
+        "type": "action",
+        "description": "Open the created invoice actions"
+      },
+      {
+        "type": "action",
+        "description": "Delete the invoice"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the invoice is no longer displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the invoices list remains accessible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC040",
+    "title": "Reject an invalid subscription activation code",
+    "description": "This test verifies that the teacher cannot activate a subscription with an invalid or already-used code.",
+    "category": "Subscription Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the subscriptions page"
+      },
+      {
+        "type": "action",
+        "description": "Enter an invalid or already-used activation code"
+      },
+      {
+        "type": "action",
+        "description": "Submit the activation form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation or rejection message is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new subscription is created"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC041",
+    "title": "Reject an invalid lesson video upload",
+    "description": "This test verifies that the teacher cannot upload an invalid or oversized file to a lesson.",
+    "category": "Lessons and Video Hosting",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the lessons page"
+      },
+      {
+        "type": "action",
+        "description": "Create a new lesson with a title"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to upload an invalid or oversized video file"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a file validation error is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no video is attached to the lesson"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC042",
+    "title": "Open the public health check page",
+    "description": "This test verifies that a visitor can open the public health endpoint and see that the application is healthy.",
+    "category": "Health Check",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /health"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a healthy status is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC043",
+    "title": "Reject a subscription payment request with missing data",
+    "description": "This test verifies that the teacher cannot submit a subscription payment request without the required information.",
+    "category": "Subscription Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the teacher credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the subscriptions page"
+      },
+      {
+        "type": "action",
+        "description": "Leave the payment request incomplete"
+      },
+      {
+        "type": "action",
+        "description": "Submit the payment request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the payment request is not created"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC044",
+    "title": "Keep the health check accessible without login",
+    "description": "This test verifies that the health check page is available to unauthenticated visitors for deployment monitoring.",
+    "category": "Health Check",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /health"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the health check content is displayed without requiring authentication"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC045",
+    "title": "Show health check status during normal app operation",
+    "description": "This test verifies that the health endpoint presents a healthy status in the normal browsing experience.",
+    "category": "Health Check",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /health"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the application reports a healthy status"
+      }
+    ],
+    "priority": "Low"
+  }
+]

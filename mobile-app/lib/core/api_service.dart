@@ -3,10 +3,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'constants.dart';
 
 class ApiService {
+  static final ApiService _instance = ApiService._internal();
+  factory ApiService() => _instance;
+
   late final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  bool _isRefreshing = false;
 
-  ApiService() {
+  ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: AppConstants.apiBaseUrl,
       connectTimeout: const Duration(seconds: 10),
@@ -21,6 +25,44 @@ class ApiService {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
+      },
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401 && !_isRefreshing) {
+          final refreshToken = await _storage.read(key: AppConstants.storageKeyRefreshToken);
+          if (refreshToken != null) {
+            _isRefreshing = true;
+            try {
+              final dio = Dio(BaseOptions(
+                baseUrl: AppConstants.apiBaseUrl,
+                connectTimeout: const Duration(seconds: 10),
+                receiveTimeout: const Duration(seconds: 30),
+                headers: {'Content-Type': 'application/json'},
+              ));
+              final response = await dio.post('/students/refresh', data: {
+                'refresh_token': refreshToken,
+              });
+              final data = response.data;
+              final newAccessToken = data['access_token'] as String?;
+              final newRefreshToken = data['refresh_token'] as String?;
+              if (newAccessToken != null) {
+                await _storage.write(key: AppConstants.storageKeyToken, value: newAccessToken);
+                if (newRefreshToken != null) {
+                  await _storage.write(key: AppConstants.storageKeyRefreshToken, value: newRefreshToken);
+                }
+                // Retry the original request with new token
+                error.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+                final retryResponse = await _dio.fetch(error.requestOptions);
+                handler.resolve(retryResponse);
+                return;
+              }
+            } catch (_) {
+              // Refresh failed — fall through to original error
+            } finally {
+              _isRefreshing = false;
+            }
+          }
+        }
+        handler.next(error);
       },
     ));
   }
@@ -136,5 +178,12 @@ class ApiService {
   Future<List<dynamic>> getMyExamResults() async {
     final response = await _dio.get('/exams/my-results');
     return response.data is List ? response.data as List : [];
+  }
+
+  Future<Map<String, dynamic>> getStudentExamResult(String studentExamId) async {
+    final response = await _dio.get('/exams/my-result/$studentExamId');
+    return response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
   }
 }

@@ -51,13 +51,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _loading = true);
     try {
       final api = ApiService();
-      final resp = await api.dio.post('/auth/register', data: {
+      await api.dio.post('/auth/register', data: {
         'full_name': name,
         'email': email,
         'password': password,
       });
 
-      // Auto-login after register
       final auth = context.read<AuthProvider>();
       final success = await auth.login(email, password);
 
@@ -95,72 +94,164 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [Color(0xFF000000), Color(0xFF111111), Color(0xFF000000)]),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0a0a1a), Color(0xFF0a0a1a)],
+          ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Container(width: 72, height: 72,
-                  decoration: BoxDecoration(color: AppTheme.accent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(18)),
-                  child: const Icon(Icons.person_add, size: 36, color: AppTheme.accent)),
-                const SizedBox(height: 24),
-                const Text('إنشاء حساب جديد', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
-                const SizedBox(height: 8),
-                const Text('أنشئ حسابك وابدأ إدارة سنترك', style: TextStyle(fontSize: 15, color: AppTheme.textSecondary)),
-                const SizedBox(height: 36),
-                TextField(
-                  controller: _nameCtrl, textInputAction: TextInputAction.next,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'الاسم الكامل', prefixIcon: const Icon(Icons.person),
-                    filled: true, fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo
+                  Container(
+                    width: 72, height: 72,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.person_add, size: 36, color: Colors.white),
                   ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _emailCtrl, keyboardType: TextInputType.emailAddress, textInputAction: TextInputAction.next,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'البريد الإلكتروني', prefixIcon: const Icon(Icons.email),
-                    filled: true, fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'إنشاء حساب جديد',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Cairo'),
                   ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _passwordCtrl, obscureText: _obscure, textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _register(),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'كلمة المرور', prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: AppTheme.textSecondary), onPressed: () => setState(() => _obscure = !_obscure)),
-                    filled: true, fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'أنشئ حسابك وابدأ إدارة سنترك',
+                    style: TextStyle(fontSize: 15, color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
                   ),
-                ),
-                const SizedBox(height: 28),
-                SizedBox(width: double.infinity, height: 52,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _register,
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                    child: _loading
-                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                        : const Text('إنشاء الحساب', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 36),
+                  // Name
+                  TextField(
+                    controller: _nameCtrl,
+                    textInputAction: TextInputAction.next,
+                    style: const TextStyle(color: Colors.white, fontFamily: 'Cairo'),
+                    decoration: InputDecoration(
+                      labelText: 'الاسم الكامل',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
+                      prefixIcon: const Icon(Icons.person, color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Text('لديك حساب؟ ', style: TextStyle(color: AppTheme.textSecondary)),
-                  GestureDetector(
-                    onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
-                    child: const Text('تسجيل الدخول', style: TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 14),
+                  // Email
+                  TextField(
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    style: const TextStyle(color: Colors.white, fontFamily: 'Cairo'),
+                    decoration: InputDecoration(
+                      labelText: 'البريد الإلكتروني',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
+                      prefixIcon: const Icon(Icons.email, color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                      ),
+                    ),
                   ),
-                ]),
-              ]),
+                  const SizedBox(height: 14),
+                  // Password
+                  TextField(
+                    controller: _passwordCtrl,
+                    obscureText: _obscure,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _register(),
+                    style: const TextStyle(color: Colors.white, fontFamily: 'Cairo'),
+                    decoration: InputDecoration(
+                      labelText: 'كلمة المرور',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
+                      prefixIcon: const Icon(Icons.lock, color: Color(0xFF64748B)),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF64748B)),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  // Register Button
+                  SizedBox(
+                    width: double.infinity, height: 52,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _register,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 8,
+                        shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                      ),
+                      child: _loading
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                          : const Text('إنشاء حساب مجاني', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Cairo')),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Login link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('لديك حساب؟ ', style: TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo')),
+                      GestureDetector(
+                        onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
+                        child: const Text('تسجيل الدخول', style: TextStyle(color: Color(0xFF818CF8), fontWeight: FontWeight.w600, fontFamily: 'Cairo')),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

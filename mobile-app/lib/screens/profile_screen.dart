@@ -47,30 +47,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Container(
-              width: 72, height: 72,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
-                borderRadius: BorderRadius.all(Radius.circular(20)),
-              ),
-              child: Center(
-                child: Text(
-                  student.initials,
-                  style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-                ),
+            // Student name and code
+            Text(
+              student.fullName,
+              style: TextStyle(
+                color: AppColors.textPrimary(context),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(student.fullName, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(student.code, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14)),
+            const SizedBox(height: 4),
+            Text(
+              student.code,
+              style: TextStyle(
+                color: AppColors.textSecondary(context),
+                fontSize: 14,
+              ),
+            ),
             const SizedBox(height: 24),
+
+            // Section 1: Personal Info
+            _buildSection(
+              title: 'المعلومات الشخصية',
+              icon: Icons.person_outline,
+              children: [
+                _InfoRow(label: 'رقم الهاتف', value: student.phone ?? '-'),
+                Divider(color: AppColors.border(context), height: 16),
+                _InfoRow(label: 'رقم ولي الأمر', value: student.parentPhone ?? '-'),
+                Divider(color: AppColors.border(context), height: 16),
+                _InfoRow(label: 'المستوى', value: student.gradeLevel ?? '-'),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Section 2: Academic Info
+            _buildSection(
+              title: 'المعلومات الدراسية',
+              icon: Icons.school_outlined,
+              children: [
+                _InfoRow(
+                  label: 'متوسط الدرجات',
+                  value: '${data.averageGrade.toStringAsFixed(1)}%',
+                ),
+                Divider(color: AppColors.border(context), height: 16),
+                _InfoRow(
+                  label: 'نسبة الحضور',
+                  value: '${data.attendanceRate.toStringAsFixed(0)}%',
+                ),
+                Divider(color: AppColors.border(context), height: 16),
+                _InfoRow(label: 'عدد الدرجات', value: '${data.grades.length}'),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Section 3: PIN Change
+            _buildSection(
+              title: 'الرمز السري',
+              icon: Icons.lock_outline,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'تغيير الرمز السري',
+                      style: TextStyle(
+                        color: AppColors.textSecondary(context),
+                        fontSize: 13,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 36,
+                      child: ElevatedButton(
+                        onPressed: () => _showPinChangeDialog(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                        ),
+                        child: const Text(
+                          'تغيير',
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Theme toggle
             _buildThemeToggle(),
-            const SizedBox(height: 16),
-            _buildInfoCard(student, data),
-            const SizedBox(height: 16),
-            _buildPinChangeSection(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppTheme.accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: AppColors.textPrimary(context),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
       ),
     );
   }
@@ -96,70 +204,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(
             child: Text(
               themeNotifier.isDark ? 'الوضع الداكن' : 'الوضع الفاتح',
-              style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.textPrimary(context),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           Switch(
             value: !themeNotifier.isDark,
             onChanged: (_) => themeNotifier.toggleTheme(),
             activeColor: AppTheme.accent,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCard(dynamic student, DataProvider data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border(context)),
-      ),
-      child: Column(
-        children: [
-          _InfoRow(label: 'رقم الهاتف', value: student.phone ?? '-'),
-          Divider(color: AppColors.border(context), height: 16),
-          _InfoRow(label: 'رقم ولي الأمر', value: student.parentPhone ?? '-'),
-          Divider(color: AppColors.border(context), height: 16),
-          _InfoRow(label: 'المستوى', value: student.gradeLevel ?? '-'),
-          Divider(color: AppColors.border(context), height: 16),
-          _InfoRow(label: 'حالة الدفع', value: data.isPaidThisMonth ? 'مدفوع' : 'غير مدفوع',
-              valueColor: data.isPaidThisMonth ? AppTheme.success : AppTheme.danger),
-          Divider(color: AppColors.border(context), height: 16),
-          _InfoRow(label: 'متوسط الدرجات', value: '${data.averageGrade.toStringAsFixed(1)}%'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPinChangeSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border(context)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('تغيير PIN', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _showPinChangeDialog(context),
-              icon: const Icon(Icons.lock_reset, size: 18),
-              label: const Text('تغيير الرقم السري'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
           ),
         ],
       ),
@@ -187,7 +241,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: oldPinController,
               obscureText: true,
+              keyboardType: TextInputType.number,
               style: TextStyle(color: AppColors.textPrimary(context)),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                LengthLimitingTextInputFormatter(8),
+              ],
               decoration: InputDecoration(
                 labelText: 'PIN الحالي',
                 labelStyle: TextStyle(color: AppColors.textSecondary(context)),
@@ -201,9 +260,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: newPinController,
               obscureText: true,
+              keyboardType: TextInputType.number,
               style: TextStyle(color: AppColors.textPrimary(context)),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                LengthLimitingTextInputFormatter(8),
               ],
               decoration: InputDecoration(
                 labelText: 'PIN الجديد (6-8 أحرف وأرقام)',
@@ -218,9 +279,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: confirmPinController,
               obscureText: true,
+              keyboardType: TextInputType.number,
               style: TextStyle(color: AppColors.textPrimary(context)),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                LengthLimitingTextInputFormatter(8),
               ],
               decoration: InputDecoration(
                 labelText: 'تأكيد PIN الجديد',
@@ -240,6 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final oldPin = oldPinController.text.trim();
               final newPin = newPinController.text.trim();
               final confirmPin = confirmPinController.text.trim();
               if (newPin != confirmPin) {
@@ -250,18 +314,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN يجب أن يكون 6-8 أحرف وأرقام'), backgroundColor: AppTheme.danger));
                 return;
               }
+              if (oldPin.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل PIN الحالي'), backgroundColor: AppTheme.danger));
+                return;
+              }
               try {
-                await api.changePin(oldPinController.text.trim(), newPin);
+                await api.changePin(oldPin, newPin);
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير PIN بنجاح'), backgroundColor: AppTheme.success));
               } catch (e) {
                 if (!ctx.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(e.toString().contains('401') ? 'PIN الحالي غير صحيح' : 'فشل تغيير PIN'),
-                  backgroundColor: AppTheme.danger,
-                ));
+                final msg = e.toString().contains('401') ? 'PIN الحالي غير صحيح' : 'فشل تغيير PIN';
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: AppTheme.danger));
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),

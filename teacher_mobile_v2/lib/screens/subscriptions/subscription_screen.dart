@@ -32,51 +32,48 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   static const _defaultPlans = [
     {
-      'id': '3628fdf5-3a79-43c3-8c04-211f31704e07',
+      'id': 'basic',
       'name': 'الباقة الأساسية',
       'price_egp': 199,
-      'max_students': 100,
+      'max_students': 2,
       'color': '#6366F1',
       'features': [
-        'حتى 100 طالب',
-        '5 طلبات ذكاء اصطناعي/شهر',
-        'إدارة الدرجات والحضور',
-        'الفواتير الأساسية',
-        'QR Code المعلم',
-        'تخزين فيديو 2GB',
+        '2 اختبار شهرياً',
+        'حضور وغياب',
+        'درجات الطلاب',
+        'دعم فني',
       ],
     },
     {
-      'id': '56b99f07-ea35-46ae-9af6-16b17078c9a7',
-      'name': 'الباقة المتقدمة',
+      'id': 'pro',
+      'name': 'الباقة الاحترافية',
       'price_egp': 499,
-      'max_students': 400,
+      'max_students': 6,
       'popular': true,
       'color': '#8B5CF6',
       'features': [
-        'حتى 400 طالب',
-        '30 طلب ذكاء اصطناعي/شهر',
-        'إدارة الدرجات والحضور',
-        'الفواتير المتقدمة',
-        'QR Code المعلم',
-        'تصدير التقارير',
-        'دعم فني متميز',
-        'تخزين فيديو 6GB',
+        '6 اختبارات شهرياً',
+        'حضور وغياب',
+        'درجات الطلاب',
+        'تقارير AI',
+        'دروس مشتركة',
+        'دعم فني',
       ],
     },
     {
-      'id': '7bc43f3e-d511-4981-ad71-b3c00b637af4',
+      'id': 'premium',
       'name': 'الباقة المتكاملة',
       'price_egp': 999,
-      'max_students': 0,
+      'max_students': 15,
       'color': '#10B981',
       'features': [
-        'طلاب غير محدود',
-        'ذكاء اصطناعي غير محدود',
-        'جميع المميزات',
-        'دعم فني 24/7',
-        'تخصيص كامل',
-        'تخزين فيديو غير محدود',
+        '15 اختبار شهرياً',
+        'حضور وغياب',
+        'درجات الطلاب',
+        'تقارير AI',
+        'دروس مشتركة',
+        'تحضير اختبارات بالـ AI',
+        'دعم فني أولوية',
       ],
     },
   ];
@@ -178,8 +175,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       final daysRemaining = data['days_remaining'] ?? 30;
       _showMsg('تم تفعيل الفترة التجريبية! متبقي $daysRemaining يوم', AppTheme.success);
       await _loadData();
+    } on DioException catch (e) {
+      String msg = 'فشل تفعيل الفترة التجريبية';
+      if (e.response?.data is Map && e.response?.data['detail'] != null) {
+        msg = e.response!.data['detail'].toString();
+      }
+      _showMsg(msg, AppTheme.danger);
+      if (mounted) setState(() => _loading = false);
     } catch (e) {
-      _showMsg('فشل تفعيل الفترة التجريبية', AppTheme.danger);
+      _showMsg('فشل تفعيل الفترة التجريبية: $e', AppTheme.danger);
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -234,13 +238,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: OutlinedButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _openWhatsAppWithPlan(planName);
+                  _showDirectPaymentDialog(plan, method: 'vodafone_cash');
                 },
-                icon: const Icon(Icons.chat, color: AppTheme.success),
-                label: const Text('دعم عبر واتساب', textAlign: TextAlign.left),
+                icon: const Icon(Icons.phone_android, color: Color(0xFFE60023)),
+                label: const Text('فودافون كاش'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.textPrimary,
-                  side: const BorderSide(color: AppTheme.border),
+                  foregroundColor: GlassTheme.textPrimary(context),
+                  side: BorderSide(color: GlassTheme.cardBorder(context)),
                   padding: const EdgeInsets.all(16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -252,13 +256,31 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: OutlinedButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _showDirectPaymentDialog(plan);
+                  _showDirectPaymentDialog(plan, method: 'instapay');
                 },
-                icon: const Icon(Icons.phone_android, color: AppTheme.accent),
-                label: const Text('دفع مباشر (فودافون كاش)', textAlign: TextAlign.left),
+                icon: const Icon(Icons.qr_code_rounded, color: Color(0xFF00C853)),
+                label: const Text('انستاباي'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.textPrimary,
-                  side: const BorderSide(color: AppTheme.border),
+                  foregroundColor: GlassTheme.textPrimary(context),
+                  side: BorderSide(color: GlassTheme.cardBorder(context)),
+                  padding: const EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _openWhatsAppWithPlan(planName);
+                },
+                icon: const Icon(Icons.chat, color: AppTheme.success),
+                label: const Text('دعم عبر واتساب'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: GlassTheme.textPrimary(context),
+                  side: BorderSide(color: GlassTheme.cardBorder(context)),
                   padding: const EdgeInsets.all(16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -270,44 +292,104 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  void _showDirectPaymentDialog(Map<String, dynamic> plan) {
+  void _showDirectPaymentDialog(Map<String, dynamic> plan, {required String method}) {
     final planName = plan['name'] ?? '';
     final planPrice = plan['price_egp'] ?? plan['price'] ?? 0;
-    final phoneCtrl = TextEditingController(text: '01000000000');
+    final phoneCtrl = TextEditingController();
+    final instaPayIdCtrl = TextEditingController();
     File? screenshot;
+
+    final isVodafone = method == 'vodafone_cash';
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('دفع عبر فودافون كاش', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          title: Text(
+            isVodafone ? 'دفع عبر فودافون كاش' : 'دفع عبر انستاباي',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
-                  ),
-                  child: Column(children: [
-                    Text('حول إلى رقم فودافون كاش', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () {
-                        Clipboard.setData(const ClipboardData(text: _vodafoneNumber));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('تم النسخ'), duration: Duration(seconds: 1)),
-                        );
-                      },
-                      child: Text(_vodafoneNumber, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppTheme.primary)),
+                if (isVodafone) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE60023).withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE60023).withValues(alpha: 0.15)),
                     ),
-                  ]),
-                ),
+                    child: Column(children: [
+                      Text('حول إلى رقم فودافون كاش', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(const ClipboardData(text: _vodafoneNumber));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم النسخ'), duration: Duration(seconds: 1)),
+                          );
+                        },
+                        child: Text(_vodafoneNumber, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2, color: Color(0xFFE60023))),
+                      ),
+                    ]),
+                  ),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00C853).withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF00C853).withValues(alpha: 0.15)),
+                    ),
+                    child: Column(children: [
+                      Text('حول لمعرف انستاباي', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF00C853).withValues(alpha: 0.2)),
+                        ),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.qr_code_rounded, size: 20, color: Color(0xFF00C853)),
+                          const SizedBox(width: 8),
+                          Text('ahmed-mahmoud-1@instapay', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF00C853))),
+                        ]),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(const ClipboardData(text: 'ahmed-mahmoud-1@instapay'));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم نسخ المعرف'), duration: Duration(seconds: 1)),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00C853).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.copy_rounded, size: 14, color: Color(0xFF00C853)),
+                            SizedBox(width: 6),
+                            Text('اضغط للنسخ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF00C853))),
+                          ]),
+                        ),
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: instaPayIdCtrl,
+                    decoration: const InputDecoration(labelText: 'معرف انستاباي الذي حولت منه', prefixIcon: Icon(Icons.person, size: 20)),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Text('الباقة: $planName', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 4),
@@ -315,7 +397,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: phoneCtrl,
-                  decoration: const InputDecoration(labelText: 'رقم هاتفك المحول منه', prefixIcon: Icon(Icons.phone, size: 20)),
+                  decoration: const InputDecoration(labelText: 'رقم هاتفك', prefixIcon: Icon(Icons.phone, size: 20)),
                   keyboardType: TextInputType.phone,
                 ),
                 const SizedBox(height: 12),
@@ -376,7 +458,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   return;
                 }
                 Navigator.pop(ctx);
-                _submitPayment(phoneCtrl.text.trim(), planPrice.toString(), screenshot!);
+                _submitPayment(phoneCtrl.text.trim(), planPrice.toString(), screenshot!, method: method, instapayId: instaPayIdCtrl.text.trim(), planId: plan['id'] ?? '');  
               },
               child: const Text('إرسال الطلب'),
             ),
@@ -386,14 +468,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Future<void> _submitPayment(String phone, String amount, File screenshotFile) async {
+  Future<void> _submitPayment(String phone, String amount, File screenshotFile, {String method = 'vodafone_cash', String instapayId = '', String planId = ''}) async {
     try {
       final formData = FormData.fromMap({
-        'phone_number': phone,
+        'plan_id': planId,
+        'payment_method': method,
         'amount': amount,
+        'phone_number': phone,
+        if (instapayId.isNotEmpty) 'instapay_id': instapayId,
         'screenshot': await MultipartFile.fromFile(screenshotFile.path, filename: 'screenshot.${screenshotFile.path.split(".").last}'),
       });
-      await ApiService().dio.post('/subscriptions/payment-request', data: formData);
+      await ApiService().dio.post('/payments/request', data: formData);
       _showPaymentSuccessDialog();
     } catch (e) {
       _showMsg('فشل الإرسال: $e', AppTheme.danger);
@@ -491,7 +576,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: const Text('الاشتراكات', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -532,10 +616,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _buildPlanCard(e.value, e.key),
                           )),
-                      const SizedBox(height: 16),
-                      _buildPaymentInfoSection(),
-                      const SizedBox(height: 32),
-                    ],
+                          const SizedBox(height: 16),
+                      ],
                   ),
                 ),
     );

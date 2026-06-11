@@ -32,7 +32,7 @@ class BulkRecord(BaseModel):
 
 
 class BulkAttendanceBody(BaseModel):
-    records: list[BulkRecord]
+    records: list[BulkRecord] = Field(..., max_length=500)
 
 
 def _serialize(obj: dict) -> dict:

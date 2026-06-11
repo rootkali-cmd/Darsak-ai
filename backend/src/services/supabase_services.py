@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from typing import Any
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 
 from src.core.security.supabase_repo import SupabaseRepository
 from src.core.security.auth import hash_password
+
+logger = logging.getLogger("darsak")
 
 
 class UserService:
@@ -227,7 +230,13 @@ class SubscriptionPlanService:
         self.repo = SupabaseRepository("subscription_plans")
 
     async def list_active(self) -> list[dict]:
-        return await self.repo.select({"is_active": True}, limit=50)
+        plans = await self.repo.select({"is_active": True}, limit=50)
+        plan_names = {p.get("name") for p in plans}
+        expected = {"Basic", "Pro", "Premium"}
+        missing = expected - plan_names
+        if missing:
+            logger.warning("Subscription plan service: missing plans from DB: %s", missing)
+        return plans
 
     async def get_by_id(self, plan_id: str) -> dict | None:
         return await self.repo.select_one({"id": plan_id})
@@ -424,14 +433,17 @@ class ExamService:
         self.repo = SupabaseRepository("exams")
         self.question_repo = SupabaseRepository("questions")
 
-    async def create(self, teacher_id: str, title: str, duration_minutes: int = 30, description: str | None = None) -> dict:
-        return await self.repo.insert({
+    async def create(self, teacher_id: str, title: str, duration_minutes: int = 30, description: str | None = None, deadline_at: str | None = None) -> dict:
+        data = {
             "teacher_id": teacher_id,
             "title": title,
             "description": description,
             "duration_minutes": duration_minutes,
             "status": "draft",
-        })
+        }
+        if deadline_at:
+            data["deadline_at"] = deadline_at
+        return await self.repo.insert(data)
 
     async def get_by_id(self, exam_id: str) -> dict | None:
         return await self.repo.select_one({"id": exam_id})
@@ -479,8 +491,12 @@ class ExamService:
         return created
 
     async def publish(self, exam_id: str) -> dict:
-        total = await self.question_repo.count({"exam_id": exam_id})
-        return await self.update(exam_id, {"status": "published", "total_points": total * 10})
+        try:
+            questions = await self.question_repo.select({"exam_id": exam_id}, limit=200)
+            total_points = sum(q.get("points", 1) for q in questions) if questions else 0
+        except Exception:
+            total_points = 0
+        return await self.update(exam_id, {"status": "published", "total_points": total_points})
 
     async def get_published_for_student(self, student_id: str) -> list[dict]:
         exams = await self.repo.select({"status": "published"}, limit=100)

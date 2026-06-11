@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
+import '../services/notification_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/shimmer_loading.dart';
 import 'exam_take_screen.dart';
@@ -15,6 +17,7 @@ class ExamListScreen extends StatefulWidget {
 
 class _ExamListScreenState extends State<ExamListScreen> {
   final ApiService _api = ApiService();
+  final NotificationService _notificationService = NotificationService();
   List<dynamic> _availableExams = [];
   List<dynamic> _myResults = [];
   bool _isLoading = true;
@@ -23,7 +26,31 @@ class _ExamListScreenState extends State<ExamListScreen> {
   @override
   void initState() {
     super.initState();
+    _initNotifications();
     _loadData();
+  }
+
+  Future<void> _initNotifications() async {
+    await _notificationService.initialize();
+  }
+
+  void _scheduleExamNotifications(List<dynamic> exams) {
+    for (final exam in exams) {
+      final examId = exam['id'] ?? '';
+      final title = exam['title'] ?? 'اختبار';
+      final deadlineStr = exam['deadline_at'];
+
+      if (deadlineStr != null) {
+        try {
+          final deadline = DateTime.parse(deadlineStr.toString().replaceFirst('Z', '+00:00'));
+          _notificationService.scheduleDeadlineReminder(
+            examId: examId,
+            examTitle: title,
+            deadlineAt: deadline,
+          );
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -39,6 +66,36 @@ class _ExamListScreenState extends State<ExamListScreen> {
         _myResults = results[1];
         _isLoading = false;
       });
+
+      _scheduleExamNotifications(_availableExams);
+
+      // Start periodic check for new exams
+      final profile = await _api.getProfile();
+      final studentId = profile['id'] ?? '';
+      if (studentId.isNotEmpty) {
+        _notificationService.startPeriodicCheck(
+          studentId: studentId,
+          checkNewExams: (sid, lastCheck) async {
+            try {
+              final response = await _api.dio.get('/exams/check-new/$sid', queryParameters: {'last_check': lastCheck});
+              return response.data is List ? response.data : [];
+            } catch (_) {
+              return [];
+            }
+          },
+          onNewExams: (newExams) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('تم العثور على ${newExams.length} اختبارات جديدة'),
+                  backgroundColor: AppTheme.accent,
+                ),
+              );
+              _loadData();
+            }
+          },
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -152,6 +209,9 @@ class _ExamListScreenState extends State<ExamListScreen> {
     final description = exam['description'] ?? '';
     final duration = exam['duration_minutes'] ?? 30;
     final questionsCount = exam['total_points'] ?? 0;
+    final deadlineAt = exam['deadline_at'];
+    final isExpired = _isDeadlineExpired(deadlineAt);
+    final deadlineText = _formatDeadline(deadlineAt);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -159,7 +219,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border(context)),
+        border: Border.all(color: isExpired ? AppTheme.danger.withValues(alpha: 0.4) : AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -167,10 +227,10 @@ class _ExamListScreenState extends State<ExamListScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppTheme.accent.withValues(alpha: 0.1),
+              color: isExpired ? AppTheme.danger.withValues(alpha: 0.1) : AppTheme.accent.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.quiz, color: AppTheme.accent, size: 24),
+            child: Icon(Icons.quiz, color: isExpired ? AppTheme.danger : AppTheme.accent, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -190,36 +250,93 @@ class _ExamListScreenState extends State<ExamListScreen> {
                     _buildInfoChip(Icons.help_outline, '$questionsCount سؤال'),
                   ],
                 ),
+                if (deadlineText != null) ...[
+                  const SizedBox(height: 4),
+                  _buildInfoChip(
+                    Icons.event_outlined,
+                    deadlineText,
+                    color: isExpired ? AppTheme.danger : AppTheme.warning,
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ExamTakeScreen(examId: examId, examTitle: title, durationMinutes: duration)),
+          if (isExpired)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text('منتهي', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold, fontSize: 13)),
+            )
+          else
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ExamTakeScreen(examId: examId, examTitle: title, durationMinutes: duration)),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.success,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('ابدأ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.success,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('ابدأ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoChip(IconData icon, String text) {
+  Widget _buildInfoChip(IconData icon, String text, {Color? color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppColors.textSecondary(context)),
+        Icon(icon, size: 14, color: color ?? AppColors.textSecondary(context)),
         const SizedBox(width: 4),
-        Text(text, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
+        Text(text, style: TextStyle(color: color ?? AppColors.textSecondary(context), fontSize: 12)),
       ],
     );
+  }
+
+  bool _isDeadlineExpired(dynamic deadlineAt) {
+    if (deadlineAt == null) return false;
+    try {
+      final deadline = deadlineAt is String
+          ? DateTime.parse(deadlineAt.replaceFirst('Z', '+00:00'))
+          : deadlineAt as DateTime;
+      return DateTime.now().isAfter(deadline);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? _formatDeadline(dynamic deadlineAt) {
+    if (deadlineAt == null) return null;
+    try {
+      final deadline = deadlineAt is String
+          ? DateTime.parse(deadlineAt.replaceFirst('Z', '+00:00'))
+          : deadlineAt as DateTime;
+      final now = DateTime.now();
+      final diff = deadline.difference(now);
+      final formatted = DateFormat('yyyy-MM-dd HH:mm', 'ar').format(deadline);
+      if (diff.isNegative) {
+        return 'انتهى $formatted';
+      }
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes % 60;
+      if (hours > 24) {
+        final days = diff.inDays;
+        return 'ينتهي بعد $days يوم ($formatted)';
+      }
+      if (hours > 0) {
+        return 'ينتهي بعد $hours س $minutes د';
+      }
+      return 'ينتهي بعد $minutes دقيقة';
+    } catch (_) {
+      return null;
+    }
   }
 
   Widget _buildResultCard(Map<String, dynamic> result) {
