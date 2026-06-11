@@ -168,7 +168,34 @@ async def get_payment_config():
     return {
         "vodafone_cash_number": "01031524947",
         "whatsapp_link": "https://wa.me/01031524947",
+        "instapay_username": "ahmed-mahmoud-1@instapay",
     }
+
+
+@router.post("/test-telegram")
+async def test_telegram():
+    """Temporary endpoint to test Telegram bot connectivity."""
+    from src.services.telegram_bot import send_message, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+    import os
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id_raw = os.environ.get("TELEGRAM_CHAT_ID", "")
+    logger.info("Telegram test: token=%s..., chat_id_raw=%r", token[:15] if token else "NONE", chat_id_raw)
+    
+    if not token:
+        return {"ok": False, "error": "TELEGRAM_BOT_TOKEN not set"}
+    if not chat_id_raw:
+        return {"ok": False, "error": "TELEGRAM_CHAT_ID not set"}
+    
+    try:
+        chat_id = int(chat_id_raw)
+    except ValueError:
+        return {"ok": False, "error": f"TELEGRAM_CHAT_ID is not a valid integer: {chat_id_raw!r}"}
+    
+    try:
+        result = await send_message(chat_id, "🔧 اختبار البوت - DarsakAI Backend Test")
+        return {"ok": True, "chat_id": chat_id, "result": result}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 @router.get("/{teacher_id}/status")
