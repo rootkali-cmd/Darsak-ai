@@ -54,13 +54,19 @@ def _get_features(plan: dict) -> list:
 
 def _to_plan_response(plan: dict) -> dict:
     name = (plan.get("name") or "").lower()
+    max_students = plan.get("max_students") or _get_limit(name, 2, 6, 15)
+    ai_requests = plan.get("max_ai_requests") or plan.get("ai_requests_per_month") or _get_limit(name, 5, 30, 100)
+    storage = plan.get("storage_limit_gb") or _get_limit_gb(name, 2, 6, 10)
+    # Normalize to -1 if unlimited
+    if max_students == -1:
+        max_students = -1
     return {
         "id": str(plan.get("id", "")),
         "name": plan.get("name", ""),
         "price_egp": plan.get("price_egp", 0),
-        "max_students": plan.get("max_students") or _get_limit(name, 2, 6, 15),
-        "ai_requests_per_month": plan.get("ai_requests_per_month") or _get_limit(name, 5, 30, 100),
-        "storage_limit_gb": plan.get("storage_limit_gb") or _get_limit_gb(name, 2, 6, 10),
+        "max_students": max_students,
+        "ai_requests_per_month": ai_requests,
+        "storage_limit_gb": storage,
         "features": _get_features(plan),
         "is_active": plan.get("is_active", True),
     }

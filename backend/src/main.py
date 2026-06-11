@@ -333,15 +333,13 @@ async def _run_schema_migrations():
         # Ensure Premium plan exists
         try:
             client2 = await get_supabase()
-            existing = client2.table("subscription_plans").select("name").eq("name", "Premium").execute()
+            existing = await client2.table("subscription_plans").select("name").eq("name", "Premium").execute()
             if not existing.data:
-                client2.table("subscription_plans").insert({
+                await client2.table("subscription_plans").insert({
                     "name": "Premium",
-                    "description": "المتكاملة - 999ج/شهر",
                     "price_egp": 999.00,
                     "max_students": 15,
-                    "ai_requests_per_month": 100,
-                    "storage_limit_gb": 10,
+                    "max_ai_requests": 100,
                     "features_json": ["15 اختبار شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني أولوية"],
                     "is_active": True,
                 }).execute()
@@ -352,6 +350,57 @@ async def _run_schema_migrations():
         logger.info("Schema migration done: %d created, %d skipped", created, skipped)
     except Exception as e:
         logger.warning("Schema migration skipped: %s", e)
+
+
+async def _ensure_plans():
+    """Ensure all 3 subscription plans exist in DB.
+    DB columns: id, name, price_egp, max_students, max_ai_requests, max_grades, max_invoices, features_json, is_active, created_at, updated_at
+    """
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        
+        PLANS = [
+            {"name": "Basic", "price_egp": 199.00, "max_students": 50, "max_ai_requests": 100, "features_json": ["2 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "دعم فني"]},
+            {"name": "Pro", "price_egp": 499.00, "max_students": 500, "max_ai_requests": 100, "features_json": ["6 اختبارات شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "دعم فني"]},
+            {"name": "Premium", "price_egp": 999.00, "max_students": 15, "max_ai_requests": 100, "features_json": ["15 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "دعم فني أولوية"]},
+        ]
+        
+        existing = await client.table("subscription_plans").select("name,id").execute()
+        existing_names = {p["name"] for p in (existing.data or [])}
+        
+        # Remove duplicate plans (keep oldest, delete newer)
+        name_counts = {}
+        for p in (existing.data or []):
+            n = p["name"]
+            if n not in name_counts:
+                name_counts[n] = []
+            name_counts[n].append(p["id"])
+        for n, ids in name_counts.items():
+            if len(ids) > 1:
+                for dup_id in ids[1:]:
+                    await client.table("subscription_plans").delete().eq("id", dup_id).execute()
+                    logger.info("Removed duplicate plan %s id=%s", n, dup_id)
+        
+        # Re-fetch after dedup
+        existing = await client.table("subscription_plans").select("name").execute()
+        existing_names = {p["name"] for p in (existing.data or [])}
+        
+        for plan in PLANS:
+            if plan["name"] not in existing_names:
+                await client.table("subscription_plans").insert(plan).execute()
+                logger.info("Created missing plan: %s", plan["name"])
+            else:
+                await client.table("subscription_plans").update({
+                    "price_egp": plan["price_egp"],
+                    "max_students": plan["max_students"],
+                    "max_ai_requests": plan["max_ai_requests"],
+                    "features_json": plan["features_json"],
+                }).eq("name", plan["name"]).execute()
+        
+        logger.info("Plans ensure done. Existing: %s", existing_names)
+    except Exception as e:
+        logger.warning("Plans ensure failed: %s", e, exc_info=True)
 
 
 async def _keep_alive():
@@ -404,6 +453,9 @@ async def lifespan(app: FastAPI):
     
     # Run schema migrations in background (don't block startup)
     asyncio.create_task(_run_schema_migrations())
+    
+    # Ensure subscription plans exist (critical, run in background)
+    asyncio.create_task(_ensure_plans())
 
     # Start self-keepalive to prevent Fly.io from suspending
     asyncio.create_task(_keep_alive())
