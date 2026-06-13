@@ -30,9 +30,44 @@ class DataProvider extends ChangeNotifier {
   }
 
   double get averageGrade {
-    if (_grades.isEmpty) return 0;
-    final total = _grades.fold<double>(0, (sum, g) => sum + g.percentage);
-    return total / _grades.length;
+    final allScores = <double>[];
+    if (_grades.isNotEmpty) {
+      allScores.addAll(_grades.map((g) => g.percentage));
+    }
+    final examAvg = (_examStats['average_score'] ?? 0).toDouble();
+    final examCount = (_examStats['total_exams_taken'] ?? 0) as int;
+    if (examCount > 0) {
+      allScores.addAll(List.filled(examCount, examAvg));
+    }
+    if (allScores.isEmpty) return 0;
+    return allScores.reduce((a, b) => a + b) / allScores.length;
+  }
+
+  int get totalExamsAndGrades {
+    final examCount = (_examStats['total_exams_taken'] ?? 0) as int;
+    return _grades.length + examCount;
+  }
+
+  double get bestScore {
+    final allScores = <double>[];
+    if (_grades.isNotEmpty) {
+      allScores.addAll(_grades.map((g) => g.percentage));
+    }
+    final examBest = (_examStats['best_score'] ?? 0).toDouble();
+    if (examBest > 0) allScores.add(examBest);
+    if (allScores.isEmpty) return 0;
+    return allScores.reduce((a, b) => a > b ? a : b);
+  }
+
+  double get worstScore {
+    final allScores = <double>[];
+    if (_grades.isNotEmpty) {
+      allScores.addAll(_grades.map((g) => g.percentage));
+    }
+    final examWorst = (_examStats['worst_score'] ?? 0).toDouble();
+    if (examWorst > 0) allScores.add(examWorst);
+    if (allScores.isEmpty) return 0;
+    return allScores.reduce((a, b) => a < b ? a : b);
   }
 
   List<GradeModel> get lowGrades =>

@@ -321,20 +321,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildExamStats(DataProvider data) {
-    final stats = data.examStats;
-    final totalExams = stats['total_exams_taken'] ?? 0;
-    if (totalExams == 0) return const SizedBox.shrink();
-    final avgScore = (stats['average_score'] ?? 0).toDouble();
-    final bestScore = (stats['best_score'] ?? 0).toDouble();
-    final worstScore = (stats['worst_score'] ?? 0).toDouble();
+    final totalCount = data.totalExamsAndGrades;
+    if (totalCount == 0) return const SizedBox.shrink();
+    final avgScore = data.averageGrade;
+    final best = data.bestScore;
+    final worst = data.worstScore;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: StatCard(
-                label: 'الاختبارات',
-                value: '$totalExams',
+                label: 'الاختبارات والدرجات',
+                value: '$totalCount',
                 icon: Icons.quiz,
                 color: AppTheme.accent,
                 valueFontSize: 22,
@@ -343,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: StatCard(
-                label: 'متوسط الاختبارات',
+                label: 'متوسط الدرجات',
                 value: '${avgScore.toStringAsFixed(1)}%',
                 icon: Icons.analytics,
                 color: avgScore >= 50 ? AppTheme.success : AppTheme.danger,
@@ -358,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: StatCard(
                 label: 'أعلى درجة',
-                value: '${bestScore.toStringAsFixed(1)}%',
+                value: '${best.toStringAsFixed(1)}%',
                 icon: Icons.arrow_upward,
                 color: AppTheme.success,
                 valueFontSize: 22,
@@ -368,9 +367,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: StatCard(
                 label: 'أقل درجة',
-                value: '${worstScore.toStringAsFixed(1)}%',
+                value: '${worst.toStringAsFixed(1)}%',
                 icon: Icons.arrow_downward,
-                color: worstScore < 50 ? AppTheme.danger : AppTheme.success,
+                color: worst < 50 ? AppTheme.danger : AppTheme.success,
                 valueFontSize: 22,
               ),
             ),
