@@ -26,14 +26,14 @@ logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
-def _get_limit(name: str, basic: int, pro: int, enterprise: int):
-    if "pro" in name: return pro
-    if "premium" in name: return enterprise if enterprise > 0 else pro
+def _get_limit(name: str, basic: int, pro: int, unlimited: int):
+    if "premium" in name or "متكاملة" in name: return -1
+    if "pro" in name or "احترافية" in name: return pro
     return basic
 
-def _get_limit_gb(name: str, basic: int, pro: int, enterprise: int):
-    if "premium" in name: return enterprise if enterprise > 0 else pro
-    if "pro" in name: return pro
+def _get_limit_gb(name: str, basic: int, pro: int, unlimited: int):
+    if "premium" in name or "متكاملة" in name: return -1
+    if "pro" in name or "احترافية" in name: return pro
     return basic
 
 
@@ -97,31 +97,32 @@ async def activate_trial(
         if not basic_plan:
             raise HTTPException(status_code=404, detail="Basic plan not found")
 
-        existing_sub = await teacher_subscription_service.get_by_teacher(current_user["id"])
-        if existing_sub:
-            # Allow trial if existing subscription is expired/inactive
-            if existing_sub.get("is_active"):
-                expires_at = existing_sub.get("expires_at")
-                if expires_at:
-                    from datetime import datetime, timezone
-                    if isinstance(expires_at, str):
-                        expires_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                    else:
-                        expires_dt = expires_at
-                    if expires_dt.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc):
-                        raise HTTPException(status_code=400, detail="You already have an active subscription")
-                else:
-                    raise HTTPException(status_code=400, detail="You already have a subscription")
+        # Check if teacher already used trial
+        if await teacher_subscription_service.has_used_trial(current_user["id"]):
+            raise HTTPException(status_code=400, detail="لقد استخدمت الفترة التجريبية من قبل")
 
-        import uuid
-        trial_code_id = f"trial-{uuid.uuid4().hex[:12]}"
+        # Check if teacher has active subscription
+        existing_sub = await teacher_subscription_service.get_active_subscription(current_user["id"])
+        if existing_sub:
+            expires_at = existing_sub.get("expires_at")
+            if expires_at:
+                if isinstance(expires_at, str):
+                    expires_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+                else:
+                    expires_dt = expires_at
+                if expires_dt.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc):
+                    raise HTTPException(status_code=400, detail="لديك اشتراك نشط بالفعل")
+            else:
+                raise HTTPException(status_code=400, detail="لديك اشتراك نشط بالفعل")
+
         expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
 
         await teacher_subscription_service.create(
             teacher_id=current_user["id"],
             plan_id=basic_plan["id"],
-            code_id=trial_code_id,
+            code_id="",
             expires_at=expires_at,
+            is_trial=True,
         )
 
         return {"success": True, "days_remaining": 30, "expires_at": expires_at}
@@ -252,7 +253,7 @@ async def my_subscription(
             activated_at_str = now.isoformat()
 
         code_id = sub.get("code_id", "")
-        is_trial = isinstance(code_id, str) and code_id.startswith("trial-")
+        is_trial = sub.get("is_trial", False) or (isinstance(code_id, str) and code_id.startswith("trial-"))
 
         plan_resp = _to_plan_response(plan) if plan else None
 

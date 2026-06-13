@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../core/subscription_guard.dart';
 import 'add_edit_group_screen.dart';
 import 'shared_lecture_screen.dart';
 
@@ -88,6 +89,7 @@ class _GroupsScreenState extends State<GroupsScreen> with SingleTickerProviderSt
   }
 
   void _addGroup() async {
+    if (!checkSubscription(context)) return;
     await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditGroupScreen()));
     _loadGroups();
   }
@@ -101,8 +103,8 @@ class _GroupsScreenState extends State<GroupsScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar('المجموعات', bottom: TabBar(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar('المجموعات', bottom: TabBar(
         controller: _tabCtrl,
         indicatorColor: GlassTheme.indigo,
         labelColor: GlassTheme.textPrimary(context),

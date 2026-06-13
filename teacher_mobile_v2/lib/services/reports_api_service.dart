@@ -1,32 +1,15 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'api_service.dart';
 
 class ReportsApiService {
   static final ReportsApiService _instance = ReportsApiService._internal();
   factory ReportsApiService() => _instance;
 
   late final Dio _dio;
-  static const _baseUrl = 'https://darsak-backend.fly.dev/api';
 
   ReportsApiService._internal() {
-    _dio = Dio(BaseOptions(
-      baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {'Content-Type': 'application/json'},
-    ));
-
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('access_token');
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) => handler.next(error),
-    ));
+    _dio = ApiService().dio;
   }
 
   Future<Map<String, dynamic>> getStudentReports(

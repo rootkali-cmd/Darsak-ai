@@ -6,10 +6,20 @@ class ApiService {
   factory ApiService() => _instance;
 
   late final Dio _dio;
+  late final Dio _aiDio;
   static const _baseUrl = 'https://darsak-backend.fly.dev/api';
+  static const _tokenKey = 'access_token';
+  static const _refreshTokenKey = 'refresh_token';
 
   ApiService._internal() {
-    _dio = Dio(BaseOptions(
+    _dio = _createDio();
+    _aiDio = _createDio();
+    _aiDio.options.receiveTimeout = const Duration(seconds: 180);
+    _aiDio.options.sendTimeout = const Duration(seconds: 180);
+  }
+
+  Dio _createDio() {
+    final dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
@@ -17,28 +27,81 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
     ));
 
-    _dio.interceptors.add(InterceptorsWrapper(
+    dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('access_token');
+        final token = prefs.getString(_tokenKey);
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
       },
-      onError: (error, handler) => handler.next(error),
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          final refreshed = await _tryRefreshToken();
+          if (refreshed && error.requestOptions.path != '/auth/refresh') {
+            // Retry the original request with new token
+            final prefs = await SharedPreferences.getInstance();
+            final newToken = prefs.getString(_tokenKey);
+            if (newToken != null) {
+              error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+              final clone = await dio.fetch(error.requestOptions);
+              handler.resolve(clone);
+              return;
+            }
+          }
+          // Refresh failed - logout
+          await _clearAuth();
+        }
+        handler.next(error);
+      },
     ));
+
+    return dio;
+  }
+
+  Future<bool> _tryRefreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString(_refreshTokenKey);
+      if (refreshToken == null) return false;
+
+      final refreshDio = Dio(BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {'Content-Type': 'application/json'},
+      ));
+
+      final resp = await refreshDio.post('/auth/refresh', data: {
+        'refresh_token': refreshToken,
+      });
+
+      final newAccess = resp.data['access_token'] as String?;
+      final newRefresh = resp.data['refresh_token'] as String?;
+
+      if (newAccess != null) {
+        await prefs.setString(_tokenKey, newAccess);
+        if (newRefresh != null) {
+          await prefs.setString(_refreshTokenKey, newRefresh);
+        }
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _clearAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_refreshTokenKey);
   }
 
   Dio get dio => _dio;
 
-  Dio get aiDio {
-    final ai = Dio(_dio.options);
-    ai.options.receiveTimeout = const Duration(seconds: 180);
-    ai.options.sendTimeout = const Duration(seconds: 180);
-    ai.interceptors.addAll(_dio.interceptors);
-    return ai;
-  }
+  Dio get aiDio => _aiDio;
 
   Future<Map<String, dynamic>> _parseResponse(Response response) async {
     if (response.data is Map<String, dynamic>) return response.data;
@@ -49,7 +112,17 @@ class ApiService {
   // Auth
   Future<Map<String, dynamic>> login(String email, String password) async {
     final res = await _dio.post('/auth/login', data: {'email': email, 'password': password});
-    return _parseResponse(res);
+    final data = await _parseResponse(res);
+    if (data['access_token'] != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = data['access_token'].toString();
+      await prefs.setString(_tokenKey, accessToken);
+      if (data['refresh_token'] != null) {
+        final refreshToken = data['refresh_token'].toString();
+        await prefs.setString(_refreshTokenKey, refreshToken);
+      }
+    }
+    return data;
   }
 
   Future<Map<String, dynamic>> getMe() async {

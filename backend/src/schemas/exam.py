@@ -46,6 +46,7 @@ class ExamCreate(BaseModel):
     description: str | None = None
     duration_minutes: int = Field(default=30, ge=1, le=180)
     deadline_at: str | None = None
+    show_results_at: str | None = None
 
 
 class ExamUpdate(BaseModel):
@@ -54,6 +55,7 @@ class ExamUpdate(BaseModel):
     duration_minutes: int | None = Field(default=None, ge=1, le=180)
     status: str | None = Field(default=None, pattern=r"^(draft|published|closed)$")
     deadline_at: str | None = None
+    show_results_at: str | None = None
 
 
 class ExamResponse(BaseModel):
@@ -65,6 +67,7 @@ class ExamResponse(BaseModel):
     total_points: int | None = 0
     status: str | None = None
     source_type: str | None = None
+    show_results_at: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
 

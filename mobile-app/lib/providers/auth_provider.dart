@@ -30,7 +30,17 @@ class AuthProvider extends ChangeNotifier {
   String? get teacherCode => _teacherCode;
   bool get isOnline => _isOnline;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
-  bool get isSubscriptionActive => _subscriptionData != null && (_subscriptionData!['is_active'] ?? false) == true;
+  bool get isSubscriptionActive {
+    if (_subscriptionData == null) return false;
+    final isActive = _subscriptionData!['is_active'] ?? false;
+    if (isActive != true) return false;
+    final expiresAt = _subscriptionData!['expires_at'] as String?;
+    if (expiresAt != null) {
+      final expiry = DateTime.tryParse(expiresAt);
+      if (expiry != null && expiry.isBefore(DateTime.now())) return false;
+    }
+    return true;
+  }
 
   AuthProvider() {
     _initConnectivity();
@@ -98,44 +108,12 @@ class AuthProvider extends ChangeNotifier {
       if (e is DioException && e.response != null) {
         final code = e.response?.statusCode;
         if (code == 401 || code == 403) {
-          // Try manual refresh as fallback
-          final refreshToken = await _storage.read(key: AppConstants.storageKeyRefreshToken);
-          bool refreshed = false;
-          if (refreshToken != null) {
-            try {
-              final dio = Dio(BaseOptions(
-                baseUrl: AppConstants.apiBaseUrl,
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 30),
-                headers: {'Content-Type': 'application/json'},
-              ));
-              final resp = await dio.post('/students/refresh', data: {
-                'refresh_token': refreshToken,
-              });
-              final newAccess = resp.data['access_token'] as String?;
-              final newRefresh = resp.data['refresh_token'] as String?;
-              if (newAccess != null) {
-                await _storage.write(key: AppConstants.storageKeyToken, value: newAccess);
-                if (newRefresh != null) {
-                  await _storage.write(key: AppConstants.storageKeyRefreshToken, value: newRefresh);
-                }
-                try {
-                  final data2 = await _api.getProfile();
-                  _student = StudentModel.fromJson(data2);
-                  LocalDB.saveProfile(data2);
-                  refreshed = true;
-                } catch (_) {}
-              }
-            } catch (_) {}
-          }
-          if (!refreshed) {
-            await _storage.delete(key: AppConstants.storageKeyToken);
-            await _storage.delete(key: AppConstants.storageKeyRefreshToken);
-            await _storage.delete(key: AppConstants.storageKeyTeacherCode);
-            _status = AuthStatus.unauthenticated;
-            notifyListeners();
-            return;
-          }
+          await _storage.delete(key: AppConstants.storageKeyToken);
+          await _storage.delete(key: AppConstants.storageKeyRefreshToken);
+          await _storage.delete(key: AppConstants.storageKeyTeacherCode);
+          _status = AuthStatus.unauthenticated;
+          notifyListeners();
+          return;
         }
       }
     }

@@ -105,7 +105,7 @@ async def create_exam(
         raise HTTPException(status_code=500, detail=f"Failed to create exam: {str(original)}")
 
 
-MAX_FILE_SIZE = 20 * 1024 * 1024
+AI_MAX_FILE_SIZE = 50 * 1024 * 1024
 ALLOWED_MIME_TYPES = {
     "application/pdf",
     "image/jpeg", "image/png", "image/webp", "image/gif",
@@ -123,13 +123,13 @@ async def ai_generate_exam(
 ):
     try:
         if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
+            raise HTTPException(status_code=400, detail=f"نوع الملف غير مدعوم: {file.content_type}")
 
         contents = await file.read()
         if not contents:
-            raise HTTPException(status_code=400, detail="Empty file")
-        if len(contents) > MAX_FILE_SIZE:
-            raise HTTPException(status_code=400, detail="File too large (max 20MB)")
+            raise HTTPException(status_code=400, detail="الملف فارغ")
+        if len(contents) > AI_MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="حجم الملف كبير جداً (الحد الأقصى 50MB)")
 
         source_type = "pdf" if file.filename and file.filename.endswith(".pdf") else "images"
         if source_type == "pdf":
@@ -151,6 +151,10 @@ async def ai_generate_exam(
         if questions_data:
             for i, q in enumerate(questions_data, 1):
                 q.setdefault("order_index", i)
+                if "question_text" not in q and "text" in q:
+                    q["question_text"] = q.pop("text")
+                if "correct_answer" not in q and "answer" in q:
+                    q["correct_answer"] = q.pop("answer")
             await exam_service.bulk_add_questions(exam["id"], questions_data)
 
         questions = await exam_service.get_questions(exam["id"])
@@ -163,7 +167,7 @@ async def ai_generate_exam(
         raise
     except Exception as exc:
         logger.error("Failed to AI-generate exam: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to generate exam: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"تعذر إنشاء الاختبار: {str(exc)}")
 
 
 @router.get("")
@@ -185,6 +189,204 @@ async def list_my_exams(
     return results
 
 
+# ─── Student: Take Exam ──────────────────────────────────────────────
+
+@router.get("/available")
+async def get_available_exams(
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        student_id = current_student["id"]
+        student_tid = current_student.get("teacher_id")
+        logger.info("Student %s (teacher=%s) fetching available exams", student_id, student_tid)
+        exams = await exam_service.get_published_for_student(student_id)
+        logger.info("Found %d published exams for student %s", len(exams), student_id)
+    except Exception as exc:
+        logger.error("Failed to fetch available exams: %s", exc, exc_info=True)
+        return []
+    results = []
+    for e in exams:
+        try:
+            results.append(_to_exam_response(e))
+        except Exception as exc:
+            logger.warning("Skipping invalid available exam %s: %s", e.get("id"), exc)
+            continue
+    return results
+
+
+@router.post("/{exam_id}/start")
+async def start_exam(
+    exam_id: str,
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        exam = await exam_service.get_by_id(exam_id)
+        if not exam or exam["status"] != "published":
+            raise HTTPException(status_code=404, detail="Exam not found or not available")
+        deadline_at = exam.get("deadline_at")
+        if deadline_at:
+            if isinstance(deadline_at, str):
+                deadline_dt = datetime.fromisoformat(deadline_at.replace("Z", "+00:00"))
+            else:
+                deadline_dt = deadline_at
+            if deadline_dt.tzinfo is None:
+                deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > deadline_dt:
+                raise HTTPException(status_code=403, detail="الامتحان انتهى")
+        se = await student_exam_service.start(exam_id, current_student["id"])
+        se["exam"] = exam
+        return _to_student_exam_response(se)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to start exam %s: %s", exam_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to start exam")
+
+
+@router.get("/{exam_id}/questions-student")
+async def get_exam_questions_student(
+    exam_id: str,
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        exam = await exam_service.get_by_id(exam_id)
+        if not exam or exam["status"] != "published":
+            raise HTTPException(status_code=404, detail="Exam not found")
+        questions = await exam_service.get_questions(exam_id)
+        results = []
+        for q in questions:
+            try:
+                q_copy = dict(q)
+                q_copy.pop("correct_answer", None)
+                results.append(_to_question_response(q_copy))
+            except Exception as exc:
+                logger.warning("Skipping invalid student question %s: %s", q.get("id"), exc)
+                continue
+        return results
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to get student questions for exam %s: %s", exam_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get questions: {str(exc)}")
+
+
+@router.post("/{exam_id}/submit")
+async def submit_exam(
+    exam_id: str,
+    data: StudentExamSubmit,
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        exam = await exam_service.get_by_id(exam_id)
+        if not exam:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        deadline_at = exam.get("deadline_at")
+        if deadline_at:
+            if isinstance(deadline_at, str):
+                deadline_dt = datetime.fromisoformat(deadline_at.replace("Z", "+00:00"))
+            else:
+                deadline_dt = deadline_at
+            if deadline_dt.tzinfo is None:
+                deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > deadline_dt:
+                raise HTTPException(status_code=403, detail="الامتحان انتهى")
+        se = await student_exam_service.start(exam_id, current_student["id"])
+        if se.get("status") == "graded":
+            se["exam"] = exam
+            return _to_student_exam_response(se)
+        await student_exam_service.submit(se["id"], [a.model_dump() for a in data.answers])
+        await student_exam_service.grade_mc_questions(se["id"])
+        updated = await student_exam_service.get_by_id(se["id"])
+        if updated is None:
+            logger.error("Student exam %s not found after submit/grade", se["id"])
+            raise HTTPException(status_code=500, detail="Failed to find submitted exam")
+        updated["exam"] = exam
+        return _to_student_exam_response(updated)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to submit exam %s: %s", exam_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"فشل التسليم: {str(exc)}")
+
+
+@router.get("/my-results")
+async def get_my_results(
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        exams = await student_exam_service.get_student_exams(current_student["id"])
+    except Exception as exc:
+        logger.error("Failed to fetch student results: %s", exc, exc_info=True)
+        return []
+    results = []
+    for se in exams:
+        try:
+            exam = await exam_service.get_by_id(se["exam_id"])
+            se["exam"] = exam
+            results.append(_to_student_exam_response(se))
+        except Exception as exc:
+            logger.warning("Skipping invalid student exam result %s: %s", se.get("id"), exc)
+            continue
+    return results
+
+
+@router.get("/my-result/{student_exam_id}")
+async def get_my_exam_result(
+    student_exam_id: str,
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        se = await student_exam_service.get_by_id(student_exam_id)
+        if not se or se["student_id"] != current_student["id"]:
+            raise HTTPException(status_code=404, detail="Result not found")
+        exam = await exam_service.get_by_id(se["exam_id"])
+        show_results = True
+        if exam and exam.get("show_results_at"):
+            try:
+                show_at = datetime.fromisoformat(exam["show_results_at"].replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) < show_at:
+                    show_results = False
+            except (ValueError, TypeError):
+                pass
+        correct_count = 0
+        wrong_count = 0
+        total_mc = 0
+        if se.get("status") == "graded":
+            answers = await student_exam_service.get_answers(student_exam_id)
+            for a in answers:
+                if a.get("type") == "multiple_choice" or True:
+                    total_mc += 1
+                    if a.get("is_correct"):
+                        correct_count += 1
+                    else:
+                        wrong_count += 1
+        correct_pct = (correct_count / total_mc * 100) if total_mc > 0 else 0
+        wrong_pct = (wrong_count / total_mc * 100) if total_mc > 0 else 0
+        max_score = se.get("max_score") or 0
+        total_score = se.get("total_score") or 0
+        score_pct = (total_score / max_score * 100) if max_score > 0 else 0
+        result = {
+            "student_exam_id": student_exam_id,
+            "status": se.get("status", ""),
+            "total_score": total_score,
+            "max_score": max_score,
+            "score_percentage": round(score_pct, 1),
+        }
+        if show_results:
+            result["correct_percentage"] = round(correct_pct, 1)
+            result["wrong_percentage"] = round(wrong_pct, 1)
+            result["total_mc_questions"] = total_mc
+        else:
+            result["correct_percentage"] = None
+            result["wrong_percentage"] = None
+            result["total_mc_questions"] = None
+            result["results_hidden_until"] = exam["show_results_at"]
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to get student result %s: %s", student_exam_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get result")
 @router.get("/{exam_id}")
 async def get_exam(
     exam_id: str,
@@ -356,183 +558,6 @@ async def delete_question(
     await exam_service.delete_question(question_id)
 
 
-# ─── Student: Take Exam ──────────────────────────────────────────────
-
-@router.get("/available")
-async def get_available_exams(
-    current_student: dict = Depends(get_current_student),
-):
-    try:
-        exams = await exam_service.get_published_for_student(current_student["id"])
-    except Exception as exc:
-        logger.error("Failed to fetch available exams: %s", exc, exc_info=True)
-        return []
-    results = []
-    for e in exams:
-        try:
-            results.append(_to_exam_response(e))
-        except Exception as exc:
-            logger.warning("Skipping invalid available exam %s: %s", e.get("id"), exc)
-            continue
-    return results
-
-
-@router.post("/{exam_id}/start")
-async def start_exam(
-    exam_id: str,
-    current_student: dict = Depends(get_current_student),
-):
-    try:
-        exam = await exam_service.get_by_id(exam_id)
-        if not exam or exam["status"] != "published":
-            raise HTTPException(status_code=404, detail="Exam not found or not available")
-        deadline_at = exam.get("deadline_at")
-        if deadline_at:
-            if isinstance(deadline_at, str):
-                deadline_dt = datetime.fromisoformat(deadline_at.replace("Z", "+00:00"))
-            else:
-                deadline_dt = deadline_at
-            if deadline_dt.tzinfo is None:
-                deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) > deadline_dt:
-                raise HTTPException(status_code=403, detail="الامتحان انتهى")
-        se = await student_exam_service.start(exam_id, current_student["id"])
-        se["exam"] = exam
-        return _to_student_exam_response(se)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Failed to start exam %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to start exam")
-
-
-@router.get("/{exam_id}/questions-student")
-async def get_exam_questions_student(
-    exam_id: str,
-    current_student: dict = Depends(get_current_student),
-):
-    try:
-        exam = await exam_service.get_by_id(exam_id)
-        if not exam or exam["status"] != "published":
-            raise HTTPException(status_code=404, detail="Exam not found")
-        questions = await exam_service.get_questions(exam_id)
-        results = []
-        for q in questions:
-            try:
-                q_copy = dict(q)
-                q_copy.pop("correct_answer", None)
-                results.append(_to_question_response(q_copy))
-            except Exception as exc:
-                logger.warning("Skipping invalid student question %s: %s", q.get("id"), exc)
-                continue
-        return results
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Failed to get student questions for exam %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get questions: {str(exc)}")
-
-
-@router.post("/{exam_id}/submit")
-async def submit_exam(
-    exam_id: str,
-    data: StudentExamSubmit,
-    current_student: dict = Depends(get_current_student),
-):
-    try:
-        exam = await exam_service.get_by_id(exam_id)
-        if not exam:
-            raise HTTPException(status_code=404, detail="Exam not found")
-        deadline_at = exam.get("deadline_at")
-        if deadline_at:
-            if isinstance(deadline_at, str):
-                deadline_dt = datetime.fromisoformat(deadline_at.replace("Z", "+00:00"))
-            else:
-                deadline_dt = deadline_at
-            if deadline_dt.tzinfo is None:
-                deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) > deadline_dt:
-                raise HTTPException(status_code=403, detail="الامتحان انتهى")
-        se = await student_exam_service.start(exam_id, current_student["id"])
-        if se.get("status") == "graded":
-            return _to_student_exam_response(se)
-        await student_exam_service.submit(se["id"], [a.model_dump() for a in data.answers])
-        await student_exam_service.grade_mc_questions(se["id"])
-        updated = await student_exam_service.get_by_id(se["id"])
-        return _to_student_exam_response(updated)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Failed to submit exam %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to submit exam")
-
-
-@router.get("/my-results")
-async def get_my_results(
-    current_student: dict = Depends(get_current_student),
-):
-    try:
-        exams = await student_exam_service.get_student_exams(current_student["id"])
-    except Exception as exc:
-        logger.error("Failed to fetch student results: %s", exc, exc_info=True)
-        return []
-    results = []
-    for se in exams:
-        try:
-            exam = await exam_service.get_by_id(se["exam_id"])
-            se["exam"] = exam
-            results.append(_to_student_exam_response(se))
-        except Exception as exc:
-            logger.warning("Skipping invalid student exam result %s: %s", se.get("id"), exc)
-            continue
-    return results
-
-
-@router.get("/my-result/{student_exam_id}")
-async def get_my_exam_result(
-    student_exam_id: str,
-    current_student: dict = Depends(get_current_student),
-):
-    try:
-        se = await student_exam_service.get_by_id(student_exam_id)
-        if not se or se["student_id"] != current_student["id"]:
-            raise HTTPException(status_code=404, detail="Result not found")
-        answers = await student_exam_service.get_answers(student_exam_id)
-        questions = await exam_service.get_questions(se["exam_id"])
-        questions_map = {q["id"]: q for q in questions}
-        correct_count = 0
-        wrong_count = 0
-        total_mc = 0
-        for a in answers:
-            q = questions_map.get(a.get("question_id"))
-            if not q:
-                continue
-            if q["type"] == "multiple_choice":
-                total_mc += 1
-                if a.get("is_correct"):
-                    correct_count += 1
-                else:
-                    wrong_count += 1
-        correct_pct = (correct_count / total_mc * 100) if total_mc > 0 else 0
-        wrong_pct = (wrong_count / total_mc * 100) if total_mc > 0 else 0
-        max_score = se.get("max_score") or 0
-        total_score = se.get("total_score") or 0
-        score_pct = (total_score / max_score * 100) if max_score > 0 else 0
-        return {
-            "student_exam_id": student_exam_id,
-            "status": se.get("status", ""),
-            "total_score": total_score,
-            "max_score": max_score,
-            "score_percentage": round(score_pct, 1),
-            "correct_percentage": round(correct_pct, 1),
-            "wrong_percentage": round(wrong_pct, 1),
-            "total_mc_questions": total_mc,
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Failed to get student result %s: %s", student_exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to get result")
 
 
 # ─── Teacher: Results ────────────────────────────────────────────────
@@ -569,14 +594,72 @@ async def get_student_exam_result(
     current_user: dict = Depends(get_current_teacher),
 ):
     try:
-        result = await student_exam_service.get_result(student_exam_id)
-        if not result:
-            raise HTTPException(status_code=404, detail="Result not found")
-        return _to_exam_result_response(result)
+        se = await student_exam_service.get_by_id(student_exam_id)
+        if not se:
+            raise HTTPException(status_code=404, detail="Student exam not found")
+        # Verify teacher owns the exam
+        exam = await exam_service.get_by_id(se["exam_id"])
+        if not exam or exam["teacher_id"] != current_user["id"]:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        
+        answers = await student_exam_service.get_answers(student_exam_id)
+        questions = await exam_service.get_questions(se["exam_id"])
+        questions_map = {q["id"]: q for q in questions}
+        
+        # Get student info
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        stu_res = await client.table("students").select("name, code").eq("id", se["student_id"]).execute()
+        student_info = (stu_res.data or [{}])[0] if stu_res.data else {}
+        
+        question_details = []
+        correct_count = 0
+        wrong_count = 0
+        total_mc = 0
+        for a in answers:
+            q = questions_map.get(a.get("question_id"))
+            if not q:
+                continue
+            detail = {
+                "question_id": q["id"],
+                "question_text": q.get("question_text", ""),
+                "type": q.get("type", ""),
+                "points": q.get("points", 1),
+                "student_answer": a.get("answer", ""),
+            }
+            if q["type"] == "multiple_choice":
+                total_mc += 1
+                detail["correct_answer"] = q.get("correct_answer", "")
+                detail["is_correct"] = a.get("is_correct", False)
+                if a.get("is_correct"):
+                    correct_count += 1
+                else:
+                    wrong_count += 1
+            question_details.append(detail)
+        
+        correct_pct = (correct_count / total_mc * 100) if total_mc > 0 else 0
+        max_score = se.get("max_score") or 0
+        total_score = se.get("total_score") or 0
+        score_pct = (total_score / max_score * 100) if max_score > 0 else 0
+        
+        return {
+            "student_exam_id": student_exam_id,
+            "student_name": student_info.get("name", "غير معروف"),
+            "student_code": student_info.get("code", ""),
+            "exam_title": exam.get("title", ""),
+            "status": se.get("status", ""),
+            "total_score": total_score,
+            "max_score": max_score,
+            "score_percentage": round(score_pct, 1),
+            "correct_percentage": round(correct_pct, 1),
+            "wrong_percentage": round(wrong_pct, 1),
+            "total_mc_questions": total_mc,
+            "questions": question_details,
+        }
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Failed to parse exam result %s: %s", student_exam_id, exc, exc_info=True)
+        logger.error("Failed to get student exam result %s: %s", student_exam_id, exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Result data is corrupted")
 
 
@@ -597,31 +680,29 @@ async def check_new_exams(
         if last_dt.tzinfo is None:
             last_dt = last_dt.replace(tzinfo=timezone.utc)
 
-        # Get student's teacher_id (via group or direct)
-        stu_res = client.table("students").select("group_id, teacher_id").eq("id", student_id).execute()
+        stu_res = await client.table("students").select("group_id, teacher_id").eq("id", student_id).execute()
         if not stu_res.data:
             return []
         student = stu_res.data[0]
         teacher_id = student.get("teacher_id")
         group_id = student.get("group_id")
         
-        # If no direct teacher_id, get it from group
         if not teacher_id and group_id:
-            grp_res = client.table("groups").select("teacher_id").eq("id", group_id).execute()
+            grp_res = await client.table("groups").select("teacher_id").eq("id", group_id).execute()
             if grp_res.data:
                 teacher_id = grp_res.data[0].get("teacher_id")
         
         if not teacher_id:
             return []
 
-        query = (
+        exams_res = await (
             client.table("exams")
             .select("id, title, description, duration_minutes, total_points, deadline_at, created_at")
             .eq("status", "published")
             .eq("teacher_id", teacher_id)
             .gt("created_at", last_dt.isoformat())
+            .execute()
         )
-        exams_res = query.execute()
         exams = exams_res.data or []
 
         results = []

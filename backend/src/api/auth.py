@@ -15,6 +15,23 @@ from src.infrastructure.audit_events import audit as audit_publisher, AuditEvent
 logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# In-memory token blacklist for refresh token rotation (race-safe with asyncio.Lock)
+_token_blacklist: set[str] = set()
+_blacklist_lock = asyncio.Lock()
+
+
+async def _is_token_blacklisted(token: str) -> bool:
+    async with _blacklist_lock:
+        return token in _token_blacklist
+
+
+async def _blacklist_token(token: str) -> bool:
+    async with _blacklist_lock:
+        if token in _token_blacklist:
+            return False
+        _token_blacklist.add(token)
+        return True
+
 
 def get_client_ip(request: Request) -> str:
     if request.client:
@@ -105,7 +122,7 @@ async def register(user_data: UserCreate, request: Request):
                 from datetime import timedelta
                 from datetime import timezone
                 trial_code_id = f"trial-{uuid.uuid4().hex[:12]}"
-                trial_expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+                trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
                 await teacher_subscription_service.repo.insert({
                     "teacher_id": user["id"],
                     "plan_id": basic_plan["id"],
@@ -223,7 +240,9 @@ async def get_me(current_user: dict = Depends(get_current_user)):
                     result["subscription"] = {
                         "plan_name": plan_name,
                         "expires_at": sub.get("expires_at", ""),
+                        "activated_at": sub.get("activated_at", sub.get("created_at", "")),
                         "is_active": sub.get("is_active", True),
+                        "max_students": await subscription_plan_service.get_plan_student_limit(plan_name),
                     }
                     result["plan_limits"] = {
                         "max_students": await subscription_plan_service.get_plan_student_limit(plan_name),
@@ -241,7 +260,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
                     result["is_expired"] = expires_dt < datetime.now(timezone.utc)
                     result["days_remaining"] = max(0, (expires_dt - datetime.now(timezone.utc)).days)
                     code_id = sub.get("code_id", "")
-                    result["is_trial"] = isinstance(code_id, str) and code_id.startswith("trial-")
+                    result["is_trial"] = sub.get("is_trial", False) or (isinstance(code_id, str) and code_id.startswith("trial-"))
                 else:
                     result["plan_name"] = "No Plan"
                     result["storage_limit_gb"] = 2

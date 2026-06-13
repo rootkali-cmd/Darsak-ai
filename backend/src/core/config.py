@@ -17,21 +17,24 @@ class Settings(BaseSettings):
     REDIS_URL: str = ""
 
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_VISION_MODEL: str = "llama-3.2-11b-vision-preview"
     AI_TIMEOUT: int = 60
 
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_MODEL: str = "deepseek/deepseek-v4-flash"
-    OPENROUTER_VISION_MODEL: str = "deepseek/deepseek-v4-flash"
+    OPENROUTER_VISION_MODEL: str = "google/gemini-2.0-flash-001"
 
     # Plan student limits
     PLAN_BASIC_MAX_STUDENTS: int = 100
     PLAN_PRO_MAX_STUDENTS: int = 400
+    PLAN_PREMIUM_MAX_STUDENTS: int = -1  # Unlimited
     PLAN_ENTERPRISE_MAX_STUDENTS: int = -1  # Unlimited
 
     # Plan AI request limits per month
     PLAN_BASIC_AI_LIMIT: int = 5
     PLAN_PRO_AI_LIMIT: int = 30
+    PLAN_PREMIUM_AI_LIMIT: int = -1  # Unlimited
     PLAN_ENTERPRISE_AI_LIMIT: int = -1  # Unlimited
 
     # Plan video storage limits (bytes)

@@ -247,27 +247,27 @@ class SubscriptionPlanService:
     async def get_plan_storage_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower():
+        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower() or "premium" in plan_name.lower() or "متكاملة" in plan_name:
             return s.PLAN_ENTERPRISE_STORAGE_LIMIT
-        if "pro" in plan_name.lower():
+        if "pro" in plan_name.lower() or "احترافية" in plan_name:
             return s.PLAN_PRO_STORAGE_LIMIT
         return s.PLAN_BASIC_STORAGE_LIMIT
 
     async def get_plan_ai_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower():
-            return s.PLAN_ENTERPRISE_AI_LIMIT
-        if "pro" in plan_name.lower():
+        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower() or "premium" in plan_name.lower() or "متكاملة" in plan_name:
+            return s.PLAN_PREMIUM_AI_LIMIT
+        if "pro" in plan_name.lower() or "احترافية" in plan_name:
             return s.PLAN_PRO_AI_LIMIT
         return s.PLAN_BASIC_AI_LIMIT
 
     async def get_plan_student_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower():
-            return s.PLAN_ENTERPRISE_MAX_STUDENTS
-        if "pro" in plan_name.lower():
+        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower() or "premium" in plan_name.lower() or "متكاملة" in plan_name:
+            return s.PLAN_PREMIUM_MAX_STUDENTS
+        if "pro" in plan_name.lower() or "احترافية" in plan_name:
             return s.PLAN_PRO_MAX_STUDENTS
         return s.PLAN_BASIC_MAX_STUDENTS
 
@@ -319,14 +319,17 @@ class TeacherSubscriptionService:
     def __init__(self):
         self.repo = SupabaseRepository("teacher_subscriptions")
 
-    async def create(self, teacher_id: str, plan_id: str, code_id: str, expires_at: str) -> dict:
-        return await self.repo.insert({
+    async def create(self, teacher_id: str, plan_id: str, code_id: str, expires_at: str, is_trial: bool = False) -> dict:
+        data = {
             "teacher_id": teacher_id,
             "plan_id": plan_id,
-            "code_id": code_id,
             "expires_at": expires_at,
             "is_active": True,
-        })
+            "is_trial": is_trial,
+        }
+        if code_id:
+            data["code_id"] = code_id
+        return await self.repo.insert(data)
 
     async def get_by_teacher(self, teacher_id: str) -> dict | None:
         return await self.repo.select_one({"teacher_id": teacher_id})
@@ -349,6 +352,37 @@ class TeacherSubscriptionService:
                 await self.update(sub["id"], {"is_active": False})
                 return None
         return sub
+
+    async def upsert_by_teacher(self, teacher_id: str, plan_id: str, code_id: str | None, expires_at: str, is_trial: bool = False) -> dict:
+        existing = await self.repo.select_one({"teacher_id": teacher_id})
+        now = datetime.now(timezone.utc).isoformat()
+        data = {
+            "plan_id": plan_id,
+            "expires_at": expires_at,
+            "is_active": True,
+            "is_trial": is_trial,
+            "updated_at": now,
+        }
+        if existing:
+            if not existing.get("activated_at"):
+                data["activated_at"] = now
+            return await self.repo.update({"teacher_id": teacher_id}, data)
+        data["teacher_id"] = teacher_id
+        data["activated_at"] = now
+        return await self.repo.insert(data)
+
+    async def has_ever_had_subscription(self, teacher_id: str) -> bool:
+        """Check if teacher ever had any subscription (active or expired)."""
+        count = await self.repo.count({"teacher_id": teacher_id})
+        return count > 0
+
+    async def has_used_trial(self, teacher_id: str) -> bool:
+        """Check if teacher already used their free trial."""
+        subs = await self.repo.select({"teacher_id": teacher_id}, limit=100)
+        for sub in subs:
+            if sub.get("is_trial"):
+                return True
+        return False
 
 
 class AuditService:
@@ -373,7 +407,7 @@ class PaymentRequestService:
     def __init__(self):
         self.repo = SupabaseRepository("payment_requests")
 
-    async def create(self, teacher_id: str, plan_id: str, phone_number: str, amount: float, screenshot: str | None = None) -> dict:
+    async def create(self, teacher_id: str, plan_id: str, phone_number: str, amount: float, screenshot: str | None = None, billing_period: str = "monthly") -> dict:
         return await self.repo.insert({
             "teacher_id": teacher_id,
             "plan_id": plan_id,
@@ -381,6 +415,7 @@ class PaymentRequestService:
             "amount": amount,
             "screenshot": screenshot,
             "status": "pending",
+            "billing_period": billing_period,
         })
 
     async def get_by_id(self, payment_id: str) -> dict | None:
@@ -484,9 +519,15 @@ class ExamService:
 
     async def bulk_add_questions(self, exam_id: str, questions: list[dict]) -> list[dict]:
         created = []
+        field_map = {"question_type": "type", "question_text": "question_text",
+                     "options": "options", "correct_answer": "correct_answer",
+                     "points": "points", "order_index": "order_index", "page_number": "page_number"}
         for i, q in enumerate(questions, 1):
             q.setdefault("order_index", i)
             q["exam_id"] = exam_id
+            for old_key, new_key in field_map.items():
+                if old_key != new_key and old_key in q and new_key not in q:
+                    q[new_key] = q.pop(old_key)
             created.append(await self.question_repo.insert(q))
         return created
 
@@ -496,11 +537,43 @@ class ExamService:
             total_points = sum(q.get("points", 1) for q in questions) if questions else 0
         except Exception:
             total_points = 0
-        return await self.update(exam_id, {"status": "published", "total_points": total_points})
+        update_data = {"status": "published", "updated_at": datetime.now(timezone.utc).isoformat()}
+        try:
+            update_data["total_points"] = total_points
+            return await self.repo.update({"id": exam_id}, update_data)
+        except Exception:
+            update_data.pop("total_points", None)
+            return await self.repo.update({"id": exam_id}, update_data)
 
     async def get_published_for_student(self, student_id: str) -> list[dict]:
-        exams = await self.repo.select({"status": "published"}, limit=100)
-        return exams
+        """Get published exams for a specific student (filtered by teacher relationship)."""
+        try:
+            from src.core.security.supabase_repo import get_supabase
+            client = await get_supabase()
+            
+            stu_res = await client.table("students").select("teacher_id, group_id").eq("id", student_id).execute()
+            student = (stu_res.data or [{}])[0] if stu_res.data else {}
+            teacher_id = student.get("teacher_id")
+            group_id = student.get("group_id")
+            
+            if not teacher_id and group_id:
+                grp_res = await client.table("groups").select("teacher_id").eq("id", group_id).execute()
+                if grp_res.data:
+                    teacher_id = grp_res.data[0].get("teacher_id")
+            
+            filters = {"status": "published"}
+            if teacher_id:
+                filters["teacher_id"] = teacher_id
+            
+            exams = await self.repo.select(filters, limit=100)
+            
+            # Exclude exams the student has already started/submitted
+            started_res = await client.table("student_exams").select("exam_id").eq("student_id", student_id).execute()
+            started_ids = {r["exam_id"] for r in (started_res.data or [])}
+            return [e for e in exams if e["id"] not in started_ids]
+        except Exception as e:
+            logger.warning("get_published_for_student fallback: %s", e)
+            return await self.repo.select({"status": "published"}, limit=100)
 
 
 class StudentExamService:
@@ -610,7 +683,20 @@ class StudentExamService:
         return await self.answers_repo.select({"student_exam_id": student_exam_id})
 
     async def get_class_results(self, exam_id: str) -> list[dict]:
-        return await self.repo.select({"exam_id": exam_id}, limit=200)
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        result = await client.table("student_exams").select("*").eq("exam_id", exam_id).in_("status", ["submitted", "graded"]).limit(200).execute()
+        submissions = result.data or []
+        # Attach student names
+        student_ids = list({s["student_id"] for s in submissions if s.get("student_id")})
+        if student_ids:
+            stu_res = await client.table("students").select("id, name, code").in_("id", student_ids).execute()
+            student_map = {s["id"]: s for s in (stu_res.data or [])}
+            for s in submissions:
+                student_data = student_map.get(s.get("student_id"), {})
+                s["student_name"] = student_data.get("name", "غير معروف")
+                s["student_code"] = student_data.get("code", "")
+        return submissions
 
 
 class LessonService:

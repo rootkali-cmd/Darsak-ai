@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -123,9 +124,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       if (!mounted) return;
 
       if (_screenshotFile != null && invoice['id'] != null) {
+        final bytes = await _screenshotFile!.readAsBytes();
+        final base64Str = 'data:image/jpeg;base64,${base64Encode(bytes)}';
         await _api.uploadPaymentProof(
           invoiceId: invoice['id'].toString(),
-          screenshotUrl: _screenshotFile!.path,
+          screenshotUrl: base64Str,
         );
       }
 

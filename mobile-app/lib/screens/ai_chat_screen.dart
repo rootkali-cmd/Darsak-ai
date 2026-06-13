@@ -11,7 +11,7 @@ class AiChatScreen extends StatefulWidget {
   State<AiChatScreen> createState() => _AiChatScreenState();
 }
 
-class _AiChatScreenState extends State<AiChatScreen> {
+class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMixin {
   final AiService _ai = AiService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -20,10 +20,19 @@ class _AiChatScreenState extends State<AiChatScreen> {
   bool _isSending = false;
   bool _hasError = false;
   static const String _storageKey = 'ai_chat_messages';
+  late AnimationController _thinkingAnimCtrl;
+  late Animation<double> _thinkingAnim;
 
   @override
   void initState() {
     super.initState();
+    _thinkingAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    _thinkingAnim = Tween<double>(begin: 0.3, end: 0.9).animate(
+      CurvedAnimation(parent: _thinkingAnimCtrl, curve: Curves.easeInOut),
+    );
     _init();
   }
 
@@ -133,6 +142,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _thinkingAnimCtrl.dispose();
     super.dispose();
   }
 
@@ -188,7 +198,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         itemCount: _messages.length + (_isSending ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == _messages.length) {
-                            return _buildTypingIndicator();
+                            return _buildThinkingIndicator();
                           }
                           return _buildMessage(_messages[index], index);
                         },
@@ -288,18 +298,72 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 
   Widget _buildFormattedText(String text) {
-    final spans = _parseMarkdown(text);
+    final segments = _parseThinkingAndQuiz(text);
     return RichText(
       textDirection: TextDirection.rtl,
       text: TextSpan(
-        children: spans,
-        style: TextStyle(
-          color: AppColors.textPrimary(context),
+        children: segments,
+        style: const TextStyle(
           fontSize: 14,
           height: 1.6,
         ),
       ),
     );
+  }
+
+  List<TextSpan> _parseThinkingAndQuiz(String text) {
+    final List<TextSpan> spans = [];
+    final thinkingRegex = RegExp(r'🤔 تفكير:.*(?:\n|$)', multiLine: true);
+    final quizRegex = RegExp(r'📝 كويز:.*(?:\n|$)', multiLine: true);
+
+    int lastEnd = 0;
+
+    final matches = <_SegmentMatch>[];
+    for (final m in thinkingRegex.allMatches(text)) {
+      matches.add(_SegmentMatch(m.start, m.end, true));
+    }
+    for (final m in quizRegex.allMatches(text)) {
+      matches.add(_SegmentMatch(m.start, m.end, false, isQuiz: true));
+    }
+    matches.sort((a, b) => a.start.compareTo(b.start));
+
+    for (final seg in matches) {
+      if (seg.start > lastEnd) {
+        spans.addAll(_parseMarkdown(text.substring(lastEnd, seg.start)));
+      }
+      if (seg.isThinking) {
+        final lineEnd = text.indexOf('\n', seg.start);
+        final endIdx = lineEnd > 0 ? lineEnd + 1 : text.length;
+        spans.add(TextSpan(
+          text: '\n${text.substring(seg.start, endIdx).trim()}\n\n',
+          style: const TextStyle(
+            color: Color(0xFFA0A0C0),
+            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+        ));
+        lastEnd = endIdx;
+      } else {
+        final lineEnd = text.indexOf('\n', seg.start);
+        final endIdx = lineEnd > 0 ? lineEnd + 1 : text.length;
+        spans.add(TextSpan(
+          text: '\n${text.substring(seg.start, endIdx).trim()}\n\n',
+          style: const TextStyle(
+            color: Color(0xFF818cf8),
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ));
+        lastEnd = endIdx;
+      }
+    }
+
+    if (lastEnd < text.length) {
+      spans.addAll(_parseMarkdown(text.substring(lastEnd)));
+    }
+
+    return spans;
   }
 
   List<TextSpan> _parseMarkdown(String text) {
@@ -309,7 +373,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
 
-      // Header (# ## ###)
       if (line.startsWith('### ')) {
         spans.add(TextSpan(
           text: '${line.substring(4)}\n',
@@ -325,15 +388,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
           text: '${line.substring(2)}\n',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF818cf8)),
         ));
-      }
-      // Bullet points
-      else if (line.startsWith('- ') || line.startsWith('• ')) {
+      } else if (line.startsWith('- ') || line.startsWith('• ')) {
         spans.add(const TextSpan(text: '  •  '));
         spans.addAll(_parseInline(line.substring(2)));
         spans.add(const TextSpan(text: '\n'));
-      }
-      // Numbered list
-      else if (RegExp(r'^\d+[\.\)]\s').hasMatch(line)) {
+      } else if (RegExp(r'^\d+[\.\)]\s').hasMatch(line)) {
         final match = RegExp(r'^(\d+[\.\)])\s(.+)').firstMatch(line);
         if (match != null) {
           spans.add(TextSpan(
@@ -346,9 +405,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           spans.addAll(_parseInline(line));
           if (i < lines.length - 1) spans.add(const TextSpan(text: '\n'));
         }
-      }
-      // Regular line
-      else {
+      } else {
         spans.addAll(_parseInline(line));
         if (i < lines.length - 1) spans.add(const TextSpan(text: '\n'));
       }
@@ -359,16 +416,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   List<TextSpan> _parseInline(String text) {
     final List<TextSpan> spans = [];
-    // Bold **text**
     final boldRegex = RegExp(r'\*\*(.+?)\*\*');
-    // Italic *text*
     final italicRegex = RegExp(r'\*(.+?)\*');
-    // Code `text`
     final codeRegex = RegExp(r'`(.+?)`');
 
     int lastEnd = 0;
-
-    // Find all patterns
     final allMatches = <_InlineMatch>[];
 
     for (final m in boldRegex.allMatches(text)) {
@@ -391,16 +443,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
       }
       switch (match.type) {
         case _InlineType.bold:
-          spans.add(TextSpan(
-            text: match.content,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ));
+          spans.add(TextSpan(text: match.content, style: const TextStyle(fontWeight: FontWeight.bold)));
           break;
         case _InlineType.italic:
-          spans.add(TextSpan(
-            text: match.content,
-            style: const TextStyle(fontStyle: FontStyle.italic),
-          ));
+          spans.add(TextSpan(text: match.content, style: const TextStyle(fontStyle: FontStyle.italic)));
           break;
         case _InlineType.code:
           spans.add(TextSpan(
@@ -427,38 +473,47 @@ class _AiChatScreenState extends State<AiChatScreen> {
     return spans;
   }
 
-  Widget _buildTypingIndicator() {
+  Widget _buildThinkingIndicator() {
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surfaceHigher(context),
           borderRadius: BorderRadius.circular(16).copyWith(
             bottomRight: const Radius.circular(4),
           ),
+          border: Border.all(
+            color: const Color(0xFFA0A0C0).withValues(alpha: 0.2),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _dot(0), _dot(1), _dot(2),
+            AnimatedBuilder(
+              animation: _thinkingAnim,
+              builder: (_, child) => Opacity(
+                opacity: _thinkingAnim.value,
+                child: child,
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('🧠', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 6),
+                  Text(
+                    'تفكير...',
+                    style: TextStyle(
+                      color: Color(0xFFA0A0C0),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _dot(int i) {
-    return AnimatedOpacity(
-      opacity: _isSending ? 1.0 : 0.0,
-      duration: Duration(milliseconds: 300 + i * 200),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        width: 8, height: 8,
-        decoration: const BoxDecoration(
-          color: Colors.grey,
-          shape: BoxShape.circle,
         ),
       ),
     );
@@ -473,12 +528,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
       ),
       child: SafeArea(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
               child: TextField(
                 controller: _controller,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _send(),
+                textInputAction: TextInputAction.newline,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
                 style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
                 decoration: InputDecoration(
                   hintText: _ai.remaining > 0 ? 'اسأل أي سؤال...' : '',
@@ -538,4 +595,13 @@ class _InlineMatch {
   final _InlineType type;
 
   _InlineMatch(this.start, this.end, this.content, this.type);
+}
+
+class _SegmentMatch {
+  final int start;
+  final int end;
+  final bool isThinking;
+  final bool isQuiz;
+
+  _SegmentMatch(this.start, this.end, this.isThinking, {this.isQuiz = false});
 }

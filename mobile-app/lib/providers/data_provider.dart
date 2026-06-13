@@ -10,6 +10,7 @@ class DataProvider extends ChangeNotifier {
   List<GradeModel> _grades = [];
   List<AttendanceModel> _attendance = [];
   List<InvoiceModel> _invoices = [];
+  Map<String, dynamic> _examStats = {};
   bool _isLoading = false;
   bool _isOffline = false;
   String? _error;
@@ -17,6 +18,7 @@ class DataProvider extends ChangeNotifier {
   List<GradeModel> get grades => _grades;
   List<AttendanceModel> get attendance => _attendance;
   List<InvoiceModel> get invoices => _invoices;
+  Map<String, dynamic> get examStats => _examStats;
   bool get isLoading => _isLoading;
   bool get isOffline => _isOffline;
   String? get error => _error;
@@ -60,6 +62,7 @@ class DataProvider extends ChangeNotifier {
       fetchGrades(),
       fetchAttendance(),
       fetchInvoices(),
+      fetchExamStats(),
     ]);
 
     _isLoading = false;
@@ -106,6 +109,15 @@ class DataProvider extends ChangeNotifier {
       _invoices = data.map((i) => InvoiceModel.fromJson(i as Map<String, dynamic>)).toList();
       LocalDB.saveList(LocalDB.invoicesBox, _invoices.map((i) => i.toJson()).toList());
     } catch (_) {}
+  }
+
+  Future<void> fetchExamStats() async {
+    try {
+      final data = await _api.getStudentStats();
+      _examStats = data;
+    } catch (_) {
+      _examStats = {};
+    }
   }
 
   bool get isPaidThisMonth {

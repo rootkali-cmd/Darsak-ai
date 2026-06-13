@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'constants.dart';
@@ -9,6 +11,34 @@ class ApiService {
   late final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   bool _isRefreshing = false;
+  Completer<void>? _refreshCompleter;
+
+  Future<Response> _directRequest(RequestOptions opts) async {
+    final token = await _storage.read(key: AppConstants.storageKeyToken);
+    final headers = <String, dynamic>{
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 45),
+    ));
+    try {
+      return await dio.request(
+        opts.uri.toString(),
+        data: opts.data,
+        queryParameters: opts.queryParameters,
+        options: Options(
+          method: opts.method,
+          headers: headers,
+          receiveTimeout: const Duration(seconds: 45),
+          sendTimeout: const Duration(seconds: 15),
+        ),
+      );
+    } finally {
+      dio.close();
+    }
+  }
 
   ApiService._internal() {
     _dio = Dio(BaseOptions(
@@ -27,40 +57,72 @@ class ApiService {
         handler.next(options);
       },
       onError: (error, handler) async {
-        if (error.response?.statusCode == 401 && !_isRefreshing) {
-          final refreshToken = await _storage.read(key: AppConstants.storageKeyRefreshToken);
-          if (refreshToken != null) {
-            _isRefreshing = true;
+        if (error.response?.statusCode != 401) {
+          handler.next(error);
+          return;
+        }
+
+        // ── Decide who does the refresh ──
+        Completer<void>? waiter;
+        if (!_isRefreshing) {
+          _isRefreshing = true;
+          _refreshCompleter = Completer<void>();
+        } else {
+          waiter = _refreshCompleter;
+        }
+
+        if (waiter != null) {
+          // Another request is refreshing; wait and retry with stored token
+          await waiter.future;
+          final token = await _storage.read(key: AppConstants.storageKeyToken);
+          if (token != null) {
             try {
-              final dio = Dio(BaseOptions(
-                baseUrl: AppConstants.apiBaseUrl,
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 30),
-                headers: {'Content-Type': 'application/json'},
-              ));
-              final response = await dio.post('/students/refresh', data: {
-                'refresh_token': refreshToken,
-              });
-              final data = response.data;
-              final newAccessToken = data['access_token'] as String?;
-              final newRefreshToken = data['refresh_token'] as String?;
-              if (newAccessToken != null) {
-                await _storage.write(key: AppConstants.storageKeyToken, value: newAccessToken);
-                if (newRefreshToken != null) {
-                  await _storage.write(key: AppConstants.storageKeyRefreshToken, value: newRefreshToken);
-                }
-                // Retry the original request with new token
-                error.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-                final retryResponse = await _dio.fetch(error.requestOptions);
-                handler.resolve(retryResponse);
-                return;
-              }
-            } catch (_) {
-              // Refresh failed — fall through to original error
-            } finally {
-              _isRefreshing = false;
-            }
+              final retry = await _directRequest(error.requestOptions);
+              handler.resolve(retry);
+              return;
+            } catch (_) {}
           }
+          handler.next(error);
+          return;
+        }
+
+        // ── This request does the refresh ──
+        final refreshToken = await _storage.read(key: AppConstants.storageKeyRefreshToken);
+        if (refreshToken == null) {
+          _isRefreshing = false;
+          _refreshCompleter?.complete();
+          _refreshCompleter = null;
+          handler.next(error);
+          return;
+        }
+
+        try {
+          final dio = Dio(BaseOptions(
+            baseUrl: AppConstants.apiBaseUrl,
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 30),
+            headers: {'Content-Type': 'application/json'},
+          ));
+          final response = await dio.post('/students/refresh', data: {
+            'refresh_token': refreshToken,
+          });
+          final data = response.data;
+          final newAccessToken = data['access_token'] as String?;
+          final newRefreshToken = data['refresh_token'] as String?;
+          if (newAccessToken != null) {
+            await _storage.write(key: AppConstants.storageKeyToken, value: newAccessToken);
+            if (newRefreshToken != null) {
+              await _storage.write(key: AppConstants.storageKeyRefreshToken, value: newRefreshToken);
+            }
+            final retryResponse = await _directRequest(error.requestOptions);
+            handler.resolve(retryResponse);
+            return;
+          }
+        } catch (_) {
+        } finally {
+          _isRefreshing = false;
+          _refreshCompleter?.complete();
+          _refreshCompleter = null;
         }
         handler.next(error);
       },
@@ -78,7 +140,7 @@ class ApiService {
     final response = await _dio.post('/students/login', data: {
       'code': code,
       'pin': pin,
-      'teacher_code': ?teacherCode,
+      if (teacherCode != null) 'teacher_code': teacherCode,
     });
     return response.data;
   }
@@ -185,5 +247,23 @@ class ApiService {
     return response.data is Map<String, dynamic>
         ? response.data as Map<String, dynamic>
         : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getStudentStats() async {
+    final response = await _dio.get('/students/me/stats');
+    return response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
+  }
+
+  // ─── Notifications ─────────────────────────────────────────────────
+
+  Future<List<dynamic>> getNotifications() async {
+    final response = await _dio.get('/students/me/notifications');
+    return response.data is List ? response.data as List : [];
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    await _dio.post('/students/me/notifications/$notificationId/read');
   }
 }

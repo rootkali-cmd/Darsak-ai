@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../core/error_utils.dart';
 import '../../core/glass_theme.dart';
+import '../../core/subscription_guard.dart';
 import 'barcode_scanner_screen.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -33,7 +34,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar(
         'الحضور',
         bottom: TabBar(
@@ -49,6 +50,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       ),
       floatingActionButton: GlassTheme.glassFAB(
         () async {
+          if (!checkSubscription(context)) return;
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),

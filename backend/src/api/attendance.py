@@ -53,6 +53,18 @@ async def mark_attendance(
         ip_address=get_client_ip(request),
     )
 
+    try:
+        from src.services import notification_service
+        status_ar = "حاضر" if (attendance_data.status.value if hasattr(attendance_data.status, 'value') else attendance_data.status) == "present" else "غائب"
+        await notification_service.create(
+            teacher_id=str(attendance_data.student_id),
+            title="📋 تم تسجيل الحضور",
+            body=f"تم تسجيلك {status_ar} بتاريخ {attendance_date.isoformat()}",
+            type="attendance",
+        )
+    except Exception:
+        pass
+
     return AttendanceResponse(**attendance)
 
 

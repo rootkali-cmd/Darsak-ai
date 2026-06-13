@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../core/api_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../widgets/stat_card.dart';
@@ -22,6 +23,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  List<dynamic> _notifications = [];
+  int _unreadCount = 0;
 
   @override
   void initState() {
@@ -29,6 +32,19 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DataProvider>().loadAll();
     });
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    try {
+      final notifs = await ApiService().getNotifications();
+      if (mounted) {
+        setState(() {
+          _notifications = notifs;
+          _unreadCount = notifs.length;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -92,35 +108,159 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.success.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6, height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: data.isOffline ? AppTheme.danger : AppTheme.success,
+        Stack(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined, size: 28),
+              color: AppColors.textSecondary(context),
+              onPressed: _showNotificationsSheet,
+            ),
+            if (_unreadCount > 0)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.danger,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                  child: Text(
+                    '$_unreadCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                data.isOffline ? 'غير متصل' : 'متصل',
-                style: TextStyle(
-                  color: data.isOffline ? AppTheme.danger : AppTheme.success,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ],
+    );
+  }
+
+  void _showNotificationsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.65,
+        decoration: BoxDecoration(
+          color: AppColors.background(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary(context).withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'الإشعارات',
+                    style: TextStyle(
+                      color: AppColors.textPrimary(context),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (_unreadCount > 0)
+                    TextButton(
+                      onPressed: () async {
+                        for (final n in _notifications) {
+                          await ApiService().markNotificationRead(n['id']);
+                        }
+                        _fetchNotifications();
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      child: const Text('تحديد الكل مقروء',
+                        style: TextStyle(color: AppTheme.accent, fontSize: 13)),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: _notifications.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.notifications_none, size: 48, color: AppColors.textSecondary(context).withValues(alpha: 0.5)),
+                        const SizedBox(height: 8),
+                        Text('لا توجد إشعارات',
+                          style: TextStyle(color: AppColors.textSecondary(context))),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: _notifications.length,
+                    itemBuilder: (_, i) {
+                      final n = _notifications[i];
+                      return Dismissible(
+                        key: Key(n['id'] ?? i.toString()),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (_) async {
+                          await ApiService().markNotificationRead(n['id']);
+                          _fetchNotifications();
+                        },
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          color: AppTheme.accent,
+                          child: const Icon(Icons.check, color: Colors.white),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          decoration: BoxDecoration(
+                            border: Border(bottom: BorderSide(color: AppColors.border(context).withValues(alpha: 0.5))),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(n['title']?.toString().substring(0, n['title'].toString().length.clamp(0, 2)) ?? '🔔',
+                                style: const TextStyle(fontSize: 20)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(n['title'] ?? '',
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary(context),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(n['body'] ?? '',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary(context),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -170,6 +310,68 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.payment,
                 color: data.isPaidThisMonth ? AppTheme.success : AppTheme.danger,
                 valueFontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildExamStats(data),
+      ],
+    );
+  }
+
+  Widget _buildExamStats(DataProvider data) {
+    final stats = data.examStats;
+    final totalExams = stats['total_exams_taken'] ?? 0;
+    if (totalExams == 0) return const SizedBox.shrink();
+    final avgScore = (stats['average_score'] ?? 0).toDouble();
+    final bestScore = (stats['best_score'] ?? 0).toDouble();
+    final worstScore = (stats['worst_score'] ?? 0).toDouble();
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: StatCard(
+                label: 'الاختبارات',
+                value: '$totalExams',
+                icon: Icons.quiz,
+                color: AppTheme.accent,
+                valueFontSize: 22,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: StatCard(
+                label: 'متوسط الاختبارات',
+                value: '${avgScore.toStringAsFixed(1)}%',
+                icon: Icons.analytics,
+                color: avgScore >= 50 ? AppTheme.success : AppTheme.danger,
+                valueFontSize: 22,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: StatCard(
+                label: 'أعلى درجة',
+                value: '${bestScore.toStringAsFixed(1)}%',
+                icon: Icons.arrow_upward,
+                color: AppTheme.success,
+                valueFontSize: 22,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: StatCard(
+                label: 'أقل درجة',
+                value: '${worstScore.toStringAsFixed(1)}%',
+                icon: Icons.arrow_downward,
+                color: worstScore < 50 ? AppTheme.danger : AppTheme.success,
+                valueFontSize: 22,
               ),
             ),
           ],

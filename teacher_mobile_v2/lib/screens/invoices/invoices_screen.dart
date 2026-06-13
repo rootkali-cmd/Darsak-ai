@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../core/subscription_guard.dart';
 import 'add_edit_invoice_screen.dart';
 
 class InvoicesScreen extends StatefulWidget {
@@ -41,6 +42,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   }
 
   void _addInvoice() async {
+    if (!checkSubscription(context)) return;
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AddEditInvoiceScreen()),
@@ -64,9 +66,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar('الفواتير'),
-      floatingActionButton: GlassTheme.glassFAB(_addInvoice),
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar('الفواتير'),
+        floatingActionButton: GlassTheme.glassFAB(_addInvoice),
       body: RefreshIndicator(
         onRefresh: _loadInvoices,
         color: GlassTheme.indigo,

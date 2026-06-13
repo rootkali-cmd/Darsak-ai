@@ -220,7 +220,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
-                maxX: (grades.length - 1).toDouble(),
+                maxX: grades.length > 1 ? (grades.length - 1).toDouble() : 1,
                 minY: 0,
                 maxY: maxY.clamp(50, 100),
                 lineBarsData: [

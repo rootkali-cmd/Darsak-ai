@@ -7,10 +7,10 @@ import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
-import '../../providers/auth_provider.dart';
-import '../../screens/subscriptions/subscription_screen.dart';
+import '../../core/subscription_guard.dart';
 import 'add_edit_exam_screen.dart';
 import 'ai_generate_exam_screen.dart';
+import 'exam_results_screen.dart';
 
 class ExamsScreen extends StatefulWidget {
   const ExamsScreen({super.key});
@@ -22,6 +22,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
   List<dynamic> _exams = [];
   bool _loading = true;
   String? _error;
+  String? _publishingExamId;
   static const _cacheKey = 'exams_cache';
 
   @override
@@ -58,33 +59,8 @@ class _ExamsScreenState extends State<ExamsScreen> {
     }
   }
 
-  void _showSubscriptionRequiredDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('اشتراك مطلوب', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('يجب الاشتراك في باقة أولاً لإنشاء اختبارات'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionScreen()));
-            },
-            child: const Text('الذهاب للاشتراكات'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showCreateOptions() {
-    final auth = context.read<AuthProvider>();
-    if (!auth.hasSubscription) {
-      _showSubscriptionRequiredDialog();
-      return;
-    }
+    if (!checkSubscription(context)) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF111111),
@@ -191,7 +167,8 @@ class _ExamsScreenState extends State<ExamsScreen> {
                     itemBuilder: (_, i) {
                       final e = _exams[i];
                       final status = e['status']?.toString() ?? '';
-                      final isDraft = status == 'draft';
+                          final isDraft = status == 'draft';
+                      final isPublished = status == 'published' || status == 'closed';
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: GlassTheme.glassCard(context),
@@ -203,30 +180,87 @@ class _ExamsScreenState extends State<ExamsScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                           leading: CircleAvatar(backgroundColor: GlassTheme.indigo.withValues(alpha: 0.15), child: const Icon(Icons.quiz, color: GlassTheme.indigo, size: 22)),
                           title: Text(e['title'] ?? 'بدون عنوان', style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.w500)),
-                          subtitle: Text(e['subject']?.toString() ?? '', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13)),
-                          trailing: isDraft
-                              ? GestureDetector(
-                                  onTap: () async {
-                                    final examId = e['id'];
-                                    if (examId == null) return;
-                                    try {
-                                      await ApiService().dio.post('/exams/$examId/publish');
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('تم نشر الاختبار'), backgroundColor: GlassTheme.green),
-                                      );
-                                      _loadExams();
-                                    } catch (err) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('فشل النشر: $err'), backgroundColor: GlassTheme.red),
-                                      );
-                                    }
+                          subtitle: Row(
+                            children: [
+                              Text(e['subject']?.toString() ?? '', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13)),
+                              if (isPublished) ...[
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => ExamResultsScreen(examId: e['id'] ?? '', examTitle: e['title'] ?? '')));
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(color: GlassTheme.green.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                                    child: const Text('نشر', style: TextStyle(color: GlassTheme.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(color: GlassTheme.cyan.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.assignment, size: 12, color: GlassTheme.cyan),
+                                        const SizedBox(width: 3),
+                                        Text('النتائج', style: TextStyle(color: GlassTheme.cyan, fontSize: 10, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
                                   ),
-                                )
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: isDraft
+                              ? _publishingExamId == e['id']
+                                  ? SizedBox(
+                                      width: 20, height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: GlassTheme.green),
+                                    )
+                                  : GestureDetector(
+                                      onTap: () async {
+                                        final examId = e['id'];
+                                        if (examId == null) return;
+                                        setState(() => _publishingExamId = examId);
+                                        try {
+                                          await ApiService().dio.post('/exams/$examId/publish');
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('تم نشر الاختبار'), backgroundColor: GlassTheme.green),
+                                            );
+                                          }
+                                          _loadExams();
+                                        } catch (err) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('فشل النشر: $err'), backgroundColor: GlassTheme.red),
+                                            );
+                                          }
+                                        } finally {
+                                          if (mounted) setState(() => _publishingExamId = null);
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [GlassTheme.green.withValues(alpha: 0.8), GlassTheme.green],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(10),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: GlassTheme.green.withValues(alpha: 0.3),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.publish, color: Colors.white, size: 14),
+                                            SizedBox(width: 4),
+                                            Text('نشر', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          ],
+                                        ),
+                                      ),
+                                    )
                               : Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(color: GlassTheme.indigo.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),

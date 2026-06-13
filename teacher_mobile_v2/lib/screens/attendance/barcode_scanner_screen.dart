@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:camera/camera.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:provider/provider.dart';
 import '../../providers/attendance_provider.dart';
 import '../../utils/sound_effects.dart';
@@ -15,64 +15,146 @@ class BarcodeScannerScreen extends StatefulWidget {
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
 }
 
-class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
-  MobileScannerController? _controller;
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
+    with WidgetsBindingObserver {
+  CameraController? _camera;
+  List<CameraDescription> _cameras = [];
+  final BarcodeScanner _barcodeScanner = BarcodeScanner(
+    formats: [BarcodeFormat.qrCode, BarcodeFormat.code128, BarcodeFormat.code39, BarcodeFormat.ean13],
+  );
   bool _isProcessing = false;
+  bool _cameraReady = false;
+  String _errorMsg = '';
   bool _scanned = false;
+  DateTime _lastProcessed = DateTime.now();
+
   final List<Map<String, String>> _scannedStudents = [];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initCamera();
-  }
-
-  Future<void> _initCamera() async {
-    final status = await Permission.camera.request();
-    if (status.isGranted || status.isLimited) {
-      _controller = MobileScannerController(
-        detectionSpeed: DetectionSpeed.normal,
-        facing: CameraFacing.back,
-        torchEnabled: false,
-      );
-      if (mounted) setState(() {});
-    }
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _disposeCamera();
+    _barcodeScanner.close();
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _disposeCamera();
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _disposeCamera() async {
+    try {
+      await _camera?.stopImageStream();
+    } catch (_) {}
+    try {
+      await _camera?.dispose();
+    } catch (_) {}
+    _camera = null;
+    if (mounted) setState(() => _cameraReady = false);
+  }
+
+  Future<void> _initCamera() async {
+    if (_camera != null) return;
+    if (!mounted) return;
+
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) { _showError('لا توجد كاميرا متاحة'); return; }
+
+      final cam = _cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => _cameras.first,
+      );
+
+      _camera = CameraController(
+        cam,
+        ResolutionPreset.medium,
+        imageFormatGroup: ImageFormatGroup.yuv420,
+        enableAudio: false,
+      );
+
+      await _camera!.initialize();
+      if (!mounted) return;
+
+      await _camera!.startImageStream(_processFrame);
+      if (mounted) setState(() => _cameraReady = true);
+    } catch (e) {
+      _showError('تعذر تشغيل الكاميرا: $e');
+    }
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    setState(() { _errorMsg = msg; _cameraReady = false; });
+    _disposeCamera();
+  }
+
+  Future<void> _processFrame(CameraImage image) async {
     if (_isProcessing || _scanned) return;
-    
-    final barcode = capture.barcodes.isNotEmpty ? capture.barcodes.first : null;
-    if (barcode == null || barcode.rawValue == null || barcode.rawValue!.isEmpty) return;
+
+    final now = DateTime.now();
+    if (now.difference(_lastProcessed).inMilliseconds < 200) return;
+    _lastProcessed = now;
 
     _isProcessing = true;
-    final code = barcode.rawValue!.trim();
-    
-    // Stop camera immediately to prevent duplicate scans
-    _controller?.stop();
-    _scanned = true;
-    
-    _processScan(code);
+    try {
+      final input = _buildInputImage(image);
+      if (input == null) { _isProcessing = false; return; }
+
+      final barcodes = await _barcodeScanner.processImage(input);
+
+      if (barcodes.isNotEmpty && !_scanned) {
+        for (final barcode in barcodes) {
+          final raw = barcode.rawValue;
+          if (raw == null || raw.isEmpty) continue;
+          _scanned = true;
+          await _disposeCamera();
+          if (mounted) _processScan(raw);
+          return;
+        }
+      }
+    } catch (_) {
+    } finally {
+      _isProcessing = false;
+    }
+  }
+
+  InputImage? _buildInputImage(CameraImage image) {
+    final format = InputImageFormatValue.fromRawValue(image.format.raw);
+    if (format == null) return null;
+
+    final plane = image.planes.first;
+    return InputImage.fromBytes(
+      bytes: plane.bytes,
+      metadata: InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: InputImageRotation.rotation0deg,
+        format: format,
+        bytesPerRow: plane.bytesPerRow,
+      ),
+    );
   }
 
   Future<void> _processScan(String code) async {
     if (!mounted) return;
 
-    try {
-      await SoundEffects.playScan();
-    } catch (_) {}
+    try { await SoundEffects.playScan(); } catch (_) {}
 
     final already = _scannedStudents.any((s) => s['code'] == code);
     if (already) {
-      try {
-        await SoundEffects.playWarning();
-      } catch (_) {}
+      try { await SoundEffects.playWarning(); } catch (_) {}
       _showSnackBar('تم المسح مسبقاً: $code', AppTheme.warning);
       _resetScanner();
       return;
@@ -84,22 +166,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           .markAttendanceByBarcode(code);
 
       final studentName = (result?['student_name'] ?? code).toString();
-      final status = result?['status']?.toString() ?? 'present';
 
       setState(() {
-        _scannedStudents.insert(0, {'code': code, 'name': studentName, 'status': status});
+        _scannedStudents.insert(0, {'code': code, 'name': studentName});
         if (_scannedStudents.length > 4) _scannedStudents.removeLast();
       });
 
-      try {
-        await SoundEffects.playSuccess();
-      } catch (_) {}
+      try { await SoundEffects.playSuccess(); } catch (_) {}
       _showSnackBar('✓ $studentName - حاضر', AppTheme.success);
     } catch (e) {
-      try {
-        await SoundEffects.playError();
-      } catch (_) {}
-      _showSnackBar('✗ خطأ: ${e.toString().replaceAll('Exception: ', '')}', AppTheme.danger);
+      try { await SoundEffects.playWarning(); } catch (_) {}
+      _showSnackBar('✗ ${e.toString().replaceAll('Exception: ', '')}', AppTheme.danger);
     }
 
     _resetScanner();
@@ -107,12 +184,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
   void _resetScanner() {
     _isProcessing = false;
-    // Resume scanning after 1.5 seconds
     Timer(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        _scanned = false;
-        _controller?.start();
-      }
+      if (mounted) { _scanned = false; _initCamera(); }
     });
   }
 
@@ -162,8 +235,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               final code = controller.text.trim().toUpperCase();
               if (code.isNotEmpty) {
                 Navigator.pop(ctx);
-                _scanned = true;
-                _controller?.stop();
+                _disposeCamera();
                 _processScan(code);
               }
             },
@@ -194,82 +266,72 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             tooltip: 'إدخال يدوي',
             onPressed: _showManualCodeDialog,
           ),
-          IconButton(
-            icon: const Icon(Icons.flashlight_on, color: Colors.white),
-            tooltip: 'فلاش',
-            onPressed: () => _controller?.toggleTorch(),
-          ),
+          if (_cameraReady)
+            IconButton(
+              icon: const Icon(Icons.flashlight_on, color: Colors.white),
+              tooltip: 'فلاش',
+              onPressed: () {
+                try { _camera?.setFlashMode(FlashMode.torch); } catch (_) {}
+              },
+            ),
         ],
       ),
       body: Stack(
         children: [
-          // Camera preview
-          MobileScanner(
-            controller: _controller!,
-            onDetect: _onDetect,
-            errorBuilder: (context, error, child) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.white),
-                      const SizedBox(height: 16),
-                      const Text('تعذر الوصول إلى الكاميرا', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Text(error.errorDetails?.message ?? 'خطأ غير معروف', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12), textAlign: TextAlign.center),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () async {
-                          await Permission.camera.request();
-                          _scanned = false;
-                          _controller?.start();
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
-                        child: const Text('إعادة المحاولة'),
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton(
-                        onPressed: _showManualCodeDialog,
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF64748B))),
-                        child: const Text('إدخال الكود يدوياً'),
-                      ),
-                    ],
-                  ),
+          if (_cameraReady && _camera != null)
+            Positioned.fill(child: CameraPreview(_camera!)),
+          if (_cameraReady)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _ScannerOverlayPainter(
+                  borderColor: AppTheme.accent,
+                  overlayColor: Colors.black.withValues(alpha: 0.5),
+                  cutOutWidth: 280,
+                  cutOutHeight: 170,
                 ),
-              );
-            },
-          ),
-          // Scanner overlay
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _ScannerOverlayPainter(
-                borderColor: AppTheme.accent,
-                overlayColor: Colors.black.withValues(alpha: 0.5),
-                cutOutWidth: 280.0,
-                cutOutHeight: 170.0,
               ),
             ),
-          ),
-          // Instruction text
-          Positioned(
-            bottom: 180,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Text(
-                'وجّه الكاميرا نحو الباركود',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
+          if (!_cameraReady && _errorMsg.isEmpty)
+            const Center(child: CircularProgressIndicator(color: AppTheme.accent)),
+          if (_errorMsg.isNotEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.white),
+                    const SizedBox(height: 16),
+                    const Text('تعذر الوصول إلى الكاميرا', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text(_errorMsg, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12), textAlign: TextAlign.center),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () { _disposeCamera(); _initCamera(); },
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: _showManualCodeDialog,
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF64748B))),
+                      child: const Text('إدخال الكود يدوياً'),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          // Recent scanned students
+          if (_cameraReady)
+            Positioned(
+              bottom: 180, left: 0, right: 0,
+              child: Center(
+                child: Text('وجّه الكاميرا نحو الباركود',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+              ),
+            ),
           if (_scannedStudents.isNotEmpty)
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
+              bottom: 0, left: 0, right: 0,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 margin: const EdgeInsets.all(16),
@@ -289,9 +351,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         children: [
                           const Icon(Icons.check_circle, color: AppTheme.success, size: 14),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(s['name'] ?? s['code'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 12), overflow: TextOverflow.ellipsis),
-                          ),
+                          Expanded(child: Text(s['name'] ?? s['code'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 12), overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     )),
@@ -326,7 +386,6 @@ class _ScannerOverlayPainter extends CustomPainter {
       const Radius.circular(12),
     );
 
-    // Draw overlay with cutout
     canvas.drawPath(
       Path.combine(
         PathOperation.difference,
@@ -336,7 +395,6 @@ class _ScannerOverlayPainter extends CustomPainter {
       paint,
     );
 
-    // Draw corner borders
     final borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
@@ -345,22 +403,18 @@ class _ScannerOverlayPainter extends CustomPainter {
     const cornerLength = 30.0;
     final cornerPath = Path();
 
-    // Top-left
     cornerPath.moveTo(rect.left, rect.top + cornerLength);
     cornerPath.lineTo(rect.left, rect.top);
     cornerPath.lineTo(rect.left + cornerLength, rect.top);
 
-    // Top-right
     cornerPath.moveTo(rect.right - cornerLength, rect.top);
     cornerPath.lineTo(rect.right, rect.top);
     cornerPath.lineTo(rect.right, rect.top + cornerLength);
 
-    // Bottom-left
     cornerPath.moveTo(rect.left, rect.bottom - cornerLength);
     cornerPath.lineTo(rect.left, rect.bottom);
     cornerPath.lineTo(rect.left + cornerLength, rect.bottom);
 
-    // Bottom-right
     cornerPath.moveTo(rect.right - cornerLength, rect.bottom);
     cornerPath.lineTo(rect.right, rect.bottom);
     cornerPath.lineTo(rect.right, rect.bottom - cornerLength);

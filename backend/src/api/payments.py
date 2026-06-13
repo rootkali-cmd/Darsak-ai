@@ -27,6 +27,7 @@ async def create_payment_request(
     amount: float = Form(...),
     phone_number: str = Form(""),
     instapay_id: str = Form(""),
+    billing_period: str = Form("monthly"),
     screenshot: UploadFile = File(...),
     current_user: dict = Depends(get_current_teacher),
 ):
@@ -62,10 +63,13 @@ async def create_payment_request(
             plan_id=plan_id,
             phone_number=phone_number or "",
             amount=amount,
+            billing_period=billing_period,
         )
 
         request_id = req["id"]
         request_id_str = request_id.hex if hasattr(request_id, "hex") else str(request_id)
+
+        period_label = "سنوي" if billing_period == "yearly" else "شهري"
 
         try:
             chat_id = int(os.environ.get("TELEGRAM_CHAT_ID", "0"))
@@ -79,6 +83,8 @@ async def create_payment_request(
                     request_id=request_id_str,
                     payment_info=payment_info,
                     screenshot_b64=screenshot_b64,
+                    teacher_id=teacher_id,
+                    billing_period=period_label,
                 )
         except Exception as e:
             logger.warning("Telegram notification skipped: %s", e)

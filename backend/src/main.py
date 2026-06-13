@@ -55,6 +55,12 @@ async def _run_schema_migrations():
         """DO $$ BEGIN
             DROP TYPE IF EXISTS education_level;
         EXCEPTION WHEN others THEN NULL; END $$;""",
+        """DO $$ BEGIN
+            ALTER TABLE teacher_subscriptions ALTER COLUMN code_id TYPE VARCHAR(255);
+        EXCEPTION WHEN others THEN NULL; END $$;""",
+        """DO $$ BEGIN
+            ALTER TABLE teacher_subscriptions ADD COLUMN IF NOT EXISTS is_trial BOOLEAN DEFAULT FALSE;
+        EXCEPTION WHEN others THEN NULL; END $$;""",
         """CREATE TABLE IF NOT EXISTS payment_requests (
             id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
             teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -174,6 +180,12 @@ async def _run_schema_migrations():
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS subjects JSONB DEFAULT '[]'::jsonb;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS levels JSONB DEFAULT '[]'::jsonb;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_teacher_id_fkey;",
+        "ALTER TABLE notifications ALTER COLUMN teacher_id DROP NOT NULL;",
+        "ALTER TABLE student_answers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();",
+        "ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();",
+        "ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();",
+        "ALTER TABLE exams ADD COLUMN IF NOT EXISTS show_results_at TIMESTAMP WITH TIME ZONE;",
         """CREATE TABLE IF NOT EXISTS quizzes (
             id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
             student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
@@ -253,16 +265,18 @@ async def _run_schema_migrations():
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );""",
         "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS features_json JSONB DEFAULT '[]'::jsonb;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS description TEXT;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS storage_limit_gb INT DEFAULT 2;",
         """DELETE FROM subscription_plans WHERE name NOT IN ('Basic', 'Pro', 'Premium');""",
-        """INSERT INTO subscription_plans (name, description, price_egp, max_students, ai_requests_per_month, storage_limit_gb, features_json)
+        """INSERT INTO subscription_plans (name, description, price_egp, max_students, max_ai_requests, storage_limit_gb, features_json)
          VALUES
-            ('Basic', 'الأساسية - 199ج/شهر', 199.00, 2, 5, 2, '["2 اختبار شهرياً","حضور وغياب","درجات الطلاب","دعم فني"]'::jsonb),
-            ('Pro', 'الاحترافية - 499ج/شهر - الأكثر شعبية', 499.00, 6, 30, 6, '["6 اختبارات شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","دعم فني"]'::jsonb),
-            ('Premium', 'المتكاملة - 999ج/شهر', 999.00, 15, 100, 10, '["15 اختبار شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني أولوية"]'::jsonb)
+            ('Basic', 'الأساسية - 250ج/شهر', 250.00, 100, 10, 5, '["حضور وغياب","درجات الطلاب","تقارير بسيطة","دعم فني"]'::jsonb),
+            ('Pro', 'الاحترافية - 600ج/شهر - الأكثر شعبية', 600.00, 400, 50, 10, '["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني"]'::jsonb),
+            ('Premium', 'المتكاملة - 1100ج/شهر - بدون حدود', 1100.00, -1, -1, -1, '["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","طلاب غير محدود","دعم فني أولوية"]'::jsonb)
          ON CONFLICT (name) DO UPDATE SET
             price_egp = EXCLUDED.price_egp,
             max_students = EXCLUDED.max_students,
-            ai_requests_per_month = EXCLUDED.ai_requests_per_month,
+            max_ai_requests = EXCLUDED.max_ai_requests,
             storage_limit_gb = EXCLUDED.storage_limit_gb,
             description = EXCLUDED.description,
             features_json = EXCLUDED.features_json;""",
@@ -278,8 +292,12 @@ async def _run_schema_migrations():
          SELECT 'https://example.com/instapay-barcode.png', 'ahmed_instapay', TRUE
          WHERE NOT EXISTS (SELECT 1 FROM instapay_config WHERE is_active = TRUE);""",
         "UPDATE instapay_config SET barcode_url='https://api.darsak-backend.fly.dev/api/instapay-barcode', username='ahmed-mahmoud-1@instapay' WHERE is_active=TRUE;",
+        """UPDATE subscription_plans SET price_egp=250, max_students=100, max_ai_requests=10, storage_limit_gb=5, features_json='["حضور وغياب","درجات الطلاب","تقارير بسيطة","دعم فني"]'::jsonb WHERE name='Basic';""",
+        """UPDATE subscription_plans SET price_egp=600, max_students=400, max_ai_requests=50, storage_limit_gb=10, features_json='["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني"]'::jsonb WHERE name='Pro';""",
+        """UPDATE subscription_plans SET price_egp=1100, max_students=-1, max_ai_requests=-1, storage_limit_gb=-1, features_json='["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","طلاب غير محدود","دعم فني أولوية"]'::jsonb WHERE name='Premium';""",
         "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) CHECK (payment_method IN ('vodafone_cash', 'instapay', 'cash'));",
         "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS screenshot_url TEXT;",
+        "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS billing_period VARCHAR(20) DEFAULT 'monthly' CHECK (billing_period IN ('monthly', 'yearly'));",
         """CREATE TABLE IF NOT EXISTS invoices (
             id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
             student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
@@ -337,7 +355,7 @@ async def _run_schema_migrations():
             if not existing.data:
                 await client2.table("subscription_plans").insert({
                     "name": "Premium",
-                    "price_egp": 999.00,
+                    "price_egp": 1100.00,
                     "max_students": 15,
                     "max_ai_requests": 100,
                     "features_json": ["15 اختبار شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني أولوية"],
@@ -354,16 +372,17 @@ async def _run_schema_migrations():
 
 async def _ensure_plans():
     """Ensure all 3 subscription plans exist in DB.
-    DB columns: id, name, price_egp, max_students, max_ai_requests, max_grades, max_invoices, features_json, is_active, created_at, updated_at
+    DB columns: id, name, price_egp, max_students, max_ai_requests, features_json, is_active, created_at, updated_at
+    Only creates missing plans - never overwrites existing data.
     """
     try:
         from src.core.security.supabase_repo import get_supabase
         client = await get_supabase()
         
         PLANS = [
-            {"name": "Basic", "price_egp": 199.00, "max_students": 50, "max_ai_requests": 100, "features_json": ["2 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "دعم فني"]},
-            {"name": "Pro", "price_egp": 499.00, "max_students": 500, "max_ai_requests": 100, "features_json": ["6 اختبارات شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "دعم فني"]},
-            {"name": "Premium", "price_egp": 999.00, "max_students": 15, "max_ai_requests": 100, "features_json": ["15 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "دعم فني أولوية"]},
+            {"name": "Basic", "price_egp": 250.00, "max_students": 100, "max_ai_requests": 10, "storage_limit_gb": 5, "features_json": ["حضور وغياب", "درجات الطلاب", "تقارير بسيطة", "دعم فني"]},
+            {"name": "Pro", "price_egp": 600.00, "max_students": 400, "max_ai_requests": 50, "storage_limit_gb": 10, "features_json": ["حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "دعم فني"]},
+            {"name": "Premium", "price_egp": 1100.00, "max_students": -1, "max_ai_requests": -1, "storage_limit_gb": -1, "features_json": ["حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "طلاب غير محدود", "دعم فني أولوية"]},
         ]
         
         existing = await client.table("subscription_plans").select("name,id").execute()
@@ -390,13 +409,7 @@ async def _ensure_plans():
             if plan["name"] not in existing_names:
                 await client.table("subscription_plans").insert(plan).execute()
                 logger.info("Created missing plan: %s", plan["name"])
-            else:
-                await client.table("subscription_plans").update({
-                    "price_egp": plan["price_egp"],
-                    "max_students": plan["max_students"],
-                    "max_ai_requests": plan["max_ai_requests"],
-                    "features_json": plan["features_json"],
-                }).eq("name", plan["name"]).execute()
+            # Do NOT update existing plans - let admin manage pricing
         
         logger.info("Plans ensure done. Existing: %s", existing_names)
     except Exception as e:

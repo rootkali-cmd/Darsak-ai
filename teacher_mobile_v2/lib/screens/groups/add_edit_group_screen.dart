@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
+import '../../providers/auth_provider.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
-import '../../providers/auth_provider.dart';
+import '../../core/subscription_guard.dart';
 
 class AddEditGroupScreen extends StatefulWidget {
   final dynamic group;
@@ -78,6 +79,7 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
   }
 
   Future<void> _save() async {
+    if (!checkSubscription(context)) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -132,8 +134,8 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
     final levels = _levels;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل المجموعة' : 'مجموعة جديدة'),
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل المجموعة' : 'مجموعة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(

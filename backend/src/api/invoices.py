@@ -283,6 +283,17 @@ async def approve_invoice(
         now = datetime.now(timezone.utc).isoformat()
         updated = await invoice_repo.update({"id": invoice_id}, {"status": "paid", "updated_at": now})
 
+        try:
+            from src.services import notification_service
+            await notification_service.create(
+                teacher_id=invoice["student_id"],
+                title="✅ تم قبول الفاتورة",
+                body=f"تمت الموافقة على فاتورة بقيمة {invoice.get('amount', 0)} جنيه",
+                type="payment",
+            )
+        except Exception:
+            pass
+
         return InvoiceResponse(**_serialize_invoice(updated))
 
     except HTTPException:
@@ -312,6 +323,17 @@ async def reject_invoice(
 
         now = datetime.now(timezone.utc).isoformat()
         updated = await invoice_repo.update({"id": invoice_id}, {"status": "rejected", "updated_at": now})
+
+        try:
+            from src.services import notification_service
+            await notification_service.create(
+                teacher_id=invoice["student_id"],
+                title="❌ تم رفض الفاتورة",
+                body=f"تم رفض فاتورة بقيمة {invoice.get('amount', 0)} جنيه. تواصل مع معلمك للمزيد من التفاصيل",
+                type="payment",
+            )
+        except Exception:
+            pass
 
         return InvoiceResponse(**_serialize_invoice(updated))
 

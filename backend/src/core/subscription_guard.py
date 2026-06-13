@@ -22,7 +22,7 @@ async def get_teacher_subscription(teacher_id: str) -> dict | None:
     if not plan:
         return None
     code_id = sub.get("code_id", "")
-    is_trial = isinstance(code_id, str) and code_id.startswith("trial-")
+    is_trial = sub.get("is_trial", False) or (isinstance(code_id, str) and code_id.startswith("trial-"))
     expires_at = sub.get("expires_at")
     if expires_at and is_trial:
         try:

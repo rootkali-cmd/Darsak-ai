@@ -4,6 +4,7 @@ import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../core/subscription_guard.dart';
 
 class AddEditInvoiceScreen extends StatefulWidget {
   final dynamic invoice;
@@ -50,6 +51,7 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
   }
 
   Future<void> _save() async {
+    if (!checkSubscription(context)) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -115,8 +117,8 @@ class _AddEditInvoiceScreenState extends State<AddEditInvoiceScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الفاتورة' : 'فاتورة جديدة'),
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الفاتورة' : 'فاتورة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(

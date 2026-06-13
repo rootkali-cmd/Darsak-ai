@@ -1,6 +1,7 @@
 import json
 import logging
 import base64
+import io
 from typing import Any
 
 import httpx
@@ -23,6 +24,20 @@ try:
 except ImportError:
     HAS_PDFPLUMBER = False
     logger.warning("pdfplumber not installed; PDF text extraction via pdfplumber disabled")
+
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+    logger.warning("Pillow not installed; image compression disabled")
+
+try:
+    from pdf2image import convert_from_bytes
+    HAS_PDF2IMAGE = True
+except ImportError:
+    HAS_PDF2IMAGE = False
+    logger.warning("pdf2image not installed; scanned PDF conversion disabled")
 
 QUESTION_GEN_PROMPT = """أنت معلم خبير في المناهج التعليمية المصرية. مهمتك قراءة المحتوى الدراسي المقدم بعناية شديدة وتحويله إلى أسئلة امتحان احترافية.
 
@@ -135,7 +150,17 @@ class AIProvider:
                 response.raise_for_status()
                 result = response.json()
                 content = result["choices"][0]["message"]["content"]
-                return json.loads(content)
+                content = content.strip()
+                if content.startswith("```"):
+                    content = content[content.index("\n") + 1:]
+                    if "```" in content:
+                        content = content[: content.rindex("```")]
+                    content = content.strip()
+                parsed = json.loads(content)
+                if not isinstance(parsed, dict):
+                    logger.warning("%s returned non-dict JSON: %s", self.name, type(parsed))
+                    return None
+                return parsed
         except httpx.HTTPStatusError as e:
             logger.warning("%s API error %s: %s", self.name, e.response.status_code, e.response.text[:200])
             return None
@@ -163,10 +188,10 @@ class ExamAIService:
                 api_key=settings.GROQ_API_KEY,
                 base_url="https://api.groq.com/openai/v1",
                 model=settings.GROQ_MODEL,
-                vision_model="llama-3.2-90b-vision-preview",
+                vision_model=settings.GROQ_VISION_MODEL,
                 priority=1,
             ))
-            logger.info("Groq AI enabled (model=%s)", settings.GROQ_MODEL)
+            logger.info("Groq AI enabled (model=%s, vision=%s)", settings.GROQ_MODEL, settings.GROQ_VISION_MODEL)
         if not self.providers:
             logger.warning("No AI provider configured! Set OPENROUTER_API_KEY or GROQ_API_KEY")
 
@@ -198,7 +223,6 @@ class ExamAIService:
                 logger.warning("PyMuPDF extraction failed: %s", e)
         if HAS_PDFPLUMBER:
             try:
-                import io
                 with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                     parts = []
                     for page in pdf.pages:
@@ -215,8 +239,40 @@ class ExamAIService:
             logger.warning("All PDF text extraction methods failed; falling back to vision mode")
         return text
 
+    def _compress_image(self, image_bytes: bytes, max_size: int = 1024 * 1024) -> bytes:
+        if not HAS_PIL or len(image_bytes) <= max_size:
+            return image_bytes
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            img = img.convert("RGB")
+            quality = 85
+            while True:
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=quality)
+                compressed = buf.getvalue()
+                if len(compressed) <= max_size or quality <= 20:
+                    return compressed
+                quality -= 10
+        except Exception as e:
+            logger.warning("Image compression failed: %s", e)
+            return image_bytes
+
     def _image_to_base64(self, image_bytes: bytes) -> str:
         return base64.b64encode(image_bytes).decode("utf-8")
+
+    def _pdf_to_image_bytes(self, pdf_bytes: bytes, max_pages: int = 3) -> bytes | None:
+        if not HAS_PDF2IMAGE:
+            return None
+        try:
+            images = convert_from_bytes(pdf_bytes, first_page=1, last_page=min(max_pages, 3), fmt="jpeg")
+            if not images:
+                return None
+            combined = io.BytesIO()
+            images[0].save(combined, format="JPEG", quality=60)
+            return self._compress_image(combined.getvalue(), max_size=1024 * 1024)
+        except Exception as e:
+            logger.warning("PDF to image conversion failed: %s", e)
+            return None
 
     async def generate_questions_from_text(self, text: str, subject: str | None = None, question_count: int = 10) -> dict[str, Any]:
         if not text.strip():
@@ -233,7 +289,11 @@ class ExamAIService:
         return await self._call_best(messages)
 
     async def generate_questions_from_image(self, image_bytes: bytes, subject: str | None = None, question_count: int = 10) -> dict[str, Any]:
-        b64 = self._image_to_base64(image_bytes)
+        compressed = self._compress_image(image_bytes)
+        if len(compressed) > 3 * 1024 * 1024:
+            logger.warning("Image too large for vision AI (%d bytes), using fallback", len(compressed))
+            return self._fallback_questions()
+        b64 = self._image_to_base64(compressed)
         subject_ctx = f"\nالمادة: {subject}" if subject else ""
         prompt = QUESTION_GEN_PROMPT.replace("{question_count}", str(question_count))
         messages = [
@@ -252,7 +312,15 @@ class ExamAIService:
         text = await self.extract_text_from_pdf(pdf_bytes)
         if text:
             return await self.generate_questions_from_text(text, subject, question_count=question_count)
-        return await self.generate_questions_from_image(pdf_bytes, subject, question_count=question_count)
+        scanned_image = self._pdf_to_image_bytes(pdf_bytes)
+        if scanned_image:
+            logger.info("PDF page rendered as image, trying vision mode (%d bytes)", len(scanned_image))
+            return await self.generate_questions_from_image(scanned_image, subject, question_count=question_count)
+        if len(pdf_bytes) <= 3 * 1024 * 1024:
+            logger.info("PDF text extraction failed, trying raw vision mode (%d bytes)", len(pdf_bytes))
+            return await self.generate_questions_from_image(pdf_bytes, subject, question_count=question_count)
+        logger.warning("PDF too large for vision mode (%d bytes), using fallback questions", len(pdf_bytes))
+        return self._fallback_questions()
 
     async def analyze_student_exam(
         self,

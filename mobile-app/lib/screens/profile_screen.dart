@@ -307,14 +307,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final newPin = newPinController.text.trim();
               final confirmPin = confirmPinController.text.trim();
               if (newPin != confirmPin) {
+                Navigator.pop(ctx);
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN غير متطابق'), backgroundColor: AppTheme.danger));
                 return;
               }
               if (newPin.length < 6 || newPin.length > 8) {
+                Navigator.pop(ctx);
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN يجب أن يكون 6-8 أحرف وأرقام'), backgroundColor: AppTheme.danger));
                 return;
               }
               if (oldPin.isEmpty) {
+                Navigator.pop(ctx);
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل PIN الحالي'), backgroundColor: AppTheme.danger));
                 return;
               }
@@ -326,6 +332,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير PIN بنجاح'), backgroundColor: AppTheme.success));
               } catch (e) {
                 if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                if (!context.mounted) return;
                 final msg = e.toString().contains('401') ? 'PIN الحالي غير صحيح' : 'فشل تغيير PIN';
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: AppTheme.danger));
               }

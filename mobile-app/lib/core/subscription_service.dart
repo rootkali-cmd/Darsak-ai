@@ -46,6 +46,15 @@ class SubscriptionService {
     return data;
   }
 
+  Future<Map<String, dynamic>> activateTrial() async {
+    final response = await _dio.post('/subscriptions/activate-trial');
+    final data = response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
+    await _cacheSubscription(data);
+    return data;
+  }
+
   Future<Map<String, dynamic>> checkVersion() async {
     final response = await _dio.get('/versions/mobile');
     return response.data is Map<String, dynamic>

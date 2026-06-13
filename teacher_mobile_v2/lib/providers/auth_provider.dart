@@ -131,6 +131,11 @@ class AuthProvider extends ChangeNotifier {
       }
       
       notifyListeners();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        // Token expired and refresh failed - logout
+        await logout();
+      }
     } catch (_) {}
   }
 
@@ -145,8 +150,13 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    _token = null; _user = null;
-    try { final prefs = await SharedPreferences.getInstance(); await prefs.remove(_tokenKey); } catch (_) {}
+    _token = null; _user = null; _subscription = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+      await prefs.remove('subscription_cache');
+      await prefs.remove('refresh_token');
+    } catch (_) {}
     notifyListeners();
   }
 }

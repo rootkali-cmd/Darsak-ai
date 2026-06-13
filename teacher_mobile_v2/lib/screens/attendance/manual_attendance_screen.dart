@@ -89,7 +89,7 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                       itemCount: _students.length,
                       itemBuilder: (_, i) {
                         final s = _students[i];
-                        final id = s['id'] as int;
+                        final id = int.tryParse(s['id'].toString()) ?? 0;
                         final marked = _markedStudents[id] ?? false;
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),

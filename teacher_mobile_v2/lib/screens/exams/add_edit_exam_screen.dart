@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
-import '../../providers/auth_provider.dart';
-import '../../screens/subscriptions/subscription_screen.dart';
+import '../../core/subscription_guard.dart';
 
 class AddEditExamScreen extends StatefulWidget {
   final dynamic exam;
@@ -24,48 +22,37 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
   final _durationCtrl = TextEditingController();
   final _totalPointsCtrl = TextEditingController();
   bool _saving = false;
+  List<Map<String, dynamic>> _questions = [];
+  bool _loadingQuestions = false;
 
   bool get _isEdit => widget.exam != null;
 
   @override
   void initState() {
     super.initState();
-    final auth = context.read<AuthProvider>();
-    if (!auth.hasSubscription) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showSubscriptionRequiredDialog();
-      });
-      return;
-    }
     if (_isEdit) {
       final e = widget.exam!;
       _titleCtrl.text = e['title'] ?? '';
       _descCtrl.text = e['description'] ?? '';
       _durationCtrl.text = e['duration_minutes']?.toString() ?? '';
       _totalPointsCtrl.text = e['total_points']?.toString() ?? '';
+      _loadQuestions();
     }
   }
 
-  void _showSubscriptionRequiredDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('اشتراك مطلوب', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('يجب الاشتراك في باقة أولاً لإنشاء أو تعديل اختبارات'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionScreen()));
-            },
-            child: const Text('الذهاب للاشتراكات'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _loadQuestions() async {
+    if (!_isEdit) return;
+    setState(() => _loadingQuestions = true);
+    try {
+      final resp = await ApiService().dio.get('/exams/${widget.exam!['id']}/questions');
+      final data = resp.data;
+      if (data is List) {
+        _questions = data.cast<Map<String, dynamic>>();
+      } else if (data is Map && data['questions'] is List) {
+        _questions = (data['questions'] as List).cast<Map<String, dynamic>>();
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loadingQuestions = false);
   }
 
   @override
@@ -78,6 +65,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
   }
 
   Future<void> _save() async {
+    if (!checkSubscription(context)) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -124,7 +112,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
     }
   }
 
-  void _showAddQuestionDialog() {
+  Future<void> _showAddQuestionDialog() async {
     final questionCtrl = TextEditingController();
     final opt1Ctrl = TextEditingController();
     final opt2Ctrl = TextEditingController();
@@ -133,7 +121,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
     final pointsCtrl = TextEditingController(text: '1');
     int correctAnswer = 1;
 
-    showDialog(
+    final result = await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
@@ -173,15 +161,19 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
             ElevatedButton(
               onPressed: () {
                 if (questionCtrl.text.trim().isEmpty || opt1Ctrl.text.trim().isEmpty || opt2Ctrl.text.trim().isEmpty) return;
+                final keys = ['أ', 'ب', 'ج', 'د'];
                 Navigator.pop(ctx, {
-                  'question': questionCtrl.text.trim(),
+                  'question_text': questionCtrl.text.trim(),
+                  'type': 'multiple_choice',
                   'options': [
-                    opt1Ctrl.text.trim(),
-                    opt2Ctrl.text.trim(),
-                    opt3Ctrl.text.trim().isEmpty ? null : opt3Ctrl.text.trim(),
-                    opt4Ctrl.text.trim().isEmpty ? null : opt4Ctrl.text.trim(),
-                  ].whereType<String>().toList(),
-                  'correct_answer': correctAnswer,
+                    {'key': keys[0], 'text': opt1Ctrl.text.trim(), 'is_correct': correctAnswer == 1},
+                    {'key': keys[1], 'text': opt2Ctrl.text.trim(), 'is_correct': correctAnswer == 2},
+                    if (opt3Ctrl.text.trim().isNotEmpty)
+                      {'key': keys[2], 'text': opt3Ctrl.text.trim(), 'is_correct': correctAnswer == 3},
+                    if (opt4Ctrl.text.trim().isNotEmpty)
+                      {'key': keys[3], 'text': opt4Ctrl.text.trim(), 'is_correct': correctAnswer == 4},
+                  ],
+                  'correct_answer': keys[correctAnswer - 1],
                   'points': int.tryParse(pointsCtrl.text.trim()) ?? 1,
                 });
               },
@@ -191,14 +183,28 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
         ),
       ),
     );
+
+    if (result != null && mounted) {
+      try {
+        await ApiService().dio.post('/exams/${widget.exam!['id']}/questions', data: result);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم إضافة السؤال'), backgroundColor: AppTheme.success),
+        );
+        _loadQuestions();
+      } on DioException catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل إضافة السؤال: ${getDioErrorMessage(e)}'), backgroundColor: AppTheme.danger),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الاختبار' : 'اختبار جديد'),
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الاختبار' : 'اختبار جديد'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -273,13 +279,56 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: GlassTheme.glassCard(context),
-                    child: Center(
-                      child: Text('سيتم تحميل الأسئلة عند حفظ الاختبار', style: TextStyle(color: GlassTheme.textSecondary(context))),
-                    ),
-                  ),
+                  if (_loadingQuestions)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_questions.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: GlassTheme.glassCard(context),
+                      child: Center(
+                        child: Text('لا توجد أسئلة بعد', style: TextStyle(color: GlassTheme.textSecondary(context))),
+                      ),
+                    )
+                  else
+                    ..._questions.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final q = entry.value;
+                      final opts = q['options'] as List? ?? [];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: GlassTheme.glassCard(context),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: GlassTheme.indigo.withValues(alpha: 0.2),
+                              child: Text('${i + 1}', style: const TextStyle(color: GlassTheme.indigo, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(q['question_text'] ?? '', style: TextStyle(color: GlassTheme.textPrimary(context), fontSize: 13)),
+                                  const SizedBox(height: 4),
+                                  Text('${opts.length} خيارات - ${q['points'] ?? 1} نقاط', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
+                              onPressed: () async {
+                                try {
+                                  await ApiService().dio.delete('/exams/${widget.exam!['id']}/questions/${q['id']}');
+                                  _loadQuestions();
+                                } catch (_) {}
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                 ],
               ],
             ),

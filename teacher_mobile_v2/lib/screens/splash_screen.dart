@@ -25,14 +25,14 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigate() async {
     final auth = context.read<AuthProvider>();
     final start = DateTime.now();
-    while (!auth.isInitialized && DateTime.now().difference(start).inSeconds < 3) {
+    while (!auth.isInitialized && DateTime.now().difference(start).inSeconds < 5) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
     if (!mounted) return;
 
     final sharedPdf = await NativeFilePicker.getSharedPdf();
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 600));
     if (!mounted) return;
 
     if (!auth.isAuthenticated) {

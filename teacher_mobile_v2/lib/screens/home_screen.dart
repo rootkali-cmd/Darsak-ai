@@ -41,6 +41,15 @@ class _HomeScreenState extends State<HomeScreen> {
     Icons.more_horiz_rounded,
   ];
 
+  static const List<bool> _requiresSubscription = [
+    false, // الرئيسية
+    true,  // الطلاب
+    true,  // الحضور
+    true,  // الدرجات
+    true,  // المجموعات
+    false, // المزيد
+  ];
+
   static const List<Widget> _screens = [
     DashboardScreen(),
     StudentsScreen(),
@@ -138,35 +147,86 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<AuthProvider>().refreshSubscription();
   }
 
+  void _onTabTapped(int index) {
+    if (_requiresSubscription[index]) {
+      final auth = context.read<AuthProvider>();
+      if (!auth.hasSubscription) {
+        _showSubscriptionRequiredDialog();
+        return;
+      }
+    }
+    setState(() => _currentIndex = index);
+  }
+
+  void _showSubscriptionRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          Navigator.of(ctx).pop();
+        },
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          icon: const Icon(Icons.lock_outline, color: Colors.orange, size: 48),
+          title: const Text('اشتراك مطلوب', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'يجب الاشتراك في باقة أولاً للوصول لهذه الميزة',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('الذهاب للاشتراكات', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: Column(
-              children: [
-                if (_showTrialBanner && auth.isAuthenticated && !auth.hasSubscription)
-                  _buildTrialBanner(),
-                Expanded(
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: _screens,
+      body: SafeArea(
+        child: Consumer<AuthProvider>(
+          builder: (context, auth, _) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Column(
+                children: [
+                  if (_showTrialBanner && auth.isAuthenticated && !auth.hasSubscription)
+                    _buildTrialBanner(),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentIndex,
+                      children: _screens,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
       bottomNavigationBar: Directionality(
         textDirection: TextDirection.rtl,
@@ -183,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
+            onTap: _onTabTapped,
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -224,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'جرب الباقة الأساسية مجاناً لمدة 30 يوم',
+                  'جرب الباقة الأساسية مجاناً لمدة 7 أيام',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context)),
                 ),
               ),

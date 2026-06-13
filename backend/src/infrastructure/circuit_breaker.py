@@ -29,7 +29,7 @@ class CircuitBreaker:
         self,
         name: str,
         failure_threshold: int = 5,
-        recovery_timeout: float = 30.0,
+        recovery_timeout: float = 15.0,
         expected_exception: type = Exception,
     ):
         self.name = name
@@ -88,6 +88,14 @@ class CircuitBreaker:
                         self.name, self._failure_count, self.failure_threshold, e,
                     )
             raise
+
+    async def reset(self):
+        """Manually reset the circuit breaker to CLOSED state."""
+        async with self._lock:
+            self._state = CircuitState.CLOSED
+            self._failure_count = 0
+            self._last_failure_time = None
+            logger.info("Circuit breaker '%s' manually reset to CLOSED", self.name)
 
 
 class CircuitBreakerOpenError(Exception):

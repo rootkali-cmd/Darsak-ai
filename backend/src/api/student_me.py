@@ -10,12 +10,32 @@ from src.schemas.invoice import InvoiceResponse
 from src.core.security.auth import verify_password
 from src.core.security.sanitizer import sanitize_pin
 from src.schemas.student import PIN_PATTERN
-from src.services import grade_service, attendance_service, invoice_service, student_service, audit_service
+from src.services import grade_service, attendance_service, invoice_service, student_service, audit_service, exam_service, student_exam_service
 from src.core.config import get_settings
 
 settings = get_settings()
 
 router = APIRouter(prefix="/students/me", tags=["Student - Self Service"])
+
+
+# ─── Notifications ───────────────────────────────────────────────────
+
+
+@router.get("/notifications")
+async def get_my_notifications(
+    current_student: dict = Depends(get_current_student),
+):
+    from src.services import notification_service
+    return await notification_service.get_unread(current_student["id"])
+
+
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    current_student: dict = Depends(get_current_student),
+):
+    from src.services import notification_service
+    return await notification_service.mark_read(notification_id)
 
 
 class StudentPinUpdate(BaseModel):
@@ -170,18 +190,26 @@ async def ai_chat(
     model = settings.GROQ_MODEL if is_groq else "google/gemini-2.5-flash-lite"
 
     system_prompt = (
-        "أنت مساعد تعليمي ذكي اسمك 'دَرسك AI'. "
-        "طالب يدرس في مصر يسألك. "
-        "أجب بالعربية بشكل واضح ومفصل. "
-        "إذا كان السؤال عن مادة دراسية، اشرح بأسلوب بسيط مع أمثلة. "
-        "إذا كان السؤال عام، أجب باختصار ومفيد. "
-        "يمكنك استخدام تنسيق Markdown: "
-        "**نص عريض** للعناوين المهمة، "
-        "*نص مائل* للتوضيح، "
-        "`كود` للأكواد، "
-        "- نقاط للقوائم، "
-        "# للعناوين الرئيسية. "
-        "لا تستخدم رموز خاصة معقدة، فقط التنسيق البسيط."
+        "أنت مساعد تعليمي ذكي اسمك 'دَرسك AI'. تابع لمنصة DarsakAI التعليمية."
+        "مهمتك الأساسية: مساعدة الطلاب في الدراسة والمناهج التعليمية المصرية فقط."
+        ""
+        "قواعد أمان صارمة - مهم جداً:"
+        "- أنت ملتزم بالتعليم فقط. أي سؤال عن أسلحة، قنابل، مخدرات، عنف، اختراق، أو أي محتوى ضار أو خطير - ارفض الرد فوراً وقل 'لا أستطيع الإجابة على هذا السؤال'"
+        "- لا تقدم أي معلومات عن كيفية صنع أي شيء خطير أو غير قانوني"
+        "- ركز فقط على المناهج التعليمية: الرياضيات، العلوم، اللغة العربية، اللغة الإنجليزية، الدراسات الاجتماعية، وغيرها من المواد الدراسية"
+        "- استخدم مصادر موثوقة في إجاباتك"
+        ""
+        "قدرات خاصة:"
+        "- يمكنك البحث والتفكير المنطقي لحل المسائل"
+        "- إذا طلب منك الطالب إنشاء اختبار (quiz) أو أسئلة في مادة معينة، قم بتوليد أسئلة متنوعة (اختيار من متعدد + مقالي) مع الإجابات النموذجية"
+        "- قدم تفسيرات مبسطة ومناسبة لعمر الطالب"
+        "- استخدم الأمثلة الواقعية لتوضيح المفاهيم"
+        ""
+        "شكل الرد:"
+        "- أجب بالعربية بشكل واضح ومفصل"
+        "- استخدم تنسيق Markdown: **نص عريض** للعناوين، *نص مائل* للتوضيح، `كود` للأكواد، - نقاط للقوائم، # للعناوين"
+        "- إذا كنت تفكر أو تحلل، ابدأ بعبارة '🤔 تفكير:' ثم اكتب تحليلك"
+        "- إذا قمت بإنشاء كويز، ابدأ بعبارة '📝 كويز:'"
     )
 
     messages = [
@@ -230,3 +258,51 @@ async def get_ai_usage(
     usage = _get_ai_usage(student_id)
     remaining = max(0, AI_DAILY_LIMIT - usage["count"])
     return {"remaining": remaining, "limit": AI_DAILY_LIMIT, "used": usage["count"]}
+
+
+@router.get("/stats")
+async def get_my_stats(
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        student_id = str(current_student["id"])
+        exams = await student_exam_service.get_student_exams(student_id)
+        graded = [e for e in exams if e.get("status") == "graded"]
+        total_taken = len(graded)
+        if total_taken == 0:
+            return {
+                "total_exams_taken": 0,
+                "average_score": 0,
+                "best_score": None,
+                "worst_score": None,
+                "recent_results": [],
+            }
+        scores = []
+        recent = sorted(graded, key=lambda e: e.get("submitted_at") or "", reverse=True)[:5]
+        recent_results = []
+        for e in recent:
+            total = e.get("total_score") or 0
+            max_s = e.get("max_score") or 0
+            pct = round(float(total) / float(max_s) * 100, 1) if max_s > 0 else 0
+            exam = await exam_service.get_by_id(e["exam_id"])
+            recent_results.append({
+                "student_exam_id": e["id"],
+                "exam_title": exam["title"] if exam else "Unknown",
+                "score": float(total),
+                "max_score": float(max_s),
+                "percentage": pct,
+                "submitted_at": e.get("submitted_at"),
+            })
+            scores.append(pct)
+        avg = round(sum(scores) / len(scores), 1) if scores else 0
+        return {
+            "total_exams_taken": total_taken,
+            "average_score": avg,
+            "best_score": max(scores),
+            "worst_score": min(scores),
+            "recent_results": recent_results,
+        }
+    except Exception as exc:
+        logger = logging.getLogger("darsak")
+        logger.error("Failed to get student stats: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get stats")

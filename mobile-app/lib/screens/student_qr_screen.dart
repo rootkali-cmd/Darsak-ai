@@ -81,7 +81,7 @@ class StudentQrScreen extends StatelessWidget {
                   children: [
                     BarcodeWidget(
                       barcode: Barcode.code128(),
-                      data: studentCode,
+                      data: studentCode.isNotEmpty ? studentCode : 'NO-CODE',
                       width: 280,
                       height: 100,
                       style: const TextStyle(
@@ -93,14 +93,20 @@ class StudentQrScreen extends StatelessWidget {
                       drawText: true,
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      studentName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                    if (studentCode.isEmpty)
+                      const Text(
+                        'لم يتم تعيين كود بعد — تواصل مع المعلم',
+                        style: TextStyle(fontSize: 12, color: AppTheme.warning),
+                      )
+                    else
+                      Text(
+                        studentName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

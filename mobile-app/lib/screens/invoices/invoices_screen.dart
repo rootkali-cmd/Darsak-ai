@@ -4,7 +4,6 @@ import '../../core/theme.dart';
 import '../../services/invoices_api_service.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/shimmer_loading.dart';
-import 'create_invoice_screen.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -59,18 +58,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             onPressed: _loadInvoices,
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateInvoiceScreen()),
-          );
-          if (result == true) _loadInvoices();
-        },
-        backgroundColor: AppTheme.accent,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('فاتورة جديدة', style: TextStyle(color: Colors.white)),
       ),
       body: _isLoading
           ? const Padding(

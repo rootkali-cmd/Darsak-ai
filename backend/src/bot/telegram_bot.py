@@ -1,12 +1,14 @@
 import os
 import logging
 from datetime import datetime, timezone, timedelta
+import httpx
 
 from src.core.config import get_settings
 from src.core.security.crypto_utils import generate_license_key
 from src.services import (
     subscription_plan_service,
     subscription_code_service,
+    payment_request_service,
     user_service,
     student_service,
     grade_service,
@@ -42,6 +44,7 @@ def _main_menu_keyboard():
         [InlineKeyboardButton("🔍 فحص كود", callback_data="check_code")],
         [InlineKeyboardButton("📋 الباقات", callback_data="list_plans")],
         [InlineKeyboardButton("📊 إحصائيات", callback_data="stats")],
+        [InlineKeyboardButton("🔍 بحث برقم العملية", callback_data="search_payment")],
         [InlineKeyboardButton("فك حظر مستخدم", callback_data="unban_menu")],
     ]
 
@@ -371,6 +374,10 @@ def get_bot_app():
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(text, parse_mode="Markdown", reply_markup=reply_markup)
 
+            elif data == "search_payment":
+                _user_states[chat_id] = "waiting_for_payment_search"
+                await query.edit_message_text("🔍 أرسل رقم العملية للبحث عنها:")
+
             # ─── Unban Menu ───────────────────────────────────────────
             elif data == "unban_menu":
                 keyboard = [
@@ -488,6 +495,79 @@ def get_bot_app():
                     "🔍 أرسل كود الطالب للبحث عنه:",
                 )
 
+            elif data == "search_payment":
+                _user_states[chat_id] = "waiting_for_payment_search"
+                await query.edit_message_text("🔍 أرسل رقم العملية للبحث عنها:")
+
+            elif data.startswith("pay_approve_") or data.startswith("pay_reject_"):
+                logger.info("Bot: Payment callback received: data=%s, chat_id=%s", data, chat_id)
+                payment_id = data.replace("pay_approve_", "").replace("pay_reject_", "")
+                logger.info("Bot: Extracted payment_id=%s", payment_id)
+                payment = await payment_request_service.get_by_id(payment_id)
+                if not payment:
+                    logger.warning("Bot: Payment not found for id=%s", payment_id)
+                    await query.edit_message_text("❌ طلب الدفع غير موجود.")
+                    return
+                logger.info("Bot: Payment found: status=%s", payment.get("status"))
+                if payment["status"] != "pending":
+                    await query.edit_message_text("⚠️ تمت معالجة هذا الطلب بالفعل.")
+                    return
+
+                if data.startswith("pay_approve_"):
+                    logger.info("Bot: Processing pay_approve for payment=%s, teacher=%s", payment_id, payment.get("teacher_id"))
+                    plan = await subscription_plan_service.get_by_id(payment["plan_id"])
+                    if not plan:
+                        logger.error("Bot: Plan not found for id=%s", payment["plan_id"])
+                        await query.edit_message_text("❌ الباقة غير موجودة.")
+                        return
+                    logger.info("Bot: Plan found: %s", plan.get("name"))
+                    billing_period = payment.get("billing_period", "monthly")
+                    duration_days = 365 if billing_period == "yearly" else 30
+                    period_label = "سنوي" if billing_period == "yearly" else "شهري"
+                    expires_at = (datetime.now(timezone.utc) + timedelta(days=duration_days)).isoformat()
+                    try:
+                        await teacher_subscription_service.upsert_by_teacher(
+                            teacher_id=payment["teacher_id"],
+                            plan_id=payment["plan_id"],
+                            code_id=None,
+                            expires_at=expires_at,
+                        )
+                        logger.info("Bot: Subscription upserted successfully")
+                    except Exception as e:
+                        logger.error("Bot: Failed to upsert subscription: %s", e)
+                        await query.edit_message_text(f"❌ فشل تفعيل الاشتراك: {e}")
+                        return
+                    try:
+                        await payment_request_service.approve(payment_id)
+                        logger.info("Bot: Payment approved successfully")
+                    except Exception as e:
+                        logger.error("Bot: Failed to approve payment: %s", e)
+                    try:
+                        from src.services import notification_service
+                        await notification_service.create(
+                            teacher_id=payment["teacher_id"],
+                            title="✅ تم تفعيل اشتراكك",
+                            body=f"تم تفعيل اشتراكك في باقة {plan['name']} ({period_label}) بنجاح! الباقة سارية لمدة {duration_days} يوماً.",
+                            type="success",
+                        )
+                    except Exception as e:
+                        logger.error("Bot: Failed to create notification: %s", e)
+                    teacher_str = str(payment.get("teacher_id", ""))[:8]
+                    await query.edit_message_text(
+                        f"✅ تم تفعيل الاشتراك بنجاح!\n\n"
+                        f"📌 الباقة: {plan['name']}\n"
+                        f"💰 المبلغ: {payment.get('amount', '—')} ج.م\n"
+                        f"📅 الفتره: {period_label}\n"
+                        f"👤 المعلم: {teacher_str}\n"
+                        f"🆔 المعرف: {str(payment['teacher_id'])}\n"
+                        f"📅 ينتهي في: {(datetime.now(timezone.utc) + timedelta(days=duration_days)).strftime('%Y-%m-%d')}",
+                    )
+                elif data.startswith("pay_reject_"):
+                    _user_states[chat_id] = f"reject_msg_{payment_id}"
+                    await query.edit_message_text(
+                        "✍️ اكتب رسالة الرفض للمعلم:\n\n(سيتم إرسالها كإشعار للمعلم)",
+                    )
+
             elif data == "noop":
                 await query.answer("")
 
@@ -506,6 +586,64 @@ def get_bot_app():
                 return
 
             state = _user_states.get(chat_id)
+
+            if state == "waiting_for_payment_search":
+                _user_states.pop(chat_id, None)
+                payment = await payment_request_service.get_by_id(update.message.text.strip())
+                if not payment:
+                    await update.message.reply_text("❌ لم يتم العثور على عملية بهذا الرقم.")
+                    keyboard = _main_menu_keyboard()
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await update.message.reply_text("اختر من الأزرار:", reply_markup=reply_markup)
+                    return
+                plan = await subscription_plan_service.get_by_id(payment["plan_id"]) if payment.get("plan_id") else None
+                plan_name = plan["name"] if plan else "غير معروفة"
+                status_emoji = {"pending": "⏳ قيد المراجعة", "approved": "✅ تمت الموافقة", "rejected": "❌ مرفوض"}.get(payment.get("status", ""), "غير معروف")
+                teacher_id_str = str(payment.get("teacher_id", "—"))[:16]
+                billing_period = payment.get("billing_period", "monthly")
+                period_label = "سنوي" if billing_period == "yearly" else "شهري"
+                result_text = (
+                    f"🔍 *نتيجة البحث عن العملية:* `{update.message.text.strip()}`\n\n"
+                    f"📌 الباقة: {plan_name}\n"
+                    f"📅 الفتره: {period_label}\n"
+                    f"💵 المبلغ: {payment.get('amount', '—')} ج.م\n"
+                    f"📱 رقم المحول: {payment.get('phone_number', '—')}\n"
+                    f"🆔 معرف المعلم: {teacher_id_str}\n"
+                    f"📊 الحالة: {status_emoji}\n"
+                    f"📅 تاريخ الإنشاء: {str(payment.get('created_at', '—'))[:19]}\n"
+                )
+                if payment.get("admin_message"):
+                    result_text += f"\n💬 ملاحظة: {payment['admin_message']}\n"
+                await update.message.reply_text(result_text, parse_mode="Markdown")
+                keyboard = _main_menu_keyboard()
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await update.message.reply_text("اختر من الأزرار:", reply_markup=reply_markup)
+                return
+
+            if state and state.startswith("reject_msg_"):
+                payment_id = state.replace("reject_msg_", "")
+                payment = await payment_request_service.get_by_id(payment_id)
+                if not payment:
+                    await update.message.reply_text("❌ طلب الدفع غير موجود.")
+                    _user_states.pop(chat_id, None)
+                    return
+                await payment_request_service.reject(payment_id, update.message.text.strip())
+                try:
+                    from src.services import notification_service
+                    await notification_service.create(
+                        teacher_id=payment["teacher_id"],
+                        title="❌ لم يتم تفعيل اشتراكك",
+                        body=update.message.text.strip(),
+                        type="error",
+                    )
+                except Exception:
+                    pass
+                await update.message.reply_text("✅ تم إرسال رسالة الرفض للمعلم.")
+                _user_states.pop(chat_id, None)
+                keyboard = _main_menu_keyboard()
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await update.message.reply_text("اختر من الأزرار:", reply_markup=reply_markup)
+                return
 
             if state == "waiting_for_code_check":
                 code = update.message.text.strip().upper()
@@ -636,22 +774,18 @@ async def start_bot():
         logger.info("Telegram bot not available (token missing or import error)")
         return
     try:
-        await app.initialize()
-        await app.start()
-
-        webhook_url = TELEGRAM_WEBHOOK_URL or os.environ.get("VERCEL_URL", "")
-        if webhook_url:
-            full_webhook = f"https://{webhook_url}" if not webhook_url.startswith("http") else webhook_url
-            if not full_webhook.endswith("/api/telegram-webhook"):
-                if full_webhook.endswith("/"):
-                    full_webhook = f"{full_webhook}api/telegram-webhook"
-                else:
-                    full_webhook = f"{full_webhook}/api/telegram-webhook"
-            await app.bot.set_webhook(url=full_webhook)
-            logger.info("Telegram bot ready (webhook mode) at %s", full_webhook)
-        else:
-            await app.updater.start_polling()
-            logger.info("Telegram bot started (polling mode)")
+        webhook_url = "https://darsak-backend.fly.dev"
+        full_webhook = f"{webhook_url}/api/telegram-webhook"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook",
+                json={"url": full_webhook, "drop_pending_updates": True},
+                timeout=15,
+            )
+            if resp.status_code == 200 and resp.json().get("ok"):
+                logger.info("Telegram webhook set to %s", full_webhook)
+            else:
+                logger.error("Failed to set webhook: %s", resp.text)
     except Exception as e:
         logger.error("Failed to start Telegram bot: %s", e)
 

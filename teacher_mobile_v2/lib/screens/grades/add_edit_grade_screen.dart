@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../core/subscription_guard.dart';
 
 class AddEditGradeScreen extends StatefulWidget {
   final dynamic grade;
@@ -94,6 +95,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   }
 
   Future<void> _save() async {
+    if (!checkSubscription(context)) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -103,6 +105,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
         'subject': _selectedSubject,
         'score': int.tryParse(_scoreCtrl.text.trim()) ?? 0,
         'max_score': int.tryParse(_maxScoreCtrl.text.trim()) ?? 100,
+        'type': _selectedType,
         'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       };
 
@@ -149,8 +152,8 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الدرجة' : 'درجة جديدة'),
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar(_isEdit ? 'تعديل الدرجة' : 'درجة جديدة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../services/native_file_picker.dart';
 import '../../core/glass_theme.dart';
+import '../../core/subscription_guard.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/subscriptions/subscription_screen.dart';
 
@@ -35,13 +36,20 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
   @override
   void initState() {
     super.initState();
+    _checkSubscriptionAndInit();
+  }
+
+  Future<void> _checkSubscriptionAndInit() async {
     final auth = context.read<AuthProvider>();
-    if (!auth.hasSubscription) {
+    final hasSubscription = auth.hasSubscription;
+
+    if (!hasSubscription) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showSubscriptionRequiredDialog();
       });
       return;
     }
+
     if (widget.initialFilePath != null) {
       _selectedFile = File(widget.initialFilePath!);
       _selectedFileName = widget.initialFilePath!.split('/').last;
@@ -52,20 +60,35 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('اشتراك مطلوب', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('يجب الاشتراك في باقة أولاً لإنشاء اختبارات بالذكاء الاصطناعي'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionScreen()));
-            },
-            child: const Text('الذهاب للاشتراكات'),
-          ),
-        ],
+      builder: (ctx) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          // منع الرجوع - توجيه لصفحة الاشتراك
+          Navigator.of(ctx).pop();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+          );
+        },
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('اشتراك مطلوب', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text('يجب الاشتراك في باقة أولاً لإنشاء اختبارات بالذكاء الاصطناعي'),
+          actions: [
+            // إزالة زر "إلغاء" - لا يمكن تجاوز الاشتراك
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                );
+              },
+              child: const Text('الذهاب للاشتراكات'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -140,14 +163,8 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
       final resp = await ApiService().aiDio.post('/exams/ai-generate', data: formData);
 
       if (mounted && resp.statusCode == 201) {
-        final examId = resp.data['exam']?['id'];
-        if (examId != null) {
-          try {
-            await ApiService().dio.post('/exams/$examId/publish');
-          } catch (_) {}
-        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إنشاء ونشر الاختبار بنجاح'), backgroundColor: GlassTheme.green),
+          const SnackBar(content: Text('تم إنشاء الاختبار كمسودة - يمكنك مراجعته ونشره'), backgroundColor: GlassTheme.green),
         );
         Navigator.pop(context, true);
       }
@@ -164,8 +181,9 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: GlassTheme.bgDark,
+    return SubscriptionRequiredWidget(
+      child: Scaffold(
+        backgroundColor: GlassTheme.bgDark,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -306,7 +324,8 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false}) {

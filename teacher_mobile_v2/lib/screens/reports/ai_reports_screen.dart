@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../core/glass_theme.dart';
+import '../../core/subscription_guard.dart';
 import '../../services/reports_api_service.dart';
 import '../../services/api_service.dart';
 
@@ -93,8 +94,8 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar('التقارير الذكية'),
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar('التقارير الذكية'),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

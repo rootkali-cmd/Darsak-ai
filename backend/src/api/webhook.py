@@ -36,7 +36,9 @@ async def tg_send(chat_id: int, text: str, keyboard: list | None = None, parse_m
         payload["reply_markup"] = {"inline_keyboard": keyboard}
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(f"{TG_API}/sendMessage", json=payload, timeout=10)
+            resp = await client.post(f"{TG_API}/sendMessage", json=payload, timeout=10)
+            if resp.status_code != 200:
+                logger.error("tg_send failed: %s", resp.text)
     except Exception as e:
         logger.error("tg_send failed: %s", e)
 
@@ -51,7 +53,9 @@ async def tg_edit(chat_id: int, message_id: int, text: str, keyboard: list | Non
         payload["reply_markup"] = {"inline_keyboard": keyboard}
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(f"{TG_API}/editMessageText", json=payload, timeout=10)
+            resp = await client.post(f"{TG_API}/editMessageText", json=payload, timeout=10)
+            if resp.status_code != 200:
+                logger.error("tg_edit failed (http %s): %s", resp.status_code, resp.text)
     except Exception as e:
         logger.error("tg_edit failed: %s", e)
 
@@ -75,6 +79,7 @@ def main_keyboard():
         [{"text": "🔍 فحص كود", "callback_data": "check_code"}],
         [{"text": "📋 الباقات", "callback_data": "list_plans"}],
         [{"text": "📊 إحصائيات", "callback_data": "stats"}],
+        [{"text": "🔍 بحث برقم العملية", "callback_data": "search_payment"}],
     ]
 
 
@@ -109,6 +114,35 @@ async def handle_message(chat_id: int, text: str):
         )
         await tg_send(chat_id, f"✅ تم إرسال رسالة الرفض للمعلم.")
         _user_states.pop(chat_id, None)
+        await tg_send(chat_id, "اختر من الأزرار:", keyboard=main_keyboard())
+        return
+
+    if state == "waiting_for_payment_search":
+        _user_states.pop(chat_id, None)
+        payment = await payment_request_service.get_by_id(text.strip())
+        if not payment:
+            await tg_send(chat_id, "❌ لم يتم العثور على عملية بهذا الرقم.")
+            await tg_send(chat_id, "اختر من الأزرار:", keyboard=main_keyboard())
+            return
+        plan = await subscription_plan_service.get_by_id(payment["plan_id"]) if payment.get("plan_id") else None
+        plan_name = plan["name"] if plan else "غير معروفة"
+        status_emoji = {"pending": "⏳ قيد المراجعة", "approved": "✅ تمت الموافقة", "rejected": "❌ مرفوض"}.get(payment.get("status", ""), "غير معروف")
+        teacher_id_str = str(payment.get("teacher_id", "—"))[:16]
+        billing_period = payment.get("billing_period", "monthly")
+        period_label = "سنوي" if billing_period == "yearly" else "شهري"
+        result_text = (
+            f"🔍 *نتيجة البحث عن العملية:* `{text.strip()}`\n\n"
+            f"📌 الباقة: {plan_name}\n"
+            f"📅 الفتره: {period_label}\n"
+            f"💵 المبلغ: {payment.get('amount', '—')} ج.م\n"
+            f"📱 رقم المحول: {payment.get('phone_number', '—')}\n"
+            f"🆔 معرف المعلم: {teacher_id_str}\n"
+            f"📊 الحالة: {status_emoji}\n"
+            f"📅 تاريخ الإنشاء: {str(payment.get('created_at', '—'))[:19]}\n"
+        )
+        if payment.get("admin_message"):
+            result_text += f"\n💬 ملاحظة: {payment['admin_message']}\n"
+        await tg_send(chat_id, result_text, parse_mode="Markdown")
         await tg_send(chat_id, "اختر من الأزرار:", keyboard=main_keyboard())
         return
 
@@ -204,44 +238,80 @@ async def handle_callback(chat_id: int, message_id: int, data: str):
         )
         await tg_edit(chat_id, message_id, text, keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]], parse_mode="Markdown")
 
+    elif data == "search_payment":
+        await tg_edit(chat_id, message_id, "🔍 أرسل رقم العملية للبحث عنها:")
+        _user_states[chat_id] = "waiting_for_payment_search"
+
     elif data == "back":
         await tg_edit(chat_id, message_id, "🎓 مرحباً بك في بوت الاشتراكات - درسك AI\n\nاختر من الأزرار أدناه:", keyboard=main_keyboard())
 
     elif data.startswith("pay_approve_") or data.startswith("pay_reject_"):
+        logger.info("Payment callback received: data=%s, chat_id=%s, msg_id=%s", data, chat_id, message_id)
         payment_id = data.replace("pay_approve_", "").replace("pay_reject_", "")
-        payment = await payment_request_service.get_by_id(payment_id)
+        logger.info("Extracted payment_id=%s", payment_id)
+        try:
+            payment = await payment_request_service.get_by_id(payment_id)
+        except Exception as e:
+            logger.error("Error fetching payment %s: %s", payment_id, e)
+            payment = None
         if not payment:
+            logger.warning("Payment not found for id=%s", payment_id)
             await tg_edit(chat_id, message_id, "❌ طلب الدفع غير موجود.")
             return
+        logger.info("Payment found: status=%s", payment.get("status"))
         if payment["status"] != "pending":
-            await tg_edit(chat_id, message_id, "⚠️ تمت معالجة هذا الطلب بالفعل.")
+            logger.info("Payment already processed (status=%s), sending new message", payment["status"])
+            reply = "✅ تم تفعيل هذا الاشتراك مسبقاً!" if payment["status"] == "approved" else "❌ تم رفض هذا الاشتراك."
+            await tg_send(chat_id, reply)
             return
 
         if data.startswith("pay_approve_"):
+            logger.info("Processing pay_approve for payment=%s, teacher=%s", payment_id, payment.get("teacher_id"))
             plan = await subscription_plan_service.get_by_id(payment["plan_id"])
             if not plan:
+                logger.error("Plan not found for id=%s", payment["plan_id"])
                 await tg_edit(chat_id, message_id, "❌ الباقة غير موجودة.")
                 return
-            expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
-            await teacher_subscription_service.create(
-                teacher_id=payment["teacher_id"],
-                plan_id=payment["plan_id"],
-                code_id=payment_id,
-                expires_at=expires_at,
-            )
-            await payment_request_service.approve(payment_id)
-            await notification_service.create(
-                teacher_id=payment["teacher_id"],
-                title="✅ تم تفعيل اشتراكك",
-                body=f"تم تفعيل اشتراكك في باقة {plan['name']} بنجاح! الباقة سارية لمدة 30 يوماً.",
-                type="success",
-            )
+            logger.info("Plan found: %s", plan.get("name"))
+            billing_period = payment.get("billing_period", "monthly")
+            duration_days = 365 if billing_period == "yearly" else 30
+            period_label = "سنوي" if billing_period == "yearly" else "شهري"
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=duration_days)).isoformat()
+            try:
+                await teacher_subscription_service.upsert_by_teacher(
+                    teacher_id=payment["teacher_id"],
+                    plan_id=payment["plan_id"],
+                    code_id=None,
+                    expires_at=expires_at,
+                )
+                logger.info("Subscription upserted successfully")
+            except Exception as e:
+                logger.error("Failed to upsert subscription: %s", e)
+                await tg_edit(chat_id, message_id, f"❌ فشل تفعيل الاشتراك: {e}")
+                return
+            try:
+                await payment_request_service.approve(payment_id)
+                logger.info("Payment approved successfully")
+            except Exception as e:
+                logger.error("Failed to approve payment: %s", e)
+            try:
+                await notification_service.create(
+                    teacher_id=payment["teacher_id"],
+                    title="✅ تم تفعيل اشتراكك",
+                    body=f"تم تفعيل اشتراكك في باقة {plan['name']} ({period_label}) بنجاح! الباقة سارية لمدة {duration_days} يوماً.",
+                    type="success",
+                )
+            except Exception as e:
+                logger.error("Failed to create notification: %s", e)
             teacher_str = str(payment["teacher_id"])[:8]
             await tg_edit(chat_id, message_id,
                 f"✅ تم تفعيل الاشتراك بنجاح!\n\n"
                 f"📌 الباقة: {plan['name']}\n"
+                f"💰 المبلغ: {payment.get('amount', '—')} ج.م\n"
+                f"📅 الفتره: {period_label}\n"
                 f"👤 المعلم: {teacher_str}\n"
-                f"📅 ينتهي في: {(datetime.now(timezone.utc) + timedelta(days=30)).strftime('%Y-%m-%d')}",
+                f"🆔 المعرف: {str(payment['teacher_id'])}\n"
+                f"📅 ينتهي في: {(datetime.now(timezone.utc) + timedelta(days=duration_days)).strftime('%Y-%m-%d')}",
                 keyboard=[[{"text": "🔙 رجوع", "callback_data": "back"}]],
             )
         elif data.startswith("pay_reject_"):
@@ -280,10 +350,15 @@ async def telegram_webhook(request: Request):
 
         elif "callback_query" in update:
             cq = update["callback_query"]
-            await answer_callback(cq["id"])
+            data = cq.get("data", "")
+            cb_text = None
+            if data.startswith("pay_approve_"):
+                cb_text = "✅ جاري تفعيل الاشتراك..."
+            elif data.startswith("pay_reject_"):
+                cb_text = "✍️ اكتب سبب الرفض"
+            await answer_callback(cq["id"], cb_text)
             chat_id = cq["message"]["chat"]["id"]
             message_id = cq["message"]["message_id"]
-            data = cq.get("data", "")
             await handle_callback(chat_id, message_id, data)
 
     except Exception as e:
@@ -354,11 +429,11 @@ async def notify_admin_payment_request(payment_request: dict, plan: dict, user: 
         f"💰 طلب اشتراك جديد\n\n"
         f"👤 الاسم: {teacher_name}\n"
         f"📧 البريد: {teacher_email}\n"
-        f"🆔 المعرف: {teacher_id_str}\n"
+        f"🆔 معرف المعلم: {teacher_id_str}\n"
         f"📌 الباقة: {plan['name']}\n"
         f"💵 المبلغ: {payment_request['amount']} ج.م\n"
         f"📱 رقم المحول: {payment_request['phone_number']}\n"
-        f"🆔 الطلب: {payment_id_str}\n"
+        f"🔢 رقم الطلب: {payment_id_str}\n"
     )
 
     keyboard = [

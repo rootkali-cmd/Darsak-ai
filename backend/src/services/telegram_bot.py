@@ -40,21 +40,25 @@ async def send_payment_request(
     request_id: str,
     payment_info: str = "",
     screenshot_b64: str | None = None,
+    teacher_id: str = "",
+    billing_period: str = "شهري",
 ):
-    method_label = "Vodafone Cash" if payment_method == "vodafone_cash" else "InstaPay"
+    method_label = "Vodafone Cash" if payment_method == "vodafone_cash" else "InstaPay" if payment_method == "instapay" else "نقدي"
     text = (
         f"💰 طلب اشتراك جديد\n\n"
         f"👤 الاسم: {teacher_name}\n"
+        f"🆔 معرف المعلم: {teacher_id}\n"
         f"📌 الباقة: {plan_name}\n"
+        f"📅 الفتره: {billing_period}\n"
         f"💵 المبلغ: {amount} ج.م\n"
         f"💳 الطريقة: {method_label}\n"
-        f"🆔 الطلب: {request_id}"
+        f"🆔 رقم الطلب: {request_id}"
     )
     if payment_info:
         text += f"\n\n{payment_info}"
     keyboard = [[
-        {"text": "✅ تفعيل", "callback_data": f"approve_{request_id}"},
-        {"text": "❌ رفض", "callback_data": f"reject_{request_id}"},
+        {"text": "✅ تفعيل", "callback_data": f"pay_approve_{request_id}"},
+        {"text": "❌ رفض", "callback_data": f"pay_reject_{request_id}"},
     ]]
     if not TELEGRAM_BOT_TOKEN:
         logger.warning("send_payment_request skipped: TELEGRAM_BOT_TOKEN not set")
@@ -64,13 +68,13 @@ async def send_payment_request(
             if screenshot_b64:
                 import base64 as _b64
                 photo_bytes = _b64.b64decode(screenshot_b64)
-                payload_multipart = {
-                    "chat_id": (None, str(chat_id)),
-                    "caption": (None, text),
-                    "reply_markup": (None, json.dumps({"inline_keyboard": keyboard})),
-                    "photo": ("screenshot.jpg", photo_bytes, "image/jpeg"),
+                files = {"photo": ("screenshot.jpg", photo_bytes, "image/jpeg")}
+                data = {
+                    "chat_id": str(chat_id),
+                    "caption": text,
+                    "reply_markup": json.dumps({"inline_keyboard": keyboard}),
                 }
-                resp = await client.post(f"{TG_API}/sendPhoto", data=payload_multipart, timeout=15)
+                resp = await client.post(f"{TG_API}/sendPhoto", files=files, data=data, timeout=15)
                 return resp.json()
             else:
                 payload: dict = {

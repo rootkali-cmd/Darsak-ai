@@ -4,6 +4,7 @@ import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
 import '../../core/error_utils.dart';
+import '../../core/subscription_guard.dart';
 import 'add_edit_grade_screen.dart';
 
 class GradesScreen extends StatefulWidget {
@@ -70,6 +71,7 @@ class _GradesScreenState extends State<GradesScreen> {
   }
 
   void _addGrade() async {
+    if (!checkSubscription(context)) return;
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AddEditGradeScreen()),
@@ -97,10 +99,10 @@ class _GradesScreenState extends State<GradesScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
-      appBar: GlassTheme.glassAppBar('الدرجات'),
-      floatingActionButton: GlassTheme.glassFAB(_addGrade),
-      body: RefreshIndicator(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+        appBar: GlassTheme.glassAppBar('الدرجات'),
+        floatingActionButton: GlassTheme.glassFAB(_addGrade),
+        body: RefreshIndicator(
         onRefresh: _loadGrades,
         color: GlassTheme.indigo,
         child: _loading

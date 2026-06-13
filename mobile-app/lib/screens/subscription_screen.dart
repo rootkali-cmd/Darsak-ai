@@ -292,9 +292,66 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   : const Text('تفعيل', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: _activatingTrial ? null : _activateTrial,
+              icon: _activatingTrial
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.card_giftcard, size: 18),
+              label: Text(_activatingTrial ? 'جاري التفعيل...' : 'بدء الفترة التجريبية المجانية (30 يوم)'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.success,
+                side: const BorderSide(color: AppTheme.success),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  bool _activatingTrial = false;
+
+  Future<void> _activateTrial() async {
+    setState(() => _activatingTrial = true);
+    try {
+      await _subService.activateTrial();
+      if (!mounted) return;
+      await context.read<AuthProvider>().refreshSubscription();
+      if (!mounted) return;
+      if (context.read<AuthProvider>().isSubscriptionActive) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم تفعيل الفترة التجريبية المجانية بنجاح'),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('فشل تفعيل الفترة التجريبية'),
+            backgroundColor: AppTheme.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().contains('400') ? 'لديك اشتراك نشط بالفعل أو الفترة التجريبية مستخدمة' : 'فشل تفعيل الفترة التجريبية'),
+          backgroundColor: AppTheme.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _activatingTrial = false);
+    }
   }
 
   Widget _buildPlansSection() {
@@ -322,7 +379,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           )
         else
           ..._plans.map((plan) {
-            final planId = plan['id'] as String? ?? '';
+            final planId = plan['id']?.toString() ?? '';
             final planName = plan['name'] as String? ?? '';
             final price = plan['price_egp'] ?? 0;
             final maxStudents = plan['max_students'] ?? 0;
@@ -338,7 +395,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 features: features,
                 isPopular: isPopular,
                 color: color,
-                onSubscribe: () => _showPaymentDialog(planName, price, planId),
+                onSubscribe: () => _showPaymentDialog(planName, (price as num).toInt(), planId),
               ),
             );
           }),

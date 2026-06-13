@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
-import '../../core/app_theme.dart';
-import '../../services/api_service.dart';
-import '../../providers/auth_provider.dart';
+import '../core/app_theme.dart';
+import '../services/api_service.dart';
+import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'onboarding/onboarding_screen.dart';
 import 'home_screen.dart';

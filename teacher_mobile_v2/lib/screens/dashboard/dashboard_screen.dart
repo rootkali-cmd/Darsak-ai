@@ -131,21 +131,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Text(
-        'الرئيسية',
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: GlassTheme.textPrimary(context),
-          fontFamily: 'Cairo',
-        ),
-      ),
-    );
-  }
-
   Widget _buildGreeting() {
     final user = context.watch<AuthProvider>().user;
     final name = user?['full_name'] ?? '';

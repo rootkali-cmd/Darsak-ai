@@ -28,7 +28,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   bool _isLoading = true;
   bool _submitting = false;
   bool _submitted = false;
+  bool _gracePeriod = false;
   final Map<String, String> _answers = {};
+  String? _currentSelection;
 
   @override
   void initState() {
@@ -67,20 +69,111 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds <= 0) {
         timer.cancel();
-        _autoSubmit();
+        _onTimeUp();
         return;
       }
       setState(() => _remainingSeconds--);
     });
   }
 
+  void _onTimeUp() {
+    if (_submitted) return;
+    if (_gracePeriod) {
+      _showForceSubmit();
+      return;
+    }
+    _gracePeriod = true;
+    _remainingSeconds = 300; // 5 minutes
+    _timer?.cancel();
+    _startTimer();
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dialogBackground(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border(context)),
+        ),
+        title: Text('الوقت ينفد!', style: TextStyle(color: AppTheme.warning, fontWeight: FontWeight.bold)),
+        content: Text('لديك 5 دقائق إضافية لتسليم الاختبار.', style: TextStyle(color: AppColors.textSecondary(context))),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+            child: const Text('حسناً', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showForceSubmit() async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dialogBackground(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border(context)),
+        ),
+        title: Text('انتهى الوقت', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold)),
+        content: Text('لقد نفذ الوقت وتم تسليم الاختبار تلقائياً.', style: TextStyle(color: AppColors.textSecondary(context))),
+        actions: [
+          ElevatedButton(
+            onPressed: () { Navigator.pop(ctx); _submitExam(); },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+            child: const Text('عرض النتائج', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _autoSubmit() async {
     if (_submitted) return;
+    _saveCurrentAnswer();
     await _submitExam();
+  }
+
+  void _saveCurrentAnswer() {
+    if (_questions.isEmpty) return;
+    final qId = _questions[_currentIndex]['id'] ?? '';
+    if (_currentSelection != null && _currentSelection!.isNotEmpty) {
+      _answers[qId] = _currentSelection!;
+    } else {
+      _answers.remove(qId);
+    }
+  }
+
+  void _goNext() {
+    _saveCurrentAnswer();
+    if (_currentIndex < _questions.length - 1) {
+      setState(() {
+        _currentIndex++;
+        final qId = _questions[_currentIndex]['id'] ?? '';
+        _currentSelection = _answers[qId];
+      });
+    }
+  }
+
+  void _goBack() {
+    _saveCurrentAnswer();
+    if (_currentIndex > 0) {
+      setState(() {
+        _currentIndex--;
+        final qId = _questions[_currentIndex]['id'] ?? '';
+        _currentSelection = _answers[qId];
+      });
+    }
   }
 
   Future<void> _submitExam() async {
     if (_submitted || _submitting) return;
+    _saveCurrentAnswer();
     setState(() => _submitting = true);
     _timer?.cancel();
     try {
@@ -148,10 +241,14 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _submitted,
-      onPopInvokedWithResult: (didPop, _) async {
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        final result = await showDialog<bool>(
+        if (_submitted) {
+          Navigator.of(context).pop();
+          return;
+        }
+        showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: AppColors.dialogBackground(context),
@@ -163,8 +260,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
               ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger), child: const Text('خروج')),
             ],
           ),
-        );
-        if (result == true && context.mounted) Navigator.of(context).pop();
+        ).then((result) {
+          if (result == true && context.mounted) Navigator.of(context).pop();
+        });
       },
       child: Scaffold(
         appBar: AppBar(
@@ -238,7 +336,6 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
     final type = q['type'] ?? 'multiple_choice';
     final questionText = q['question_text'] ?? '';
     final options = q['options'] as List<dynamic>? ?? [];
-    final selected = _answers[qId];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -286,9 +383,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
             ...options.map((opt) => _buildOption(
                   key: opt['key'] ?? '',
                   text: opt['text'] ?? '',
-                  isSelected: selected == opt['key'],
+                  isSelected: _currentSelection == opt['key'],
                   onTap: () {
-                    setState(() => _answers[qId] = opt['key'] ?? '');
+                    setState(() => _currentSelection = opt['key'] ?? '');
                   },
                 ))
           else
@@ -300,6 +397,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                 border: Border.all(color: AppColors.border(context)),
               ),
               child: TextField(
+                controller: TextEditingController(text: _currentSelection ?? ''),
                 maxLines: 8,
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
@@ -309,7 +407,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                   border: InputBorder.none,
                 ),
                 style: TextStyle(color: AppColors.textPrimary(context), fontSize: 15, height: 1.5),
-                onChanged: (v) => _answers[qId] = v,
+                onChanged: (v) => _currentSelection = v,
               ),
             ),
         ],
@@ -364,7 +462,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
             if (_currentIndex > 0)
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => setState(() => _currentIndex--),
+                  onPressed: _goBack,
                   icon: const Icon(Icons.arrow_right, size: 20),
                   label: const Text('السابق'),
                   style: OutlinedButton.styleFrom(
@@ -379,11 +477,12 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
             if (_currentIndex < _questions.length - 1)
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => setState(() => _currentIndex++),
+                  onPressed: _goNext,
                   icon: const Icon(Icons.arrow_left, size: 20),
                   label: const Text('التالي'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.accent,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),

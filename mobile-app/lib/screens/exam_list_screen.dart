@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
 import '../services/notification_service.dart';
@@ -21,7 +24,10 @@ class _ExamListScreenState extends State<ExamListScreen> {
   List<dynamic> _availableExams = [];
   List<dynamic> _myResults = [];
   bool _isLoading = true;
+  String? _error;
   String _tab = 'available';
+
+  bool _isLoadingData = false;
 
   @override
   void initState() {
@@ -54,51 +60,72 @@ class _ExamListScreenState extends State<ExamListScreen> {
   }
 
   Future<void> _loadData() async {
+    if (_isLoadingData) return;
+    _isLoadingData = true;
     setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
         _api.getAvailableExams(),
         _api.getMyExamResults(),
-      ]);
+      ]).timeout(const Duration(seconds: 45));
       if (!mounted) return;
       setState(() {
         _availableExams = results[0];
         _myResults = results[1];
         _isLoading = false;
+        _error = null;
       });
 
       _scheduleExamNotifications(_availableExams);
 
-      // Start periodic check for new exams
-      final profile = await _api.getProfile();
-      final studentId = profile['id'] ?? '';
-      if (studentId.isNotEmpty) {
-        _notificationService.startPeriodicCheck(
-          studentId: studentId,
-          checkNewExams: (sid, lastCheck) async {
-            try {
-              final response = await _api.dio.get('/exams/check-new/$sid', queryParameters: {'last_check': lastCheck});
-              return response.data is List ? response.data : [];
-            } catch (_) {
-              return [];
-            }
-          },
-          onNewExams: (newExams) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('تم العثور على ${newExams.length} اختبارات جديدة'),
-                  backgroundColor: AppTheme.accent,
-                ),
-              );
-              _loadData();
-            }
-          },
-        );
+      try {
+        final profile = await _api.getProfile().timeout(const Duration(seconds: 10));
+        final studentId = profile['id'] ?? '';
+        if (studentId.isNotEmpty) {
+          _notificationService.startPeriodicCheck(
+            studentId: studentId,
+            checkNewExams: (sid, lastCheck) async {
+              try {
+                final response = await _api.dio.get('/exams/check-new/$sid', queryParameters: {'last_check': lastCheck});
+                return response.data is List ? response.data : [];
+              } catch (_) {
+                return [];
+              }
+            },
+            onNewExams: (newExams) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تم العثور على ${newExams.length} اختبارات جديدة'),
+                    backgroundColor: AppTheme.accent,
+                  ),
+                );
+                _loadData();
+              }
+            },
+          );
+        }
+      } catch (_) {
+        // Profile or periodic check not essential for showing exams
       }
+    } on TimeoutException catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'تعذر الاتصال بالخادم - تأكد من اتصالك بالإنترنت';
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      String detail = '';
+      if (e is DioException) {
+        detail = '${e.type}';
+        if (e.response != null) detail += ' (${e.response?.statusCode})';
+      } else {
+        detail = e.toString();
+      }
+      setState(() { _isLoading = false; _error = 'خطأ: $detail'; });
+    } finally {
+      _isLoadingData = false;
     }
   }
 
@@ -116,7 +143,27 @@ class _ExamListScreenState extends State<ExamListScreen> {
       ),
       body: _isLoading
           ? const ShimmerList()
-          : Column(
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.wifi_off, size: 48, color: AppTheme.danger.withValues(alpha: 0.5)),
+                        const SizedBox(height: 16),
+                        Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary(context))),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _loadData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة المحاولة'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Column(
               children: [
                 _buildTabs(),
                 Expanded(
@@ -208,7 +255,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
     final title = exam['title'] ?? 'اختبار';
     final description = exam['description'] ?? '';
     final duration = exam['duration_minutes'] ?? 30;
-    final questionsCount = exam['total_points'] ?? 0;
+    final totalPoints = exam['total_points'] ?? 0;
     final deadlineAt = exam['deadline_at'];
     final isExpired = _isDeadlineExpired(deadlineAt);
     final deadlineText = _formatDeadline(deadlineAt);
@@ -247,7 +294,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
                   children: [
                     _buildInfoChip(Icons.timer_outlined, '$duration دقيقة'),
                     const SizedBox(width: 8),
-                    _buildInfoChip(Icons.help_outline, '$questionsCount سؤال'),
+                    _buildInfoChip(Icons.star_outline, '$totalPoints نقطة'),
                   ],
                 ),
                 if (deadlineText != null) ...[
@@ -273,10 +320,13 @@ class _ExamListScreenState extends State<ExamListScreen> {
             )
           else
             ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ExamTakeScreen(examId: examId, examTitle: title, durationMinutes: duration)),
-              ),
+              onPressed: () async {
+                final result = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => ExamTakeScreen(examId: examId, examTitle: title, durationMinutes: duration)),
+                );
+                if (result == true && context.mounted) _loadData();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.success,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
