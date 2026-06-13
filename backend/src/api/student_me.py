@@ -267,29 +267,29 @@ async def get_my_stats(
     try:
         student_id = str(current_student["id"])
         exams = await student_exam_service.get_student_exams(student_id)
-        graded = [e for e in exams if e.get("status") == "graded"]
-        total_taken = len(graded)
+        scored = [e for e in exams if e.get("total_score") is not None and (e.get("status") in ("graded", "submitted"))]
+        total_taken = len(scored)
         if total_taken == 0:
             return {
                 "total_exams_taken": 0,
                 "average_score": 0,
-                "best_score": None,
-                "worst_score": None,
+                "best_score": 0,
+                "worst_score": 0,
                 "recent_results": [],
             }
         scores = []
-        recent = sorted(graded, key=lambda e: e.get("submitted_at") or "", reverse=True)[:5]
+        recent = sorted(scored, key=lambda e: e.get("submitted_at") or e.get("created_at") or "", reverse=True)[:5]
         recent_results = []
         for e in recent:
-            total = e.get("total_score") or 0
-            max_s = e.get("max_score") or 0
-            pct = round(float(total) / float(max_s) * 100, 1) if max_s > 0 else 0
+            total = float(e.get("total_score") or 0)
+            max_s = float(e.get("max_score") or 0)
+            pct = round(total / max_s * 100, 1) if max_s > 0 else 0
             exam = await exam_service.get_by_id(e["exam_id"])
             recent_results.append({
                 "student_exam_id": e["id"],
                 "exam_title": exam["title"] if exam else "Unknown",
-                "score": float(total),
-                "max_score": float(max_s),
+                "score": total,
+                "max_score": max_s,
                 "percentage": pct,
                 "submitted_at": e.get("submitted_at"),
             })
@@ -298,8 +298,8 @@ async def get_my_stats(
         return {
             "total_exams_taken": total_taken,
             "average_score": avg,
-            "best_score": max(scores),
-            "worst_score": min(scores),
+            "best_score": max(scores) if scores else 0,
+            "worst_score": min(scores) if scores else 0,
             "recent_results": recent_results,
         }
     except Exception as exc:
