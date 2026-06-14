@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from fastapi.responses import RedirectResponse, FileResponse
 from datetime import datetime, timezone
 import logging
@@ -6,6 +6,7 @@ import json
 import os
 
 from src.utils.dependencies import get_current_admin
+from src.infrastructure.rate_limiter import rate_limiter
 
 logger = logging.getLogger("darsak")
 router = APIRouter(prefix="", tags=["Versions"])
@@ -347,7 +348,11 @@ REMOTE_CONFIG: dict = {
 
 
 @router.post("/telemetry/event")
-async def telemetry_event(data: dict):
+async def telemetry_event(data: dict, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    allowed = await rate_limiter.is_allowed(("telemetry", client_ip), 60)
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Too many requests")
     try:
         entry = {
             "event": data.get("event"),
@@ -359,9 +364,9 @@ async def telemetry_event(data: dict):
         with open(TELEMETRY_LOG, "a") as f:
             f.write(json.dumps(entry) + "\n")
         return {"status": "ok"}
-    except Exception as e:
-        logger.warning(f"Telemetry write failed: {e}")
-        return {"status": "error", "detail": str(e)}
+    except Exception:
+        logger.warning("Telemetry write failed")
+        return {"status": "error"}
 
 
 @router.get("/config/client")

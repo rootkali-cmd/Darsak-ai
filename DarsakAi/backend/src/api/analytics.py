@@ -3,9 +3,10 @@ import logging
 import os
 from datetime import datetime, timezone
 from collections import defaultdict, Counter
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from src.core.structured_logger import write_event, count_events, aggregate_events
 from src.utils.dependencies import get_current_admin
+from src.infrastructure.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -13,7 +14,11 @@ ANALYTICS_LOG = "analytics.jsonl"
 
 
 @router.post("/event")
-async def analytics_event(data: dict):
+async def analytics_event(data: dict, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    allowed = await rate_limiter.is_allowed(("analytics", client_ip), 60)
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Too many requests")
     try:
         event = data.get("event", "unknown")
         properties = data.get("properties", {})

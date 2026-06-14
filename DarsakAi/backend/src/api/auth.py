@@ -1,6 +1,7 @@
 import logging
 import hashlib
 import asyncio
+import re
 import time
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
@@ -11,6 +12,7 @@ from src.core.security.sanitizer import sanitize_text, sanitize_email
 from src.core.security.supabase_repo import SupabaseError
 from src.services import user_service, subscription_plan_service, teacher_subscription_service
 from src.infrastructure.audit_events import audit as audit_publisher, AuditEvent
+from src.infrastructure.rate_limiter import rate_limiter
 
 logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -73,8 +75,46 @@ def _user_response(user: dict) -> dict:
     }
 
 
+_LOGIN_ATTEMPTS: dict[str, dict] = {}
+LOGIN_ATTEMPTS_PER_WINDOW = 5
+LOGIN_WINDOW_SECONDS = 300  # 5 min
+LOGIN_BAN_DURATION = 900  # 15 min
+
+
+def _check_teacher_login_limit(email: str):
+    now = time.time()
+    state = _LOGIN_ATTEMPTS.get(email, {"attempts": [], "banned_until": 0})
+    if state["banned_until"] > now:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="تم حظر الحساب مؤقتاً بسبب محاولات تسجيل دخول كثيرة. حاول بعد 15 دقيقة."
+        )
+    state["attempts"] = [t for t in state["attempts"] if now - t < LOGIN_WINDOW_SECONDS]
+    if len(state["attempts"]) >= LOGIN_ATTEMPTS_PER_WINDOW:
+        state["banned_until"] = now + LOGIN_BAN_DURATION
+        state["attempts"] = []
+        _LOGIN_ATTEMPTS[email] = state
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="تم حظر الحساب مؤقتاً بسبب محاولات تسجيل دخول كثيرة. حاول بعد 15 دقيقة."
+        )
+    return state
+
+
+def _validate_password_strength(password: str):
+    if len(password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="كلمة المرور يجب أن تكون 8 أحرف على الأقل")
+    if not re.search(r"[A-Z]", password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل")
+    if not re.search(r"[a-z]", password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="كلمة المرور يجب أن تحتوي على حرف صغير واحد على الأقل")
+    if not re.search(r"\d", password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="كلمة المرور يجب أن تحتوي على رقم واحد على الأقل")
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, request: Request):
+    _validate_password_strength(user_data.password)
     try:
         user = await user_service.create(
             email=sanitize_email(user_data.email),
@@ -139,11 +179,21 @@ async def register(user_data: UserCreate, request: Request):
 
 @router.post("/login")
 async def login(credentials: UserLogin, request: Request, response: Response):
-    user = await user_service.get_by_email(credentials.email.lower().strip())
+    email = credentials.email.lower().strip()
+    client_ip = get_client_ip(request)
+    allowed = await rate_limiter.is_allowed(("login", client_ip), 20)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many login attempts from this IP")
+    _check_teacher_login_limit(email)
+    user = await user_service.get_by_email(email)
     if not user or not verify_password(credentials.password, user["hashed_password"]):
+        if email not in _LOGIN_ATTEMPTS:
+            _LOGIN_ATTEMPTS[email] = {"attempts": [], "banned_until": 0}
+        _LOGIN_ATTEMPTS[email]["attempts"].append(time.time())
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     if not user.get("is_active", True):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+    _LOGIN_ATTEMPTS.pop(email, None)  # Clear on success
 
     await audit_publisher.publish(AuditEvent(
         actor_type=user.get("role", "teacher"),

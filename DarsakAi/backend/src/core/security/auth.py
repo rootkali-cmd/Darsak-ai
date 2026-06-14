@@ -18,25 +18,28 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
+_JWT_ALGORITHM = "HS256"
+
+
 def create_access_token(subject: str | Any, expires_delta: timedelta | None = None, extra_claims: dict | None = None) -> str:
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    payload = {"sub": str(subject), "exp": expire, "type": "access"}
+    payload = {"sub": str(subject), "exp": expire, "type": "access", "iss": "darsakai", "aud": "darsakai-api"}
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=_JWT_ALGORITHM)
 
 
 def create_refresh_token(subject: str | Any) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {"sub": str(subject), "exp": expire, "type": "refresh"}
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    payload = {"sub": str(subject), "exp": expire, "type": "refresh", "iss": "darsakai", "aud": "darsakai-api"}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=_JWT_ALGORITHM)
 
 
 def decode_token(token: str) -> dict[str, Any] | None:
     try:
-        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[_JWT_ALGORITHM], audience="darsakai-api", issuer="darsakai")
     except JWTError:
         return None
 

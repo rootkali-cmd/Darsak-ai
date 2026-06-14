@@ -80,3 +80,6 @@ web-portal/public/DarsakAI-Student.aab
 testsprite_tests/tmp/config.json
 .pytest_cache/
 .vercel
+
+# Vercel secrets
+.env.vercel

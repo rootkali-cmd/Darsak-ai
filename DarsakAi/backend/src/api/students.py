@@ -280,7 +280,6 @@ async def verify_teacher(request: TeacherVerifyRequest):
 
     return TeacherVerifyResponse(
         teacher_id=teacher["id"],
-        teacher_code=teacher["teacher_code"],
         teacher_name=teacher["full_name"],
     )
 

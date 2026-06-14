@@ -125,7 +125,10 @@ async def enforce_ai_request_limit(teacher_id: str) -> bool:
 
 
 async def increment_ai_usage(teacher_id: str) -> None:
-    pass  # AI usage now tracked via audit_logs
+    try:
+        await subscription_plan_service.increment_ai_usage(teacher_id)
+    except Exception as e:
+        logger.error("Failed to increment AI usage for teacher %s: %s", teacher_id, e)
 
 
 async def require_active_subscription(teacher_id: str) -> dict:
