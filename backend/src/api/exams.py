@@ -609,7 +609,7 @@ async def get_student_exam_result(
         # Get student info
         from src.core.security.supabase_repo import get_supabase
         client = await get_supabase()
-        stu_res = await client.table("students").select("name, code").eq("id", se["student_id"]).execute()
+        stu_res = await client.table("students").select("full_name, code").eq("id", se["student_id"]).execute()
         student_info = (stu_res.data or [{}])[0] if stu_res.data else {}
         
         question_details = []
@@ -644,7 +644,7 @@ async def get_student_exam_result(
         
         return {
             "student_exam_id": student_exam_id,
-            "student_name": student_info.get("name", "غير معروف"),
+            "student_name": student_info.get("full_name", "غير معروف"),
             "student_code": student_info.get("code", ""),
             "exam_title": exam.get("title", ""),
             "status": se.get("status", ""),

@@ -296,9 +296,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: StatCard(
                 label: 'درجات منخفضة',
-                value: '${data.lowGrades.length}',
+                value: '${data.lowGradesCount}',
                 icon: Icons.assignment_late,
-                color: data.lowGrades.isEmpty ? AppTheme.success : AppTheme.warning,
+                color: data.lowGradesCount == 0 ? AppTheme.success : AppTheme.warning,
                 valueFontSize: 22,
               ),
             ),
@@ -457,7 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecentGrades(DataProvider data) {
-    final recent = data.grades.take(5).toList();
+    final recent = data.recentResults;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -495,31 +495,45 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Row(
                   children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: (g['type'] == 'exam' ? AppTheme.accent : AppTheme.success).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        g['type'] == 'exam' ? Icons.quiz : Icons.grade,
+                        size: 16,
+                        color: g['type'] == 'exam' ? AppTheme.accent : AppTheme.success,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(g.examName, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 13, fontWeight: FontWeight.w600)),
-                          Text(g.subject, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11)),
+                          Text(g['name'] ?? '', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(g['subject'] ?? '', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11)),
                         ],
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: g.percentage >= 75
+                        color: (g['percentage'] as double) >= 75
                             ? AppTheme.success.withValues(alpha: 0.1)
-                            : g.percentage >= 50
+                            : (g['percentage'] as double) >= 50
                                 ? AppTheme.warning.withValues(alpha: 0.1)
                                 : AppTheme.danger.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        '${g.score.toStringAsFixed(0)}/${g.maxScore.toStringAsFixed(0)}',
+                        '${(g['score'] as double).toStringAsFixed(0)}/${(g['max_score'] as double).toStringAsFixed(0)}',
                         style: TextStyle(
-                          color: g.percentage >= 75
+                          color: (g['percentage'] as double) >= 75
                               ? AppTheme.success
-                              : g.percentage >= 50
+                              : (g['percentage'] as double) >= 50
                                   ? AppTheme.warning
                                   : AppTheme.danger,
                           fontWeight: FontWeight.bold,

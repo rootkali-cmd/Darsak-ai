@@ -73,6 +73,43 @@ class DataProvider extends ChangeNotifier {
   List<GradeModel> get lowGrades =>
       _grades.where((g) => g.percentage < 50).toList();
 
+  int get lowGradesCount {
+    int count = _grades.where((g) => g.percentage < 50).length;
+    final examRecent = _examStats['recent_results'] as List<dynamic>? ?? [];
+    for (final r in examRecent) {
+      final pct = (r['percentage'] ?? 0).toDouble();
+      if (pct < 50) count++;
+    }
+    return count;
+  }
+
+  List<Map<String, dynamic>> get recentResults {
+    final results = <Map<String, dynamic>>[];
+    for (final g in _grades.take(5)) {
+      results.add({
+        'name': g.examName,
+        'subject': g.subject,
+        'score': g.score,
+        'max_score': g.maxScore,
+        'percentage': g.percentage,
+        'type': 'grade',
+      });
+    }
+    final examRecent = _examStats['recent_results'] as List<dynamic>? ?? [];
+    for (final r in examRecent) {
+      results.add({
+        'name': r['exam_title'] ?? 'اختبار',
+        'subject': 'اختبار',
+        'score': r['score'] ?? 0,
+        'max_score': r['max_score'] ?? 0,
+        'percentage': r['percentage'] ?? 0,
+        'type': 'exam',
+      });
+    }
+    results.sort((a, b) => (b['percentage'] as double).compareTo(a['percentage'] as double));
+    return results.take(2).toList();
+  }
+
   AttendanceModel? get todayAttendance {
     final today = DateTime.now().toIso8601String().split('T')[0];
     return _attendance.where((a) => a.date == today).firstOrNull;

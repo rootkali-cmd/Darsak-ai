@@ -690,11 +690,11 @@ class StudentExamService:
         # Attach student names
         student_ids = list({s["student_id"] for s in submissions if s.get("student_id")})
         if student_ids:
-            stu_res = await client.table("students").select("id, name, code").in_("id", student_ids).execute()
+            stu_res = await client.table("students").select("id, full_name, code").in_("id", student_ids).execute()
             student_map = {s["id"]: s for s in (stu_res.data or [])}
             for s in submissions:
                 student_data = student_map.get(s.get("student_id"), {})
-                s["student_name"] = student_data.get("name", "غير معروف")
+                s["student_name"] = student_data.get("full_name", "غير معروف")
                 s["student_code"] = student_data.get("code", "")
         return submissions
 
