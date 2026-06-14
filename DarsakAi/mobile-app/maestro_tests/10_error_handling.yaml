@@ -1,0 +1,63 @@
+# Error Handling & Edge Cases
+
+appId: com.darsak.ai
+---
+# ===== Test: Login with wrong credentials =====
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "تسجيل دخول الطالب مباشرة"
+    timeout: 15000
+
+- tapOn:
+    text: "تسجيل دخول الطالب مباشرة"
+
+- tapOn:
+    text: "كود الطالب"
+
+- inputText: "WRONG001"
+
+- tapOn:
+    text: "PIN"
+
+- inputText: "000000"
+
+# Dismiss keyboard before tapping login
+- tapOn:
+    text: "تسجيل دخول الطالب"
+
+- tapOn:
+    text: "تسجيل الدخول"
+
+- extendedWaitUntil:
+    visible:
+      text: "الكود أو كلمة المرور غير صحيحة"
+    timeout: 10000
+
+# ===== Test: Teacher code validation =====
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "الاتصال بالمعلم"
+    timeout: 15000
+
+- tapOn:
+    text: "اتصال"
+
+- assertVisible:
+    text: "أدخل كود المعلم"
+
+- tapOn:
+    text: "كود المعلم"
+
+- inputText: "INVALID"
+
+- tapOn:
+    text: "اتصال"
+
+- extendedWaitUntil:
+    visible:
+      text: "كود المعلم غير صحيح"
+    timeout: 10000

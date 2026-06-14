@@ -1,0 +1,82 @@
+﻿# --- Python ---
+__pycache__/
+*.py[cod]
+*.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+coverage/
+htmlcov/
+
+# --- Secrets & Config ---
+.env
+.env.local
+.env*.local
+.env.production
+*.log
+
+# --- Node.js ---
+node_modules/
+.next/
+out/
+
+# --- Flutter / Dart ---
+*.class
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+app.*.symbols
+app.*.map.json
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# --- Project-specific ---
+darsak_db/
+darsak_accounts_db/
+accounts_app/
+desktop_app/build/
+desktop_app/.dart_tool/
+mobile-app/build/
+mobile-app/.dart_tool/
+mobile-app/android/.gradle/
+mobile-app/android/build/
+mobile-app/ios/
+teacher_mobile_v2/build/
+teacher_mobile_v2/.dart_tool/
+teacher_mobile_v2/android/.gradle/
+teacher_mobile_v2/android/build/
+teacher_mobile_v2/ios/
+web-portal/.vercel
+web-portal/public/DarsakAI-Student.aab
+
+# --- Zip files ---
+*.zip
+*.apk
+!web-portal/public/teacher-v2.apk
+!web-portal/public/student.apk
+
+# --- Screenshots ---
+*.png
+
+# --- Testing ---
+testsprite_tests/tmp/config.json
+.pytest_cache/
+.vercel

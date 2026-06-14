@@ -1,0 +1,73 @@
+from pydantic import BaseModel, Field
+from uuid import UUID
+from datetime import datetime
+
+
+PIN_PATTERN = r'^[A-Za-z0-9]{6,8}$'
+
+
+class StudentCreate(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=255)
+    code: str | None = None
+    phone: str | None = None
+    parent_phone: str | None = None
+    grade_level: str | None = None
+    group_id: str | None = None
+    pin: str | None = Field(None, min_length=6, max_length=8, pattern=PIN_PATTERN)
+
+
+class StudentUpdate(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    parent_phone: str | None = None
+    grade_level: str | None = None
+    group_id: str | None = None
+    pin: str | None = Field(None, min_length=6, max_length=8, pattern=PIN_PATTERN)
+
+
+class StudentPinUpdate(BaseModel):
+    pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
+
+
+class StudentResponse(BaseModel):
+    id: UUID
+    code: str
+    full_name: str
+    phone: str | None = None
+    parent_phone: str | None = None
+    grade_level: str | None = None
+    group_id: str | None = None
+    teacher_id: UUID
+    has_pin: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TeacherVerifyRequest(BaseModel):
+    teacher_code: str
+
+
+class TeacherVerifyResponse(BaseModel):
+    teacher_id: UUID
+    teacher_code: str
+    teacher_name: str
+
+
+class StudentLogin(BaseModel):
+    code: str
+    pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
+    teacher_code: str | None = None
+
+
+class StudentTokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str | None = None
+    token_type: str = "bearer"
+    student_id: UUID
+    student_code: str
+
+
+class StudentTokenRefresh(BaseModel):
+    refresh_token: str

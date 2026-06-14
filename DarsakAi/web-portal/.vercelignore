@@ -1,0 +1,12 @@
+public/DarsakAI-Student.apk
+public/DarsakAI-Student.aab
+public/DarsakAI-Setup.exe
+public/DarsakAI-Linux.tar.gz
+public/DarsakAI-Windows.zip
+node_modules/
+.next/
+../teacher_mobile/
+../teacher_mobile_v2/
+../backend/
+../backend_v2/
+../.git/

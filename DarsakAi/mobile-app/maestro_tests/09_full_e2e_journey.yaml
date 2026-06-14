@@ -1,0 +1,146 @@
+# Full E2E Journey Test
+# Launch → Login → Home → Drawer screens → Theme toggle
+
+appId: com.darsak.ai
+---
+# ===== Phase 1: App Launch =====
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "الاتصال بالمعلم"
+    timeout: 15000
+
+# ===== Phase 2: Skip to Login =====
+- tapOn:
+    text: "تسجيل دخول الطالب مباشرة"
+
+- extendedWaitUntil:
+    visible:
+      text: "كود الطالب"
+    timeout: 5000
+
+# ===== Phase 3: Login =====
+- tapOn:
+    text: "كود الطالب"
+
+- inputText: "ST000001"
+
+- tapOn:
+    text: "PIN"
+
+- inputText: "123456"
+
+- tapOn:
+    text: "تسجيل دخول الطالب"
+
+- tapOn:
+    text: "تسجيل الدخول"
+
+- extendedWaitUntil:
+    visible:
+      text: "ST000001"
+    timeout: 15000
+
+# ===== Phase 4: Verify Home =====
+- assertVisible:
+    text: "ST000001"
+
+- assertVisible:
+    text: "المعدل"
+
+- assertVisible:
+    text: "الحضور"
+
+# ===== Phase 5: Exams via drawer =====
+- tapOn:
+    text: "?"
+
+- extendedWaitUntil:
+    visible:
+      text: "الاختبارات"
+    timeout: 5000
+
+- tapOn:
+    text: "الاختبارات"
+
+- extendedWaitUntil:
+    visible:
+      text: "الاختبارات المتاحة"
+    timeout: 5000
+
+- pressKey: Back
+
+# ===== Phase 6: Subscription via drawer =====
+- tapOn:
+    text: "?"
+
+- extendedWaitUntil:
+    visible:
+      text: "الاشتراك"
+    timeout: 5000
+
+- tapOn:
+    text: "الاشتراك"
+
+- extendedWaitUntil:
+    visible:
+      text: "تفعيل باشتراك"
+    timeout: 5000
+
+- pressKey: Back
+
+# ===== Phase 7: Profile + Theme toggle =====
+- tapOn:
+    text: "?"
+
+- extendedWaitUntil:
+    visible:
+      text: "الملف الشخصي"
+    timeout: 5000
+
+- tapOn:
+    text: "الملف الشخصي"
+
+- extendedWaitUntil:
+    visible:
+      text: "الوضع الداكن"
+    timeout: 5000
+
+- tapOn:
+    text: "الوضع الداكن"
+
+- extendedWaitUntil:
+    visible:
+      text: "الوضع الفاتح"
+    timeout: 3000
+
+- tapOn:
+    text: "الوضع الفاتح"
+
+- extendedWaitUntil:
+    visible:
+      text: "الوضع الداكن"
+    timeout: 3000
+
+# ===== Phase 8: PIN Change Dialog =====
+- tapOn:
+    text: "تغيير الرقم السري"
+
+- extendedWaitUntil:
+    visible:
+      text: "PIN الحالي"
+    timeout: 3000
+
+- tapOn:
+    text: "إلغاء"
+
+- pressKey: Back
+
+- extendedWaitUntil:
+    visible:
+      text: "ST000001"
+    timeout: 5000
+
+- assertVisible:
+    text: "ST000001"

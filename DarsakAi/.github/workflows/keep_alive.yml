@@ -1,0 +1,25 @@
+name: Health Check
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Backend Health
+        run: |
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-backend.fly.dev/health)
+          echo "Backend health: $CODE"
+          [ "$CODE" = "200" ] || exit 1
+      - name: Check Website
+        run: |
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-ai.vercel.app)
+          echo "Website: $CODE"
+          [ "$CODE" = "200" ] || exit 1
+      - name: Check Telegram Bot
+        run: |
+          CODE=$(curl -sSf -o /dev/null -w "%{http_code}" --max-time 10 https://darsak-backend.fly.dev/api/telegram-status)
+          echo "Telegram status: $CODE"
+          [ "$CODE" = "200" ] || exit 1

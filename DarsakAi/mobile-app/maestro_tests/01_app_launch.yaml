@@ -1,0 +1,39 @@
+# App Launch & Teacher Connect Screen Test
+
+appId: com.darsak.ai
+---
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "الاتصال بالمعلم"
+    timeout: 5000
+
+- assertVisible:
+    text: "الاتصال بالمعلم"
+
+- assertVisible:
+    text: "امسح باركود المعلم أو أدخل الكود يدوياً"
+
+- assertVisible:
+    text: "اتصال"
+
+- assertVisible:
+    text: "تسجيل دخول الطالب مباشرة"
+
+- tapOn:
+    text: "اتصال"
+
+- assertVisible:
+    text: "أدخل كود المعلم"
+
+- tapOn:
+    text: "تسجيل دخول الطالب مباشرة"
+
+- extendedWaitUntil:
+    visible:
+      text: "تسجيل دخول الطالب"
+    timeout: 3000
+
+- assertVisible:
+    text: "تسجيل دخول الطالب"

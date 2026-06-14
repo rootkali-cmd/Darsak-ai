@@ -1,0 +1,51 @@
+# Student Login - Correct credentials → Home Screen
+
+appId: com.darsak.ai
+---
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "الاتصال بالمعلم"
+    timeout: 15000
+
+# Enter teacher code
+- tapOn:
+    text: "كود المعلم"
+
+- inputText: "TCH-228A5540"
+
+- tapOn:
+    text: "اتصال"
+
+- extendedWaitUntil:
+    visible:
+      text: "كود الطالب"
+    timeout: 5000
+
+- tapOn:
+    text: "كود الطالب"
+
+- inputText: "ST000001"
+
+- tapOn:
+    text: "PIN"
+
+- inputText: "123456"
+
+# Close keyboard
+- tapOn:
+    text: "تسجيل دخول الطالب"
+
+# Tap login button
+- tapOn:
+    text: "تسجيل الدخول"
+
+# Wait for API call + navigation
+- extendedWaitUntil:
+    visible:
+      text: "ST000001"
+    timeout: 30000
+
+- assertVisible:
+    text: "ST000001"

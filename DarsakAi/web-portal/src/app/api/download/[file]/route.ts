@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+const REPO = 'rootkali-cmd/Darsak-ai'
+
+// Map each downloadable filename to its GitHub release tag.
+// Update this map when adding new releases or files.
+const FILE_RELEASE_MAP: Record<string, string> = {
+  // Teacher app
+  'DarsakAI-Teacher-v2.0.1.apk': 'v2.0.1',
+  'DarsakAI-Teacher-v1.4.2.apk': 'v1.4.2',
+  'DarsakAI-Teacher-v1.4.1.apk': 'v1.4.1',
+  'DarsakAI-Teacher-v1.4.0.apk': 'v1.4.0',
+  'DarsakAI-Teacher-v1.3.13.apk': 'v1.3.13',
+  'DarsakAI-Teacher-v1.3.12.apk': 'v1.3.12',
+  'DarsakAI-Teacher-v1.3.11.apk': 'v1.3.11',
+  'DarsakAI-Teacher-v1.3.10.apk': 'v1.3.10',
+  'DarsakAI-Teacher-v1.3.9.apk': 'v1.3.9',
+  'DarsakAI-Teacher-v1.3.8.apk': 'v1.3.8',
+  'DarsakAI-Teacher-v1.3.7.apk': 'v1.3.7',
+  'DarsakAI-Teacher-v1.3.6.apk': 'v1.3.6',
+  'DarsakAI-Teacher-v1.3.5.apk': 'v1.3.5',
+  'DarsakAI-Teacher-v1.3.4.apk': 'v1.3.4',
+  'DarsakAI-Teacher-v1.3.3.apk': 'v1.3.3',
+  'DarsakAI-Teacher-v1.3.2.apk': 'v1.3.2',
+  'DarsakAI-Teacher-v1.3.1.apk': 'v1.3.1',
+  'DarsakAI-Teacher-v1.3.0.apk': 'v1.3.0',
+  'DarsakAI-Teacher-v1.2.9.apk': 'v1.2.9',
+  'DarsakAI-Teacher-v1.2.8.apk': 'v1.2.8',
+  'DarsakAI-Teacher-v1.2.7.apk': 'v1.2.7',
+  'DarsakAI-Teacher-v1.2.6.apk': 'v1.2.6',
+
+  // Student app — last updated in v1.0.0 release
+  'DarsakAI-Student.apk': 'v1.0.0',
+
+  // Desktop app
+  'DarsakAI-Setup.exe': 'v1.0.0',
+  'DarsakAI-Windows.zip': 'v1.0.0',
+}
+
+const DEFAULT_TAG = 'v1.0.0'
+
+/**
+ * Redirect to GitHub releases for direct download.
+ * GitHub sends the file with proper MIME type and Content-Disposition.
+ * This avoids Vercel serverless function timeout on large files (60+ MB).
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { file: string } }
+) {
+  const file = params.file
+
+  if (!file || !file.match(/^[\w\-\.\+]+$/)) {
+    return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
+  }
+
+  const releaseTag = FILE_RELEASE_MAP[file] || DEFAULT_TAG
+  const githubUrl = `https://github.com/${REPO}/releases/download/${releaseTag}/${encodeURIComponent(file)}`
+
+  // 302 redirect - the browser will download directly from GitHub
+  return NextResponse.redirect(githubUrl, { status: 302 })
+}

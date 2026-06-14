@@ -1,0 +1,22 @@
+# Home Dashboard Test
+# Tests: Home screen elements
+
+appId: com.darsak.ai
+---
+# Login first
+- runFlow: shared_login.yaml
+
+# ===== Verify home screen elements =====
+- assertVisible:
+    text: "ST000001"
+
+- assertVisible:
+    text: "المعدل"
+
+- assertVisible:
+    text: "الحضور"
+
+- assertVisible:
+    text: "الشهر الحالي"
+
+- takeScreenshot: home_dashboard.png

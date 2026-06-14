@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.env.local
+.env*.local
+.DS_Store
+*.log
+public/DarsakAI.apk
+public/DarsakAI-*.apk
+public/DarsakAI-Setup.exe
+public/DarsakAI-Windows.zip
+public/DarsakAI-Linux.tar.gz
+public/bundle/
+.vercel
+.env.vercel

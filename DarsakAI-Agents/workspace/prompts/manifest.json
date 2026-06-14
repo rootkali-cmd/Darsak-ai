@@ -1,0 +1,55 @@
+{
+  "prompts": [
+    {
+      "name": "1A_architect",
+      "file": "1A_architect.md",
+      "size": 2716
+    },
+    {
+      "name": "1B_threat_model",
+      "file": "1B_threat_model.md",
+      "size": 2180
+    },
+    {
+      "name": "1B_constraints",
+      "file": "1B_constraints.md",
+      "size": 2026
+    },
+    {
+      "name": "1C_platform",
+      "file": "1C_platform.md",
+      "size": 2548
+    },
+    {
+      "name": "2A_backend",
+      "file": "2A_backend.md",
+      "size": 3406
+    },
+    {
+      "name": "2B_database",
+      "file": "2B_database.md",
+      "size": 2892
+    },
+    {
+      "name": "2C_contract",
+      "file": "2C_contract.md",
+      "size": 1290
+    },
+    {
+      "name": "3A_code_review",
+      "file": "3A_code_review.md",
+      "size": 882
+    },
+    {
+      "name": "3B_unit_tests",
+      "file": "3B_unit_tests.md",
+      "size": 915
+    },
+    {
+      "name": "3C_contract_tests",
+      "file": "3C_contract_tests.md",
+      "size": 946
+    }
+  ],
+  "total": 10
+}

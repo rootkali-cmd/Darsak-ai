@@ -1,0 +1,132 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  CalendarCheck,
+  GraduationCap,
+  Receipt,
+  QrCode,
+  Download,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  UserCog,
+  CreditCard,
+} from 'lucide-react'
+import { auth } from '@/lib/auth'
+import { api } from '@/lib/api'
+
+const navItems = [
+  { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/dashboard/students', label: 'الطلاب', icon: Users },
+  { href: '/dashboard/groups', label: 'المجموعات', icon: BookOpen },
+  { href: '/dashboard/attendance', label: 'الحضور', icon: CalendarCheck },
+  { href: '/dashboard/grades', label: 'الدرجات', icon: GraduationCap },
+  { href: '/dashboard/invoices', label: 'الفواتير', icon: Receipt },
+  { href: '/dashboard/qr', label: 'QR Code', icon: QrCode },
+  { href: '/dashboard/downloads', label: 'التطبيقات', icon: Download },
+  { href: '/dashboard/subscription', label: 'الاشتراكات', icon: CreditCard },
+  { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
+]
+
+export function Sidebar() {
+  const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleLogout = async () => {
+    if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
+      try {
+        await api.post('/auth/logout')
+      } catch {
+        // proceed with client-side logout even if server call fails
+      }
+      auth.clearTokens()
+      window.location.href = '/login'
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="lg:hidden fixed top-3 right-3 z-50 p-2 rounded-xl bg-slate-900/90 border border-white/[0.08] backdrop-blur-sm text-white"
+      >
+        {isOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            onClick={() => setIsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <aside
+        className={`fixed top-0 right-0 h-full w-64 z-50 transform transition-transform duration-300 border-l border-white/[0.08] bg-slate-900/90 backdrop-blur-md ${
+          isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div className="flex flex-col h-full">
+          <div className="p-5 border-b border-white/[0.08]">
+            <Link href="/dashboard" className="flex items-center gap-2.5">
+              <span className="text-indigo-400 font-black text-lg" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                DARSAK AI
+              </span>
+            </Link>
+          </div>
+
+          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-500/10 text-white font-medium border-r-2 border-indigo-400'
+                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+
+          <div className="p-3 border-t border-white/[0.08] space-y-0.5">
+            <Link
+              href="/dashboard/assistants"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-400 hover:text-white hover:bg-white/[0.04] transition-colors rounded-xl"
+            >
+              <UserCog size={18} />
+              <span>المساعدون</span>
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors rounded-xl"
+            >
+              <LogOut size={18} />
+              <span>تسجيل الخروج</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
+  )
+}

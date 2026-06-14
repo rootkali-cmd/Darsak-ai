@@ -1,0 +1,27 @@
+# Subscription Screen Test
+
+appId: com.darsak.ai
+---
+- runFlow: shared_login.yaml
+
+# Open drawer
+- tapOn:
+    text: "?"
+
+- extendedWaitUntil:
+    visible:
+      text: "الاشتراك"
+    timeout: 5000
+
+- tapOn:
+    text: "الاشتراك"
+
+- extendedWaitUntil:
+    visible:
+      text: "تفعيل باشتراك"
+    timeout: 5000
+
+- assertVisible:
+    text: "تفعيل باشتراك"
+
+- takeScreenshot: subscription_screen.png

@@ -1,0 +1,275 @@
+'use client'
+
+import { motion } from 'framer-motion'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Check, X, Minus, Loader2, Users, Camera, XCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { Section } from '@/components/ui'
+import { attendanceApi, studentsApi, groupsApi } from '@/lib/api'
+
+export default function AttendancePage() {
+  const [selectedGroup, setSelectedGroup] = useState('')
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [attendanceRecords, setAttendanceRecords] = useState<Record<string, string>>({})
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scanStatus, setScanStatus] = useState('')
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const queryClient = useQueryClient()
+
+  const { data: students } = useQuery({
+    queryKey: ['students'],
+    queryFn: () => studentsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((s: any) => { const k = s.code || s.id; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
+  const { data: groups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => groupsApi.list().then((r) => r.data),
+    select: (data: any[]) => {
+      const seen = new Set<string>()
+      return data.filter((g: any) => { const k = g.id || g.name; if (seen.has(k)) return false; seen.add(k); return true })
+    },
+  })
+  const { data: existingAttendance } = useQuery({
+    queryKey: ['attendance', selectedDate, selectedGroup],
+    queryFn: () => attendanceApi.list({ group_id: selectedGroup || undefined, from_date: selectedDate, to_date: selectedDate }).then((r) => r.data),
+    enabled: !!selectedDate,
+  })
+  const { data: attendanceStats } = useQuery({
+    queryKey: ['attendance-stats', selectedDate, selectedGroup],
+    queryFn: () => attendanceApi.stats({ date: selectedDate, group_id: selectedGroup || undefined }).then((r) => r.data),
+  })
+
+  useEffect(() => {
+    setAttendanceRecords({})
+  }, [selectedDate, selectedGroup])
+
+  useEffect(() => {
+    if (existingAttendance && existingAttendance.length > 0) {
+      const records: Record<string, string> = {}
+      for (const rec of existingAttendance) {
+        records[rec.student_id] = rec.status
+      }
+      setAttendanceRecords(records)
+    }
+  }, [existingAttendance])
+
+  const markMutation = useMutation({
+    mutationFn: (data: { student_id: string; status: string; group_id?: string; date?: string }) => attendanceApi.mark(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance-stats', selectedDate, selectedGroup] })
+      queryClient.invalidateQueries({ queryKey: ['attendance', selectedDate, selectedGroup] })
+      toast.success('تم تسجيل الحضور ')
+    },
+    onError: () => toast.error('فشل تسجيل الحضور'),
+  })
+
+  const handleMarkAttendance = (studentId: string, status: string) => {
+    setAttendanceRecords((prev) => ({ ...prev, [studentId]: status }))
+    markMutation.mutate({ student_id: studentId, status, group_id: selectedGroup || undefined, date: selectedDate })
+  }
+
+  const startScanner = useCallback(async () => {
+    setScannerOpen(true)
+    setScanStatus('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+
+      // Use BarcodeDetector API if available
+      if ('BarcodeDetector' in window) {
+        const detector = new (window as any).BarcodeDetector({ formats: ['code_128', 'code_39', 'qr_code', 'ean_13'] })
+        scanIntervalRef.current = setInterval(async () => {
+          if (!videoRef.current || videoRef.current.paused) return
+          try {
+            const barcodes = await detector.detect(videoRef.current)
+            if (barcodes.length > 0) {
+              const code = barcodes[0].rawValue
+              handleBarcodeScan(code)
+            }
+          } catch (_) {}
+        }, 300)
+      } else {
+        setScanStatus('المتصفح لا يدعم المسح. جرب Chrome')
+      }
+    } catch (err) {
+      setScanStatus('لا يمكن الوصول للكاميرا. تأكد من الإذن')
+    }
+  }, [])
+
+  const stopScanner = useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    setScannerOpen(false)
+    setScanStatus('')
+  }, [])
+
+  const handleBarcodeScan = (code: string) => {
+    const cleanCode = code.trim().toUpperCase()
+    // Find student by code
+    const student = students?.find((s: any) => s.code?.toUpperCase() === cleanCode)
+    if (student) {
+      handleMarkAttendance(student.id, 'present')
+      setScanStatus(`✓ ${student.full_name} - حاضر`)
+      toast.success(`${student.full_name} - تم تسجيل الحضور`)
+    } else {
+      setScanStatus(`✗ طالب غير مسجل: ${cleanCode}`)
+      toast.error(`طالب بالكود ${cleanCode} غير موجود`)
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current)
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
+    }
+  }, [])
+
+  const filteredStudents = students?.filter((s: any) => !selectedGroup || s.group_id === selectedGroup)
+
+  const statusConfig = {
+    present: { icon: Check, activeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', label: 'حاضر' },
+    absent: { icon: X, activeClass: 'bg-red-500/20 text-red-400 border-red-500/30', label: 'غائب' },
+    cancelled: { icon: Minus, activeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/30', label: 'ملغي' },
+  }
+
+  return (
+    <div className="space-y-6">
+
+      <Section>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">الحضور والغياب</h1>
+            <p className="text-slate-400 mt-1">تسجيل ومتابعة حضور الطلاب</p>
+          </div>
+          <motion.button
+            onClick={scannerOpen ? stopScanner : startScanner}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${scannerOpen ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30'}`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {scannerOpen ? <XCircle size={18} /> : <Camera size={18} />}
+            {scannerOpen ? 'إيقاف المسح' : 'مسح الباركود'}
+          </motion.button>
+        </div>
+      </Section>
+
+      {/* Scanner Modal */}
+      {scannerOpen && (
+        <Section delay={0}>
+          <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
+            <div className="relative max-w-lg mx-auto">
+              <video ref={videoRef} className="w-full rounded-xl bg-black" autoPlay playsInline muted />
+              {/* Scan overlay */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-64 h-40 border-2 border-indigo-500 rounded-2xl" />
+              </div>
+              {scanStatus && (
+                <div className={`mt-3 text-center text-sm font-medium ${scanStatus.startsWith('✓') ? 'text-emerald-400' : scanStatus.startsWith('✗') ? 'text-red-400' : 'text-amber-400'}`}>
+                  {scanStatus}
+                </div>
+              )}
+              <p className="text-xs text-slate-500 text-center mt-2">وجّه الكاميرا نحو باركود الطالب</p>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      <Section delay={0.1}>
+        <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-xs text-slate-400 mb-1.5">المجموعة</label>
+              <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white outline-none focus:border-indigo-500/50 transition-colors">
+                <option value="" className="bg-[#1E293B]">جميع المجموعات</option>
+                {groups?.map((g: any) => <option key={g.id} value={g.id} className="bg-[#1E293B]">{g.name}</option>)}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-slate-400 mb-1.5">التاريخ</label>
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]" />
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {attendanceStats && (
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <Section delay={0.2}>
+            <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] border-l-4 border-l-emerald-500 rounded-2xl p-5 text-center">
+              <div className="text-2xl font-bold text-emerald-400">{attendanceStats.present}</div>
+              <p className="text-xs text-slate-400 mt-1">حاضر</p>
+            </div>
+          </Section>
+          <Section delay={0.3}>
+            <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] border-l-4 border-l-red-500 rounded-2xl p-5 text-center">
+              <div className="text-2xl font-bold text-red-400">{attendanceStats.absent}</div>
+              <p className="text-xs text-slate-400 mt-1">غائب</p>
+            </div>
+          </Section>
+          <Section delay={0.4}>
+            <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] border-l-4 border-l-amber-500 rounded-2xl p-5 text-center">
+              <div className="text-2xl font-bold text-amber-400">{attendanceStats.cancelled}</div>
+              <p className="text-xs text-slate-400 mt-1">ملغي</p>
+            </div>
+          </Section>
+        </div>
+      )}
+
+      <Section delay={0.3}>
+        <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5">
+          <h2 className="text-sm font-bold text-slate-400 mb-4">قائمة الطلاب</h2>
+          <div className="space-y-2">
+            {filteredStudents?.map((student: any, index: number) => {
+              const currentStatus = attendanceRecords[student.id]
+              return (
+                <div key={student.id} className="flex items-center justify-between p-3 border border-white/[0.06] rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                      <span className="text-indigo-400 font-bold text-sm">{student.full_name.charAt(0)}</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{student.full_name}</p>
+                      <p className="text-xs text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{student.code}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {Object.entries(statusConfig).map(([status, config]) => {
+                      const Icon = config.icon
+                      const isActive = currentStatus === status
+                      return (
+                        <button key={status} onClick={() => handleMarkAttendance(student.id, status)} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs border rounded-lg transition-colors ${isActive ? config.activeClass : 'text-slate-500 border-white/[0.06] hover:border-indigo-500/50 hover:text-indigo-400'}`}>
+                          <Icon size={14} />
+                          <span className="hidden sm:inline">{config.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {(!filteredStudents || filteredStudents.length === 0) && <div className="text-center py-8 text-slate-500">لا يوجد طلاب</div>}
+        </div>
+      </Section>
+    </div>
+  )
+}

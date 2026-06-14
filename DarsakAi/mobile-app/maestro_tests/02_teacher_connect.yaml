@@ -1,0 +1,38 @@
+# Teacher Connect - Enter Code & Navigate to Login
+
+appId: com.darsak.ai
+---
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "الاتصال بالمعلم"
+    timeout: 5000
+
+# Enter real teacher code
+- tapOn:
+    text: "كود المعلم"
+
+- inputText: "TCH-228A5540"
+
+- tapOn:
+    text: "اتصال"
+
+# App navigates directly to login screen after valid teacher code
+- extendedWaitUntil:
+    visible:
+      text: "تسجيل دخول الطالب"
+    timeout: 5000
+
+# Verify login screen with teacher code pre-filled
+- assertVisible:
+    text: "مرحباً بك في DarsakAI"
+
+- assertVisible:
+    text: "كود الطالب"
+
+- assertVisible:
+    text: "PIN"
+
+- assertVisible:
+    text: "تسجيل الدخول"

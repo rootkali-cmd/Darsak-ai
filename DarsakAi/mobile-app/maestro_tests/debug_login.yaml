@@ -1,0 +1,51 @@
+# Login test - switch keyboard to English for numeric input
+appId: com.darsak.ai
+---
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "الاتصال بالمعلم"
+    timeout: 15000
+
+- tapOn:
+    text: "تسجيل دخول الطالب مباشرة"
+
+- extendedWaitUntil:
+    visible:
+      text: "كود الطالب"
+    timeout: 5000
+
+# Enter code
+- tapOn:
+    text: "كود الطالب"
+
+- inputText: "ST000001"
+
+# Enter PIN - keyboard should type in English for numbers
+- tapOn:
+    text: "PIN"
+
+- inputText: "123456"
+
+# Close keyboard by tapping on the title
+- tapOn:
+    text: "تسجيل دخول الطالب"
+
+- takeScreenshot: before_tap.png
+
+- tapOn:
+    text: "تسجيل الدخول"
+
+- takeScreenshot: after_tap.png
+
+- waitForAnimationToEnd
+
+- takeScreenshot: after_wait.png
+
+- extendedWaitUntil:
+    visible:
+      text: "ST000001"
+    timeout: 30000
+
+- takeScreenshot: final.png

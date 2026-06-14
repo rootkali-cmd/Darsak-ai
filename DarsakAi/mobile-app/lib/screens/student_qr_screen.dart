@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:barcode_widget/barcode_widget.dart';
+import '../providers/auth_provider.dart';
+import '../core/theme.dart';
+
+class StudentQrScreen extends StatelessWidget {
+  const StudentQrScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final student = auth.student;
+    final studentCode = student?.code ?? '';
+    final studentName = student?.fullName ?? 'طالب';
+
+    return Scaffold(
+      appBar: AppBar(
+        foregroundColor: Colors.white,
+        title: const Text('كود الحضور'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: AppColors.headerGradient(context),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border(context)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppTheme.accent.withValues(alpha: 0.15),
+                        borderRadius: const BorderRadius.all(Radius.circular(14)),
+                      ),
+                      child: const Icon(Icons.person, color: AppTheme.accent, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            studentName,
+                            style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            studentCode,
+                            style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accent.withValues(alpha: 0.15),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    BarcodeWidget(
+                      barcode: Barcode.code128(),
+                      data: studentCode.isNotEmpty ? studentCode : 'NO-CODE',
+                      width: 280,
+                      height: 100,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                      color: Colors.black,
+                      drawText: true,
+                    ),
+                    const SizedBox(height: 12),
+                    if (studentCode.isEmpty)
+                      const Text(
+                        'لم يتم تعيين كود بعد — تواصل مع المعلم',
+                        style: TextStyle(fontSize: 12, color: AppTheme.warning),
+                      )
+                    else
+                      Text(
+                        studentName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceHigher(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border(context)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.camera_alt, size: 20, color: AppTheme.accent),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'ارفع الباركود أمام كاميرا المدرس',
+                            style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle, size: 20, color: AppTheme.success),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'المسح تلقائي — لا حاجة للضغط على أي شيء',
+                            style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.save_alt, size: 20, color: AppColors.textSecondary(context)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'يمكنك أخذ screenshot للحفظ',
+                            style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: auth.isOnline ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: auth.isOnline ? AppTheme.success : AppTheme.warning,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      auth.isOnline ? 'متصل — الحضور يُسجل فوراً' : 'غير متصل — سيتم التسجيل لاحقاً',
+                      style: TextStyle(
+                        color: auth.isOnline ? AppTheme.success : AppTheme.warning,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

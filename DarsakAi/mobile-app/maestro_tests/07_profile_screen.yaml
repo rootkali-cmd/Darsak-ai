@@ -1,0 +1,28 @@
+# Profile Screen Test
+# Tests: Open drawer, verify profile elements
+
+appId: com.darsak.ai
+---
+- runFlow: shared_login.yaml
+
+# Open drawer by tapping the avatar initial
+- tapOn:
+    text: "?"
+
+- extendedWaitUntil:
+    visible:
+      text: "الملف الشخصي"
+    timeout: 5000
+
+- tapOn:
+    text: "الملف الشخصي"
+
+- extendedWaitUntil:
+    visible:
+      text: "الوضع الداكن"
+    timeout: 5000
+
+- assertVisible:
+    text: "الوضع الداكن"
+
+- takeScreenshot: profile_screen.png

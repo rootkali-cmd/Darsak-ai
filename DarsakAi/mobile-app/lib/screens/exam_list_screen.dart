@@ -1,0 +1,482 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
+import '../core/api_service.dart';
+import '../core/theme.dart';
+import '../services/notification_service.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/shimmer_loading.dart';
+import 'exam_take_screen.dart';
+import 'exam_result_screen.dart';
+
+class ExamListScreen extends StatefulWidget {
+  const ExamListScreen({super.key});
+
+  @override
+  State<ExamListScreen> createState() => _ExamListScreenState();
+}
+
+class _ExamListScreenState extends State<ExamListScreen> {
+  final ApiService _api = ApiService();
+  final NotificationService _notificationService = NotificationService();
+  List<dynamic> _availableExams = [];
+  List<dynamic> _myResults = [];
+  bool _isLoading = true;
+  String? _error;
+  String _tab = 'available';
+
+  bool _isLoadingData = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initNotifications();
+    _loadData();
+  }
+
+  Future<void> _initNotifications() async {
+    await _notificationService.initialize();
+  }
+
+  void _scheduleExamNotifications(List<dynamic> exams) {
+    for (final exam in exams) {
+      final examId = exam['id'] ?? '';
+      final title = exam['title'] ?? 'اختبار';
+      final deadlineStr = exam['deadline_at'];
+
+      if (deadlineStr != null) {
+        try {
+          final deadline = DateTime.parse(deadlineStr.toString().replaceFirst('Z', '+00:00'));
+          _notificationService.scheduleDeadlineReminder(
+            examId: examId,
+            examTitle: title,
+            deadlineAt: deadline,
+          );
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _loadData() async {
+    if (_isLoadingData) return;
+    _isLoadingData = true;
+    setState(() => _isLoading = true);
+    try {
+      final results = await Future.wait([
+        _api.getAvailableExams(),
+        _api.getMyExamResults(),
+      ]).timeout(const Duration(seconds: 45));
+      if (!mounted) return;
+      setState(() {
+        _availableExams = results[0];
+        _myResults = results[1];
+        _isLoading = false;
+        _error = null;
+      });
+
+      _scheduleExamNotifications(_availableExams);
+
+      try {
+        final profile = await _api.getProfile().timeout(const Duration(seconds: 10));
+        final studentId = profile['id'] ?? '';
+        if (studentId.isNotEmpty) {
+          _notificationService.startPeriodicCheck(
+            studentId: studentId,
+            checkNewExams: (sid, lastCheck) async {
+              try {
+                final response = await _api.dio.get('/exams/check-new/$sid', queryParameters: {'last_check': lastCheck});
+                return response.data is List ? response.data : [];
+              } catch (_) {
+                return [];
+              }
+            },
+            onNewExams: (newExams) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تم العثور على ${newExams.length} اختبارات جديدة'),
+                    backgroundColor: AppTheme.accent,
+                  ),
+                );
+                _loadData();
+              }
+            },
+          );
+        }
+      } catch (_) {
+        // Profile or periodic check not essential for showing exams
+      }
+    } on TimeoutException catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'تعذر الاتصال بالخادم - تأكد من اتصالك بالإنترنت';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      String detail = '';
+      if (e is DioException) {
+        detail = '${e.type}';
+        if (e.response != null) detail += ' (${e.response?.statusCode})';
+      } else {
+        detail = e.toString();
+      }
+      setState(() { _isLoading = false; _error = 'خطأ: $detail'; });
+    } finally {
+      _isLoadingData = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('الاختبارات'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const ShimmerList()
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.wifi_off, size: 48, color: AppTheme.danger.withValues(alpha: 0.5)),
+                        const SizedBox(height: 16),
+                        Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary(context))),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _loadData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة المحاولة'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Column(
+              children: [
+                _buildTabs(),
+                Expanded(
+                  child: _tab == 'available'
+                      ? _availableExams.isEmpty
+                          ? const EmptyState(
+                              icon: Icons.quiz_outlined,
+                              title: 'لا توجد اختبارات متاحة',
+                              subtitle: 'سيتم إضافة اختبارات جديدة من معلمك',
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _availableExams.length,
+                              itemBuilder: (_, i) => _buildExamCard(_availableExams[i]),
+                            )
+                      : _myResults.isEmpty
+                          ? const EmptyState(
+                              icon: Icons.assignment_turned_in_outlined,
+                              title: 'لم تخضع لأي اختبار بعد',
+                              subtitle: 'بعد حل الاختبار ستظهر نتائجك هنا',
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _myResults.length,
+                              itemBuilder: (_, i) => _buildResultCard(_myResults[i]),
+                            ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildTabs() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _tab = 'available'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _tab == 'available' ? AppTheme.accent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'الاختبارات المتاحة (${_availableExams.length})',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _tab == 'available' ? Colors.white : AppColors.textSecondary(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _tab = 'results'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _tab == 'results' ? AppTheme.accent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'نتائجي (${_myResults.length})',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _tab == 'results' ? Colors.white : AppColors.textSecondary(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExamCard(Map<String, dynamic> exam) {
+    final examId = exam['id'] ?? '';
+    final title = exam['title'] ?? 'اختبار';
+    final description = exam['description'] ?? '';
+    final duration = exam['duration_minutes'] ?? 30;
+    final totalPoints = exam['total_points'] ?? 0;
+    final deadlineAt = exam['deadline_at'];
+    final isExpired = _isDeadlineExpired(deadlineAt);
+    final deadlineText = _formatDeadline(deadlineAt);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isExpired ? AppTheme.danger.withValues(alpha: 0.4) : AppColors.border(context)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isExpired ? AppTheme.danger.withValues(alpha: 0.1) : AppTheme.accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.quiz, color: isExpired ? AppTheme.danger : AppTheme.accent, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 15)),
+                if (description.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(description, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12), maxLines: 2),
+                ],
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    _buildInfoChip(Icons.timer_outlined, '$duration دقيقة'),
+                    const SizedBox(width: 8),
+                    _buildInfoChip(Icons.star_outline, '$totalPoints نقطة'),
+                  ],
+                ),
+                if (deadlineText != null) ...[
+                  const SizedBox(height: 4),
+                  _buildInfoChip(
+                    Icons.event_outlined,
+                    deadlineText,
+                    color: isExpired ? AppTheme.danger : AppTheme.warning,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (isExpired)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text('منتهي', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold, fontSize: 13)),
+            )
+          else
+            ElevatedButton(
+              onPressed: () async {
+                final result = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => ExamTakeScreen(examId: examId, examTitle: title, durationMinutes: duration)),
+                );
+                if (result == true && context.mounted) _loadData();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.success,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('ابدأ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String text, {Color? color}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color ?? AppColors.textSecondary(context)),
+        const SizedBox(width: 4),
+        Text(text, style: TextStyle(color: color ?? AppColors.textSecondary(context), fontSize: 12)),
+      ],
+    );
+  }
+
+  bool _isDeadlineExpired(dynamic deadlineAt) {
+    if (deadlineAt == null) return false;
+    try {
+      final deadline = deadlineAt is String
+          ? DateTime.parse(deadlineAt.replaceFirst('Z', '+00:00'))
+          : deadlineAt as DateTime;
+      return DateTime.now().isAfter(deadline);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? _formatDeadline(dynamic deadlineAt) {
+    if (deadlineAt == null) return null;
+    try {
+      final deadline = deadlineAt is String
+          ? DateTime.parse(deadlineAt.replaceFirst('Z', '+00:00'))
+          : deadlineAt as DateTime;
+      final now = DateTime.now();
+      final diff = deadline.difference(now);
+      final formatted = DateFormat('yyyy-MM-dd HH:mm', 'ar').format(deadline);
+      if (diff.isNegative) {
+        return 'انتهى $formatted';
+      }
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes % 60;
+      if (hours > 24) {
+        final days = diff.inDays;
+        return 'ينتهي بعد $days يوم ($formatted)';
+      }
+      if (hours > 0) {
+        return 'ينتهي بعد $hours س $minutes د';
+      }
+      return 'ينتهي بعد $minutes دقيقة';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildResultCard(Map<String, dynamic> result) {
+    final exam = result['exam'] as Map<String, dynamic>? ?? {};
+    final title = exam['title'] ?? 'اختبار';
+    final status = result['status'] ?? 'submitted';
+    final score = result['total_score'];
+    final maxScore = result['max_score'];
+    double pct = 0;
+    if (score != null && maxScore != null && maxScore > 0) {
+      pct = (score as num).toDouble() / (maxScore as num).toDouble() * 100;
+    }
+
+    Color statusColor;
+    String statusLabel;
+    switch (status) {
+      case 'graded':
+        statusColor = AppTheme.success;
+        statusLabel = 'تم التصحيح';
+        break;
+      case 'submitted':
+        statusColor = AppTheme.warning;
+        statusLabel = 'في انتظار التصحيح';
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusLabel = 'قيد التنفيذ';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border(context)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.assignment_turned_in, color: statusColor, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 11)),
+                ),
+                if (status == 'graded') ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text('$score / $maxScore', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      Text(
+                        '(${pct.toStringAsFixed(1)}%)',
+                        style: TextStyle(color: pct >= 50 ? AppTheme.success : AppTheme.danger, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (status == 'graded')
+            IconButton(
+              icon: Icon(Icons.chevron_left, color: AppColors.textSecondary(context)),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ExamResultScreen(studentExamId: result['id'] ?? '', examTitle: title)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

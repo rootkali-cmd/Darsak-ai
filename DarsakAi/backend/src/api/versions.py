@@ -1,0 +1,429 @@
+from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.responses import RedirectResponse, FileResponse
+from datetime import datetime, timezone
+import logging
+import json
+import os
+
+from src.utils.dependencies import get_current_admin
+
+logger = logging.getLogger("darsak")
+router = APIRouter(prefix="", tags=["Versions"])
+
+CHANNELS: dict[str, dict[str, dict]] = {
+    "stable": {
+        "windows": {
+            "version": "1.2.0",
+            "build": 85,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 100,
+            "sha256": None,
+            "changelog": [
+                "إصلاح مشكلة عدم الاتصال بالإنترنت (غير متصل)",
+                "إصلاح خطأ StructuredLogger في بدء التشغيل",
+                "تحسين نافذة الدفع - واتساب + فودافون كاش",
+                "إصلاح صفحة الأسعار - رقم واتساب صحيح",
+                "تحسين الأداء والاستقرار",
+            ],
+            "changelog_en": [
+                "Fixed offline detection issue (غير متصل)",
+                "Fixed StructuredLogger startup error",
+                "Improved payment dialog - WhatsApp + Vodafone Cash",
+                "Fixed pricing page WhatsApp number",
+                "Performance and stability improvements",
+            ],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup.exe",
+            "size_mb": 14,
+            "release_date": "2026-05-26",
+        },
+        "linux": {
+            "version": "1.2.0",
+            "build": 85,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 100,
+            "sha256": None,
+            "changelog": [
+                "إصلاح مشكلة عدم الاتصال بالإنترنت (غير متصل)",
+                "إصلاح خطأ StructuredLogger في بدء التشغيل",
+                "تحسين نافذة الدفع - واتساب + فودافون كاش",
+                "تحسين الأداء والاستقرار",
+            ],
+            "changelog_en": [
+                "Fixed offline detection issue (غير متصل)",
+                "Fixed StructuredLogger startup error",
+                "Improved payment dialog - WhatsApp + Vodafone Cash",
+                "Performance and stability improvements",
+            ],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
+            "size_mb": 13,
+            "release_date": "2026-05-26",
+        },
+        "android": {
+            "version": "2.1.1",
+            "build": 37,
+            "mandatory": False,
+            "min_supported_version": "2.0.0",
+            "rollout": 100,
+            "sha256": None,
+            "changelog": [
+                "إصلاح الوضع الفاتح والداكن",
+                "نظام حظر المحاولات",
+                "إصلاح تسجيل دخول الطلاب",
+                "تحسين رسائل الخطأ بالعربية",
+                "إصلاح مشكلة التحديث المتكرر",
+                "تسريع فتح التطبيق",
+                "إصلاح overflow error في الكروت",
+                "إصلاح الكاميرا والباركود",
+                "تصميم جديد لصفحة الهبوط",
+            ],
+            "changelog_en": [
+                "Fixed light and dark mode",
+                "Rate limiting and ban system",
+                "Fixed student login",
+                "Improved Arabic error messages",
+                "Fixed repeated update notification",
+                "Faster app startup",
+                "Fixed overflow error in cards",
+                "Fixed camera and barcode scanning",
+                "New landing page design",
+            ],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.1.1/teacher-v2.1.1.apk",
+            "size_mb": 75,
+            "release_date": "2026-06-09",
+        },
+        "accounts": {
+            "version": "1.0.0",
+            "build": 1,
+            "mandatory": False,
+            "min_supported_version": None,
+            "rollout": 100,
+            "sha256": None,
+            "changelog": [],
+            "changelog_en": [],
+            "download_url": None,
+            "size_mb": None,
+            "release_date": "2026-05-25",
+        },
+    },
+    "beta": {
+        "windows": {
+            "version": "1.3.0-beta.1",
+            "build": 70,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 25,
+            "sha256": None,
+            "changelog": [
+                "اختبار تجريبي v1.3.0",
+                "تحسينات الأمان",
+                "إصلاح أخطاء",
+            ],
+            "changelog_en": [
+                "Beta test v1.3.0",
+                "Security improvements",
+                "Bug fixes",
+            ],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup.exe",
+            "size_mb": 14,
+            "release_date": "2026-05-25",
+        },
+        "linux": {
+            "version": "1.3.0-beta.1",
+            "build": 70,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 25,
+            "sha256": None,
+            "changelog": [
+                "اختبار تجريبي v1.3.0",
+                "تحسينات الأمان",
+            ],
+            "changelog_en": [
+                "Beta test v1.3.0",
+                "Security improvements",
+            ],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
+            "size_mb": 13,
+            "release_date": "2026-05-25",
+        },
+        "android": {
+            "version": "1.2.0",
+            "build": 3,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 25,
+            "sha256": None,
+            "changelog": [
+                "مساعد AI ذكي + إصلاحات الدفع",
+                "اختبار تجريبي",
+            ],
+            "changelog_en": [
+                "Smart AI assistant + payment fixes",
+                "Beta test",
+            ],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Student-v1.2.0+3-universal.apk",
+            "size_mb": 82,
+            "release_date": "2026-05-26",
+        },
+        "accounts": {
+            "version": "1.0.0",
+            "build": 1,
+            "mandatory": False,
+            "min_supported_version": None,
+            "rollout": 100,
+            "sha256": None,
+            "changelog": [],
+            "changelog_en": [],
+            "download_url": None,
+            "size_mb": None,
+            "release_date": "2026-05-25",
+        },
+    },
+    "dev": {
+        "windows": {
+            "version": "1.4.0-dev",
+            "build": 80,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 10,
+            "sha256": None,
+            "changelog": ["تطوير مستمر"],
+            "changelog_en": ["Continuous development"],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup.exe",
+            "size_mb": 14,
+            "release_date": "2026-05-25",
+        },
+        "linux": {
+            "version": "1.4.0-dev",
+            "build": 80,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 10,
+            "sha256": None,
+            "changelog": ["تطوير مستمر"],
+            "changelog_en": ["Continuous development"],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
+            "size_mb": 13,
+            "release_date": "2026-05-25",
+        },
+        "android": {
+            "version": "1.3.0-dev",
+            "build": 7,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 10,
+            "sha256": None,
+            "changelog": ["تطوير مستمر"],
+            "changelog_en": ["Continuous development"],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Student-v1.2.0+3-universal.apk",
+            "size_mb": 82,
+            "release_date": "2026-05-26",
+        },
+    },
+    "nightly": {
+        "windows": {
+            "version": "1.5.0-nightly",
+            "build": 90,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 5,
+            "sha256": None,
+            "changelog": ["إصدار ليلي"],
+            "changelog_en": ["Nightly build"],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Setup.exe",
+            "size_mb": 14,
+            "release_date": "2026-05-25",
+        },
+        "linux": {
+            "version": "1.5.0-nightly",
+            "build": 90,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 5,
+            "sha256": None,
+            "changelog": ["إصدار ليلي"],
+            "changelog_en": ["Nightly build"],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Linux.tar.gz",
+            "size_mb": 13,
+            "release_date": "2026-05-25",
+        },
+        "android": {
+            "version": "1.4.0-nightly",
+            "build": 8,
+            "mandatory": False,
+            "min_supported_version": "1.0.0",
+            "rollout": 5,
+            "sha256": None,
+            "changelog": ["إصدار ليلي"],
+            "changelog_en": ["Nightly build"],
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/DarsakAI-Student-v1.2.0+3-universal.apk",
+            "size_mb": 82,
+            "release_date": "2026-05-26",
+        },
+        "accounts": {
+            "version": "1.0.0",
+            "build": 1,
+            "mandatory": False,
+            "min_supported_version": None,
+            "rollout": 100,
+            "sha256": None,
+            "changelog": [],
+            "changelog_en": [],
+            "download_url": None,
+            "size_mb": None,
+            "release_date": "2026-05-25",
+        },
+    },
+}
+
+CACHE: dict[str, tuple[dict, datetime]] = {}
+CACHE_TTL_SECONDS = 300
+
+
+@router.get("/versions/")
+async def get_versions():
+    return CHANNELS
+
+
+@router.get("/versions/{platform}")
+async def get_version(
+    platform: str,
+    channel: str = Query("stable", description="Release channel"),
+):
+    now = datetime.now(timezone.utc)
+
+    cache_key = f"{platform}:{channel}"
+    if cache_key in CACHE:
+        cached, timestamp = CACHE[cache_key]
+        if (now - timestamp).total_seconds() < CACHE_TTL_SECONDS:
+            return cached
+
+    channel_data = CHANNELS.get(channel)
+    if not channel_data:
+        raise HTTPException(status_code=404, detail=f"Unknown channel: {channel}")
+
+    resolved = "windows" if platform == "desktop" else platform
+    entry = channel_data.get(resolved)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Unknown platform: {platform}")
+
+    result = {**entry, "channel": channel}
+    CACHE[cache_key] = (result, now)
+    return result
+
+
+@router.get("/download/{platform}/latest")
+async def download_latest(
+    platform: str,
+    channel: str = Query("stable", description="Release channel"),
+):
+    channel_data = CHANNELS.get(channel)
+    if not channel_data:
+        raise HTTPException(status_code=404, detail=f"Unknown channel: {channel}")
+
+    resolved = "windows" if platform == "desktop" else platform
+    entry = channel_data.get(resolved)
+    if not entry or not entry.get("download_url"):
+        raise HTTPException(status_code=404, detail=f"No download available for {platform} on {channel}")
+
+    logger.info(f"Redirecting download for {platform}/{channel} -> {entry['download_url']}")
+    return RedirectResponse(url=entry["download_url"], status_code=302)
+
+
+TELEMETRY_LOG = "telemetry.jsonl"
+ANALYTICS_LOG = "analytics.jsonl"
+
+BLOCKED_VERSIONS: list[str] = []
+REMOTE_CONFIG: dict = {
+    "maintenance_mode": False,
+    "disable_updates": False,
+    "enable_beta_features": False,
+    "minimum_supported_version": "1.0.0",
+    "telemetry_enabled": True,
+    "blocked_versions": [],
+}
+
+
+@router.post("/telemetry/event")
+async def telemetry_event(data: dict):
+    try:
+        entry = {
+            "event": data.get("event"),
+            "version": data.get("version"),
+            "platform": data.get("platform"),
+            "timestamp": data.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            "error": data.get("error"),
+        }
+        with open(TELEMETRY_LOG, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+        return {"status": "ok"}
+    except Exception as e:
+        logger.warning(f"Telemetry write failed: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+@router.get("/config/client")
+async def client_config():
+    return REMOTE_CONFIG
+
+
+@router.post("/config/client")
+async def update_client_config(config: dict, admin: dict = Depends(get_current_admin)):
+    global REMOTE_CONFIG
+    mergeable_keys = {"maintenance_mode", "disable_updates", "enable_beta_features",
+                       "minimum_supported_version", "telemetry_enabled"}
+    for key, value in config.items():
+        if key in mergeable_keys:
+            REMOTE_CONFIG[key] = value
+    if "blocked_versions" in config and isinstance(config["blocked_versions"], list):
+        REMOTE_CONFIG["blocked_versions"] = config["blocked_versions"]
+    logger.info("Remote config updated: %s", REMOTE_CONFIG)
+    return {"status": "ok", "config": REMOTE_CONFIG}
+
+
+@router.get("/blocked-versions")
+async def get_blocked_versions():
+    return {"blocked_versions": REMOTE_CONFIG.get("blocked_versions", [])}
+
+
+@router.post("/blocked-versions")
+async def set_blocked_versions(data: dict, admin: dict = Depends(get_current_admin)):
+    versions = data.get("versions", [])
+    if not isinstance(versions, list):
+        raise HTTPException(status_code=400, detail="versions must be a list")
+    REMOTE_CONFIG["blocked_versions"] = versions
+    logger.info("Blocked versions updated: %s", versions)
+    return {"status": "ok", "blocked_versions": versions}
+
+
+@router.get("/instapay-barcode")
+async def get_instapay_barcode():
+    barcode_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "instapay_barcode.jpg")
+    barcode_path = os.path.normpath(barcode_path)
+    if not os.path.exists(barcode_path):
+        raise HTTPException(status_code=404, detail="InstaPay barcode not found")
+    return FileResponse(barcode_path, media_type="image/jpeg", filename="instapay_barcode.jpg")
+
+
+@router.get("/instapay-config")
+async def get_instapay_config():
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        result = client.table("instapay_config").select("barcode_url, username").eq("is_active", True).limit(1).execute()
+        rows = result.data if hasattr(result, "data") else []
+        if not rows:
+            return {
+                "barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode",
+                "username": "ahmed-mahmoud-1@instapay",
+            }
+        row = rows[0]
+        return {"barcode_url": row["barcode_url"], "username": row["username"]}
+    except Exception as e:
+        logger.error("Failed to fetch instapay config: %s", e, exc_info=True)
+        return {
+            "barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode",
+            "username": "ahmed-mahmoud-1@instapay",
+        }

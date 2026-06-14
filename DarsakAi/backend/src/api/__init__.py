@@ -1,0 +1,34 @@
+from src.api.auth import router as auth_router
+from src.api.students import router as students_router
+from src.api.groups import router as groups_router
+from src.api.attendance import router as attendance_router
+from src.api.grades import router as grades_router
+from src.api.invoices import router as invoices_router
+from src.api.qr import router as qr_router
+from src.api.sync import router as sync_router
+from src.api.student_me import router as student_me_router
+from src.api.subscriptions import router as subscriptions_router
+from src.api.versions import router as versions_router
+from src.api.webhook import router as webhook_router
+from src.api.exams import router as exams_router
+from src.api.analytics import router as analytics_router
+from src.api.audit import router as audit_router
+from src.api.dashboard import router as dashboard_router
+from src.api.lessons import router as lessons_router
+from src.api.video_analytics import router as video_analytics_router
+from src.api.whatsapp_notifications import router as whatsapp_router
+from src.api.quiz import router as quiz_router
+from src.api.admin import router as admin_router
+from src.api.subjects import router as subjects_router
+from src.api.payments import router as payments_router
+from src.api.reports import router as reports_router
+
+__all__ = [
+    "admin_router",
+    "audit_router",
+    "dashboard_router",
+    "quiz_router",
+    "subjects_router",
+    "payments_router",
+    "reports_router",
+]
