@@ -15,13 +15,31 @@ class DataProvider extends ChangeNotifier {
   bool _isOffline = false;
   String? _error;
 
-  List<GradeModel> get grades => _grades;
+  List<GradeModel> get grades => _allGrades;
+  List<GradeModel> get manualGrades => _grades;
   List<AttendanceModel> get attendance => _attendance;
   List<InvoiceModel> get invoices => _invoices;
   Map<String, dynamic> get examStats => _examStats;
   bool get isLoading => _isLoading;
   bool get isOffline => _isOffline;
   String? get error => _error;
+
+  List<GradeModel> get _allGrades {
+    final merged = <GradeModel>[..._grades];
+    final examRecent = _examStats['recent_results'] as List<dynamic>? ?? [];
+    for (final r in examRecent) {
+      merged.add(GradeModel(
+        id: r['student_exam_id']?.toString() ?? '',
+        examName: r['exam_title'] ?? 'اختبار',
+        subject: 'اختبارات',
+        score: (r['score'] ?? 0).toDouble(),
+        maxScore: (r['max_score'] ?? 0).toDouble(),
+        createdAt: DateTime.tryParse(r['submitted_at'] ?? '') ?? DateTime.now(),
+      ));
+    }
+    merged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return merged;
+  }
 
   double get attendanceRate {
     if (_attendance.isEmpty) return 0;
@@ -71,7 +89,7 @@ class DataProvider extends ChangeNotifier {
   }
 
   List<GradeModel> get lowGrades =>
-      _grades.where((g) => g.percentage < 50).toList();
+      _allGrades.where((g) => g.percentage < 50).toList();
 
   int get lowGradesCount {
     int count = _grades.where((g) => g.percentage < 50).length;
@@ -116,10 +134,22 @@ class DataProvider extends ChangeNotifier {
   }
 
   List<String> get subjects =>
-      _grades.map((g) => g.subject).toSet().toList()..sort();
+      _allGrades.map((g) => g.subject).toSet().toList()..sort();
 
   List<GradeModel> gradesBySubject(String subject) =>
-      _grades.where((g) => g.subject == subject).toList();
+      _allGrades.where((g) => g.subject == subject).toList();
+
+  List<GradeModel> get examResults {
+    final examRecent = _examStats['recent_results'] as List<dynamic>? ?? [];
+    return examRecent.map((r) => GradeModel(
+      id: r['student_exam_id']?.toString() ?? '',
+      examName: r['exam_title'] ?? 'اختبار',
+      subject: 'اختبارات',
+      score: (r['score'] ?? 0).toDouble(),
+      maxScore: (r['max_score'] ?? 0).toDouble(),
+      createdAt: DateTime.tryParse(r['submitted_at'] ?? '') ?? DateTime.now(),
+    )).toList();
+  }
 
   Future<void> loadAll() async {
     _isLoading = true;

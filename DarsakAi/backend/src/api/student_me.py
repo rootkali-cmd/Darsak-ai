@@ -287,11 +287,13 @@ async def get_my_stats(
             exam = await exam_service.get_by_id(e["exam_id"])
             recent_results.append({
                 "student_exam_id": e["id"],
+                "exam_id": e["exam_id"],
                 "exam_title": exam["title"] if exam else "Unknown",
                 "score": total,
                 "max_score": max_s,
                 "percentage": pct,
                 "submitted_at": e.get("submitted_at"),
+                "created_at": e.get("created_at") or e.get("submitted_at"),
             })
             scores.append(pct)
         avg = round(sum(scores) / len(scores), 1) if scores else 0
