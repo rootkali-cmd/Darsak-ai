@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -43,8 +44,8 @@ class ApiService {
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: AppConstants.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 60),
       headers: {'Content-Type': 'application/json'},
     ));
 
@@ -57,6 +58,18 @@ class ApiService {
         handler.next(options);
       },
       onError: (error, handler) async {
+        // Retry on SocketException (DNS/host lookup failure) up to 2 times
+        if (error.type == DioExceptionType.connectionError &&
+            error.error is SocketException) {
+          for (int i = 0; i < 2; i++) {
+            await Future.delayed(Duration(seconds: 2 * (i + 1)));
+            try {
+              final retry = await _directRequest(error.requestOptions);
+              handler.resolve(retry);
+              return;
+            } catch (_) {}
+          }
+        }
         if (error.response?.statusCode != 401) {
           handler.next(error);
           return;

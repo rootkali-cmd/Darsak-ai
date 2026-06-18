@@ -329,7 +329,7 @@ final class _GradesScreenState extends State<GradesScreen> {
                             SizedBox(
                               width: 200,
                               child: DropdownButtonFormField<String>(
-                                initialValue: _subjectFilter.isEmpty ? null : _subjectFilter,
+                                value: _subjectFilter.isEmpty ? null : _subjectFilter,
                                 decoration: const InputDecoration(labelText: 'المادة'),
                                 items: [
                                   const DropdownMenuItem(value: null, child: Text('جميع المواد')),

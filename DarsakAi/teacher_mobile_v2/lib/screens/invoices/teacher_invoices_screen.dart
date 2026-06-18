@@ -16,19 +16,17 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _allInvoices = [];
-  Map<String, String> _studentNames = {};
 
   final _tabs = const [
-    Tab(text: 'قيد المراجعة'),
+    Tab(text: 'الكل'),
     Tab(text: 'مدفوع'),
     Tab(text: 'مرفوض'),
-    Tab(text: 'الكل'),
   ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadInvoices();
   }
 
@@ -53,26 +51,6 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
         _allInvoices = (data['data'] as List).map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e)).toList();
       } else {
         _allInvoices = [];
-      }
-
-      for (final inv in _allInvoices) {
-        final sid = inv['student_id']?.toString() ?? '';
-        if (sid.isNotEmpty && !_studentNames.containsKey(sid)) {
-          final name = inv['student_name']?.toString();
-          if (name != null && name.isNotEmpty) {
-            _studentNames[sid] = name;
-          } else {
-            try {
-              final studentResp = await api.getStudent(sid);
-              final studentData = studentResp['data'];
-              if (studentData is Map<String, dynamic>) {
-                _studentNames[sid] = studentData['full_name']?.toString() ?? 'طالب';
-              }
-            } catch (_) {
-              _studentNames[sid] = 'طالب';
-            }
-          }
-        }
       }
     } catch (e) {
       _error = e.toString();
@@ -124,6 +102,8 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
         return 'انستاباي';
       case 'bank_transfer':
         return 'تحويل بنكي';
+      case 'cash':
+        return 'كاش';
       default:
         return method ?? 'غير محدد';
     }
@@ -174,7 +154,7 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
           unselectedLabelColor: GlassTheme.textSecondary(context),
           indicatorColor: AppTheme.accent,
           indicatorSize: TabBarIndicatorSize.label,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           tabs: _tabs,
         ),
       ),
@@ -204,10 +184,9 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildInvoiceList(_filteredInvoices('pending')),
+                    _buildInvoiceList(_allInvoices),
                     _buildInvoiceList(_filteredInvoices('paid')),
                     _buildInvoiceList(_filteredInvoices('rejected')),
-                    _buildInvoiceList(_allInvoices),
                   ],
                 ),
     );
@@ -225,9 +204,10 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
     }
     return RefreshIndicator(
       onRefresh: _loadInvoices,
-      child: ListView.builder(
+      child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: invoices.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (ctx, i) => _buildInvoiceCard(invoices[i]),
       ),
     );
@@ -236,7 +216,7 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
   Widget _buildInvoiceCard(Map<String, dynamic> invoice) {
     final id = invoice['id']?.toString() ?? '';
     final studentId = invoice['student_id']?.toString() ?? '';
-    final studentName = _studentNames[studentId] ?? 'طالب';
+    final studentName = invoice['student_name']?.toString() ?? 'طالب';
     final amount = invoice['amount'] ?? 0;
     final method = invoice['payment_method']?.toString() ?? '';
     final status = invoice['status']?.toString() ?? '';
@@ -247,65 +227,82 @@ class _TeacherInvoicesScreenState extends State<TeacherInvoicesScreen> with Sing
     if (createdAt.isNotEmpty) {
       try {
         final dt = DateTime.parse(createdAt);
-        dateStr = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+        dateStr = '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
       } catch (_) {
         dateStr = createdAt;
       }
     }
 
+    final statusColor = _statusColor(status);
+    final isPaid = status == 'paid' || status == 'approved';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: GlassTheme.glassCard(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: Column(children: [
           Row(children: [
-            CircleAvatar(
-              backgroundColor: _statusColor(status).withValues(alpha: 0.12),
-              child: Icon(Icons.person, color: _statusColor(status), size: 20),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                isPaid ? Icons.check_circle_outline : status == 'rejected' ? Icons.cancel_outlined : Icons.access_time_rounded,
+                color: statusColor,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(studentName, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-                const SizedBox(height: 2),
-                Text(_paymentMethodArabic(method), style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
+                const SizedBox(height: 3),
+                Text(_paymentMethodArabic(method), style: TextStyle(fontSize: 12, color: GlassTheme.textMuted(context))),
               ]),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: _statusColor(status).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text('$amount ج.م', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
+              const SizedBox(height: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(_statusArabic(status), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
               ),
-              child: Text(_statusArabic(status), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _statusColor(status))),
-            ),
+            ]),
           ]),
-          const SizedBox(height: 12),
-          Row(children: [
-            Text('$amount ج.م', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-            const Spacer(),
-            if (dateStr.isNotEmpty) Text(dateStr, style: TextStyle(fontSize: 12, color: GlassTheme.textMuted(context))),
-          ]),
+          if (dateStr.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              Icon(Icons.calendar_today_outlined, size: 14, color: GlassTheme.textMuted(context)),
+              const SizedBox(width: 6),
+              Text(dateStr, style: TextStyle(fontSize: 12, color: GlassTheme.textMuted(context))),
+            ]),
+          ],
           if (screenshotUrl != null && screenshotUrl.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               child: Image.network(
                 screenshotUrl,
-                height: 120,
+                height: 100,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => Container(
-                  height: 120,
+                  height: 100,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: GlassTheme.cardBg(context),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: GlassTheme.cardBorder(context)),
                   ),
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.broken_image_rounded, size: 36, color: GlassTheme.textMuted(context)),
+                    Icon(Icons.broken_image_rounded, size: 32, color: GlassTheme.textMuted(context)),
                     const SizedBox(height: 4),
                     Text('صورة الإيصال', style: TextStyle(fontSize: 12, color: GlassTheme.textMuted(context))),
                   ]),

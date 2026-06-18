@@ -101,7 +101,7 @@ class NotificationService {
   }) async {
     final id = (examId.hashCode.abs() % 2147483647) + 1000;
 
-    await _plugin.show(
+      await _plugin.show(
       id,
       'اختبار جديد متاح',
       description?.isNotEmpty == true
@@ -116,6 +116,12 @@ class NotificationService {
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
           sound: const RawResourceAndroidNotificationSound('notification_sound'),
+          styleInformation: BigTextStyleInformation(
+            description?.isNotEmpty == true
+                ? '$examTitle - $description'
+                : '$examTitle متاح الآن. ادخل لحله!',
+            contentTitle: 'اختبار جديد متاح',
+          ),
         ),
       ),
     );

@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:camera/camera.dart';
-import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/theme.dart';
@@ -219,134 +218,69 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen>
-    with WidgetsBindingObserver {
-  CameraController? _camera;
-  List<CameraDescription> _cameras = [];
-  final BarcodeScanner _barcodeScanner = BarcodeScanner(
-    formats: [BarcodeFormat.qrCode, BarcodeFormat.code128, BarcodeFormat.code39],
-  );
-  bool _isProcessing = false;
+class _QrScannerScreenState extends State<QrScannerScreen> {
+  MobileScannerController? _controller;
   bool _cameraReady = false;
-  String _errorMsg = '';
   bool _found = false;
-  DateTime _lastProcessed = DateTime.now();
+  String _errorMsg = '';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initCamera();
+    _initScanner();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _disposeCamera();
-    _barcodeScanner.close();
+    _controller?.dispose();
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) { _disposeCamera(); }
-    else if (state == AppLifecycleState.resumed) { _initCamera(); }
-  }
-
-  Future<void> _disposeCamera() async {
-    try { await _camera?.stopImageStream(); } catch (_) {}
-    try { await _camera?.dispose(); } catch (_) {}
-    _camera = null;
-    if (mounted) setState(() => _cameraReady = false);
-  }
-
-  Future<void> _initCamera() async {
-    if (_camera != null) return;
-    if (!mounted) return;
-
+  void _initScanner() {
     try {
-      _cameras = await availableCameras();
-      if (_cameras.isEmpty) { setState(() { _errorMsg = 'لا توجد كاميرا متاحة'; }); return; }
-
-      final cam = _cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
-        orElse: () => _cameras.first,
+      _controller = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        facing: CameraFacing.back,
+        torchEnabled: false,
       );
-
-      _camera = CameraController(
-        cam,
-        ResolutionPreset.medium,
-        imageFormatGroup: ImageFormatGroup.yuv420,
-        enableAudio: false,
-      );
-
-      await _camera!.initialize();
-      if (!mounted) return;
-
-      await _camera!.startImageStream(_processFrame);
-      if (mounted) setState(() => _cameraReady = true);
+      _controller!.start().then((_) {
+        if (mounted) setState(() => _cameraReady = true);
+      }).catchError((e) {
+        if (mounted) setState(() { _errorMsg = 'تعذر تشغيل الكاميرا: $e'; _cameraReady = false; });
+      });
     } catch (e) {
-      if (mounted) setState(() { _errorMsg = 'تعذر تشغيل الكاميرا: $e'; });
+      setState(() { _errorMsg = 'تعذر تشغيل الكاميرا: $e'; });
     }
   }
 
-  Future<void> _processFrame(CameraImage image) async {
-    if (_isProcessing || _found) return;
+  void _onDetect(BarcodeCapture capture) {
+    if (_found) return;
 
-    final now = DateTime.now();
-    if (now.difference(_lastProcessed).inMilliseconds < 200) return;
-    _lastProcessed = now;
+    for (final barcode in capture.barcodes) {
+      final raw = barcode.rawValue;
+      if (raw == null || raw.isEmpty) continue;
+      _found = true;
+      _processBarcode(raw);
+      return;
+    }
+  }
 
-    _isProcessing = true;
-    try {
-      final input = _buildInputImage(image);
-      if (input == null) { _isProcessing = false; return; }
-
-      final barcodes = await _barcodeScanner.processImage(input);
-
-      if (barcodes.isNotEmpty && !_found) {
-        for (final barcode in barcodes) {
-          final raw = barcode.rawValue;
-          if (raw == null || raw.isEmpty) continue;
-          _found = true;
-          await _disposeCamera();
-          if (mounted) {
-            final teacherCode = _extractCodeFromRaw(raw);
-            if (teacherCode != null) {
-              Navigator.pop(context, teacherCode);
-            } else {
-              _found = false;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: const Text('باركود غير صالح'), backgroundColor: AppTheme.danger,
-                  behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              );
-              _initCamera();
-            }
-          }
-          return;
-        }
+  Future<void> _processBarcode(String raw) async {
+    if (!mounted) return;
+    final teacherCode = _extractCodeFromRaw(raw);
+    if (teacherCode != null) {
+      await _controller?.stop();
+      if (mounted) Navigator.pop(context, teacherCode);
+    } else {
+      _found = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('باركود غير صالح'), backgroundColor: AppTheme.danger,
+            behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
       }
-    } catch (_) {
-    } finally {
-      _isProcessing = false;
     }
-  }
-
-  InputImage? _buildInputImage(CameraImage image) {
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (format == null) return null;
-
-    final plane = image.planes.first;
-    return InputImage.fromBytes(
-      bytes: plane.bytes,
-      metadata: InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: InputImageRotation.rotation0deg,
-        format: format,
-        bytesPerRow: plane.bytesPerRow,
-      ),
-    );
   }
 
   String? _extractCodeFromRaw(String raw) {
@@ -377,8 +311,13 @@ class _QrScannerScreenState extends State<QrScannerScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (_cameraReady && _camera != null)
-            Positioned.fill(child: CameraPreview(_camera!)),
+          if (_cameraReady && _controller != null)
+            Positioned.fill(
+              child: MobileScanner(
+                controller: _controller!,
+                onDetect: _onDetect,
+              ),
+            ),
           if (_cameraReady)
             Positioned.fill(
               child: Container(
@@ -408,7 +347,7 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                     Text(_errorMsg, style: TextStyle(color: Colors.grey[400], fontSize: 14), textAlign: TextAlign.center),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      onPressed: () { _disposeCamera(); _initCamera(); },
+                      onPressed: () { _controller?.dispose(); setState(() { _cameraReady = false; _errorMsg = ''; }); _initScanner(); },
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
                       child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
                     ),

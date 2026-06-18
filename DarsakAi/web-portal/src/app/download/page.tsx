@@ -8,17 +8,17 @@ import { Smartphone, Monitor, Download, ArrowRight, Sparkles, School, User } fro
 const teacherApps = [
   {
     id: 'teacher',
-    title: 'DarsakAI Teacher v2.1.1',
+    title: 'DarsakAI Teacher v2.2.0',
     subtitle: 'تطبيق المدرس',
     description: 'مسح باركود للحضور • دروس فيديو • ذكاء اصطناعي • إدارة كاملة للسنتر',
     icon: User,
     color: '#6366F1',
     bgColor: 'rgba(99,102,241,0.12)',
-    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.1.1/teacher-v2.1.1.apk',
+    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.2.0/teacher-2.2.0.apk',
     label: 'Download',
-    size: '~75 MB',
+    size: '~57 MB',
     platform: 'Android 10+',
-    note: 'v2.1.1 • تصميم جديد لصفحة الهبوط • إصلاح الكاميرا والباركود • تسريع فتح التطبيق',
+    note: 'v2.2.0 • Feature Gating حسب الباقة • Signed Subscription Token • FCM Push Notifications • تحسين أداء التطبيق',
   },
   {
     id: 'desktop',
@@ -40,17 +40,17 @@ const teacherApps = [
 const studentApps = [
   {
     id: 'student',
-    title: 'DarsakAI Student v3.0.3',
+    title: 'DarsakAI Student v1.5.0',
     subtitle: 'تطبيق الطالب',
     description: 'متابعة الدرجات • الحضور • الاختبارات • الملف الشخصي',
     icon: School,
     color: '#00f3ff',
     bgColor: 'rgba(0,243,255,0.12)',
-    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v3.0.3/student-v3.0.3.apk',
+    file: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.2.0/student-1.5.0.apk',
     label: 'Download',
-    size: '~73 MB',
+    size: '~44 MB',
     platform: 'Android',
-    note: 'v3.0.3 • إصلاح التحديث المتكرر • AI chat جديد • تسريع فتح التطبيق',
+    note: 'v1.5.0 • Fireworks AI Chat مباشر • إشعارات FCM • إصلاح تسجيل الخروج',
   },
 ]
 

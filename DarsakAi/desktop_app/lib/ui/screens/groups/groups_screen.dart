@@ -201,14 +201,14 @@ class _GroupsScreenState extends State<GroupsScreen> with TickerProviderStateMix
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedLevel,
+                    value: selectedLevel,
                     decoration: const InputDecoration(labelText: 'المرحلة الدراسية'),
                     items: levels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                     onChanged: (v) => setDialogState(() => selectedLevel = v ?? selectedLevel),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedDay,
+                    value: selectedDay,
                     decoration: const InputDecoration(labelText: 'يوم المحاضرة'),
                     items: days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                     onChanged: (v) => setDialogState(() => selectedDay = v ?? selectedDay),

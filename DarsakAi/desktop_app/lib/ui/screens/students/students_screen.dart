@@ -149,8 +149,8 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                           const SizedBox(width: 16),
                           SizedBox(
                             width: 220,
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _groupId.isEmpty ? null : _groupId,
+                              child: DropdownButtonFormField<String>(
+                              value: _groupId.isEmpty ? null : _groupId,
                               decoration: const InputDecoration(labelText: 'المجموعة'),
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('جميع المجموعات')),
@@ -331,7 +331,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedGradeLevel,
+                    value: selectedGradeLevel,
                     decoration: const InputDecoration(labelText: 'المرحلة الدراسية'),
                     items: levels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                     onChanged: (v) => setDialogState(() {
@@ -341,7 +341,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedGroupId,
+                    value: selectedGroupId,
                     decoration: const InputDecoration(labelText: 'المجموعة'),
                     items: [
                       const DropdownMenuItem(value: null, child: Text('اختر المجموعة')),

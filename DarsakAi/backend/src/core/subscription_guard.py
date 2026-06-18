@@ -66,7 +66,12 @@ async def get_remaining_limit(teacher_id: str, feature: str) -> dict:
 
     if feature == "student_management":
         plan_name = plan.get("name", "")
-        limit = await subscription_plan_service.get_plan_student_limit(plan_name)
+        sub = result.get("subscription", {})
+        custom_limit = sub.get("allowed_students_limit")
+        if custom_limit and custom_limit > 0:
+            limit = custom_limit
+        else:
+            limit = await subscription_plan_service.get_plan_student_limit(plan_name)
         if limit <= 0:
             return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
         current = await student_service.count(teacher_id)

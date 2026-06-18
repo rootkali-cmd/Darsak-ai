@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "deepseek/deepseek-v4-flash"
     OPENROUTER_VISION_MODEL: str = "google/gemini-2.0-flash-001"
 
+    SUBSCRIPTION_SECRET_KEY: str = "d4r54k-5ubscr1pt10n-s1gn3d-k3y-2025-53cur3"
+
     # Plan student limits
     PLAN_BASIC_MAX_STUDENTS: int = 100
     PLAN_PRO_MAX_STUDENTS: int = 400
@@ -57,6 +59,10 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""
     VIDEO_TELEGRAM_BOT_TOKEN: str = ""
+
+    # Firebase Cloud Messaging
+    FIREBASE_SERVICE_ACCOUNT_JSON: str = ""  # JSON string of service account credentials
+    FIREBASE_SERVICE_ACCOUNT_PATH: str = ""  # Path to service account JSON file
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": True}
 

@@ -55,6 +55,8 @@ def _to_student_exam_response(se: dict) -> dict:
         "id": str(se.get("id", "")),
         "exam_id": str(se.get("exam_id", "")),
         "student_id": str(se.get("student_id", "")),
+        "student_name": se.get("student_name"),
+        "student_code": se.get("student_code", ""),
         "started_at": str(se.get("started_at", "")),
         "submitted_at": str(se.get("submitted_at", "")),
         "duration_seconds": se.get("duration_seconds"),
@@ -631,6 +633,7 @@ async def get_student_exam_result(
                 total_mc += 1
                 detail["correct_answer"] = q.get("correct_answer", "")
                 detail["is_correct"] = a.get("is_correct", False)
+                detail["options"] = q.get("options", [])
                 if a.get("is_correct"):
                     correct_count += 1
                 else:
@@ -638,6 +641,7 @@ async def get_student_exam_result(
             question_details.append(detail)
         
         correct_pct = (correct_count / total_mc * 100) if total_mc > 0 else 0
+        wrong_pct = (wrong_count / total_mc * 100) if total_mc > 0 else 0
         max_score = se.get("max_score") or 0
         total_score = se.get("total_score") or 0
         score_pct = (total_score / max_score * 100) if max_score > 0 else 0

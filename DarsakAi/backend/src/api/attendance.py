@@ -13,6 +13,32 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+async def _auto_absent_for_group(student_id: str, teacher_id: str, attendance_date: str):
+    try:
+        student = await student_service.get_by_id(student_id)
+        if not student or not student.get("group_id"):
+            return
+        group_id = str(student["group_id"])
+        group_students = await student_service.repo.select(
+            {"group_id": group_id, "teacher_id": teacher_id}, limit=200
+        )
+        for gs in group_students:
+            gs_id = gs.get("id")
+            if not gs_id or gs_id == student_id:
+                continue
+            existing = await attendance_service.get_by_student_and_date(gs_id, attendance_date)
+            if not existing:
+                await attendance_service.create(
+                    student_id=gs_id,
+                    group_id=group_id,
+                    teacher_id=teacher_id,
+                    status="absent",
+                    date=attendance_date,
+                )
+    except Exception:
+        pass
+
+
 @router.post("/", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
 async def mark_attendance(
     attendance_data: AttendanceCreate,
@@ -33,6 +59,8 @@ async def mark_attendance(
                 "notes": attendance_data.notes,
             },
         )
+        if (attendance_data.status.value if hasattr(attendance_data.status, 'value') else attendance_data.status) == "present":
+            await _auto_absent_for_group(str(attendance_data.student_id), current_user["id"], attendance_date.isoformat())
         return AttendanceResponse(**updated)
 
     attendance = await attendance_service.create(
@@ -52,6 +80,9 @@ async def mark_attendance(
         resource_id=attendance["id"],
         ip_address=get_client_ip(request),
     )
+
+    if (attendance_data.status.value if hasattr(attendance_data.status, 'value') else attendance_data.status) == "present":
+        await _auto_absent_for_group(str(attendance_data.student_id), current_user["id"], attendance_date.isoformat())
 
     try:
         from src.services import notification_service
@@ -76,6 +107,7 @@ async def mark_bulk_attendance(
 ):
     attendance_date = bulk_data.date or date.today()
     results = []
+    marked_student_ids = set()
 
     for record in bulk_data.records:
         student_id = record.get("student_id")
@@ -100,6 +132,12 @@ async def mark_bulk_attendance(
                 notes=notes,
             )
             results.append(AttendanceResponse(**attendance))
+
+        if status_val == "present":
+            marked_student_ids.add(student_id)
+
+    for sid in marked_student_ids:
+        await _auto_absent_for_group(sid, current_user["id"], attendance_date.isoformat())
 
     await audit_service.log(
         actor_type=current_user.get("role", "teacher"),
@@ -241,6 +279,8 @@ async def mark_attendance_by_barcode(
             status="present",
             date=today.isoformat(),
         )
+
+    await _auto_absent_for_group(student_id, current_user["id"], today.isoformat())
 
     return {
         **result,

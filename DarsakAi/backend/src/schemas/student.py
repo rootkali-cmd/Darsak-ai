@@ -39,8 +39,8 @@ class StudentResponse(BaseModel):
     group_id: str | None = None
     teacher_id: UUID
     has_pin: bool = False
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

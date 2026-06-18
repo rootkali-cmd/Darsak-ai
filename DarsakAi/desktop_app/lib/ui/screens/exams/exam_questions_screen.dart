@@ -165,7 +165,7 @@ class _ExamQuestionsScreenState extends State<ExamQuestionsScreen> with TickerPr
       child: ReorderableListView.builder(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         itemCount: _questions.length,
-        onReorderItem: _onReorder,
+        onReorder: _onReorder,
         proxyDecorator: (child, index, animation) {
           return AnimatedBuilder(
             animation: animation,

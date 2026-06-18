@@ -238,7 +238,7 @@ final class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildGroupFilter(List<GroupModel> groups, Color borderColor) {
     return DropdownButtonFormField<String>(
-      initialValue: _groupId.isEmpty ? null : _groupId,
+      value: _groupId.isEmpty ? null : _groupId,
       decoration: InputDecoration(
         labelText: 'المجموعة',
         prefixIcon: Icon(Icons.group, size: 20),

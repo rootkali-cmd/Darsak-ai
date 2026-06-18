@@ -43,8 +43,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
       if (_messages.isEmpty) {
         _messages.add(_ChatMessage(
           text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك، '
-              'المناهج التعليمية، أو أي موضوع يهمك.\n\n'
-              'لديك ${_ai.remaining} أسئلة متبقية اليوم',
+              'المناهج التعليمية، أو أي موضوع يهمك.',
           isUser: false,
         ));
       }
@@ -102,14 +101,18 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
     _scrollDown();
 
     try {
-      final answer = await _ai.ask(text);
+      final history = _messages
+          .where((m) => !m.isSmall && !m.isError)
+          .map((m) => {
+                'role': m.isUser ? 'user' : 'assistant',
+                'content': m.text,
+              })
+          .toList();
+      history.removeLast();
+
+      final answer = await _ai.ask(text, history: history);
       setState(() {
         _messages.add(_ChatMessage(text: answer, isUser: false));
-        _messages.add(_ChatMessage(
-          text: 'لديك ${_ai.remaining} أسئلة متبقية اليوم',
-          isUser: false,
-          isSmall: true,
-        ));
         _isSending = false;
       });
     } catch (e) {
@@ -161,17 +164,6 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
       ),
       body: Column(
         children: [
-          if (_ai.remaining > 0 && _ai.remaining <= 2)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppTheme.warning.withValues(alpha: 0.1),
-              child: Text(
-                'تبقى ${_ai.remaining} أسئلة فقط اليوم',
-                style: const TextStyle(color: AppTheme.warning, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppTheme.accent))
@@ -204,7 +196,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
                         },
                       ),
           ),
-          if (_ai.remaining <= 0 && !_isLoading)
+          if (false)
             Container(
               padding: const EdgeInsets.all(16),
               color: AppColors.surfaceHigher(context),
@@ -243,8 +235,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
               setState(() {
                 _messages.clear();
                 _messages.add(_ChatMessage(
-                  text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك.\n\n'
-                      'لديك ${_ai.remaining} أسئلة متبقية اليوم',
+                  text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك.',
                   isUser: false,
                 ));
               });
@@ -303,9 +294,10 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
       textDirection: TextDirection.rtl,
       text: TextSpan(
         children: segments,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           height: 1.6,
+          color: AppColors.textPrimary(context),
         ),
       ),
     );

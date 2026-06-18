@@ -30,7 +30,13 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadReports();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!checkPlanFeature(context, PlanFeatures.aiReports)) {
+        Navigator.pop(context);
+        return;
+      }
+      _loadReports();
+    });
   }
 
   Future<void> _loadReports() async {
@@ -245,6 +251,8 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
     final name = student['name'] ?? 'طالب';
     final avgScore = (student['average_score'] ?? 0).toDouble();
     final examsCount = student['exams_count'] ?? 0;
+    final strengths = student['strengths'] as List<dynamic>? ?? [];
+    final weaknesses = student['weaknesses'] as List<dynamic>? ?? [];
 
     Color barColor;
     if (avgScore > 80) {
@@ -255,40 +263,88 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
       barColor = GlassTheme.red;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: GlassTheme.glassCard(context),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: barColor.withValues(alpha: 0.15),
-            child: Icon(Icons.person, color: barColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => _openStudentDetail(student),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: GlassTheme.glassCard(context),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text(name, style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text('$examsCount اختبار', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 11)),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: avgScore / 100,
-                    backgroundColor: GlassTheme.textSecondary(context).withValues(alpha: 0.2),
-                    color: barColor,
-                    minHeight: 6,
+                CircleAvatar(
+                  backgroundColor: barColor.withValues(alpha: 0.15),
+                  child: Icon(Icons.person, color: barColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Text('$examsCount اختبار', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 11)),
+                    ],
                   ),
                 ),
+                const SizedBox(width: 12),
+                Text('${avgScore.toStringAsFixed(1)}%', style: TextStyle(color: barColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_left, color: GlassTheme.textSecondary(context)),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Text('${avgScore.toStringAsFixed(1)}%', style: TextStyle(color: barColor, fontWeight: FontWeight.bold, fontSize: 16)),
-        ],
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: avgScore / 100,
+                backgroundColor: GlassTheme.textSecondary(context).withValues(alpha: 0.2),
+                color: barColor,
+                minHeight: 6,
+              ),
+            ),
+            if (strengths.isNotEmpty || weaknesses.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  if (strengths.isNotEmpty) ...[
+                    Icon(Icons.check_circle_outline, size: 14, color: GlassTheme.green),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${strengths.length} نقطة قوة',
+                        style: TextStyle(color: GlassTheme.green, fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                  if (weaknesses.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Icon(Icons.warning_amber_outlined, size: 14, color: GlassTheme.red),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${weaknesses.length} نقطة ضعف',
+                        style: TextStyle(color: GlassTheme.red, fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openStudentDetail(Map<String, dynamic> student) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _StudentReportDetailScreen(student: student),
       ),
     );
   }
@@ -315,6 +371,233 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
             analysis,
             style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13, height: 1.6),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentReportDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> student;
+
+  const _StudentReportDetailScreen({required this.student});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final name = student['name'] ?? 'طالب';
+    final avgScore = (student['average_score'] ?? 0).toDouble();
+    final examsCount = student['exams_count'] ?? 0;
+    final exams = student['exams'] as List<dynamic>? ?? [];
+    final strengths = student['strengths'] as List<dynamic>? ?? [];
+    final weaknesses = student['weaknesses'] as List<dynamic>? ?? [];
+    final recommendations = student['recommendations'] as List<dynamic>? ?? [];
+
+    Color scoreColor;
+    if (avgScore >= 80) {
+      scoreColor = GlassTheme.green;
+    } else if (avgScore >= 50) {
+      scoreColor = const Color(0xFFF59E0B);
+    } else {
+      scoreColor = GlassTheme.red;
+    }
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
+      appBar: GlassTheme.glassAppBar(name),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Score card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: GlassTheme.glassCard(context),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: scoreColor.withValues(alpha: 0.15),
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : '?',
+                    style: TextStyle(color: scoreColor, fontSize: 28, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(name, style: TextStyle(color: GlassTheme.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text('$examsCount اختبار', style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13)),
+                const SizedBox(height: 8),
+                Text(
+                  '${avgScore.toStringAsFixed(1)}%',
+                  style: TextStyle(color: scoreColor, fontSize: 32, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Strengths
+          if (strengths.isNotEmpty)
+            _buildSection(
+              context,
+              title: 'نقاط القوة',
+              icon: Icons.check_circle,
+              color: GlassTheme.green,
+              items: strengths.map((s) => s.toString()).toList(),
+            ),
+
+          // Weaknesses
+          if (weaknesses.isNotEmpty)
+            _buildSection(
+              context,
+              title: 'نقاط الضعف',
+              icon: Icons.warning_amber,
+              color: GlassTheme.red,
+              items: weaknesses.map((w) => w.toString()).toList(),
+            ),
+
+          // Recommendations
+          if (recommendations.isNotEmpty)
+            _buildSection(
+              context,
+              title: 'توصيات للمعلم',
+              icon: Icons.lightbulb,
+              color: GlassTheme.indigo,
+              items: recommendations.map((r) => r.toString()).toList(),
+            ),
+
+          // Per-exam results
+          if (exams.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text('نتائج الاختبارات', style: TextStyle(color: GlassTheme.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ...exams.map((exam) => _buildExamCard(context, exam)),
+          ],
+
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<String> items,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: GlassTheme.glassCard(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.circle, size: 6, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13, height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExamCard(BuildContext context, dynamic exam) {
+    final score = (exam['score'] ?? 0).toDouble();
+    final maxScore = (exam['max_score'] ?? 0).toDouble();
+    final pct = (exam['percentage'] ?? 0).toDouble();
+    final examStrengths = (exam['strengths'] as List<dynamic>?) ?? [];
+    final examWeaknesses = (exam['weaknesses'] as List<dynamic>?) ?? [];
+
+    Color barColor;
+    if (pct >= 80) {
+      barColor = GlassTheme.green;
+    } else if (pct >= 50) {
+      barColor = const Color(0xFFF59E0B);
+    } else {
+      barColor = GlassTheme.red;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: GlassTheme.glassCard(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('${score.toStringAsFixed(0)} / ${maxScore.toStringAsFixed(0)}', style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 14)),
+              const SizedBox(width: 8),
+              Text('${pct.toStringAsFixed(1)}%', style: TextStyle(color: barColor, fontWeight: FontWeight.bold, fontSize: 14)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: barColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(pct >= 50 ? 'ناجح' : 'راسب', style: TextStyle(color: barColor, fontSize: 11)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct / 100,
+              backgroundColor: GlassTheme.textSecondary(context).withValues(alpha: 0.2),
+              color: barColor,
+              minHeight: 6,
+            ),
+          ),
+          if (examStrengths.isNotEmpty || examWeaknesses.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            if (examStrengths.isNotEmpty)
+              ...examStrengths.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check, size: 12, color: GlassTheme.green),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(s.toString(), style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 12))),
+                  ],
+                ),
+              )),
+            if (examWeaknesses.isNotEmpty)
+              ...examWeaknesses.map((w) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Row(
+                  children: [
+                    const Icon(Icons.close, size: 12, color: GlassTheme.red),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(w.toString(), style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 12))),
+                  ],
+                ),
+              )),
+          ],
         ],
       ),
     );

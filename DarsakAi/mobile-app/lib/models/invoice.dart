@@ -16,11 +16,12 @@ class InvoiceModel {
   });
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) {
+    final status = json['status']?.toString().toLowerCase() ?? '';
     return InvoiceModel(
       id: json['id']?.toString() ?? '',
       amount: (json['amount'] ?? 0).toDouble(),
       description: json['description'],
-      paid: json['paid'] ?? false,
+      paid: json['paid'] == true || status == 'paid' || status == 'approved',
       paymentDate: json['payment_date'],
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
     );

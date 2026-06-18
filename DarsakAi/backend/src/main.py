@@ -312,6 +312,42 @@ async def _run_schema_migrations():
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );""",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20);",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'EGP';",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL;",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS screenshot_url TEXT;",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS teacher_note TEXT;",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();",
+        "ALTER TABLE invoices ADD CONSTRAINT invoices_payment_method_check CHECK (payment_method IN ('vodafone_cash', 'instapay', 'bank_transfer', 'cash'));",
+        "ALTER TABLE invoices ADD CONSTRAINT invoices_status_check CHECK (status IN ('pending', 'paid', 'rejected'));",
+        "ALTER TABLE teacher_subscriptions ADD COLUMN IF NOT EXISTS allowed_students_limit INT DEFAULT NULL;",
+        "ALTER TABLE teacher_subscriptions ADD COLUMN IF NOT EXISTS whatsapp_messages_counter INT DEFAULT 0;",
+        "ALTER TABLE teacher_subscriptions ADD COLUMN IF NOT EXISTS whatsapp_max_limit INT DEFAULT 0;",
+        """CREATE TABLE IF NOT EXISTS whatsapp_delivery_logs (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            student_id UUID REFERENCES students(id) ON DELETE SET NULL,
+            phone_number VARCHAR(20),
+            status VARCHAR(20) DEFAULT 'all' CHECK (status IN ('all', 'accepted', 'rejected')),
+            error_reason TEXT,
+            message_id TEXT,
+            sent_at TIMESTAMPTZ DEFAULT NOW(),
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "ALTER TABLE whatsapp_delivery_logs ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(7);",
+        """CREATE TABLE IF NOT EXISTS fcm_tokens (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            user_id UUID NOT NULL,
+            user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('student', 'teacher')),
+            fcm_token TEXT NOT NULL,
+            platform VARCHAR(20) DEFAULT 'android',
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            UNIQUE(user_id, fcm_token)
+        );""",
+        "ALTER TABLE fcm_tokens ADD COLUMN IF NOT EXISTS fcm_token TEXT;",
     ]
 
     try:

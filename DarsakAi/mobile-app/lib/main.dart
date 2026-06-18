@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
 import 'core/local_db.dart';
@@ -14,13 +15,17 @@ import 'providers/data_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/update_service.dart';
 import 'services/notification_service.dart';
+import 'services/push_notification_service.dart';
 import 'screens/teacher_connect_screen.dart';
 import 'screens/home_screen.dart';
 import 'widgets/update_dialog.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Initialize Firebase first
+  await Firebase.initializeApp();
 
   runApp(const DarsakMobileApp());
 
@@ -36,6 +41,7 @@ Future<void> _initBackground() async {
     StructuredLogger.instance.init(),
     initializeDateFormatting('ar'),
     NotificationService().initialize(),
+    PushNotificationService().initialize(),
   ]);
   Intl.defaultLocale = 'ar';
   AnalyticsService.instance.appOpened();

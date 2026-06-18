@@ -42,10 +42,13 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is deactivated")
 
     if user.get("role") in ("teacher", "admin") and not user.get("teacher_code"):
-        import uuid
-        teacher_code = f"TCH-{uuid.uuid4().hex[:8].upper()}"
-        await user_service.update(user_id, {"teacher_code": teacher_code})
-        user["teacher_code"] = teacher_code
+        try:
+            import uuid
+            teacher_code = f"TCH-{uuid.uuid4().hex[:8].upper()}"
+            await user_service.update(user_id, {"teacher_code": teacher_code})
+            user["teacher_code"] = teacher_code
+        except Exception:
+            pass
 
     return user
 

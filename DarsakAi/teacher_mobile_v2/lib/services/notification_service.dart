@@ -45,6 +45,10 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
           enableVibration: true,
+          styleInformation: BigTextStyleInformation(
+            'تم تفعيل اشتراكك بنجاح',
+            contentTitle: '✅ تم تفعيل اشتراكك بنجاح',
+          ),
         ),
       ),
     );

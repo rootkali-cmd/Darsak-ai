@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/app_theme.dart';
 import 'core/subscription_guard.dart';
 import 'providers/auth_provider.dart';
@@ -9,11 +10,20 @@ import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
 
 import 'services/notification_service.dart' as notif;
+import 'services/push_notification_service.dart';
+import 'services/subscription_token_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Initialize Firebase first
+  await Firebase.initializeApp();
+
   notif.NotificationService().initialize();
+  PushNotificationService().initialize();
+  // Periodic anti-tamper token verification
+  SubscriptionTokenService().periodicVerify();
   runApp(const DarsakApp());
 }
 

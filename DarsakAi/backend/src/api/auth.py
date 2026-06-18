@@ -293,6 +293,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
                         "activated_at": sub.get("activated_at", sub.get("created_at", "")),
                         "is_active": sub.get("is_active", True),
                         "max_students": await subscription_plan_service.get_plan_student_limit(plan_name),
+                        "allowed_students_limit": sub.get("allowed_students_limit", -1),
                     }
                     result["plan_limits"] = {
                         "max_students": await subscription_plan_service.get_plan_student_limit(plan_name),

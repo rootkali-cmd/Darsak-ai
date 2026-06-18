@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from src.utils.dependencies import get_current_teacher
 from src.services import student_service, group_service, attendance_service, invoice_service
@@ -32,14 +33,28 @@ async def dashboard_stats(current_user: dict = Depends(get_current_teacher)):
 
     try:
         invoice_stats = await invoice_service.get_stats(teacher_id)
-        total_revenue = invoice_stats.get("total_paid", 0) if invoice_stats else 0
+        total_revenue = invoice_stats.get("paid_amount", 0) if invoice_stats else 0
     except Exception as e:
         logger.warning("Failed to get invoice stats for %s: %s", teacher_id, e)
         total_revenue = 0
+
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_start_iso = month_start.isoformat()
+
+        inv_res = await client.table("invoices").select("amount").eq("teacher_id", teacher_id).eq("status", "paid").gte("created_at", month_start_iso).execute()
+        monthly_revenue = sum(float(i.get("amount", 0)) for i in (inv_res.data or []))
+    except Exception as e:
+        logger.warning("Failed to get monthly revenue for %s: %s", teacher_id, e)
+        monthly_revenue = 0
 
     return {
         "total_students": students_count,
         "total_groups": groups_count,
         "today_attendance": today_attendance,
         "total_revenue": total_revenue,
+        "monthly_revenue": monthly_revenue,
     }

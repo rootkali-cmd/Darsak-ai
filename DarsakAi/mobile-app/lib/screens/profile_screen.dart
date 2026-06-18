@@ -7,6 +7,7 @@ import '../providers/theme_provider.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/theme.dart';
+import '../core/account_manager.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -138,6 +139,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 12),
 
+            // Section: Account Switcher
+            _buildAccountsSection(context, auth),
+            const SizedBox(height: 12),
+
             // Theme toggle
             _buildThemeToggle(),
           ],
@@ -214,6 +219,229 @@ class _ProfileScreenState extends State<ProfileScreen> {
             value: !themeNotifier.isDark,
             onChanged: (_) => themeNotifier.toggleTheme(),
             activeColor: AppTheme.accent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountsSection(BuildContext context, AuthProvider auth) {
+    final accounts = auth.accountManager.accounts;
+    final activeIndex = auth.accountManager.activeIndex;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.swap_horiz, color: AppTheme.accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'الحسابات',
+                style: TextStyle(
+                  color: AppColors.textPrimary(context),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${accounts.length}/5',
+                style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _showAddAccountDialog(context, auth),
+                child: Icon(Icons.add_circle_outline, color: AppTheme.accent, size: 22),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(accounts.length, (i) {
+            final acc = accounts[i];
+            final isActive = i == activeIndex;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: isActive ? AppTheme.accent.withValues(alpha: 0.1) : AppColors.inputFill(context),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isActive ? AppTheme.accent.withValues(alpha: 0.3) : AppColors.border(context),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isActive ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                    size: 18,
+                    color: isActive ? AppTheme.accent : AppColors.textSecondary(context),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          acc.studentName.isNotEmpty ? acc.studentName : acc.studentCode,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary(context),
+                          ),
+                        ),
+                        Text(
+                          acc.studentCode,
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary(context)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isActive)
+                    GestureDetector(
+                      onTap: () async {
+                        await auth.switchAccount(i);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accent,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('切换', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  if (accounts.length > 1)
+                    IconButton(
+                      icon: Icon(Icons.delete_outline, size: 18, color: AppTheme.danger),
+                      onPressed: () => _confirmRemoveAccount(context, auth, i),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _showAddAccountDialog(BuildContext context, AuthProvider auth) {
+    final codeController = TextEditingController();
+    final pinController = TextEditingController();
+    bool loading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: AppColors.dialogBackground(context),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(children: [
+            Icon(Icons.person_add_outlined, color: AppTheme.accent, size: 22),
+            const SizedBox(width: 8),
+            Text('إضافة حساب', style: TextStyle(color: AppColors.textPrimary(context))),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'أدخل كود الطالب والرمز السري',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary(context)),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textPrimary(context)),
+                decoration: InputDecoration(
+                  hintText: 'كود الطالب',
+                  hintStyle: TextStyle(color: AppColors.textSecondary(context)),
+                  filled: true,
+                  fillColor: AppColors.inputFill(context),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pinController,
+                textAlign: TextAlign.center,
+                obscureText: true,
+                style: TextStyle(color: AppColors.textPrimary(context)),
+                decoration: InputDecoration(
+                  hintText: 'الرمز السري',
+                  hintStyle: TextStyle(color: AppColors.textSecondary(context)),
+                  filled: true,
+                  fillColor: AppColors.inputFill(context),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('إلغاء', style: TextStyle(color: AppColors.textSecondary(context))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: loading ? null : () async {
+                if (codeController.text.isEmpty || pinController.text.isEmpty) return;
+                setState(() => loading = true);
+                final success = await auth.addAccount(codeController.text, pinController.text);
+                setState(() => loading = false);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تمت إضافة الحساب بنجاح'), backgroundColor: AppTheme.success),
+                  );
+                } else if (auth.error != null && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(auth.error!), backgroundColor: AppTheme.danger),
+                  );
+                }
+              },
+              child: loading
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('إضافة', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmRemoveAccount(BuildContext context, AuthProvider auth, int index) {
+    final acc = auth.accountManager.accounts[index];
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.dialogBackground(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('حذف الحساب', style: TextStyle(color: AppTheme.danger)),
+        content: Text(
+          'هل تريد حذف حساب ${acc.studentName.isNotEmpty ? acc.studentName : acc.studentCode}؟',
+          style: TextStyle(color: AppColors.textSecondary(context)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: TextStyle(color: AppColors.textSecondary(context)))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () {
+              Navigator.pop(ctx);
+              auth.removeAccount(index);
+            },
+            child: const Text('حذف', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

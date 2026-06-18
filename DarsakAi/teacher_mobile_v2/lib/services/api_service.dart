@@ -40,7 +40,6 @@ class ApiService {
         if (error.response?.statusCode == 401) {
           final refreshed = await _tryRefreshToken();
           if (refreshed && error.requestOptions.path != '/auth/refresh') {
-            // Retry the original request with new token
             final prefs = await SharedPreferences.getInstance();
             final newToken = prefs.getString(_tokenKey);
             if (newToken != null) {
@@ -50,8 +49,6 @@ class ApiService {
               return;
             }
           }
-          // Refresh failed - logout
-          await _clearAuth();
         }
         handler.next(error);
       },
@@ -96,7 +93,6 @@ class ApiService {
   Future<void> _clearAuth() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
-    await prefs.remove(_refreshTokenKey);
   }
 
   Dio get dio => _dio;

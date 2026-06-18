@@ -304,7 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Switch(
                       value: isDark,
                       onChanged: (_) => widget.toggleTheme(),
-                      activeThumbColor: AppTheme.accent,
+                      thumbColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? AppTheme.accent : null),
                     ),
                   ),
                 ],

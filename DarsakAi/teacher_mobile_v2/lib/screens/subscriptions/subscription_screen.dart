@@ -31,6 +31,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   int _studentCount = 0;
   String? _error;
   bool _isYearly = false;
+  int _premiumStudents = 700;
+  double _premiumPrice = 1100;
 
   final _codeCtrl = TextEditingController();
   bool _activating = false;
@@ -67,7 +69,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       'max_students': -1,
       'max_ai_requests': -1,
       'color': '#10B981',
-      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'طلاب غير محدود', 'دعم فني أولوية'],
+      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'دعم فني أولوية'],
     },
   ];
 
@@ -277,11 +279,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   // ─── Payment Page Navigation ─────────────────────────────────
 
   void _openPaymentPage(Map<String, dynamic> plan) {
+    final isPremium = (plan['name'] ?? '').toString().toLowerCase().contains('premium');
+    final paymentPlan = Map<String, dynamic>.from(plan);
+    if (isPremium) {
+      paymentPlan['price_egp'] = _premiumPrice;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => _PaymentPage(
-          plan: plan,
+          plan: paymentPlan,
           isYearly: _isYearly,
           onPaymentSubmitted: () {
             _showPaymentSuccessDialog();
@@ -398,11 +405,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _buildPlanCard(e.value, e.key),
                           )),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
             if (_showCelebration)
-              CelebrationOverlay(onComplete: _onCelebrationComplete),
+              SuccessCheckmarkOverlay(onComplete: _onCelebrationComplete),
           ],
         ),
     );
@@ -556,9 +564,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             _InfoTile(label: 'الأيام المتبقية', value: '$_daysLeft يوم', valueColor: _daysLeft < 3 ? AppTheme.danger : AppTheme.success),
           _InfoTile(
             label: 'الطلاب',
-            value: (_subscription!['max_students'] == -1 || _subscription!['max_students'] == 0)
-                ? '$_studentCount / ∞'
-                : '$_studentCount / ${_subscription!['max_students']}',
+            value: (() {
+              final allowed = _subscription!['allowed_students_limit'];
+              if (allowed != null && allowed != -1 && allowed != 0) {
+                return '$_studentCount / $allowed';
+              }
+              return (_subscription!['max_students'] == -1 || _subscription!['max_students'] == 0)
+                  ? '$_studentCount / غير محدود'
+                  : '$_studentCount / ${_subscription!['max_students']}';
+            })(),
           ),
         ] else ...[
           const SizedBox(height: 8),
@@ -655,6 +669,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final features = plan['features'] is List ? plan['features'] as List : <dynamic>[];
     final maxStudents = plan['max_students'];
     final isPopular = plan['popular'] == true;
+    final isPremium = name.toString().toLowerCase().contains('premium') || name.toString().contains('المتكاملة');
     final trialEligible = _isTrialEligible(plan);
 
     final planColors = [
@@ -733,10 +748,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 Icon(Icons.people, size: 16, color: GlassTheme.textSecondary(context)),
                 const SizedBox(width: 6),
                 Text(
-                  (maxStudents == 0 || maxStudents == -1) ? 'طلاب غير محدود' : 'حتى $maxStudents طالب',
+                  (maxStudents == 0 || maxStudents == -1)
+                      ? (isPremium ? 'سعة مخصنة (تسعير مرن)' : 'طلاب غير محدود')
+                      : 'حتى $maxStudents طالب',
                   style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context)),
                 ),
               ]),
+            ],
+            if (isPremium) ...[
+              const SizedBox(height: 12),
+              _PremiumStudentSlider(
+                onPriceChanged: (students, price) {
+                  setState(() {
+                    _premiumStudents = students;
+                    _premiumPrice = price;
+                  });
+                },
+              ),
             ],
             const SizedBox(height: 12),
             ...features.map((f) => Padding(
@@ -1219,3 +1247,93 @@ class _PaymentPageState extends State<_PaymentPage> {
     );
   }
 }
+
+class _PremiumStudentSlider extends StatefulWidget {
+  final void Function(int students, double price) onPriceChanged;
+
+  const _PremiumStudentSlider({required this.onPriceChanged});
+
+  @override
+  State<_PremiumStudentSlider> createState() => _PremiumStudentSliderState();
+}
+
+class _PremiumStudentSliderState extends State<_PremiumStudentSlider> {
+  double _value = 700;
+  static const int _min = 700;
+  static const int _max = 2000;
+  static const double _basePrice = 1100;
+  static const double _extraPerStudent = 1.5;
+  static const int _freeStudents = 700;
+
+  double _calculatePrice(int students) {
+    final extra = students > _freeStudents ? students - _freeStudents : 0;
+    return _basePrice + (extra * _extraPerStudent);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final students = _value.round();
+    final price = _calculatePrice(students);
+    final isMax = students >= _max;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: GlassTheme.cardBg(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: GlassTheme.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('عدد الطلاب', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
+            Row(children: [
+              Text(
+                isMax ? '∞' : '$students',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.success),
+              ),
+              const SizedBox(width: 2),
+              Text('طالب', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
+            ]),
+          ]),
+          Slider(
+            value: _value,
+            min: _min.toDouble(),
+            max: _max.toDouble(),
+            divisions: (_max - _min) ~/ 50,
+            activeColor: AppTheme.success,
+            inactiveColor: GlassTheme.textMuted(context),
+            onChanged: (v) {
+              setState(() => _value = v);
+              widget.onPriceChanged(v.round(), _calculatePrice(v.round()));
+            },
+          ),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('$_min', style: TextStyle(fontSize: 10, color: GlassTheme.textMuted(context))),
+            Text('$_max+', style: TextStyle(fontSize: 10, color: GlassTheme.textMuted(context))),
+          ]),
+          const SizedBox(height: 8),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('السعر الشهري', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
+            Text(
+              isMax ? 'يبدأ من ${price.toStringAsFixed(0)} ج.م' : '${price.toStringAsFixed(0)} ج.م',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.success),
+            ),
+          ]),
+          if (students > _freeStudents) ...[
+            const SizedBox(height: 4),
+            Text(
+              '+${(students - _freeStudents)} طالب إضافي × $_extraPerStudent ج.م',
+              style: TextStyle(fontSize: 11, color: GlassTheme.textMuted(context)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PREMIUM STUDENT SLIDER
+// ═══════════════════════════════════════════════════════════════

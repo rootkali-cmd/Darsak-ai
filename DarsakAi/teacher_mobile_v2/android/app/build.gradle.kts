@@ -1,6 +1,8 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -17,7 +19,7 @@ android {
     defaultConfig {
         applicationId = "com.darsakai.darsak_teacher_v2"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
@@ -25,7 +27,7 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("/home/ahmed/Documents/DarsakAi/mobile-app/android/release.keystore")
+            storeFile = file("../release.keystore")
             storePassword = "Kaliroot2008@"
             keyAlias = "darsak ai"
             keyPassword = "Kaliroot2008@"
@@ -38,15 +40,9 @@ android {
         }
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

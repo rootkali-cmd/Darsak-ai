@@ -62,37 +62,37 @@ CHANNELS: dict[str, dict[str, dict]] = {
             "release_date": "2026-05-26",
         },
         "android": {
-            "version": "2.1.1",
-            "build": 37,
+            "version": "2.2.0",
+            "build": 38,
             "mandatory": False,
             "min_supported_version": "2.0.0",
             "rollout": 100,
             "sha256": None,
             "changelog": [
-                "إصلاح الوضع الفاتح والداكن",
-                "نظام حظر المحاولات",
-                "إصلاح تسجيل دخول الطلاب",
-                "تحسين رسائل الخطأ بالعربية",
-                "إصلاح مشكلة التحديث المتكرر",
-                "تسريع فتح التطبيق",
-                "إصلاح overflow error في الكروت",
-                "إصلاح الكاميرا والباركود",
-                "تصميم جديد لصفحة الهبوط",
+                "Feature Gating حسب الباقة",
+                "Signed Subscription Token لمنع التلاعب",
+                "FCM Push Notifications عند تفعيل الاشتراك",
+                "AI Reports يتطلب Pro أو Premium",
+                "إنشاء امتحانات بالذكاء الاصطناعي يتطلب Pro أو Premium",
+                "تحسين تأثير النجاح - دائرة خضراء مع علامة صح",
+                "إصلاح عدد الطلاب في بريميوم",
+                "تحسين أداء التطبيق",
+                "إصلاح ثغرات أمنية متعددة",
             ],
             "changelog_en": [
-                "Fixed light and dark mode",
-                "Rate limiting and ban system",
-                "Fixed student login",
-                "Improved Arabic error messages",
-                "Fixed repeated update notification",
-                "Faster app startup",
-                "Fixed overflow error in cards",
-                "Fixed camera and barcode scanning",
-                "New landing page design",
+                "Feature Gating per subscription plan",
+                "Signed Subscription Token for anti-tamper",
+                "FCM Push Notifications on subscription activation",
+                "AI Reports requires Pro or Premium plan",
+                "AI Exam Generation requires Pro or Premium plan",
+                "Improved success animation - green checkmark",
+                "Fixed premium student count display",
+                "Performance improvements",
+                "Security vulnerability fixes",
             ],
-            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.1.1/teacher-v2.1.1.apk",
-            "size_mb": 75,
-            "release_date": "2026-06-09",
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.2.0/teacher-2.2.0.apk",
+            "size_mb": 57,
+            "release_date": "2026-06-18",
         },
         "accounts": {
             "version": "1.0.0",
@@ -417,7 +417,7 @@ async def get_instapay_config():
     try:
         from src.core.security.supabase_repo import get_supabase
         client = await get_supabase()
-        result = client.table("instapay_config").select("barcode_url, username").eq("is_active", True).limit(1).execute()
+        result = await client.table("instapay_config").select("barcode_url, username").eq("is_active", True).limit(1).execute()
         rows = result.data if hasattr(result, "data") else []
         if not rows:
             return {

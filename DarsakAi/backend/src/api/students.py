@@ -16,7 +16,7 @@ from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_u
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
-log = logging.getLogger("darsak")
+logger = logging.getLogger("darsak")
 
 
 # ─── Rate Limiting & Ban System for Student Login ──────────────────────
@@ -142,27 +142,48 @@ async def create_student(
 @router.get("/", response_model=list[StudentResponse])
 async def list_students(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(200, ge=1, le=500),
     search: str | None = None,
     current_user: dict = Depends(get_current_teacher),
 ):
-    students = await student_service.list_by_teacher(
-        teacher_id=current_user["id"],
-        search=search,
-        limit=limit,
-        offset=skip,
-    )
-    result = []
-    for s in students:
-        s["has_pin"] = s.get("pin_hash") is not None
-        result.append(StudentResponse(**s))
-    return result
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        cols = "id, code, full_name, phone, parent_phone, grade_level, group_id, teacher_id, pin_hash, created_at, updated_at"
+        q = client.table("students").select(cols).eq("teacher_id", current_user["id"])
+        q = q.order("created_at", desc=True).limit(limit)
+        res = await q.execute()
+        students = res.data or []
+        if search:
+            sq = search.strip().lower()
+            students = [
+                s for s in students
+                if sq in (s.get("full_name") or "").lower()
+                or sq in (s.get("code") or "").lower()
+            ]
+        result = []
+        for s in students:
+            try:
+                s["has_pin"] = s.get("pin_hash") is not None
+                s.pop("pin_hash", None)
+                result.append(StudentResponse(**s))
+            except Exception as e:
+                logger.warning("Skipping student %s: %s", s.get("id"), e)
+                continue
+        return result
+    except Exception as exc:
+        logger.error("Failed to list students: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to list students: {str(exc)}")
 
 
 @router.get("/count")
 async def student_count(current_user: dict = Depends(get_current_teacher)):
-    count = await student_service.count(current_user["id"])
-    return {"count": count}
+    try:
+        count = await student_service.count(current_user["id"])
+        return {"count": count}
+    except Exception as exc:
+        logger.error("Failed to count students: %s", exc, exc_info=True)
+        return {"count": 0}
 
 
 @router.get("/{student_id}", response_model=StudentResponse)
@@ -280,6 +301,7 @@ async def verify_teacher(request: TeacherVerifyRequest):
 
     return TeacherVerifyResponse(
         teacher_id=teacher["id"],
+        teacher_code=teacher.get("teacher_code", ""),
         teacher_name=teacher["full_name"],
     )
 
@@ -287,25 +309,25 @@ async def verify_teacher(request: TeacherVerifyRequest):
 @router.post("/login", response_model=StudentTokenResponse)
 async def student_login(credentials: StudentLogin):
     sanitized_code = sanitize_student_code(credentials.code)
-    log.info("Student login attempt: code=%s", sanitized_code)
+    logger.info("Student login attempt: code=%s", sanitized_code)
 
     _check_rate_limit(sanitized_code)
 
     student = await student_service.get_by_code(sanitized_code)
     if not student:
         _record_failed_attempt(sanitized_code)
-        log.warning("Student login failed: no student found for code=%s", sanitized_code)
+        logger.warning("Student login failed: no student found for code=%s", sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الكود غير صحيح")
 
     if not student.get("pin_hash"):
         _record_failed_attempt(sanitized_code)
-        log.warning("Student login failed: no pin_hash for student_id=%s code=%s", student.get("id"), sanitized_code)
+        logger.warning("Student login failed: no pin_hash for student_id=%s code=%s", student.get("id"), sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الرمز السري غير مُعيّن")
 
     sanitized_pin = sanitize_pin(credentials.pin)
     if not verify_password(sanitized_pin, student["pin_hash"]):
         _record_failed_attempt(sanitized_code)
-        log.warning("Student login failed: PIN mismatch for student_id=%s code=%s", student.get("id"), sanitized_code)
+        logger.warning("Student login failed: PIN mismatch for student_id=%s code=%s", student.get("id"), sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الرمز السري غير صحيح")
 
     if credentials.teacher_code:
@@ -324,6 +346,33 @@ async def student_login(credentials: StudentLogin):
         student_id=student["id"],
         student_code=student["code"],
     )
+
+
+@router.post("/verify-account")
+async def verify_student_account(credentials: StudentLogin):
+    sanitized_code = sanitize_student_code(credentials.code)
+    student = await student_service.get_by_code(sanitized_code)
+    if not student:
+        raise HTTPException(status_code=404, detail="الطالب غير موجود")
+
+    if not student.get("pin_hash"):
+        raise HTTPException(status_code=400, detail="الرمز السري غير مُعيّن")
+
+    sanitized_pin = sanitize_pin(credentials.pin)
+    if not verify_password(sanitized_pin, student["pin_hash"]):
+        raise HTTPException(status_code=401, detail="الرمز السري غير صحيح")
+
+    token = create_access_token(student["id"], expires_delta=None)
+    refresh = create_refresh_token(student["id"])
+
+    return {
+        "access_token": token,
+        "refresh_token": refresh,
+        "student_id": student["id"],
+        "student_code": student["code"],
+        "student_name": student.get("full_name", ""),
+        "teacher_id": student.get("teacher_id", ""),
+    }
 
 
 @router.post("/refresh")

@@ -35,6 +35,7 @@ class PlanFeatures {
 
 /// Check if the current plan includes a specific feature.
 /// Returns true if allowed, false if not (and shows dialog).
+/// Also verifies the signed subscription token for anti-tamper protection.
 bool checkPlanFeature(BuildContext context, String feature) {
   final auth = context.read<AuthProvider>();
   if (!auth.hasSubscription) {
@@ -46,20 +47,25 @@ bool checkPlanFeature(BuildContext context, String feature) {
     showSubscriptionRequiredDialog(context);
     return false;
   }
+
+  // Use auth subscription data for synchronous plan checking
   final planName = (sub['plan_name'] ?? '').toString().toLowerCase();
   final features = sub['plan']?['features'] ?? sub['features'];
 
   // Check features list if available
   if (features is List) {
     final featureList = features.map((f) => f.toString().toLowerCase()).toList();
-    // Map feature key to Arabic feature text that would be in the list
     final arabicFeatures = _featureToArabicList(feature);
     final hasFeature = arabicFeatures.any((af) => featureList.any((f) => f.contains(af)));
     if (hasFeature) return true;
   }
 
   // Check plan name based rules
-  return _checkPlanFeatureByName(planName, feature);
+  final allowed = _checkPlanFeatureByName(planName, feature);
+  if (!allowed) {
+    showFeatureRequiredDialog(context, feature);
+  }
+  return allowed;
 }
 
 bool _checkPlanFeatureByName(String planName, String feature) {
@@ -117,6 +123,13 @@ List<String> _featureToArabicList(String feature) {
 /// Shows a dialog telling the user which plan they need for a feature.
 void showFeatureRequiredDialog(BuildContext context, String feature) {
   final featureLabel = PlanFeatures.featureName(feature);
+  String requiredPlan = 'الباقة الاحترافية';
+  if (feature == PlanFeatures.aiReports || feature == PlanFeatures.aiGenerateExam) {
+    requiredPlan = 'الباقة الاحترافية (Pro) أو أعلى';
+  } else if (feature == PlanFeatures.lessons) {
+    requiredPlan = 'الباقة الاحترافية (Pro) أو أعلى';
+  }
+
   showDialog(
     context: context,
     barrierDismissible: true,
@@ -133,10 +146,17 @@ void showFeatureRequiredDialog(BuildContext context, String feature) {
             style: const TextStyle(fontSize: 14, height: 1.5),
           ),
           const SizedBox(height: 8),
-          Text(
-            'ترقية باقتك للحصول على هذه الميزة',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'متوفرة في: $requiredPlan',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),

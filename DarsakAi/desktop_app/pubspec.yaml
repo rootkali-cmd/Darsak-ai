@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 2.0.0+1
 
 environment:
-  sdk: ^3.9.0
+  sdk: ^3.7.0
 
 dependencies:
   flutter:
@@ -44,7 +44,7 @@ dependencies:
   mobile_scanner: ^6.0.7
   printing: ^5.13.1
   file_picker: ^11.0.2
-  csv: ^8.0.0
+  csv: ^6.0.0
   path_provider: ^2.1.5
   pdf: ^3.11.0
   url_launcher: ^6.2.4
@@ -54,7 +54,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true

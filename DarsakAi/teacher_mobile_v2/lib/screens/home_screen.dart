@@ -22,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   bool _showTrialBanner = true;
+  final Map<int, DateTime> _warnedTabs = {};
 
   static const List<String> _titles = [
     'الرئيسية',
@@ -151,7 +152,34 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_requiresSubscription[index]) {
       final auth = context.read<AuthProvider>();
       if (!auth.hasSubscription) {
-        _showSubscriptionRequiredDialog();
+        final planName = auth.planName ?? 'الباقة المطلوبة';
+        final lastWarn = _warnedTabs[index];
+        final now = DateTime.now();
+
+        if (lastWarn != null && now.difference(lastWarn).inSeconds < 3) {
+          _warnedTabs.remove(index);
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('الميزة غير متاحة في باقتك الحالية ($planName). يرجى الترقية للباقة المطلوبة.'),
+              backgroundColor: AppTheme.danger,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+
+        _warnedTabs[index] = now;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('هذه الميزة تتطلب اشتراكاً نشطاً. اضغط مرة أخرى للتأكيد أو ترقية باقتك.'),
+            backgroundColor: AppTheme.warning,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
         return;
       }
     }

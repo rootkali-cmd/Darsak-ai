@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
@@ -13,74 +12,64 @@ class TeacherCreateInvoiceScreen extends StatefulWidget {
 
 class _TeacherCreateInvoiceScreenState extends State<TeacherCreateInvoiceScreen> {
   final _amountController = TextEditingController();
-  bool _isLoadingStudents = true;
+  final _codeController = TextEditingController();
+  bool _isLookingUp = false;
   bool _isSubmitting = false;
-  List<Map<String, dynamic>> _students = [];
-  List<Map<String, dynamic>> _filteredStudents = [];
+  Map<String, dynamic>? _foundStudent;
   String? _selectedStudentId;
   String _paymentMethod = 'vodafone_cash';
-  final _searchController = TextEditingController();
-  Timer? _searchTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStudents();
-    _searchController.addListener(_onSearchChanged);
-  }
 
   @override
   void dispose() {
     _amountController.dispose();
-    _searchController.dispose();
-    _searchTimer?.cancel();
+    _codeController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadStudents() async {
-    setState(() => _isLoadingStudents = true);
+  Future<void> _lookupStudent() async {
+    final code = _codeController.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أدخل كود الطالب'), backgroundColor: AppTheme.danger),
+      );
+      return;
+    }
+
+    setState(() { _isLookingUp = true; _foundStudent = null; _selectedStudentId = null; });
     try {
-      final resp = await ApiService().getStudents(limit: 200).timeout(const Duration(seconds: 15));
-      final data = resp['data'];
-      if (data is List) {
-        _students = data.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e)).toList();
-      } else if (data is Map && data['students'] is List) {
-        _students = (data['students'] as List).map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e)).toList();
+      final resp = await ApiService().dio.get('/students/', queryParameters: {'search': code});
+      final data = resp.data;
+      List<dynamic> students = [];
+      if (data is Map && data['data'] is List) {
+        students = data['data'];
+      } else if (data is List) {
+        students = data;
       }
-      _filteredStudents = List.from(_students);
-    } catch (e) {
-      debugPrint('Load students error: $e');
+      final match = students.cast<Map<String, dynamic>?>().firstWhere(
+        (s) => (s?['code'] ?? '').toString().trim() == code,
+        orElse: () => null,
+      );
       if (mounted) {
+        setState(() {
+          _foundStudent = match;
+          _selectedStudentId = match?['id']?.toString();
+          _isLookingUp = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { _isLookingUp = false; });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل تحميل الطلاب: $e'), backgroundColor: AppTheme.danger),
+          SnackBar(content: Text('حدث خطأ: $e'), backgroundColor: AppTheme.danger),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoadingStudents = false);
     }
-  }
-
-  void _onSearchChanged() {
-    _searchTimer?.cancel();
-    _searchTimer = Timer(const Duration(milliseconds: 300), () {
-      final query = _searchController.text.trim().toLowerCase();
-      if (query.isEmpty) {
-        _filteredStudents = List.from(_students);
-      } else {
-        _filteredStudents = _students.where((s) {
-          final name = (s['full_name'] ?? '').toString().toLowerCase();
-          final code = (s['code'] ?? '').toString().toLowerCase();
-          return name.contains(query) || code.contains(query);
-        }).toList();
-      }
-      if (mounted) setState(() {});
-    });
   }
 
   Future<void> _submit() async {
     if (_selectedStudentId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر الطالب'), backgroundColor: AppTheme.danger),
+        const SnackBar(content: Text('ابحث عن الطالب أولاً'), backgroundColor: AppTheme.danger),
       );
       return;
     }
@@ -135,9 +124,11 @@ class _TeacherCreateInvoiceScreenState extends State<TeacherCreateInvoiceScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('اختر الطالب', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
+            Text('كود الطالب', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
             const SizedBox(height: 8),
-            _buildStudentDropdown(),
+            _buildCodeSearch(),
+            const SizedBox(height: 8),
+            if (_foundStudent != null) _buildStudentInfo(),
             const SizedBox(height: 24),
             Text('طريقة الدفع', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
             const SizedBox(height: 12),
@@ -154,83 +145,77 @@ class _TeacherCreateInvoiceScreenState extends State<TeacherCreateInvoiceScreen>
     );
   }
 
-  Widget _buildStudentDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCodeSearch() {
+    return Row(
       children: [
-        TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'ابحث بالاسم أو الكود...',
-            hintStyle: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 14),
-            prefixIcon: Icon(Icons.search, color: GlassTheme.textSecondary(context)),
-            filled: true,
-            fillColor: GlassTheme.cardBg(context),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
+        Expanded(
+          child: TextField(
+            controller: _codeController,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: GlassTheme.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
+            decoration: InputDecoration(
+              hintText: 'مثال: STU001',
+              hintStyle: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 14),
+              prefixIcon: Icon(Icons.person_search, color: GlassTheme.textSecondary(context)),
+              filled: true,
+              fillColor: GlassTheme.cardBg(context),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: GlassTheme.cardBorder(context))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.accent)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: GlassTheme.cardBorder(context)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppTheme.accent),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: GlassTheme.cardBg(context),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: GlassTheme.cardBorder(context)),
+        const SizedBox(width: 10),
+        SizedBox(
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isLookingUp ? null : _lookupStudent,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              disabledBackgroundColor: AppTheme.accent.withValues(alpha: 0.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: _isLookingUp
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.search, color: Colors.white, size: 22),
           ),
-          child: _isLoadingStudents
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                )
-              : _filteredStudents.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline, size: 18, color: AppTheme.danger),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text('لا يوجد طلاب', style: TextStyle(color: AppTheme.danger, fontSize: 14)),
-                          ),
-                          TextButton(
-                            onPressed: _loadStudents,
-                            child: const Text('إعادة المحاولة'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: _selectedStudentId,
-                        hint: Text('اختر الطالب', style: TextStyle(color: GlassTheme.textSecondary(context))),
-                        dropdownColor: GlassTheme.cardBg(context),
-                        items: _filteredStudents.map<DropdownMenuItem<String>>((student) {
-                          return DropdownMenuItem(
-                            value: student['id'].toString(),
-                            child: Text(
-                              '${student['full_name'] ?? 'طالب'} (${student['code'] ?? '-'})',
-                              style: TextStyle(color: GlassTheme.textPrimary(context), fontSize: 14),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) => setState(() => _selectedStudentId = value),
-                      ),
-                    ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStudentInfo() {
+    final name = _foundStudent!['full_name'] ?? 'طالب';
+    final code = _foundStudent!['code'] ?? '-';
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle, color: AppTheme.success, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: TextStyle(color: GlassTheme.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 2),
+                Text(code, style: TextStyle(color: GlassTheme.textSecondary(context), fontSize: 13, letterSpacing: 1)),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => setState(() { _foundStudent = null; _selectedStudentId = null; _codeController.clear(); }),
+            child: Text('تغيير', style: TextStyle(color: AppTheme.accent, fontSize: 13)),
+          ),
+        ],
+      ),
     );
   }
 

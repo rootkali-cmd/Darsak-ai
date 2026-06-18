@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
+import '../services/subscription_token_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   static const _tokenKey = 'access_token';
   static const _onboardingKey = 'onboarding_completed';
+  static const _baseUrl = 'https://darsak-backend.fly.dev/api';
 
   bool _isLoading = false;
   String? _error;
@@ -24,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
   bool get needsOnboarding => _user != null && _user!['onboarding_completed'] != true;
   Map<String, dynamic>? get subscription => _subscription;
   bool get hasSubscription => _subscription != null;
+  String? get planName => _subscription?['plan_name'];
 
   AuthProvider() { _init(); }
 
@@ -42,6 +45,35 @@ class AuthProvider extends ChangeNotifier {
       if (jwt != null && jwt['expired'] != true && jwt['id'] != null) {
         _user = {'id': jwt['id'], 'full_name': jwt['full_name'] ?? ''};
         _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? true;
+      } else if (jwt != null && jwt['expired'] == true) {
+        final rt = prefs.getString('refresh_token');
+        if (rt != null && rt.isNotEmpty) {
+          try {
+            final refreshDio = Dio(BaseOptions(
+              baseUrl: _baseUrl, connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 15),
+              headers: {'Content-Type': 'application/json'},
+            ));
+            final resp = await refreshDio.post('/auth/refresh', data: {'refresh_token': rt});
+            final newAccess = resp.data['access_token'] as String?;
+            final newRefresh = resp.data['refresh_token'] as String?;
+            if (newAccess != null && newAccess.isNotEmpty) {
+              await prefs.setString(_tokenKey, newAccess);
+              _token = newAccess;
+              if (newRefresh != null && newRefresh.isNotEmpty) {
+                await prefs.setString('refresh_token', newRefresh);
+              }
+              final newJwt = _parseJwt(_token!);
+              if (newJwt != null && newJwt['expired'] != true && newJwt['id'] != null) {
+                _user = {'id': newJwt['id'], 'full_name': newJwt['full_name'] ?? ''};
+                _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? true;
+              }
+            }
+          } catch (_) {}
+        }
+        if (_user == null) {
+          await prefs.remove(_tokenKey);
+          _token = null;
+        }
       } else {
         await prefs.remove(_tokenKey);
         _token = null;
@@ -110,6 +142,8 @@ class AuthProvider extends ChangeNotifier {
       }
       _isLoading = false; notifyListeners();
       if (_subscription == null) refreshSubscription();
+      // Fetch signed subscription token for anti-tamper verification
+      SubscriptionTokenService().fetchToken();
       return true;
     } on DioException catch (e) { _error = _getDioError(e); _isLoading = false; notifyListeners(); return false; }
     catch (e) { _error = 'حدث خطأ غير متوقع: $e'; _isLoading = false; notifyListeners(); return false; }
@@ -128,14 +162,12 @@ class AuthProvider extends ChangeNotifier {
       if (_subscription != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('subscription_cache', jsonEncode(_subscription));
+        // Also fetch signed subscription token
+        SubscriptionTokenService().fetchToken();
       }
       
       notifyListeners();
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        // Token expired and refresh failed - logout
-        await logout();
-      }
+    } on DioException catch (_) {
     } catch (_) {}
   }
 
@@ -156,6 +188,7 @@ class AuthProvider extends ChangeNotifier {
       await prefs.remove(_tokenKey);
       await prefs.remove('subscription_cache');
       await prefs.remove('refresh_token');
+      await SubscriptionTokenService().clearAll();
     } catch (_) {}
     notifyListeners();
   }

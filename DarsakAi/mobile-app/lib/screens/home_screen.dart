@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../core/api_service.dart';
+import '../core/account_manager.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../widgets/stat_card.dart';
@@ -751,6 +752,78 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AiChatScreen()));
             },
           ),
+          if (auth.accountManager.accounts.length > 1) ...[
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.accent.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(Icons.swap_horiz, size: 16, color: AppTheme.accent),
+                    const SizedBox(width: 6),
+                    Text('الحسابات', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accent)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => _showAddAccountDialog(context, auth),
+                      child: Icon(Icons.add_circle_outline, size: 18, color: AppTheme.accent),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  ...List.generate(auth.accountManager.accounts.length, (i) {
+                    final acc = auth.accountManager.accounts[i];
+                    final isActive = i == auth.accountManager.activeIndex;
+                    return GestureDetector(
+                      onTap: isActive ? null : () async {
+                        await auth.switchAccount(i);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isActive ? AppTheme.accent.withValues(alpha: 0.15) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(children: [
+                          Icon(
+                            isActive ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                            size: 16,
+                            color: isActive ? AppTheme.accent : AppColors.textSecondary(context),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(acc.studentName.isNotEmpty ? acc.studentName : acc.studentCode,
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary(context))),
+                                Text(acc.studentCode, style: TextStyle(fontSize: 11, color: AppColors.textSecondary(context))),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+          if (auth.accountManager.accounts.length < AccountManager.maxFreeAccounts)
+            _DrawerItem(
+              icon: Icons.person_add_outlined,
+              label: 'إضافة حساب',
+              onTap: () {
+                Navigator.pop(context);
+                _showAddAccountDialog(context, auth);
+              },
+            ),
           Divider(color: AppColors.border(context), height: 1),
           _DrawerItem(
             icon: Icons.logout,
@@ -806,6 +879,99 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'الحضور'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'الملف'),
         ],
+      ),
+    );
+  }
+
+  void _showAddAccountDialog(BuildContext context, AuthProvider auth) {
+    final codeController = TextEditingController();
+    final pinController = TextEditingController();
+    bool loading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: AppColors.dialogBackground(context),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(children: [
+            Icon(Icons.person_add_outlined, color: AppTheme.accent, size: 22),
+            const SizedBox(width: 8),
+            Text('إضافة حساب', style: TextStyle(color: AppColors.textPrimary(context))),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'أدخل كود الطالب والرمز السري للحساب الذي تريد إضافته',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary(context)),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textPrimary(context)),
+                decoration: InputDecoration(
+                  hintText: 'كود الطالب',
+                  hintStyle: TextStyle(color: AppColors.textSecondary(context)),
+                  filled: true,
+                  fillColor: AppColors.surfaceElevated(context),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pinController,
+                textAlign: TextAlign.center,
+                obscureText: true,
+                style: TextStyle(color: AppColors.textPrimary(context)),
+                decoration: InputDecoration(
+                  hintText: 'الرمز السري',
+                  hintStyle: TextStyle(color: AppColors.textSecondary(context)),
+                  filled: true,
+                  fillColor: AppColors.surfaceElevated(context),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('إلغاء', style: TextStyle(color: AppColors.textSecondary(context))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: loading ? null : () async {
+                if (codeController.text.isEmpty || pinController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('أدخل الكود والرمز السري'), backgroundColor: AppTheme.danger),
+                  );
+                  return;
+                }
+                setState(() => loading = true);
+                final success = await auth.addAccount(codeController.text, pinController.text);
+                setState(() => loading = false);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تمت إضافة الحساب بنجاح'), backgroundColor: AppTheme.success),
+                  );
+                } else if (auth.error != null && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(auth.error!), backgroundColor: AppTheme.danger),
+                  );
+                }
+              },
+              child: loading
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('إضافة', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }

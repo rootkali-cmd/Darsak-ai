@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "270326940510",
+    "project_id": "darsak-ai-7bb14",
+    "storage_bucket": "darsak-ai-7bb14.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:270326940510:android:f583ce88f815808c6145cf",
+        "android_client_info": {
+          "package_name": "com.darsak.ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNIV7hlKd8AaHGNfi1sPybAtnyGJxE0s0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

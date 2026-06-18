@@ -81,6 +81,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
               subtitle: 'ارفع PDF وAI يعمل اختبار جاهز',
               onTap: () {
                 Navigator.pop(ctx);
+                if (!checkPlanFeature(context, PlanFeatures.aiGenerateExam)) return;
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const AiGenerateExamScreen())).then((v) {
                   if (v == true) _loadExams();
                 });

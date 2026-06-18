@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/local_db.dart';
+import '../core/account_manager.dart';
 import '../models/student.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
@@ -15,6 +16,7 @@ class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final Connectivity _connectivity = Connectivity();
+  final AccountManager _accountManager = AccountManager();
   AuthStatus _status = AuthStatus.uninitialized;
   StudentModel? _student;
   String? _error;
@@ -30,6 +32,7 @@ class AuthProvider extends ChangeNotifier {
   String? get teacherCode => _teacherCode;
   bool get isOnline => _isOnline;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
+  AccountManager get accountManager => _accountManager;
   bool get isSubscriptionActive {
     if (_subscriptionData == null) return false;
     final isActive = _subscriptionData!['is_active'] ?? false;
@@ -70,36 +73,36 @@ class AuthProvider extends ChangeNotifier {
     try {
       _subscriptionData = await _api.getMySubscription();
       notifyListeners();
-    } catch (_) {
-      // Silently fail — subscription state stays unchanged
-    }
+    } catch (_) {}
   }
 
   Future<void> tryAutoLogin() async {
+    await _accountManager.load();
+
     final token = await _storage.read(key: AppConstants.storageKeyToken);
-    if (token == null) {
+    if (token == null && _accountManager.accounts.isEmpty) {
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return;
     }
 
-    _teacherCode =
-        await _storage.read(key: AppConstants.storageKeyTeacherCode);
+    final active = _accountManager.activeAccount;
+    if (active != null) {
+      await _storage.write(key: AppConstants.storageKeyToken, value: active.accessToken);
+      await _storage.write(key: AppConstants.storageKeyRefreshToken, value: active.refreshToken);
+      _teacherCode = active.teacherCode;
+    }
 
-    // Load cached profile immediately so the UI has something to show
     final cached = LocalDB.getProfile();
     if (cached != null) {
       _student = StudentModel.fromJson(cached);
     }
 
-    // Show the app — don't block on network
     _status = AuthStatus.authenticated;
     notifyListeners();
 
-    // Load subscription data in background
     refreshSubscription();
 
-    // Verify token and refresh data in background
     try {
       final data = await _api.getProfile();
       _student = StudentModel.fromJson(data);
@@ -123,14 +126,13 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
 
     try {
-      // Clear stale token so the interceptor won't send it during login
       await _storage.delete(key: AppConstants.storageKeyToken);
-      // Clear cached profile so old data isn't shown
       LocalDB.clearAll();
 
       final response = await _api.login(code, pin, teacherCode: teacherCode);
       final token = response['access_token'] as String;
       final refreshToken = response['refresh_token'] as String?;
+      final studentId = response['student_id']?.toString() ?? '';
 
       await _storage.write(key: AppConstants.storageKeyToken, value: token);
       if (refreshToken != null) {
@@ -138,24 +140,36 @@ class AuthProvider extends ChangeNotifier {
       }
       await _storage.write(key: AppConstants.storageKeyCode, value: code);
       if (teacherCode != null) {
-        await _storage.write(
-            key: AppConstants.storageKeyTeacherCode, value: teacherCode);
+        await _storage.write(key: AppConstants.storageKeyTeacherCode, value: teacherCode);
         _teacherCode = teacherCode;
       }
 
-      // Fetch full profile — if this fails, still treat login as successful
+      String studentName = '';
       try {
         final profile = await _api.getProfile();
         _student = StudentModel.fromJson(profile);
         LocalDB.saveProfile(profile);
+        studentName = _student?.fullName ?? '';
       } catch (_) {
         _student = StudentModel(
-          id: response['student_id']?.toString() ?? '',
+          id: studentId,
           code: response['student_code']?.toString() ?? code,
           fullName: '',
           createdAt: DateTime.now(),
         );
       }
+
+      final account = StudentAccount(
+        studentId: studentId,
+        studentCode: response['student_code']?.toString() ?? code,
+        studentName: studentName,
+        accessToken: token,
+        refreshToken: refreshToken ?? '',
+        teacherId: _student?.teacherId ?? '',
+        teacherCode: teacherCode,
+        teacherName: null,
+      );
+      await _accountManager.addAccount(account);
 
       _status = AuthStatus.authenticated;
       notifyListeners();
@@ -168,6 +182,82 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<bool> addAccount(String code, String pin) async {
+    try {
+      final response = await Dio().post(
+        '${AppConstants.apiBaseUrl}/students/verify-account',
+        data: {'code': code, 'pin': pin},
+      );
+      final data = response.data as Map<String, dynamic>;
+
+      final account = StudentAccount(
+        studentId: data['student_id']?.toString() ?? '',
+        studentCode: data['student_code']?.toString() ?? code,
+        studentName: data['student_name'] ?? '',
+        accessToken: data['access_token'] ?? '',
+        refreshToken: data['refresh_token'] ?? '',
+        teacherId: data['teacher_id']?.toString() ?? '',
+        teacherCode: null,
+        teacherName: null,
+      );
+
+      final added = await _accountManager.addAccount(account);
+      if (!added) {
+        _error = 'الحساب موجود بالفعل أو تم الوصول للحد الأقصى';
+        notifyListeners();
+        return false;
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      if (e is DioException && e.response != null) {
+        final data = e.response?.data;
+        final detail = data is Map ? data['detail'] : null;
+        _error = detail ?? 'فشل إضافة الحساب';
+      } else {
+        _error = 'حدث خطأ أثناء إضافة الحساب';
+      }
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> switchAccount(int index) async {
+    await _accountManager.switchTo(index);
+    final account = _accountManager.activeAccount;
+    if (account == null) return;
+
+    await _storage.write(key: AppConstants.storageKeyToken, value: account.accessToken);
+    await _storage.write(key: AppConstants.storageKeyRefreshToken, value: account.refreshToken);
+    _teacherCode = account.teacherCode;
+
+    LocalDB.clearAll();
+    _student = null;
+    _subscriptionData = null;
+
+    try {
+      final profile = await _api.getProfile();
+      _student = StudentModel.fromJson(profile);
+      LocalDB.saveProfile(profile);
+    } catch (_) {}
+
+    notifyListeners();
+    refreshSubscription();
+  }
+
+  Future<void> removeAccount(int index) async {
+    final wasActive = index == _accountManager.activeIndex;
+    await _accountManager.removeAccount(index);
+
+    if (wasActive && _accountManager.accounts.isNotEmpty) {
+      await switchAccount(0);
+    } else if (_accountManager.accounts.isEmpty) {
+      await logout();
+    } else {
+      notifyListeners();
     }
   }
 

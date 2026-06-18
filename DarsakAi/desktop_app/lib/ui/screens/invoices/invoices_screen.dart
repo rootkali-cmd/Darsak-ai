@@ -165,7 +165,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
                       SizedBox(
                         width: 320,
                         child: DropdownButtonFormField<String>(
-                          initialValue: _selectedStudentId.isNotEmpty ? _selectedStudentId : null,
+                          value: _selectedStudentId.isNotEmpty ? _selectedStudentId : null,
                           decoration: const InputDecoration(
                             labelText: 'تصفية حسب الطالب',
                             prefixIcon: Icon(Icons.filter_list, size: 20),
@@ -412,7 +412,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  initialValue: selectedStudentId,
+                  value: selectedStudentId,
                   decoration: const InputDecoration(
                     labelText: 'اختر الطالب *',
                     prefixIcon: Icon(Icons.person, size: 20),

@@ -75,6 +75,7 @@ class LessonBrief(BaseModel):
 
 class InvoiceWithLesson(InvoiceResponse):
     lesson: LessonBrief | None = None
+    student_name: str | None = None
 
 
 # ─── Legacy schemas (kept for backward compat) ───────────────────────

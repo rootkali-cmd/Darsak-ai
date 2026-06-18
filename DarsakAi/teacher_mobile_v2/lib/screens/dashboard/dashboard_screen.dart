@@ -217,9 +217,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         _StatCard(
           icon: Icons.receipt_rounded,
-          label: 'الإيرادات',
-          count: _safeStat('total_revenue'),
-          subtitle: 'إجمالي الإيرادات',
+          label: 'إيرادات الشهر',
+          count: _safeStat('monthly_revenue'),
+          subtitle: 'إيرادات هذا الشهر',
           color: const Color(0xFFF59E0B),
         ),
       ],

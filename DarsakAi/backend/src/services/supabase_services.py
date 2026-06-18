@@ -445,13 +445,45 @@ class NotificationService:
     def __init__(self):
         self.repo = SupabaseRepository("notifications")
 
-    async def create(self, teacher_id: str, title: str, body: str, type: str = "info") -> dict:
-        return await self.repo.insert({
+    async def create(self, teacher_id: str, title: str, body: str, type: str = "info", user_type: str | None = None) -> dict:
+        result = await self.repo.insert({
             "teacher_id": teacher_id,
             "title": title,
             "body": body,
             "type": type,
         })
+
+        # Send FCM push notification in background (non-blocking)
+        if teacher_id and teacher_id != "None":
+            try:
+                from src.services.fcm_service import send_push_to_user
+                import asyncio
+                # Determine user_type: try both if not specified
+                if user_type:
+                    asyncio.create_task(send_push_to_user(
+                        user_id=teacher_id,
+                        user_type=user_type,
+                        title=title,
+                        body=body,
+                        data={"type": type},
+                        notification_id=result.get("id"),
+                    ))
+                else:
+                    # Try sending to both student and teacher (whichever has tokens)
+                    asyncio.create_task(send_push_to_user(
+                        user_id=teacher_id, user_type="student",
+                        title=title, body=body,
+                        data={"type": type}, notification_id=result.get("id"),
+                    ))
+                    asyncio.create_task(send_push_to_user(
+                        user_id=teacher_id, user_type="teacher",
+                        title=title, body=body,
+                        data={"type": type}, notification_id=result.get("id"),
+                    ))
+            except Exception:
+                pass  # Don't fail notification creation if push fails
+
+        return result
 
     async def get_unread(self, teacher_id: str) -> list[dict]:
         return await self.repo.select({"teacher_id": teacher_id, "read": False}, limit=50, order="created_at desc")

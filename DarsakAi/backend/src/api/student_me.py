@@ -38,6 +38,60 @@ async def mark_notification_read(
     return await notification_service.mark_read(notification_id)
 
 
+class FCMTokenRequest(BaseModel):
+    fcm_token: str = Field(..., min_length=1)
+    platform: str = Field(default="android")
+
+
+@router.post("/fcm-token")
+async def register_fcm_token(
+    req: FCMTokenRequest,
+    current_student: dict = Depends(get_current_student),
+):
+    """Register or update FCM token for push notifications."""
+    from src.core.security.supabase_repo import get_supabase
+
+    client = await get_supabase()
+    url = settings.SUPABASE_URL.rstrip("/")
+    key = settings.SUPABASE_SERVICE_ROLE_KEY
+
+    import httpx
+    async with httpx.AsyncClient() as http:
+        # Upsert token (insert or update if already exists)
+        existing = await http.get(
+            f"{url}/rest/v1/fcm_tokens",
+            params={
+                "select": "id",
+                "user_id": f"eq.{current_student['id']}",
+                "fcm_token": f"eq.{req.fcm_token}",
+            },
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+        )
+
+        if existing.status_code == 200 and existing.json():
+            # Update existing
+            token_id = existing.json()[0]["id"]
+            await http.patch(
+                f"{url}/rest/v1/fcm_tokens?id=eq.{token_id}",
+                json={"is_active": True, "platform": req.platform},
+                headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            )
+        else:
+            # Insert new
+            await http.post(
+                f"{url}/rest/v1/fcm_tokens",
+                json={
+                    "user_id": current_student["id"],
+                    "user_type": "student",
+                    "fcm_token": req.fcm_token,
+                    "platform": req.platform,
+                },
+                headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            )
+
+    return {"status": "ok"}
+
+
 class StudentPinUpdate(BaseModel):
     old_pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
     new_pin: str = Field(..., min_length=6, max_length=8, pattern=PIN_PATTERN)
@@ -106,7 +160,7 @@ async def get_my_invoices(
     filters = {"student_id": current_student["id"]}
     invoices = await invoice_service.list(filters, limit=limit)
     if paid is not None:
-        invoices = [i for i in invoices if i.get("paid") == paid]
+        invoices = [i for i in invoices if (i.get("status") in ("paid", "approved")) == paid]
     return [InvoiceResponse(**i) for i in invoices]
 
 
