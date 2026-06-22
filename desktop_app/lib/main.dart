@@ -24,26 +24,51 @@ late String _dbPath;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
 
-  await AppLogger.instance.init();
-  await AnalyticsService.instance.init();
-  await RemoteConfigService.instance.init();
+  try {
+    await windowManager.ensureInitialized();
+  } catch (_) {}
 
-  final appDir = await getApplicationSupportDirectory();
-  _dbPath = '${appDir.path}/darsak_db/darsak.db';
-  await DatabaseService.instance.init(_dbPath);
+  try {
+    await AppLogger.instance.init();
+  } catch (_) {}
 
-  final localSync = LocalSyncService();
-  await localSync.start();
+  try {
+    await AnalyticsService.instance.init();
+  } catch (_) {}
 
-  AppLogger.instance.info('app_started', data: {
-    'version': AppConstants.appVersion,
-    'platform': AppConstants.platformName,
-  });
-  AnalyticsService.instance.appOpened();
+  try {
+    await RemoteConfigService.instance.init();
+  } catch (_) {}
 
-  runApp(DarsakApp(localSync: localSync));
+  LocalSyncService? localSync;
+  try {
+    final appDir = await getApplicationSupportDirectory();
+    _dbPath = '${appDir.path}/darsak_db/darsak.db';
+    await DatabaseService.instance.init(_dbPath);
+  } catch (e) {
+    _dbPath = 'darsak.db';
+    try {
+      await DatabaseService.instance.init(_dbPath);
+    } catch (_) {}
+  }
+
+  try {
+    localSync = LocalSyncService();
+    await localSync.start();
+  } catch (_) {
+    localSync = LocalSyncService();
+  }
+
+  try {
+    AppLogger.instance.info('app_started', data: {
+      'version': AppConstants.appVersion,
+      'platform': AppConstants.platformName,
+    });
+    AnalyticsService.instance.appOpened();
+  } catch (_) {}
+
+  runApp(DarsakApp(localSync: localSync ?? LocalSyncService()));
 }
 
 class DarsakApp extends StatefulWidget {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
@@ -24,6 +25,8 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
   bool _saving = false;
   List<Map<String, dynamic>> _questions = [];
   bool _loadingQuestions = false;
+  DateTime? _deadlineAt;
+  DateTime? _showResultsAt;
 
   bool get _isEdit => widget.exam != null;
 
@@ -36,7 +39,18 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
       _descCtrl.text = e['description'] ?? '';
       _durationCtrl.text = e['duration_minutes']?.toString() ?? '';
       _totalPointsCtrl.text = e['total_points']?.toString() ?? '';
+      _deadlineAt = _parseDt(e['deadline_at']);
+      _showResultsAt = _parseDt(e['show_results_at']);
       _loadQuestions();
+    }
+  }
+
+  static DateTime? _parseDt(dynamic v) {
+    if (v == null) return null;
+    try {
+      return DateTime.parse(v.toString()).toLocal();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -75,6 +89,8 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
         'description': _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         'duration_minutes': int.tryParse(_durationCtrl.text.trim()),
         'total_points': double.tryParse(_totalPointsCtrl.text.trim()),
+        'deadline_at': _deadlineAt?.toUtc().toIso8601String(),
+        'show_results_at': _showResultsAt?.toUtc().toIso8601String(),
       };
 
       if (_isEdit) {
@@ -199,6 +215,72 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
     }
   }
 
+  Future<DateTime?> _pickDateTime({required DateTime initial}) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return null;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      helpText: 'اختر الوقت',
+    );
+    if (time == null || !mounted) return null;
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  Widget _buildDateTimeTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool hasValue,
+    required VoidCallback onTap,
+    VoidCallback? onClear,
+  }) {
+    final accent = hasValue ? GlassTheme.indigo : GlassTheme.textSecondary(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: GlassTheme.indigo.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: GlassTheme.indigo.withValues(alpha: hasValue ? 0.35 : 0.12)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: accent, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context))),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: accent)),
+                ],
+              ),
+            ),
+            if (onClear != null)
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close, size: 18, color: GlassTheme.textSecondary(context)),
+                onPressed: onClear,
+                tooltip: 'إزالة',
+              )
+            else
+              Icon(Icons.chevron_left, color: GlassTheme.textSecondary(context), size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -252,6 +334,41 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 18),
+                // ─── Scheduling: deadline + results visibility ─────────────────
+                _buildDateTimeTile(
+                  context,
+                  icon: Icons.event_busy,
+                  title: 'موعد التسليم',
+                  subtitle: _deadlineAt == null
+                      ? 'بدون موعد نهائي'
+                      : DateFormat('yyyy/MM/dd - HH:mm').format(_deadlineAt!),
+                  hasValue: _deadlineAt != null,
+                  onTap: () => _pickDateTime(initial: _deadlineAt ?? DateTime.now().add(const Duration(hours: 2)))
+                      .then((dt) { if (dt != null && mounted) setState(() => _deadlineAt = dt); }),
+                  onClear: _deadlineAt == null ? null : () => setState(() => _deadlineAt = null),
+                ),
+                const SizedBox(height: 10),
+                _buildDateTimeTile(
+                  context,
+                  icon: Icons.visibility,
+                  title: 'إظهار النتائج للطلاب',
+                  subtitle: _showResultsAt == null
+                      ? 'تظهر فور التصحيح'
+                      : DateFormat('yyyy/MM/dd - HH:mm').format(_showResultsAt!),
+                  hasValue: _showResultsAt != null,
+                  onTap: () => _pickDateTime(initial: _showResultsAt ?? DateTime.now().add(const Duration(days: 1)))
+                      .then((dt) { if (dt != null && mounted) setState(() => _showResultsAt = dt); }),
+                  onClear: _showResultsAt == null ? null : () => setState(() => _showResultsAt = null),
+                ),
+                if (_showResultsAt != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, right: 4),
+                    child: Text(
+                      'سيتم إخفاء الإجابات الصحيحة والنسب عن الطلاب حتى هذا التاريخ',
+                      style: TextStyle(fontSize: 11, color: GlassTheme.textSecondary(context)),
+                    ),
+                  ),
                 const SizedBox(height: 28),
                 ElevatedButton(
                   onPressed: _saving ? null : _save,

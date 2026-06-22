@@ -468,7 +468,7 @@ class ExamService:
         self.repo = SupabaseRepository("exams")
         self.question_repo = SupabaseRepository("questions")
 
-    async def create(self, teacher_id: str, title: str, duration_minutes: int = 30, description: str | None = None, deadline_at: str | None = None) -> dict:
+    async def create(self, teacher_id: str, title: str, duration_minutes: int = 30, description: str | None = None, deadline_at: str | None = None, show_results_at: str | None = None) -> dict:
         data = {
             "teacher_id": teacher_id,
             "title": title,
@@ -478,6 +478,8 @@ class ExamService:
         }
         if deadline_at:
             data["deadline_at"] = deadline_at
+        if show_results_at:
+            data["show_results_at"] = show_results_at
         return await self.repo.insert(data)
 
     async def get_by_id(self, exam_id: str) -> dict | None:

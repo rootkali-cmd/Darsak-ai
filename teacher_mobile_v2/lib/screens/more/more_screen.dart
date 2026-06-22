@@ -10,6 +10,7 @@ import '../subscriptions/subscription_screen.dart';
 import '../exams/exams_screen.dart';
 import '../reports/ai_reports_screen.dart';
 import '../invoices/teacher_invoices_screen.dart';
+import '../contacts/teacher_contacts_screen.dart';
 import 'developer_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -91,6 +92,12 @@ class _MoreScreenState extends State<MoreScreen> {
             label: 'الفواتير',
             color: AppTheme.warning,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherInvoicesScreen())),
+          ),
+          _MoreOption(
+            icon: Icons.contact_mail,
+            label: 'جهات اتصال',
+            color: GlassTheme.cyan,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherContactsScreen())),
           ),
           _MoreOption(
             icon: Icons.qr_code,

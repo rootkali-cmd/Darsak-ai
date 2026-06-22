@@ -1,0 +1,14 @@
+{
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "framework": null,
+  "rewrites": [
+    { "source": "/pages/downloads", "destination": "/pages/downloads.html" },
+    { "source": "/pages/privacy", "destination": "/pages/privacy.html" },
+    { "source": "/pages/terms", "destination": "/pages/terms.html" },
+    { "source": "/pages/refund-policy", "destination": "/pages/refund-policy.html" },
+    { "source": "/pages/faq", "destination": "/pages/faq.html" },
+    { "source": "/pages/pricing", "destination": "/pages/pricing.html" },
+    { "source": "/:path*", "destination": "/:path*" }
+  ]
+}

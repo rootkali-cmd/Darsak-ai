@@ -95,6 +95,7 @@ async def create_exam(
             duration_minutes=data.duration_minutes,
             description=data.description,
             deadline_at=data.deadline_at,
+            show_results_at=data.show_results_at,
         )
         return _to_exam_response(exam)
     except HTTPException:
