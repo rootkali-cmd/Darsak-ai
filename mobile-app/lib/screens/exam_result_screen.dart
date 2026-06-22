@@ -56,8 +56,46 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
   Widget _buildResult() {
     final status = _result!['status'] ?? '';
     final scorePercentage = (_result!['score_percentage'] as num?)?.toDouble() ?? 0;
-    final correctPercentage = (_result!['correct_percentage'] as num?)?.toDouble() ?? 0;
-    final wrongPercentage = (_result!['wrong_percentage'] as num?)?.toDouble() ?? 0;
+    final correctPercentage = (_result!['correct_percentage'] as num?)?.toDouble();
+    final wrongPercentage = (_result!['wrong_percentage'] as num?)?.toDouble();
+    final resultsHiddenUntil = _result!['results_hidden_until'] as String?;
+    final bool resultsHidden = correctPercentage == null && wrongPercentage == null && resultsHiddenUntil != null;
+
+    // Results hidden until a teacher-set date: show waiting state instead of 0/0
+    if (resultsHidden) {
+      String untilText = '';
+      try {
+        final dt = DateTime.parse(resultsHiddenUntil).toLocal();
+        untilText = '${dt.day}/${dt.month}/${dt.year} - ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {
+        untilText = resultsHiddenUntil;
+      }
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceElevated(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border(context)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_clock, color: AppTheme.warning, size: 48),
+              const SizedBox(height: 12),
+              Text('النتائج مخفية مؤقتاً', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('ستظهر نتيجتك التفصيلية في:', style: TextStyle(color: AppColors.textSecondary(context))),
+              const SizedBox(height: 4),
+              Text(untilText, style: TextStyle(color: AppTheme.warning, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              Text('درجتك: ${scorePercentage.toStringAsFixed(1)}%', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 15, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (status == 'graded') {
       return SingleChildScrollView(
@@ -66,7 +104,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
           children: [
             _buildScoreCircle(scorePercentage),
             const SizedBox(height: 24),
-            _buildPercentagesCard(correctPercentage, wrongPercentage),
+            _buildPercentagesCard(correctPercentage!, wrongPercentage!),
           ],
         ),
       );

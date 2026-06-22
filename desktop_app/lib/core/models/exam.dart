@@ -7,6 +7,9 @@ class ExamModel {
   final DateTime createdAt;
   final int totalQuestions;
   final int essayQuestions;
+  final DateTime? deadlineAt;
+  final DateTime? showResultsAt;
+  final String status;
 
   const ExamModel({
     required this.id,
@@ -17,6 +20,9 @@ class ExamModel {
     required this.createdAt,
     this.totalQuestions = 0,
     this.essayQuestions = 0,
+    this.deadlineAt,
+    this.showResultsAt,
+    this.status = 'draft',
   });
 
   factory ExamModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +35,9 @@ class ExamModel {
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       totalQuestions: json['total_questions'] ?? 0,
       essayQuestions: json['essay_questions'] ?? 0,
+      deadlineAt: json['deadline_at'] != null ? DateTime.tryParse(json['deadline_at'].toString()) : null,
+      showResultsAt: json['show_results_at'] != null ? DateTime.tryParse(json['show_results_at'].toString()) : null,
+      status: json['status']?.toString() ?? (json['published'] == true ? 'published' : 'draft'),
     );
   }
 
@@ -41,6 +50,9 @@ class ExamModel {
         'created_at': createdAt.toIso8601String(),
         'total_questions': totalQuestions,
         'essay_questions': essayQuestions,
+        'deadline_at': deadlineAt?.toIso8601String(),
+        'show_results_at': showResultsAt?.toIso8601String(),
+        'status': status,
       };
 }
 

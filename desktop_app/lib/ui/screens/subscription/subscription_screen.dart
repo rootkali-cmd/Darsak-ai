@@ -786,7 +786,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 children: [
                   Text('الحد الأقصى', style: TextStyle(color: textMuted, fontSize: 12)),
                   const SizedBox(height: 4),
-                  Text('$studentLimit طالب', style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(studentLimit == '-1' || studentLimit == '-1' ? '∞ طالب' : '$studentLimit طالب', style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Text('المدة', style: TextStyle(color: textMuted, fontSize: 12)),
                   const SizedBox(height: 4),
@@ -812,27 +812,27 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return [
       {
         'name': 'Basic',
-        'price': '199',
+        'price': '250',
         'duration': 'شهر',
-        'student_limit': '2',
+        'student_limit': '100',
         'popular': false,
-        'features': ['2 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'دعم فني'],
+        'features': ['100 طالب', '10 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير بسيطة', 'دعم فني'],
       },
       {
         'name': 'Pro',
-        'price': '499',
+        'price': '600',
         'duration': 'شهر',
-        'student_limit': '6',
+        'student_limit': '400',
         'popular': true,
-        'features': ['6 اختبارات شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'دعم فني'],
+        'features': ['400 طالب', '50 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'دعم فني'],
       },
       {
         'name': 'Premium',
-        'price': '999',
+        'price': '1100',
         'duration': 'شهر',
-        'student_limit': '15',
+        'student_limit': '-1',
         'popular': false,
-        'features': ['15 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'دعم فني أولوية'],
+        'features': ['طلاب غير محدود', 'اختبارات غير محدودة', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'طلاب غير محدود', 'دعم فني أولوية'],
       },
     ];
   }

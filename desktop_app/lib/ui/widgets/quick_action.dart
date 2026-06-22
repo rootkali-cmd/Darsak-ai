@@ -37,7 +37,10 @@ class _QuickActionState extends State<QuickAction> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedContainer(
+        child: AnimatedScale(
+          scale: _isHovered ? 1.05 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: 140,
           padding: const EdgeInsets.all(20),
@@ -82,6 +85,7 @@ class _QuickActionState extends State<QuickAction> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

@@ -41,6 +41,9 @@ final class ApiService {
   Future<Map<String, dynamic>> createStudent(Map<String, dynamic> data) =>
       _client.post('/students/', data: data);
 
+  Future<Map<String, dynamic>> updateStudent(String studentId, Map<String, dynamic> data) =>
+      _client.put('/students/$studentId', data: data);
+
   Future<void> deleteStudent(String studentId) => _client.delete('/students/$studentId');
 
   Future<void> deleteGroup(String groupId) => _client.delete('/groups/$groupId');
@@ -68,6 +71,9 @@ final class ApiService {
   Future<Map<String, dynamic>> createGroup(Map<String, dynamic> data) =>
       _client.post('/groups/', data: data);
 
+  Future<Map<String, dynamic>> updateGroup(String groupId, Map<String, dynamic> data) =>
+      _client.put('/groups/$groupId', data: data);
+
   // ─── Attendance ───
   Future<List<dynamic>> getAttendance({String? groupId, String? date}) =>
       _client.getList('/attendance/', queryParameters: {'group_id': groupId, 'date': date});
@@ -92,6 +98,9 @@ final class ApiService {
   Future<Map<String, dynamic>> createGrade(Map<String, dynamic> data) =>
       _client.post('/grades/', data: data);
 
+  Future<Map<String, dynamic>> updateGrade(String gradeId, Map<String, dynamic> data) =>
+      _client.put('/grades/$gradeId', data: data);
+
   Future<Map<String, dynamic>> getGradeStats() => _client.get('/grades/stats');
 
   // ─── Invoices ───
@@ -106,6 +115,19 @@ final class ApiService {
       _client.patch('/invoices/$id', data: {'paid': paid, 'payment_date': paymentDate});
 
   Future<Map<String, dynamic>> getInvoiceStats() => _client.get('/invoices/stats');
+
+  // ─── Teacher Invoices ───
+  Future<List<dynamic>> getTeacherInvoices() =>
+      _client.getList('/invoices/teacher');
+
+  Future<Map<String, dynamic>> teacherCreateInvoice(Map<String, dynamic> data) =>
+      _client.post('/invoices/teacher-create', data: data);
+
+  Future<Map<String, dynamic>> approveInvoice(String id) =>
+      _client.post('/invoices/$id/approve');
+
+  Future<Map<String, dynamic>> rejectInvoice(String id) =>
+      _client.post('/invoices/$id/reject');
 
   // ─── QR ───
   Future<Map<String, dynamic>> generateQR(String teacherId) =>
@@ -209,6 +231,45 @@ final class ApiService {
     }
   }
 
+  // ─── Online Students ───
+  Future<List<dynamic>> getOnlineStudents() =>
+      _client.getList('/students/type/online');
+
+  // ─── Student Approval ───
+  Future<Map<String, dynamic>> approveStudent(String id) =>
+      _client.patch('/students/$id/approve');
+
+  Future<Map<String, dynamic>> rejectStudent(String id, {String? reason}) =>
+      _client.patch('/students/$id/reject', data: {if (reason != null) 'reason': reason});
+
+  // ─── Teacher Contacts ───
+  Future<List<dynamic>> getTeacherContacts() =>
+      _client.getList('/teacher/contacts/');
+
+  Future<Map<String, dynamic>> addTeacherContact(Map<String, dynamic> data) =>
+      _client.post('/teacher/contacts/', data: data);
+
+  Future<void> deleteTeacherContact(String id) =>
+      _client.delete('/teacher/contacts/$id');
+
+  // ─── Profile ───
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) =>
+      _client.put('/auth/me', data: data);
+
+  // ─── Reports ───
+  Future<List<dynamic>> getStudentReports({
+    String? teacherId,
+    String? subject,
+    String? dateFrom,
+    String? dateTo,
+  }) =>
+      _client.getList('/reports', queryParameters: {
+        if (teacherId != null) 'teacher_id': teacherId,
+        if (subject != null) 'subject': subject,
+        if (dateFrom != null) 'date_from': dateFrom,
+        if (dateTo != null) 'date_to': dateTo,
+      });
+
   // ─── Remote Config ───
   Future<Map<String, dynamic>?> getRemoteConfig() async {
     try {
@@ -217,4 +278,23 @@ final class ApiService {
       return null;
     }
   }
+
+  // ─── Generic pass-through ───
+  Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? queryParameters}) =>
+      _client.get(path, queryParameters: queryParameters);
+
+  Future<Map<String, dynamic>> post(String path, {dynamic data}) =>
+      _client.post(path, data: data);
+
+  Future<Map<String, dynamic>> patch(String path, {dynamic data}) =>
+      _client.patch(path, data: data);
+
+  Future<Map<String, dynamic>> put(String path, {dynamic data}) =>
+      _client.put(path, data: data);
+
+  Future<void> delete(String path) =>
+      _client.delete(path);
+
+  Future<List<dynamic>> getList(String path, {Map<String, dynamic>? queryParameters}) =>
+      _client.getList(path, queryParameters: queryParameters);
 }

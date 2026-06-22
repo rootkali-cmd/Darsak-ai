@@ -18,6 +18,12 @@ import '../exams/exam_list_screen.dart';
 import '../qr/qr_screen.dart';
 import '../subscription/subscription_screen.dart';
 import '../settings/settings_screen.dart';
+import '../reports/ai_reports_screen.dart';
+import '../students/online_requests_screen.dart';
+import '../profile/profile_screen.dart';
+import '../profile/teacher_code_screen.dart';
+import '../contacts/teacher_contacts_screen.dart';
+import '../invoices/teacher_invoices_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -182,6 +188,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 7: return 'QR';
       case 8: return 'الإعدادات';
       case 9: return 'الاشتراك';
+      case 10: return 'التقارير';
+      case 11: return 'طلبات التسجيل';
+      case 12: return 'الملف الشخصي';
+      case 13: return 'كود المعلم';
+      case 14: return 'جهات الاتصال';
+      case 15: return 'الفواتير المتقدمة';
       default: return 'لوحة التحكم';
     }
   }
@@ -212,6 +224,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         );
       case 9:
         return const SubscriptionScreen(key: ValueKey('subscription'));
+      case 10:
+        return const AiReportsScreen(key: ValueKey('reports'));
+      case 11:
+        return const OnlineRequestsScreen(key: ValueKey('online_requests'));
+      case 12:
+        return const ProfileScreen(key: ValueKey('profile'));
+      case 13:
+        return const TeacherCodeScreen(key: ValueKey('teacher_code'));
+      case 14:
+        return const TeacherContactsScreen(key: ValueKey('contacts'));
+      case 15:
+        return const TeacherInvoicesScreen(key: ValueKey('advanced_invoices'));
       default:
         return _buildHome(key: const ValueKey('home'));
     }

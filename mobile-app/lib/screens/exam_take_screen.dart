@@ -42,6 +42,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    if (!_submitted && !_submitting && _questions.isNotEmpty) {
+      _autoSubmit();
+    }
     super.dispose();
   }
 
@@ -261,7 +264,11 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
             ],
           ),
         ).then((result) {
-          if (result == true && context.mounted) Navigator.of(context).pop();
+          if (result == true && context.mounted) {
+            _autoSubmit().then((_) {
+              if (context.mounted) Navigator.of(context).pop();
+            });
+          }
         });
       },
       child: Scaffold(
@@ -386,6 +393,11 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                   isSelected: _currentSelection == opt['key'],
                   onTap: () {
                     setState(() => _currentSelection = opt['key'] ?? '');
+                    if (type == 'multiple_choice' && _currentIndex < _questions.length - 1) {
+                      Future.delayed(const Duration(milliseconds: 400), () {
+                        if (mounted) _goNext();
+                      });
+                    }
                   },
                 ))
           else
