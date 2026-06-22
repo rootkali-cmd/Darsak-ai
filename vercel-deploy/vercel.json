@@ -9,6 +9,7 @@
     { "source": "/pages/refund-policy", "destination": "/pages/refund-policy.html" },
     { "source": "/pages/faq", "destination": "/pages/faq.html" },
     { "source": "/pages/pricing", "destination": "/pages/pricing.html" },
+    { "source": "/pages/contact", "destination": "/pages/contact.html" },
     { "source": "/:path*", "destination": "/:path*" }
   ]
 }
