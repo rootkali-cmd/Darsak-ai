@@ -31,6 +31,10 @@ class _GlassNotificationOverlayState extends State<GlassNotificationOverlay> {
   Widget build(BuildContext context) {
     final notifications = NotificationService.instance.notifications;
     if (notifications.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textMuted = isDark ? AppTheme.darkTextMuted : AppTheme.lightTextMuted;
 
     return Positioned(
       bottom: 24,
@@ -50,7 +54,7 @@ class _GlassNotificationOverlayState extends State<GlassNotificationOverlay> {
               opacity: opacity.clamp(0.3, 1.0),
               child: Transform.scale(
                 scale: scale.clamp(0.85, 1.0),
-                child: _GlassCard(notification: n),
+                child: _GlassCard(notification: n, surfaceColor: surfaceColor, textPrimary: textPrimary, textMuted: textMuted),
               ),
             );
           }).toList(),
@@ -62,7 +66,10 @@ class _GlassNotificationOverlayState extends State<GlassNotificationOverlay> {
 
 class _GlassCard extends StatelessWidget {
   final GlassNotification notification;
-  const _GlassCard({required this.notification});
+  final Color surfaceColor;
+  final Color textPrimary;
+  final Color textMuted;
+  const _GlassCard({required this.notification, required this.surfaceColor, required this.textPrimary, required this.textMuted});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +78,7 @@ class _GlassCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       constraints: const BoxConstraints(maxWidth: 360),
       decoration: BoxDecoration(
-        color: AppTheme.darkSurface.withValues(alpha: 0.85),
+        color: surfaceColor.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: notification.color.withValues(alpha: 0.3),
@@ -105,8 +112,8 @@ class _GlassCard extends StatelessWidget {
               children: [
                 Text(
                   notification.title,
-                  style: const TextStyle(
-                    color: AppTheme.darkTextPrimary,
+                  style: TextStyle(
+                    color: textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -114,8 +121,8 @@ class _GlassCard extends StatelessWidget {
                 if (notification.subtitle != null)
                   Text(
                     notification.subtitle!,
-                    style: const TextStyle(
-                      color: AppTheme.darkTextMuted,
+                    style: TextStyle(
+                      color: textMuted,
                       fontSize: 11,
                     ),
                   ),

@@ -61,9 +61,14 @@ class _ExamsScreenState extends State<ExamsScreen> {
 
   void _showCreateOptions() {
     if (!checkSubscription(context)) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xFF111111) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final textSecondary = isDark ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF555570);
+    final handleColor = isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFE2E5EA);
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF111111),
+      backgroundColor: surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -72,13 +77,16 @@ class _ExamsScreenState extends State<ExamsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: handleColor, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
             _buildOption(
               icon: Icons.auto_awesome,
               color: GlassTheme.indigo,
               title: 'اختبار بالذكاء الاصطناعي',
               subtitle: 'ارفع PDF وAI يعمل اختبار جاهز',
+              titleColor: textPrimary,
+              subtitleColor: textSecondary,
+              arrowColor: textSecondary,
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const AiGenerateExamScreen())).then((v) {
@@ -92,6 +100,9 @@ class _ExamsScreenState extends State<ExamsScreen> {
               color: GlassTheme.green,
               title: 'اختبار يدوياً',
               subtitle: 'أنشئ اختبار وأضف الأسئلة بنفسك',
+              titleColor: textPrimary,
+              subtitleColor: textSecondary,
+              arrowColor: textSecondary,
               onTap: () async {
                 Navigator.pop(ctx);
                 await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditExamScreen()));
@@ -105,7 +116,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
     );
   }
 
-  Widget _buildOption({required IconData icon, required Color color, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _buildOption({required IconData icon, required Color color, required String title, required String subtitle, required VoidCallback onTap, Color? titleColor, Color? subtitleColor, Color? arrowColor}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -128,13 +139,13 @@ class _ExamsScreenState extends State<ExamsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text(title, style: TextStyle(color: titleColor ?? Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                  Text(subtitle, style: TextStyle(color: subtitleColor ?? Colors.white.withValues(alpha: 0.5), fontSize: 12)),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.3), size: 16),
+            Icon(Icons.arrow_forward_ios, color: arrowColor ?? Colors.white.withValues(alpha: 0.3), size: 16),
           ],
         ),
       ),

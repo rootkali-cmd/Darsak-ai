@@ -181,15 +181,19 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg = isDark ? GlassTheme.bgDark : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final textSecondary = isDark ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF555570);
     return SubscriptionRequiredWidget(
       child: Scaffold(
-        backgroundColor: GlassTheme.bgDark,
+        backgroundColor: scaffoldBg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text('اختبار بالذكاء الاصطناعي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        leading: IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Colors.white), onPressed: () => Navigator.pop(context)),
+        title: Text('اختبار بالذكاء الاصطناعي', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold)),
+        leading: IconButton(icon: Icon(Icons.arrow_forward_ios, color: textPrimary), onPressed: () => Navigator.pop(context)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

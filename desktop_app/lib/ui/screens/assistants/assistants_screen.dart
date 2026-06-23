@@ -36,12 +36,17 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
   }
 
   Future<void> _showPasswordDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('أدخل كلمة مرور المساعدين', textAlign: TextAlign.center),
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderColor)),
+        title: Text('أدخل كلمة مرور المساعدين', textAlign: TextAlign.center, style: TextStyle(color: textPrimary)),
         content: TextField(
           controller: _passwordController,
           obscureText: true,
@@ -109,19 +114,25 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
 
     final result = await showDialog<Map<String, String>?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('إضافة مساعد', textAlign: TextAlign.center),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: InputDecoration(labelText: 'الاسم', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-            const SizedBox(height: 12),
-            TextField(controller: subjectController, decoration: InputDecoration(labelText: 'المادة', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-            const SizedBox(height: 12),
-            TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'الهاتف', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-          ],
-        ),
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
+        final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
+        final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+        return AlertDialog(
+          backgroundColor: surfaceColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderColor)),
+          title: Text('إضافة مساعد', textAlign: TextAlign.center, style: TextStyle(color: textPrimary)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: InputDecoration(labelText: 'الاسم', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+              const SizedBox(height: 12),
+              TextField(controller: subjectController, decoration: InputDecoration(labelText: 'المادة', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+              const SizedBox(height: 12),
+              TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'الهاتف', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+            ],
+          ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
@@ -192,6 +203,9 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
     if (!_authenticated) {
       return const Center(child: CircularProgressIndicator());
     }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textMuted = isDark ? AppTheme.darkTextMuted : AppTheme.lightTextMuted;
     return _loading
         ? const Center(child: CircularProgressIndicator())
         : Padding(
@@ -203,7 +217,7 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
                   children: [
                     const Icon(Icons.support_agent, size: 28, color: AppTheme.accent),
                     const SizedBox(width: 12),
-                    const Text('المساعدين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    Text('المساعدين', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary)),
                     const Spacer(),
                     ElevatedButton.icon(
                       onPressed: _addAssistant,
@@ -225,9 +239,9 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.support_agent_outlined, size: 64, color: Colors.grey.shade400),
+                              Icon(Icons.support_agent_outlined, size: 64, color: textMuted),
                               const SizedBox(height: 16),
-                              Text('لا يوجد مساعدين', style: TextStyle(fontSize: 16, color: Colors.grey.shade500)),
+                              Text('لا يوجد مساعدين', style: TextStyle(fontSize: 16, color: textMuted)),
                             ],
                           ),
                         )
@@ -248,7 +262,7 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
                                   ),
                                 ),
                                 title: Text(a['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text(a['subject'] ?? '', style: TextStyle(color: Colors.grey.shade500)),
+                                subtitle: Text(a['subject'] ?? '', style: TextStyle(color: textMuted)),
                                 trailing: IconButton(
                                   icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
                                   onPressed: () => _deleteAssistant(a),
