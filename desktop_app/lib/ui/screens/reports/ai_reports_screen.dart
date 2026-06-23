@@ -32,7 +32,7 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
   @override
   void initState() {
     super.initState();
-    checkSubscription(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => checkSubscription(context));
     _loadReports();
   }
 

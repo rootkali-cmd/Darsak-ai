@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/api/api_client.dart';
-import '../../../core/services/subscription_service.dart';
+import '../../../core/api/subscription_guard.dart';
 import '../subscription/subscription_screen.dart';
 
 class AiGenerateExamScreen extends StatefulWidget {
@@ -47,16 +47,8 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
     _checkSubscription();
   }
 
-  Future<void> _checkSubscription() async {
-    final subService = SubscriptionService(ApiClient());
-    final subscription = await subService.getMySubscription();
-    final isActive = subService.isSubscriptionActive(subscription);
-
-    if (!isActive && mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showSubscriptionRequiredDialog();
-      });
-    }
+  void _checkSubscription() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => checkSubscription(context));
   }
 
   void _showSubscriptionRequiredDialog() {

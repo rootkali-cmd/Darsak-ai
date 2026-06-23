@@ -22,7 +22,7 @@ final class _GradesScreenState extends State<GradesScreen> {
   @override
   void initState() {
     super.initState();
-    checkSubscription(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => checkSubscription(context));
     _loadGrades();
   }
 

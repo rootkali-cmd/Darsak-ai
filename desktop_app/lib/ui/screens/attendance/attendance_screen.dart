@@ -25,7 +25,7 @@ final class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    checkSubscription(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => checkSubscription(context));
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingAttendance());
   }
 

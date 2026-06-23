@@ -30,7 +30,7 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
   }
 
   Future<void> _checkAccess() async {
-    final ok = checkSubscription(context);
+    final ok = await checkSubscription(context);
     if (!ok) return;
     await _showPasswordDialog();
   }
@@ -133,18 +133,19 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
               TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'الهاتف', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
             ],
           ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, {
-              'name': nameController.text.trim(),
-              'subject': subjectController.text.trim(),
-              'phone': phoneController.text.trim(),
-            }),
-            child: const Text('إضافة'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, {
+                'name': nameController.text.trim(),
+                'subject': subjectController.text.trim(),
+                'phone': phoneController.text.trim(),
+              }),
+              child: const Text('إضافة'),
+            ),
+          ],
+        );
+      },
     );
 
     if (result != null && result['name']!.isNotEmpty) {
@@ -272,8 +273,8 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
                           },
                         ),
                 ),
-              ],
-            ),
-          );
+        ],
+      ),
+    );
   }
 }

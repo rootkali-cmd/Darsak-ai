@@ -21,6 +21,7 @@ final class AuthProvider extends ChangeNotifier {
   List<String> _subjects = [];
   List<String> _levels = [];
   Map<String, dynamic>? _subscriptionData;
+  bool _subscriptionLoaded = false;
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
@@ -31,6 +32,7 @@ final class AuthProvider extends ChangeNotifier {
   List<String> get levels => _levels;
   String? get error => _error;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
+  bool get subscriptionLoaded => _subscriptionLoaded;
 
   bool get hasSubscription {
     if (_subscriptionData == null) return false;
@@ -157,11 +159,25 @@ final class AuthProvider extends ChangeNotifier {
   Future<void> refreshSubscription() async {
     try {
       final subService = SubscriptionService(client);
+      // Load from cache first for instant UI
+      if (_subscriptionData == null) {
+        final cached = await subService.getCachedSubscription();
+        if (cached != null) {
+          _subscriptionData = cached;
+          _subscriptionLoaded = true;
+          notifyListeners();
+        }
+      }
+      // Then fetch from API
       final data = await subService.getMySubscription();
       _subscriptionData = data;
+      _subscriptionLoaded = true;
       await subService.cacheSubscription(data);
       notifyListeners();
-    } catch (_) {}
+    } catch (_) {
+      _subscriptionLoaded = true;
+      notifyListeners();
+    }
   }
 
   Future<void> _saveTokens(String accessToken, String refreshToken) async {

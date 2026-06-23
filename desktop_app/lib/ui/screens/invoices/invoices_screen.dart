@@ -25,7 +25,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    checkSubscription(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => checkSubscription(context));
     _listController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
