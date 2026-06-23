@@ -1,6 +1,6 @@
 [Setup]
 AppName=DarsakAI
-AppVersion=2.1.0
+AppVersion=2.5.0
 AppPublisher=DarsakAI
 AppPublisherURL=https://enjaz.one
 AppSupportURL=https://enjaz.one
@@ -19,8 +19,8 @@ VersionInfoCompany=DarsakAI
 VersionInfoDescription=DarsakAI Desktop - Teacher Dashboard
 VersionInfoCopyright=Copyright (C) 2026 DarsakAI
 VersionInfoProductName=DarsakAI
-VersionInfoProductTextVersion=2.1.0
-VersionInfoVersion=2.1.0.0
+VersionInfoProductTextVersion=2.5.0
+VersionInfoVersion=2.5.0.0
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes

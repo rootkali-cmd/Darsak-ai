@@ -1,7 +1,7 @@
 name: darsak_desktop
 description: "DarsakAI Desktop App - Offline-first teacher dashboard"
 publish_to: 'none'
-version: 2.0.0+1
+version: 2.5.0+1
 
 environment:
   sdk: ^3.9.0

@@ -1,7 +1,7 @@
 class AppConstants {
   static const String apiBaseUrl = 'https://darsak-backend.fly.dev/api';
   static const String appName = 'Darsak AI';
-  static const String appVersion = '2.0.0';
+  static const String appVersion = '2.5.0';
   static const String platformName = 'desktop';
   static const String downloadBaseUrl = 'https://darsak-backend.fly.dev/api/download';
   static const String repositoryUrl = 'https://github.com/rootkali-cmd/Darsak-ai';
