@@ -6,6 +6,7 @@ import '../../../providers/sync_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/student.dart';
 import '../../../core/models/group.dart';
+import '../../../core/api/subscription_guard.dart';
 import 'student_profile_screen.dart';
 
 class StudentsScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+    checkSubscription(context);
     _listController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,

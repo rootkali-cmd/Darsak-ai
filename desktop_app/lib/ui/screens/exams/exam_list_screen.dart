@@ -6,6 +6,7 @@ import '../../../providers/sync_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/exam.dart';
 import '../../../core/database/database_service.dart';
+import '../../../core/api/subscription_guard.dart';
 import 'exam_questions_screen.dart';
 import 'exam_results_screen.dart';
 
@@ -25,6 +26,7 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+    checkSubscription(context);
     _listController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,

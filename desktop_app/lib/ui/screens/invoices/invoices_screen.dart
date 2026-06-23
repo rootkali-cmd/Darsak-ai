@@ -5,6 +5,7 @@ import '../../../providers/sync_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/invoice.dart';
 import '../../../core/models/student.dart';
+import '../../../core/api/subscription_guard.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -24,6 +25,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+    checkSubscription(context);
     _listController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,

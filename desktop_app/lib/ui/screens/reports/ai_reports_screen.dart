@@ -6,6 +6,7 @@ import '../../../core/services/reports_api_service.dart';
 import '../../../core/api/api_client.dart';
 import '../../../providers/data_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../core/api/subscription_guard.dart';
 
 class AiReportsScreen extends StatefulWidget {
   const AiReportsScreen({super.key});
@@ -31,6 +32,7 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
   @override
   void initState() {
     super.initState();
+    checkSubscription(context);
     _loadReports();
   }
 

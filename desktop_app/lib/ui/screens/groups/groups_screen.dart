@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/data_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/group.dart';
+import '../../../core/api/subscription_guard.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -18,6 +19,7 @@ class _GroupsScreenState extends State<GroupsScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    checkSubscription(context);
     _listController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,

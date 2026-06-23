@@ -5,6 +5,7 @@ import '../../../providers/sync_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/student.dart';
 import '../../../core/models/group.dart';
+import '../../../core/api/subscription_guard.dart';
 import 'qr_camera_screen.dart';
 
 final class AttendanceScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ final class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    checkSubscription(context);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingAttendance());
   }
 

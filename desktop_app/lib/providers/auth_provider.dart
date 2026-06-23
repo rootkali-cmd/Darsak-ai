@@ -6,6 +6,7 @@ import '../core/api/api_client.dart';
 import '../core/api/api_service.dart';
 import '../core/utils/constants.dart';
 import '../core/utils/logger.dart';
+import '../core/services/subscription_service.dart';
 import '../core/models/user.dart';
 
 final class AuthProvider extends ChangeNotifier {
@@ -19,6 +20,7 @@ final class AuthProvider extends ChangeNotifier {
   bool _onboardingCompleted = false;
   List<String> _subjects = [];
   List<String> _levels = [];
+  Map<String, dynamic>? _subscriptionData;
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
@@ -28,6 +30,19 @@ final class AuthProvider extends ChangeNotifier {
   List<String> get subjects => _subjects;
   List<String> get levels => _levels;
   String? get error => _error;
+  Map<String, dynamic>? get subscriptionData => _subscriptionData;
+
+  bool get hasSubscription {
+    if (_subscriptionData == null) return false;
+    final isActive = _subscriptionData!['is_active'] ?? false;
+    if (isActive != true) return false;
+    final expiresAt = _subscriptionData!['expires_at'] as String?;
+    if (expiresAt != null) {
+      final expiry = DateTime.tryParse(expiresAt);
+      if (expiry != null && expiry.isBefore(DateTime.now())) return false;
+    }
+    return true;
+  }
 
   AuthProvider(this.client)
       : _api = ApiService(client),
@@ -53,6 +68,7 @@ final class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       AppLogger.instance.info('login_success', data: {'email': email});
       notifyListeners();
+      refreshSubscription();
       return true;
     } catch (e) {
       await _clearTokens();
@@ -94,6 +110,7 @@ final class AuthProvider extends ChangeNotifier {
       _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
       await _cacheUser(_user!);
       notifyListeners();
+      refreshSubscription();
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 401) {
         await logout();
@@ -123,8 +140,7 @@ final class AuthProvider extends ChangeNotifier {
     _onboardingCompleted = false;
     _subjects = [];
     _levels = [];
-    // Keep _initialLoadComplete = true so UI shows LoginScreen immediately
-    // instead of getting stuck on loading spinner
+    _subscriptionData = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(PrefKeys.cachedUserId);
     await prefs.remove(PrefKeys.cachedUserName);
@@ -136,6 +152,16 @@ final class AuthProvider extends ChangeNotifier {
     await prefs.remove(PrefKeys.subscriptionData);
     await _clearTokens();
     notifyListeners();
+  }
+
+  Future<void> refreshSubscription() async {
+    try {
+      final subService = SubscriptionService(client);
+      final data = await subService.getMySubscription();
+      _subscriptionData = data;
+      await subService.cacheSubscription(data);
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> _saveTokens(String accessToken, String refreshToken) async {

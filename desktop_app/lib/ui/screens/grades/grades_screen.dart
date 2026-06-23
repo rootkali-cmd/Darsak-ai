@@ -4,6 +4,7 @@ import '../../../providers/data_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/models/grade.dart';
+import '../../../core/api/subscription_guard.dart';
 
 final class GradesScreen extends StatefulWidget {
   const GradesScreen({super.key});
@@ -21,6 +22,7 @@ final class _GradesScreenState extends State<GradesScreen> {
   @override
   void initState() {
     super.initState();
+    checkSubscription(context);
     _loadGrades();
   }
 
