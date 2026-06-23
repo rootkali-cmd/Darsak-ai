@@ -19,7 +19,9 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
   bool _isLoading = true;
   bool _isSending = false;
   bool _hasError = false;
+  String? _conversationId;
   static const String _storageKey = 'ai_chat_messages';
+  static const String _convStorageKey = 'ai_chat_conversation_id';
   late AnimationController _thinkingAnimCtrl;
   late Animation<double> _thinkingAnim;
 
@@ -40,6 +42,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
     try {
       await _ai.loadUsage();
       await _loadMessages();
+      await _loadConversationId();
       if (_messages.isEmpty) {
         _messages.add(_ChatMessage(
           text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك، '
@@ -55,6 +58,20 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
         _hasError = true;
       });
     }
+  }
+
+  Future<void> _loadConversationId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _conversationId = prefs.getString(_convStorageKey);
+    } catch (_) {}
+  }
+
+  Future<void> _saveConversationId(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_convStorageKey, id);
+    } catch (_) {}
   }
 
   Future<void> _loadMessages() async {
@@ -102,14 +119,22 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
     _scrollDown();
 
     try {
-      final answer = await _ai.ask(text);
+      final result = await _ai.ask(text, conversationId: _conversationId);
+      final answer = result['answer'] as String;
+      final convId = result['conversation_id'] as String;
+      if (convId.isNotEmpty) {
+        _conversationId = convId;
+        await _saveConversationId(convId);
+      }
       setState(() {
         _messages.add(_ChatMessage(text: answer, isUser: false));
-        _messages.add(_ChatMessage(
-          text: 'لديك ${_ai.remaining} أسئلة متبقية اليوم',
-          isUser: false,
-          isSmall: true,
-        ));
+        if (_ai.remaining > 0) {
+          _messages.add(_ChatMessage(
+            text: 'لديك ${_ai.remaining} أسئلة متبقية اليوم',
+            isUser: false,
+            isSmall: true,
+          ));
+        }
         _isSending = false;
       });
     } catch (e) {
@@ -242,6 +267,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
               Navigator.pop(ctx);
               setState(() {
                 _messages.clear();
+                _conversationId = null;
                 _messages.add(_ChatMessage(
                   text: 'مرحباً! أنا مساعد درسك AI.\n\nاسألني أي سؤال عن دراستك.\n\n'
                       'لديك ${_ai.remaining} أسئلة متبقية اليوم',
@@ -249,6 +275,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
                 ));
               });
               _saveMessages();
+              _saveConversationId('');
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             child: const Text('مسح'),

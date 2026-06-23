@@ -39,7 +39,7 @@ class AiService {
     }
   }
 
-  Future<String> ask(String question) async {
+  Future<Map<String, dynamic>> ask(String question, {String? conversationId}) async {
     if (_remaining <= 0) {
       throw Exception('لقد استنفدت حد الأسئلة اليومي. ارجع غداً');
     }
@@ -48,13 +48,17 @@ class AiService {
       '/students/me/ai-chat',
       data: {
         'question': question,
+        if (conversationId != null) 'conversation_id': conversationId,
       },
     );
 
     if (response.statusCode == 200) {
       final data = response.data;
       _remaining = data['remaining'] as int? ?? _remaining - 1;
-      return data['answer'] as String? ?? 'لم أتمكن من العثور على إجابة';
+      return {
+        'answer': data['answer'] as String? ?? 'لم أتمكن من العثور على إجابة',
+        'conversation_id': data['conversation_id'] as String? ?? '',
+      };
     } else {
       throw Exception('حدث خطأ في الاتصال، حاول مرة أخرى');
     }

@@ -10,7 +10,7 @@ from src.schemas.invoice import InvoiceResponse
 from src.core.security.auth import verify_password
 from src.core.security.sanitizer import sanitize_pin
 from src.schemas.student import PIN_PATTERN
-from src.services import grade_service, attendance_service, invoice_service, student_service, audit_service, exam_service, student_exam_service
+from src.services import grade_service, attendance_service, invoice_service, student_service, audit_service, exam_service, student_exam_service, teacher_subscription_service, subscription_plan_service
 from src.core.config import get_settings
 
 settings = get_settings()
@@ -143,24 +143,100 @@ import logging
 
 _ai_logger = logging.getLogger("darsak.ai_chat")
 
-_student_ai_usage: dict[str, dict] = {}
-AI_DAILY_LIMIT = 5
-
 
 class AiChatRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
+    conversation_id: str | None = None
 
 
 class AiChatResponse(BaseModel):
     answer: str
     remaining: int
+    conversation_id: str
 
 
-def _get_ai_usage(student_id: str) -> dict:
+async def _get_teacher_ai_limit(student_id: str) -> int:
+    """Get the daily AI limit based on the student's teacher's subscription plan."""
+    try:
+        student = await student_service.get_by_id(student_id)
+        if not student or not student.get("teacher_id"):
+            return 5
+        sub = await teacher_subscription_service.get_active_subscription(student["teacher_id"])
+        if not sub:
+            return 5
+        plan_id = sub.get("plan_id", "")
+        plan = await subscription_plan_service.get_by_id(plan_id) if plan_id else None
+        plan_name = plan.get("name", "Basic") if plan else "Basic"
+        limit = await subscription_plan_service.get_plan_ai_limit(plan_name)
+        return limit if limit and limit > 0 else 5
+    except Exception as e:
+        _ai_logger.warning("Failed to get teacher AI limit: %s", e)
+        return 5
+
+
+async def _check_and_update_daily_limit(student_id: str, teacher_id: str | None) -> int:
+    """Check daily limit using DB columns. Returns remaining count. Raises 403 if exceeded."""
+    from datetime import date
     today = date.today().isoformat()
-    if student_id not in _student_ai_usage or _student_ai_usage[student_id]["date"] != today:
-        _student_ai_usage[student_id] = {"date": today, "count": 0}
-    return _student_ai_usage[student_id]
+
+    student = await student_service.get_by_id(student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    last_date = student.get("last_request_date", "")
+    count = student.get("daily_requests_count", 0)
+
+    if last_date != today:
+        count = 0
+        await student_service.update(student_id, {"daily_requests_count": 0, "last_request_date": today})
+
+    limit = await _get_teacher_ai_limit(student_id)
+
+    if limit == -1:
+        remaining = 999
+    else:
+        remaining = max(0, limit - count)
+        if remaining <= 0:
+            plan_label = "باقة مدرس"
+            try:
+                if teacher_id:
+                    sub = await teacher_subscription_service.get_active_subscription(teacher_id)
+                    if sub:
+                        plan_label = f"باقة {sub.get('plan_name', 'المدرس')}"
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"لقد استهلكت حدك اليومي ({limit} رسائل). اطلب من مدرسك ترقية باقة {plan_label} لفتح المزيد! 😉",
+            )
+
+    await student_service.update(student_id, {"daily_requests_count": count + 1, "last_request_date": today})
+    return remaining - 1
+
+
+async def _save_conversation(student_id: str, conversation_id: str | None, user_msg: str, ai_answer: str) -> str:
+    """Save messages to ai_conversations table. Returns conversation_id."""
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        now = datetime.now(timezone.utc).isoformat()
+
+        if conversation_id:
+            resp = client.table("ai_conversations").select("messages").eq("id", conversation_id).execute()
+            if resp.data:
+                msgs = resp.data[0].get("messages", [])
+                msgs.append({"role": "user", "content": user_msg, "ts": now})
+                msgs.append({"role": "assistant", "content": ai_answer, "ts": now})
+                client.table("ai_conversations").update({"messages": msgs, "updated_at": now}).eq("id", conversation_id).execute()
+                return conversation_id
+
+        msgs = [{"role": "user", "content": user_msg, "ts": now}, {"role": "assistant", "content": ai_answer, "ts": now}]
+        new_resp = client.table("ai_conversations").insert({"student_id": student_id, "messages": msgs}).execute()
+        if new_resp.data:
+            return new_resp.data[0]["id"]
+    except Exception as e:
+        _ai_logger.warning("Failed to save conversation: %s", e)
+    return conversation_id or ""
 
 
 @router.post("/ai-chat", response_model=AiChatResponse)
@@ -170,13 +246,9 @@ async def ai_chat(
     current_student: dict = Depends(get_current_student),
 ):
     student_id = str(current_student["id"])
-    usage = _get_ai_usage(student_id)
+    teacher_id = current_student.get("teacher_id")
 
-    if usage["count"] >= AI_DAILY_LIMIT:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="لقد استنفدت حد الأسئلة اليومي. ارجع غداً",
-        )
+    remaining = await _check_and_update_daily_limit(student_id, teacher_id)
 
     api_key = settings.OPENROUTER_API_KEY or settings.GROQ_API_KEY
     if not api_key:
@@ -190,43 +262,46 @@ async def ai_chat(
     model = settings.GROQ_MODEL if is_groq else "google/gemini-2.5-flash-lite"
 
     system_prompt = (
-        "أنت مساعد تعليمي ذكي اسمك 'دَرسك AI'. تابع لمنصة DarsakAI التعليمية."
-        "مهمتك الأساسية: مساعدة الطلاب في الدراسة والمناهج التعليمية المصرية فقط."
-        ""
-        "قواعد أمان صارمة - مهم جداً:"
-        "- أنت ملتزم بالتعليم فقط. أي سؤال عن أسلحة، قنابل، مخدرات، عنف، اختراق، أو أي محتوى ضار أو خطير - ارفض الرد فوراً وقل 'لا أستطيع الإجابة على هذا السؤال'"
-        "- لا تقدم أي معلومات عن كيفية صنع أي شيء خطير أو غير قانوني"
-        "- ركز فقط على المناهج التعليمية: الرياضيات، العلوم، اللغة العربية، اللغة الإنجليزية، الدراسات الاجتماعية، وغيرها من المواد الدراسية"
-        "- استخدم مصادر موثوقة في إجاباتك"
-        ""
-        "قدرات خاصة:"
-        "- يمكنك البحث والتفكير المنطقي لحل المسائل"
-        "- إذا طلب منك الطالب إنشاء اختبار (quiz) أو أسئلة في مادة معينة، قم بتوليد أسئلة متنوعة (اختيار من متعدد + مقالي) مع الإجابات النموذجية"
-        "- قدم تفسيرات مبسطة ومناسبة لعمر الطالب"
-        "- استخدم الأمثلة الواقعية لتوضيح المفاهيم"
-        ""
-        "شكل الرد:"
-        "- أجب بالعربية بشكل واضح ومفصل"
-        "- استخدم تنسيق Markdown: **نص عريض** للعناوين، *نص مائل* للتوضيح، `كود` للأكواد، - نقاط للقوائم، # للعناوين"
-        "- إذا كنت تفكر أو تحلل، ابدأ بعبارة '🤔 تفكير:' ثم اكتب تحليلك"
-        "- إذا قمت بإنشاء كويز، ابدأ بعبارة '📝 كويز:'"
+        "أنت 'دَرسك AI' — المساعد الذكي المخصص لمنصة 'درسك' التعليمية."
+        "مهمتك مساعدة الطلاب في فهم الدروس وإصلاح الأخطاء البرمجية بكفاءة عالية.\n\n"
+        "قواعد الإجابة (صارمة):\n"
+        "1. ادخل في صلب الموضوع مباشرة بدون مقدمات طويلة.\n"
+        "2. عند شرح الكود، اكتب الكود المصلح مع تعليقات قصيرة تشرح التعديل داخل الكود.\n"
+        "3. تحدث بلغة عربية عامية مصرية خفيفة مدمجة بالمصطلحات التقنية الإنجليزية عند الحاجة.\n"
+        "4. ركّز أسئلتك للاستفادة من حدك اليومي.\n\n"
+        "قواعد أمان:\n"
+        "- ارفض أي سؤال عن أسلحة، قنابل، مخدرات، عنف، اختراق.\n"
+        "- ركز فقط على المناهج التعليمية المصرية.\n\n"
+        "شكل الرد:\n"
+        "- أجب بالعربية بشكل واضح ومفصل.\n"
+        "- استخدم Markdown: **عناوين**، `كود`، - قوائم.\n"
+        "- إذا كنت تحلل، ابدأ بـ '🤔 تفكير:'\n"
+        "- إذا أنشأت كويز، ابدأ بـ '📝 كويز:'"
     )
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": body.question},
-    ]
+    messages = [{"role": "system", "content": system_prompt}]
+
+    if body.conversation_id:
+        try:
+            from src.core.security.supabase_repo import get_supabase
+            client = await get_supabase()
+            resp = client.table("ai_conversations").select("messages").eq("id", body.conversation_id).execute()
+            if resp.data:
+                hist = resp.data[0].get("messages", [])[-10:]
+                for m in hist:
+                    role = m.get("role", "user")
+                    if role in ("user", "assistant"):
+                        messages.append({"role": role, "content": m["content"]})
+        except Exception:
+            pass
+
+    messages.append({"role": "user", "content": body.question})
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": 0.7,
-                    "max_tokens": 2048,
-                },
+                json={"model": model, "messages": messages, "temperature": 0.7, "max_tokens": 2048},
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
@@ -238,16 +313,15 @@ async def ai_chat(
             result = response.json()
             answer = result["choices"][0]["message"]["content"]
     except httpx.HTTPStatusError as e:
-        _ai_logger.error("OpenRouter error %s: %s", e.response.status_code, e.response.text[:300])
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="خدمة AI غير متاحة حالياً")
+        _ai_logger.error("AI error %s: %s", e.response.status_code, e.response.text[:300])
+        raise HTTPException(status_code=502, detail="خدمة AI غير متاحة حالياً")
     except Exception as e:
         _ai_logger.error("AI chat failed: %s", e)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="حدث خطأ في الاتصال بخدمة AI")
+        raise HTTPException(status_code=502, detail="حدث خطأ في الاتصال بخدمة AI")
 
-    usage["count"] += 1
-    remaining = AI_DAILY_LIMIT - usage["count"]
+    conv_id = await _save_conversation(student_id, body.conversation_id, body.question, answer)
 
-    return AiChatResponse(answer=answer, remaining=remaining)
+    return AiChatResponse(answer=answer, remaining=remaining, conversation_id=conv_id)
 
 
 @router.get("/ai-usage")
@@ -255,9 +329,18 @@ async def get_ai_usage(
     current_student: dict = Depends(get_current_student),
 ):
     student_id = str(current_student["id"])
-    usage = _get_ai_usage(student_id)
-    remaining = max(0, AI_DAILY_LIMIT - usage["count"])
-    return {"remaining": remaining, "limit": AI_DAILY_LIMIT, "used": usage["count"]}
+    teacher_id = current_student.get("teacher_id")
+    limit = await _get_teacher_ai_limit(student_id)
+
+    student = await student_service.get_by_id(student_id)
+    today = date.today().isoformat()
+    count = 0
+    if student and student.get("last_request_date") == today:
+        count = student.get("daily_requests_count", 0)
+
+    if limit == -1:
+        return {"remaining": 999, "limit": -1, "used": count}
+    return {"remaining": max(0, limit - count), "limit": limit, "used": count}
 
 
 @router.get("/stats")

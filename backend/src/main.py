@@ -312,6 +312,18 @@ async def _run_schema_migrations():
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );""",
+        # ─── Daily AI message limit enforcement ────────────────────
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS daily_requests_count INT DEFAULT 0;",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS last_request_date DATE DEFAULT CURRENT_DATE;",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS teacher_id UUID REFERENCES users(id) ON DELETE SET NULL;",
+        # ─── AI conversations table (multi-turn chat) ──────────────
+        """CREATE TABLE IF NOT EXISTS ai_conversations (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            messages JSONB DEFAULT '[]'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
     ]
 
     try:
@@ -692,10 +704,13 @@ app.include_router(exams_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(audit_router, prefix=settings.API_V1_PREFIX)
 app.include_router(dashboard_router, prefix=settings.API_V1_PREFIX)
-app.include_router(lessons_router, prefix=settings.API_V1_PREFIX)
-app.include_router(video_analytics_router, prefix=settings.API_V1_PREFIX)
-app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)
-app.include_router(quiz_router, prefix=settings.API_V1_PREFIX)
+# ─── DISABLED FOR OFFLINE-FIRST LAUNCH ───────────────────────────────
+# FUTURE ROADMAP: Video/Live Streaming features - will be re-enabled for online mode
+# app.include_router(lessons_router, prefix=settings.API_V1_PREFIX)
+# app.include_router(video_analytics_router, prefix=settings.API_V1_PREFIX)
+# app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)
+# app.include_router(quiz_router, prefix=settings.API_V1_PREFIX)
+# ─────────────────────────────────────────────────────────────────────
 app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
 app.include_router(subjects_router, prefix=settings.API_V1_PREFIX)
 app.include_router(payments_router, prefix=settings.API_V1_PREFIX)
