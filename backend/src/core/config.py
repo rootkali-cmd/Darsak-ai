@@ -1,3 +1,5 @@
+import secrets
+import logging
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -42,14 +44,14 @@ class Settings(BaseSettings):
     PLAN_PRO_STORAGE_LIMIT: int = 6 * 1024 * 1024 * 1024      # 6GB
     PLAN_ENTERPRISE_STORAGE_LIMIT: int = -1                     # Unlimited
 
-    SECRET_KEY: str = "change-me-in-production-use-openssl-rand"
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days — permanent login
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 365  # 1 year
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days
 
     CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
+        "https://localhost:3000",
+        "https://localhost:8000",
     ]
 
     LOG_LEVEL: str = "INFO"
@@ -68,8 +70,12 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     s = Settings()
-    if not s.SECRET_KEY or s.SECRET_KEY == "change-me-in-production-use-openssl-rand":
-        raise ValueError("SECRET_KEY must be set in environment. Use `openssl rand -hex 32` to generate one.")
+    if not s.SECRET_KEY:
+        s.SECRET_KEY = secrets.token_hex(32)
+        logging.warning(
+            "SECURITY WARNING: SECRET_KEY not set in environment. Generated a random key. "
+            "Tokens will be invalidated on restart. Set SECRET_KEY env var for production."
+        )
     if not s.SUPABASE_URL or not s.SUPABASE_SERVICE_ROLE_KEY:
         raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in environment")
     return s

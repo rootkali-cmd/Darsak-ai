@@ -1,12 +1,12 @@
 function setCookie(name: string, value: string, days: number) {
   if (typeof document === 'undefined') return
   const expires = new Date(Date.now() + days * 864e5).toUTCString()
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; expires=${expires}; Secure; SameSite=Lax`
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; expires=${expires}; Secure; SameSite=Strict`
 }
 
 function removeCookie(name: string) {
   if (typeof document === 'undefined') return
-  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Lax`
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Strict`
 }
 
 export const auth = {

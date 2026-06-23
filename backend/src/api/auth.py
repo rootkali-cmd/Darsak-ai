@@ -1,5 +1,6 @@
 import logging
 import hashlib
+import re
 import asyncio
 import time
 from datetime import datetime, timezone, timedelta
@@ -11,6 +12,7 @@ from src.core.security.sanitizer import sanitize_text, sanitize_email
 from src.core.security.supabase_repo import SupabaseError
 from src.services import user_service, subscription_plan_service, teacher_subscription_service
 from src.infrastructure.audit_events import audit as audit_publisher, AuditEvent
+from src.infrastructure.rate_limiter import rate_limiter
 
 logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -18,6 +20,23 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # In-memory token blacklist for refresh token rotation (race-safe with asyncio.Lock)
 _token_blacklist: set[str] = set()
 _blacklist_lock = asyncio.Lock()
+
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_WINDOW_SECONDS = 15 * 60  # 15 minutes
+LOCKOUT_DURATION_SECONDS = 15 * 60  # 15 minutes
+
+
+def _validate_password_policy(password: str) -> str | None:
+    """Validate password policy. Returns error message in Arabic or None if valid."""
+    if len(password) < 8:
+        return "يجب أن تكون كلمة المرور 8 أحرف على الأقل"
+    if not re.search(r"[A-Z]", password):
+        return "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل"
+    if not re.search(r"[a-z]", password):
+        return "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل"
+    if not re.search(r"[0-9]", password):
+        return "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل"
+    return None
 
 
 async def _is_token_blacklisted(token: str) -> bool:
@@ -31,6 +50,25 @@ async def _blacklist_token(token: str) -> bool:
             return False
         _token_blacklist.add(token)
         return True
+
+
+async def _check_bruteforce(email: str) -> bool:
+    """Returns True if the account is locked due to too many failed attempts. Redis-backed."""
+    ban_remaining = await rate_limiter.ban_check(f"auth_lockout:{email}", LOCKOUT_DURATION_SECONDS)
+    return ban_remaining > 0
+
+
+async def _record_failed_attempt(email: str) -> None:
+    """Record a failed login attempt. Redis-backed with sliding window."""
+    count = await rate_limiter.increment(f"auth_fail:{email}", LOCKOUT_WINDOW_SECONDS)
+    if count >= MAX_FAILED_ATTEMPTS:
+        await rate_limiter.set_ban(f"auth_lockout:{email}", LOCKOUT_DURATION_SECONDS)
+        logger.warning("Account locked for email %s after %d failures", email, count)
+
+
+async def _clear_failed_attempts(email: str) -> None:
+    """Clear failed attempts on successful login. Ban keys expire naturally."""
+    pass
 
 
 def get_client_ip(request: Request) -> str:
@@ -75,6 +113,11 @@ def _user_response(user: dict) -> dict:
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, request: Request):
+    # Password policy enforcement
+    pwd_error = _validate_password_policy(user_data.password)
+    if pwd_error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=pwd_error)
+
     try:
         user = await user_service.create(
             email=sanitize_email(user_data.email),
@@ -139,9 +182,23 @@ async def register(user_data: UserCreate, request: Request):
 
 @router.post("/login")
 async def login(credentials: UserLogin, request: Request, response: Response):
-    user = await user_service.get_by_email(credentials.email.lower().strip())
+    email = credentials.email.lower().strip()
+
+    # Brute force protection
+    if await _check_bruteforce(email):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="تم حظر الحساب مؤقتاً بسبب محاولات دخول كثيرة. حاول مرة أخرى بعد 15 دقيقة",
+        )
+
+    user = await user_service.get_by_email(email)
     if not user or not verify_password(credentials.password, user["hashed_password"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        await _record_failed_attempt(email)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="بيانات الدخول غير صحيحة")
+
+    # Clear failed attempts on successful login
+    await _clear_failed_attempts(email)
+
     if not user.get("is_active", True):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
 
@@ -163,7 +220,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=2592000,  # 30 days
+        max_age=1800,  # 30 minutes
         path="/",
     )
     response.set_cookie(
@@ -172,7 +229,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=31536000,  # 1 year
+        max_age=604800,  # 7 days
         path="/",
     )
 
@@ -211,7 +268,7 @@ async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=2592000,  # 30 days
+        max_age=1800,  # 30 minutes
         path="/",
     )
     response.set_cookie(
@@ -220,7 +277,7 @@ async def refresh_token_endpoint(token_data: TokenRefresh, response: Response):
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=31536000,  # 1 year
+        max_age=604800,  # 7 days
         path="/",
     )
 

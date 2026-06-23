@@ -8,12 +8,69 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import sentry_sdk
+import re
+
+
+def _sentry_scrub_pii(event, hint):
+    """Scrub PII (email, name, phone, tokens) from Sentry events before sending."""
+    import json
+
+    def _scrub_value(val):
+        if not isinstance(val, str):
+            return val
+        # Mask email addresses
+        val = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[EMAIL]', val)
+        # Mask phone numbers (Egyptian: +20/0 followed by 10-11 digits)
+        val = re.sub(r'(?:\+20|0)?1[0125]\d{8}', '[PHONE]', val)
+        # Mask JWT tokens
+        val = re.sub(r'eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+', '[TOKEN]', val)
+        # Mask Bearer tokens
+        val = re.sub(r'Bearer\s+[a-zA-Z0-9._-]+', 'Bearer [TOKEN]', val)
+        return val
+
+    def _scrub_dict(d):
+        for key in list(d.keys()):
+            if key.lower() in ('email', 'phone', 'password', 'pin', 'pin_hash',
+                               'access_token', 'refresh_token', 'secret_key',
+                               'supabase_service_role_key', 'authorization'):
+                d[key] = '[SCRUBBED]'
+            elif isinstance(d[key], str):
+                d[key] = _scrub_value(d[key])
+            elif isinstance(d[key], dict):
+                _scrub_dict(d[key])
+            elif isinstance(d[key], list):
+                for item in d[key]:
+                    if isinstance(item, dict):
+                        _scrub_dict(item)
+
+    try:
+        # Scrub request data
+        if 'request' in event:
+            if 'headers' in event['request']:
+                _scrub_dict(event['request']['headers'])
+            if 'data' in event['request']:
+                if isinstance(event['request']['data'], dict):
+                    _scrub_dict(event['request']['data'])
+        # Scrub extra data
+        if 'extra' in event:
+            _scrub_dict(event['extra'])
+        # Scrub breadcrumbs
+        if 'breadcrumbs' in event and 'values' in event['breadcrumbs']:
+            for bc in event['breadcrumbs']['values']:
+                if 'data' in bc and isinstance(bc['data'], dict):
+                    _scrub_dict(bc['data'])
+    except Exception:
+        pass
+
+    return event
+
 
 sentry_sdk.init(
     dsn=os.environ.get("SENTRY_DSN", ""),
-    traces_sample_rate=1.0,
+    traces_sample_rate=0.1,
     environment=os.environ.get("ENVIRONMENT", "development"),
     release=f"darsakai-backend@{os.environ.get('VERSION', '1.0.0')}",
+    before_send=_sentry_scrub_pii,
 )
 
 from src.core.config import get_settings
@@ -473,7 +530,9 @@ async def _init_services():
         await sync_buffer.connect()
         start_scheduler()
     
-    # Initialize rate limiter (Redis-backed if available)
+    # Initialize rate limiter with Redis URL (Upstash) for distributed safety
+    if settings.REDIS_URL:
+        rate_limiter.set_redis_url(settings.REDIS_URL)
     await rate_limiter.connect()
     
     # Wire audit publisher to the audit service repo
@@ -579,24 +638,42 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
     return response
 
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    if request.url.path in ("/docs", "/openapi.json", "/health"):
+    if request.url.path in ("/docs", "/openapi.json", "/health", "/health/deep"):
         return await call_next(request)
 
     client_ip = request.client.host if request.client else "unknown"
-    auth_header = request.headers.get("authorization", "")
-    user_key = client_ip + auth_header[:20]
-    key = (user_key, request.url.path)
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
 
-    max_requests = 120
-    if request.url.path in ("/api/auth/login", "/api/auth/register", "/api/students/login"):
+    path = request.url.path
+    method = request.method
+
+    # Tiered rate limits: stricter for auth/admin, normal for general API
+    if path in ("/api/auth/login", "/api/auth/register", "/api/students/login", "/api/admin/login"):
         max_requests = 10
+    elif method in ("POST", "PUT", "PATCH", "DELETE"):
+        max_requests = 30
+    else:
+        max_requests = 120
 
-    allowed = await rate_limiter.is_allowed(key, max_requests)
+    allowed = await rate_limiter.is_allowed((client_ip, path), max_requests)
     if not allowed:
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -604,7 +681,61 @@ async def rate_limit_middleware(request: Request, call_next):
         )
 
     response = await call_next(request)
+    response.headers["X-RateLimit-Limit"] = str(max_requests)
     return response
+
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    """CSRF protection: validate Origin/Referer on state-changing requests using cookie auth.
+
+    Mobile apps and API clients using Authorization header are exempt.
+    Only enforced when auth is carried via cookies (browser sessions).
+    """
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return await call_next(request)
+    if request.url.path in ("/docs", "/openapi.json", "/health", "/health/deep"):
+        return await call_next(request)
+
+    # If Authorization header is present (mobile/API client), skip CSRF check
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        return await call_next(request)
+
+    # If no cookies are present, no session to protect
+    cookies = request.cookies
+    if "access_token" not in cookies:
+        return await call_next(request)
+
+    # Cookie-based session detected on state-changing request: validate origin
+    origin = request.headers.get("origin", "")
+    referer = request.headers.get("referer", "")
+
+    source_url = origin or referer
+    if not source_url:
+        # Direct API call without origin/referer from cookie session — allow (e.g. curl, Postman)
+        return await call_next(request)
+
+    # Extract origin from source_url
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(source_url)
+        source_origin = f"{parsed.scheme}://{parsed.netloc}"
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "CSRF validation failed: invalid origin"},
+        )
+
+    allowed_origins = set(_cors_origins)
+    if source_origin not in allowed_origins:
+        logger.warning("CSRF blocked: origin=%s not in allowed=%s", source_origin, allowed_origins)
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "CSRF validation failed: origin not allowed"},
+        )
+
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -645,34 +776,52 @@ async def health_check():
 
 
 @app.get("/health/deep")
-async def deep_health():
-    """Deep health check - verifies DB, cache, and circuit breaker states."""
+async def deep_health(request: Request):
+    """Deep health check - admin only. Verifies DB, cache, and circuit breaker states."""
+    from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+    security = HTTPBearer(auto_error=False)
+    credentials: HTTPAuthorizationCredentials | None = await security(request)
+
+    if not credentials:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Not authenticated"},
+        )
+
+    from src.utils.dependencies import decode_token
+    token_data = decode_token(credentials.credentials)
+    if not token_data or token_data.get("role") != "admin":
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Admin access required"},
+        )
+
     checks = {
         "app": True,
         "database": False,
         "cache": False,
         "rate_limiter": "redis" if hasattr(rate_limiter, '_use_redis') and rate_limiter._use_redis else "memory",
     }
-    
+
     # Check Supabase connectivity
     try:
         from src.core.security.supabase_repo import get_supabase
         await get_supabase()
         checks["database"] = True
-    except Exception as e:
-        checks["database_error"] = str(e)[:200]
+    except Exception:
         checks["database"] = False
-    
+
     # Check cache stats
     try:
         stats = await cache.stats
         checks["cache"] = stats
-    except Exception as e:
-        checks["cache_error"] = str(e)
-    
+    except Exception:
+        checks["cache"] = False
+
     overall_healthy = all(v is True or isinstance(v, dict) for v in checks.values())
     status_code = status.HTTP_200_OK if overall_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
-    
+
     return JSONResponse(
         status_code=status_code,
         content={"status": "healthy" if overall_healthy else "degraded", "checks": checks},

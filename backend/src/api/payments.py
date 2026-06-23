@@ -169,11 +169,19 @@ async def payment_callback(body: CallbackQuery, admin: dict = Depends(get_curren
         raise HTTPException(status_code=500, detail=f"Failed: internal error")
 
 
+def _mask_phone(phone: str) -> str:
+    if len(phone) < 7:
+        return phone
+    return phone[:3] + "****" + phone[-4:]
+
+
 @router.get("/config")
-async def get_payment_config():
+async def get_payment_config(current_user: dict = Depends(get_current_teacher)):
+    phone = "01031524947"
+    masked = _mask_phone(phone)
     return {
-        "vodafone_cash_number": "01031524947",
-        "whatsapp_link": "https://wa.me/01031524947",
+        "vodafone_cash_number": masked,
+        "whatsapp_link": f"https://wa.me/{phone}",
         "instapay_username": "ahmed-mahmoud-1@instapay",
     }
 
@@ -209,6 +217,10 @@ async def get_teacher_subscription_status(
     current_user: dict = Depends(get_current_teacher),
 ):
     try:
+        current_teacher_id = current_user.get("id") or current_user.get("teacher_id")
+        if str(current_teacher_id) != str(teacher_id):
+            raise HTTPException(status_code=403, detail="You can only view your own subscription status")
+
         sub = await teacher_subscription_service.get_active_subscription(teacher_id)
         if not sub:
             return {
@@ -237,6 +249,8 @@ async def get_teacher_subscription_status(
             "expires_at": expires_dt.isoformat(),
             "days_remaining": days_remaining,
         }
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Failed to get subscription status: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed: internal error")

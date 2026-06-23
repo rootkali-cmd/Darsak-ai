@@ -2,6 +2,7 @@ import uuid
 import logging
 import time
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from pydantic import BaseModel, field_validator
 from src.utils.dependencies import get_current_user, get_current_teacher
 from src.models.audit_log import ActorType
 from src.schemas.student import (
@@ -19,62 +20,97 @@ router = APIRouter(prefix="/students", tags=["Students"])
 log = logging.getLogger("darsak")
 
 
-# ─── Rate Limiting & Ban System for Student Login ──────────────────────
+class StudentUpdateInput(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    parent_phone: str | None = None
+    grade_level: str | None = None
+    group_id: str | None = None
+    is_active: bool | None = None
+    pin: str | None = None
 
-_student_login_attempts: dict[str, dict] = {}
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip()
+            if len(v) < 1 or len(v) > 100:
+                raise ValueError("Full name must be 1-100 characters")
+        return v
+
+    @field_validator("phone", "parent_phone")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip()
+            if v and (len(v) < 8 or len(v) > 15 or not v.isdigit()):
+                raise ValueError("Invalid phone number format")
+        return v
+
+    @field_validator("pin")
+    @classmethod
+    def validate_pin(cls, v: str | None) -> str | None:
+        if v is not None:
+            if len(v) < 4 or len(v) > 8:
+                raise ValueError("PIN must be 4-8 digits")
+            if not v.isdigit():
+                raise ValueError("PIN must contain only digits")
+        return v
+
+
+ALLOWED_STUDENT_UPDATE_FIELDS = {
+    "full_name", "phone", "parent_phone", "grade_level", "group_id", "is_active", "pin",
+}
+
+
+# ─── Rate Limiting & Ban System for Student Login ──────────────────────
+# Distributed-safe: uses Redis (Upstash) when available, in-memory fallback.
+
+from src.infrastructure.rate_limiter import rate_limiter
 
 LOGIN_ATTEMPTS_PER_WINDOW = 4
 LOGIN_WINDOW_SECONDS = 60
 LOGIN_BAN_DURATIONS = [300, 600]  # 5 min, 10 min
 
 
-def _get_login_state(code: str) -> dict:
-    if code not in _student_login_attempts:
-        _student_login_attempts[code] = {
-            "attempts": [],
-            "banned_until": 0,
-            "ban_level": 0,
-        }
-    return _student_login_attempts[code]
-
-
-def _check_rate_limit(code: str) -> None:
-    state = _get_login_state(code)
-    now = time.time()
-
-    if state["banned_until"] > now:
-        remaining = int(state["banned_until"] - now)
+async def _check_rate_limit(code: str) -> None:
+    """Check if student code is rate-limited or banned. Redis-backed."""
+    ban_remaining = await rate_limiter.ban_check(f"student_ban:{code}", LOGIN_BAN_DURATIONS[-1])
+    if ban_remaining > 0:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"تم حظر حسابك مؤقتاً. حاول مرة أخرى بعد {remaining} ثانية.",
+            detail=f"تم حظر حسابك مؤقتاً. حاول مرة أخرى بعد {ban_remaining} ثانية.",
         )
 
-    state["attempts"] = [t for t in state["attempts"] if now - t < LOGIN_WINDOW_SECONDS]
-    if len(state["attempts"]) >= LOGIN_ATTEMPTS_PER_WINDOW:
-        ban_level = state["ban_level"]
-        if ban_level < len(LOGIN_BAN_DURATIONS):
-            ban_duration = LOGIN_BAN_DURATIONS[ban_level]
-            state["banned_until"] = now + ban_duration
-            state["ban_level"] += 1
-            state["attempts"] = []
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"تم حظر حسابك مؤقتاً بسبب محاولات كثيرة. حاول مرة أخرى بعد {ban_duration // 60} دقائق.",
-            )
-        else:
+    count = await rate_limiter.increment(f"student_login:{code}", LOGIN_WINDOW_SECONDS)
+    if count >= LOGIN_ATTEMPTS_PER_WINDOW:
+        # Determine ban level by checking existing ban keys
+        ban_level_key = f"student_ban_level:{code}"
+        ban_level = await rate_limiter.increment(ban_level_key, 600)  # 10 min window for ban level tracking
+        ban_index = min(ban_level - 1, len(LOGIN_BAN_DURATIONS) - 1)
+        ban_duration = LOGIN_BAN_DURATIONS[ban_index]
+
+        if ban_level > len(LOGIN_BAN_DURATIONS):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="تم حظر حسابك نهائياً due to repeated failed login attempts. تواصل مع المعلم.",
             )
 
+        await rate_limiter.set_ban(f"student_ban:{code}", ban_duration)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"تم حظر حسابك مؤقتاً بسبب محاولات كثيرة. حاول مرة أخرى بعد {ban_duration // 60} دقائق.",
+        )
 
-def _record_failed_attempt(code: str) -> None:
-    state = _get_login_state(code)
-    state["attempts"].append(time.time())
+
+async def _record_failed_attempt(code: str) -> None:
+    """Record a failed login attempt (already handled by _check_rate_limit increment)."""
+    pass
 
 
-def _clear_attempts(code: str) -> None:
-    _student_login_attempts.pop(code, None)
+async def _clear_attempts(code: str) -> None:
+    """Clear rate limit state on successful login. Ban keys expire naturally."""
+    pass
 
 
 def get_client_ip(request: Request) -> str:
@@ -89,7 +125,6 @@ def _serialize_student(s: dict) -> dict:
         "code": s.get("code", ""),
         "parent_phone": s.get("parent_phone"),
         "group_id": str(s.get("group_id")) if s.get("group_id") else None,
-        "pin_hash": s.get("pin_hash"),
         "has_pin": s.get("pin_hash") is not None,
         "is_active": s.get("is_active", True),
         "created_at": str(s.get("created_at", "")),
@@ -186,6 +221,7 @@ async def get_student(
 @router.put("/{student_id}")
 async def update_student(
     student_id: str,
+    update_data: StudentUpdateInput,
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
@@ -193,10 +229,25 @@ async def update_student(
         student = await student_service.get_by_id(student_id)
         if not student or student.get("teacher_id") != current_user["id"]:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
-        body = await request.json()
-        update_dict = {k: v for k, v in body.items() if v is not None and k != "id" and k != "teacher_id"}
+
+        update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+        update_dict = {k: v for k, v in update_dict.items() if k in ALLOWED_STUDENT_UPDATE_FIELDS}
+
+        if not update_dict:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
         if "pin" in update_dict:
             update_dict["pin_hash"] = hash_password(sanitize_pin(update_dict.pop("pin")))
+
+        if "full_name" in update_dict:
+            update_dict["full_name"] = sanitize_text(update_dict["full_name"]) or update_dict["full_name"]
+        if "phone" in update_dict and update_dict["phone"]:
+            update_dict["phone"] = sanitize_text(update_dict["phone"])
+        if "parent_phone" in update_dict and update_dict["parent_phone"]:
+            update_dict["parent_phone"] = sanitize_text(update_dict["parent_phone"])
+        if "grade_level" in update_dict and update_dict["grade_level"]:
+            update_dict["grade_level"] = sanitize_text(update_dict["grade_level"])
+
         updated = await student_service.update(student_id, update_dict)
         return {"ok": True, "student": _serialize_student(updated)}
     except HTTPException:
@@ -290,22 +341,22 @@ async def student_login(credentials: StudentLogin):
     sanitized_code = sanitize_student_code(credentials.code)
     log.info("Student login attempt: code=%s", sanitized_code)
 
-    _check_rate_limit(sanitized_code)
+    await _check_rate_limit(sanitized_code)
 
     student = await student_service.get_by_code(sanitized_code)
     if not student:
-        _record_failed_attempt(sanitized_code)
+        await _record_failed_attempt(sanitized_code)
         log.warning("Student login failed: no student found for code=%s", sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الكود غير صحيح")
 
     if not student.get("pin_hash"):
-        _record_failed_attempt(sanitized_code)
+        await _record_failed_attempt(sanitized_code)
         log.warning("Student login failed: no pin_hash for student_id=%s code=%s", student.get("id"), sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الرمز السري غير مُعيّن")
 
     sanitized_pin = sanitize_pin(credentials.pin)
     if not verify_password(sanitized_pin, student["pin_hash"]):
-        _record_failed_attempt(sanitized_code)
+        await _record_failed_attempt(sanitized_code)
         log.warning("Student login failed: PIN mismatch for student_id=%s code=%s", student.get("id"), sanitized_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الرمز السري غير صحيح")
 
@@ -314,7 +365,7 @@ async def student_login(credentials: StudentLogin):
         if not teacher or str(student.get("teacher_id")) != str(teacher["id"]):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="الطالب غير مسجل لدى هذا المعلم")
 
-    _clear_attempts(sanitized_code)
+    await _clear_attempts(sanitized_code)
 
     token = create_access_token(student["id"], expires_delta=None)
     refresh = create_refresh_token(student["id"])

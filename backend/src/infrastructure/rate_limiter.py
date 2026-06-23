@@ -132,9 +132,15 @@ class RateLimiter:
         self._redis_limiter: RedisRateLimiter | None = None
         self._memory_limiter = InMemoryRateLimiter(window=window)
         self._use_redis = False
+        self._window = window
         
         if redis_url and REDIS_AVAILABLE:
             self._redis_limiter = RedisRateLimiter(redis_url, window=window)
+    
+    def set_redis_url(self, redis_url: str):
+        """Set or update Redis URL before connecting."""
+        if REDIS_AVAILABLE and redis_url:
+            self._redis_limiter = RedisRateLimiter(redis_url, window=self._window)
     
     async def connect(self):
         if self._redis_limiter:
@@ -149,6 +155,47 @@ class RateLimiter:
         if self._use_redis and self._redis_limiter:
             return await self._redis_limiter.is_allowed(key, max_requests)
         return await self._memory_limiter.is_allowed(key, max_requests)
+
+    async def increment(
+        self,
+        key: str,
+        window: int = 60,
+    ) -> int:
+        """Increment a counter in Redis, returns new count. Falls back to 1 if no Redis."""
+        if self._use_redis and self._redis_limiter and self._redis_limiter._connected:
+            redis = self._redis_limiter._redis
+            now = time.time()
+            redis_key = f"counter:{key}"
+            pipe = redis.pipeline()
+            pipe.zremrangebyscore(redis_key, 0, int((now - window) * 1000))
+            pipe.zadd(redis_key, {str(now): int(now * 1000)})
+            pipe.zcard(redis_key)
+            pipe.expire(redis_key, window + 1)
+            _, _, count, _ = await pipe.execute()
+            return count
+        return 1
+
+    async def get_ttl(self, key: str) -> int:
+        """Get remaining TTL for a key in seconds. Returns 0 if no key found."""
+        if self._use_redis and self._redis_limiter and self._redis_limiter._connected:
+            redis = self._redis_limiter._redis
+            ttl = await redis.ttl(f"ratelimit:{key}")
+            return max(0, ttl)
+        return 0
+
+    async def ban_check(self, ban_key: str, ban_duration: int) -> int:
+        """Check if ban_key is banned. Returns remaining seconds (0 = not banned)."""
+        if self._use_redis and self._redis_limiter and self._redis_limiter._connected:
+            redis = self._redis_limiter._redis
+            ttl = await redis.ttl(f"ban:{ban_key}")
+            return max(0, ttl)
+        return 0
+
+    async def set_ban(self, ban_key: str, ban_duration: int):
+        """Set a ban for ban_key lasting ban_duration seconds."""
+        if self._use_redis and self._redis_limiter and self._redis_limiter._connected:
+            redis = self._redis_limiter._redis
+            await redis.setex(f"ban:{ban_key}", ban_duration, "1")
 
 
 # Global instance (initialized in lifespan)
