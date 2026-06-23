@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /.env
+Disallow: /.git/
+
+Sitemap: https://darsakai.com/sitemap.xml
