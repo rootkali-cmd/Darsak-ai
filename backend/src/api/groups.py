@@ -44,7 +44,7 @@ async def create_group(
         logger.error("Group create failed: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"فشل إنشاء المجموعة. تأكد من البيانات وحاول مرة أخرى. {str(exc)[:200]}"
+            detail=f"فشل إنشاء المجموعة. تأكد من البيانات وحاول مرة أخرى. internal error"
         )
 
 
@@ -166,7 +166,7 @@ async def update_group_put(
         import logging
         logger = logging.getLogger("darsak")
         logger.error("Failed to update group %s: %s", group_id, exc)
-        raise HTTPException(status_code=500, detail=f"فشل تحديث المجموعة: {str(exc)[:200]}")
+        raise HTTPException(status_code=500, detail=f"فشل تحديث المجموعة: internal error")
 
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)

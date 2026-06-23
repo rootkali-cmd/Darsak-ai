@@ -627,7 +627,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, str(exc), exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": f"حدث خطأ في الخادم: {str(exc)[:200]}"},
+        content={"detail": "حدث خطأ في الخادم. حاول مرة أخرى."},
     )
 
 
@@ -677,30 +677,6 @@ async def deep_health():
         status_code=status_code,
         content={"status": "healthy" if overall_healthy else "degraded", "checks": checks},
     )
-
-
-@app.get("/health/cache")
-async def cache_stats():
-    """Return cache hit rates and sizes."""
-    user_stats = await user_cache.stats
-    student_stats = await student_cache.stats
-    general_stats = await cache.stats
-    return {
-        "user_cache": user_stats,
-        "student_cache": student_stats,
-        "general_cache": general_stats,
-    }
-
-
-@app.get("/config/cors")
-async def cors_debug(request: Request):
-    """Debug endpoint to verify CORS headers are sent correctly."""
-    origin = request.headers.get("origin", "")
-    return {
-        "origin_received": origin,
-        "cors_origins_configured": _cors_origins,
-        "origin_allowed": origin in _cors_origins or "*" in _cors_origins,
-    }
 
 
 # ── Router Registration ──

@@ -99,4 +99,6 @@ async def get_current_student(
 
     if not student:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student not found")
+    if not student.get("is_active", True):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account deactivated")
     return student

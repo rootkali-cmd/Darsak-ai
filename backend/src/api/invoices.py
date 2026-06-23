@@ -96,7 +96,7 @@ async def create_invoice(
         raise
     except Exception as exc:
         logger.error("Failed to create invoice: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create invoice: internal error")
 
 
 # ─── 1b. Teacher creates invoice for student ──────────────────────────
@@ -129,7 +129,7 @@ async def teacher_create_invoice(
         raise
     except Exception as exc:
         logger.error("Teacher failed to create invoice: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create invoice: internal error")
 
 
 # ─── 2. Student views their invoices ─────────────────────────────────
@@ -171,7 +171,7 @@ async def get_my_invoices(
         raise
     except Exception as exc:
         logger.error("Failed to fetch invoices for student %s: %s", student_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch invoices: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch invoices: internal error")
 
 
 # ─── 3. Student uploads payment proof ────────────────────────────────
@@ -205,7 +205,7 @@ async def upload_payment_proof(
         raise
     except Exception as exc:
         logger.error("Failed to upload payment proof: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to upload proof: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload proof: internal error")
 
 
 # ─── 4. Teacher views pending invoices ───────────────────────────────
@@ -259,7 +259,7 @@ async def _get_teacher_invoices(current_user: dict, status_filter: str | None) -
 
     except Exception as exc:
         logger.error("Failed to fetch teacher invoices: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch invoices: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch invoices: internal error")
 
 
 # ─── 5. Teacher approves invoice ─────────────────────────────────────
@@ -300,7 +300,7 @@ async def approve_invoice(
         raise
     except Exception as exc:
         logger.error("Failed to approve invoice %s: %s", invoice_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to approve invoice: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to approve invoice: internal error")
 
 
 # ─── 6. Teacher rejects invoice ──────────────────────────────────────
@@ -341,4 +341,4 @@ async def reject_invoice(
         raise
     except Exception as exc:
         logger.error("Failed to reject invoice %s: %s", invoice_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to reject invoice: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reject invoice: internal error")

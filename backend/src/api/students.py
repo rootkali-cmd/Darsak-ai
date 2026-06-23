@@ -180,7 +180,7 @@ async def get_student(
         raise
     except Exception as exc:
         logging.getLogger("darsak").error("Failed to get student %s: %s", student_id, exc)
-        raise HTTPException(status_code=500, detail=f"Failed to get student: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get student: internal error")
 
 
 @router.put("/{student_id}")
@@ -203,7 +203,7 @@ async def update_student(
         raise
     except Exception as exc:
         logging.getLogger("darsak").error("Failed to update student %s: %s", student_id, exc)
-        raise HTTPException(status_code=500, detail=f"فشل تحديث الطالب: {str(exc)[:200]}")
+        raise HTTPException(status_code=500, detail=f"فشل تحديث الطالب: internal error")
 
 
 @router.get("/{student_id}/pin")

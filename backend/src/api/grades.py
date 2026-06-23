@@ -97,7 +97,7 @@ async def create_grade(
     except Exception as exc:
         import logging
         logging.getLogger("darsak").error("Failed to create grade: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Failed to create grade: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create grade: internal error")
 
 
 @router.post("/bulk", response_model=list[GradeResponse], status_code=status.HTTP_201_CREATED)
@@ -209,7 +209,7 @@ async def update_grade(
     except Exception as exc:
         import logging
         logging.getLogger("darsak").error("Failed to update grade %s: %s", grade_id, exc)
-        raise HTTPException(status_code=500, detail=f"فشل تحديث الدرجة: {str(exc)[:200]}")
+        raise HTTPException(status_code=500, detail=f"فشل تحديث الدرجة: internal error")
 
 
 @router.delete("/{grade_id}", status_code=status.HTTP_204_NO_CONTENT)

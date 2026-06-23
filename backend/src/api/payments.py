@@ -94,7 +94,7 @@ async def create_payment_request(
         raise
     except Exception as exc:
         logger.error("Failed to create payment request: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")
 
 
 class CallbackQuery(BaseModel):
@@ -103,7 +103,7 @@ class CallbackQuery(BaseModel):
 
 
 @router.post("/callback")
-async def payment_callback(body: CallbackQuery):
+async def payment_callback(body: CallbackQuery, admin: dict = Depends(get_current_admin)):
     try:
         data = body.callback_data
         request_id = None
@@ -166,7 +166,7 @@ async def payment_callback(body: CallbackQuery):
         raise
     except Exception as exc:
         logger.error("Payment callback failed: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")
 
 
 @router.get("/config")
@@ -179,13 +179,12 @@ async def get_payment_config():
 
 
 @router.post("/test-telegram")
-async def test_telegram():
-    """Temporary endpoint to test Telegram bot connectivity."""
-    from src.services.telegram_bot import send_message, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+async def test_telegram(admin: dict = Depends(get_current_admin)):
+    """Test Telegram bot connectivity."""
+    from src.services.telegram_bot import send_message
     import os
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id_raw = os.environ.get("TELEGRAM_CHAT_ID", "")
-    logger.info("Telegram test: token=%s..., chat_id_raw=%r", token[:15] if token else "NONE", chat_id_raw)
     
     if not token:
         return {"ok": False, "error": "TELEGRAM_BOT_TOKEN not set"}
@@ -240,4 +239,4 @@ async def get_teacher_subscription_status(
         }
     except Exception as exc:
         logger.error("Failed to get subscription status: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")

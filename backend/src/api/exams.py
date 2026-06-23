@@ -103,7 +103,7 @@ async def create_exam(
     except Exception as exc:
         original = getattr(exc, 'original', exc)
         logger.error("Failed to create exam: %s (original: %s)", exc, original, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to create exam: {str(original)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create exam: internal error")
 
 
 AI_MAX_FILE_SIZE = 50 * 1024 * 1024
@@ -168,7 +168,7 @@ async def ai_generate_exam(
         raise
     except Exception as exc:
         logger.error("Failed to AI-generate exam: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"تعذر إنشاء الاختبار: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"تعذر إنشاء الاختبار: internal error")
 
 
 @router.get("")
@@ -268,7 +268,7 @@ async def get_exam_questions_student(
         raise
     except Exception as exc:
         logger.error("Failed to get student questions for exam %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get questions: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get questions: internal error")
 
 
 @router.post("/{exam_id}/submit")
@@ -307,7 +307,7 @@ async def submit_exam(
         raise
     except Exception as exc:
         logger.error("Failed to submit exam %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"فشل التسليم: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"فشل التسليم: internal error")
 
 
 @router.get("/my-results")
@@ -496,7 +496,7 @@ async def list_questions(
         raise
     except Exception as exc:
         logger.error("Failed to list questions for exam %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to list questions: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list questions: internal error")
 
 
 @router.post("/{exam_id}/questions", status_code=status.HTTP_201_CREATED)
@@ -524,7 +524,7 @@ async def add_question(
         raise
     except Exception as exc:
         logger.error("Failed to add question to exam %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to add question: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to add question: internal error")
 
 
 @router.put("/{exam_id}/questions/{question_id}")
@@ -544,7 +544,7 @@ async def update_question(
         raise
     except Exception as exc:
         logger.error("Failed to update question %s: %s", question_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to update question: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update question: internal error")
 
 
 @router.delete("/{exam_id}/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -586,7 +586,7 @@ async def get_exam_results(
         raise
     except Exception as exc:
         logger.error("Failed to get exam results %s: %s", exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get results: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get results: internal error")
 
 
 @router.get("/result/{student_exam_id}")
@@ -639,6 +639,7 @@ async def get_student_exam_result(
             question_details.append(detail)
         
         correct_pct = (correct_count / total_mc * 100) if total_mc > 0 else 0
+        wrong_pct = (wrong_count / total_mc * 100) if total_mc > 0 else 0
         max_score = se.get("max_score") or 0
         total_score = se.get("total_score") or 0
         score_pct = (total_score / max_score * 100) if max_score > 0 else 0
@@ -722,7 +723,7 @@ async def check_new_exams(
         raise
     except Exception as exc:
         logger.error("Failed to check new exams: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to check new exams: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check new exams: internal error")
 
 
 @router.post("/analyze/{student_exam_id}")
@@ -777,4 +778,4 @@ async def analyze_student_exam(
         raise
     except Exception as exc:
         logger.error("Failed to analyze exam %s: %s", student_exam_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to analyze exam: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze exam: internal error")

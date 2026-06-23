@@ -79,7 +79,7 @@ async def list_plans():
         return [_to_plan_response(p) for p in plans]
     except Exception as exc:
         logger.error("Failed to list plans: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to list plans: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list plans: internal error")
 
 
 @router.post("/activate-trial")
@@ -130,7 +130,7 @@ async def activate_trial(
         raise
     except Exception as exc:
         logger.error("Failed to activate trial: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to activate trial: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to activate trial: internal error")
 
 
 @router.post("/activate")
@@ -208,7 +208,7 @@ async def activate_code(
         raise
     except Exception as exc:
         logger.error("Failed to activate code: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to activate subscription: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to activate subscription: internal error")
 
 
 @router.get("/my")
@@ -275,7 +275,7 @@ async def my_subscription(
         raise
     except Exception as exc:
         logger.error("Failed to get my subscription: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get subscription: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get subscription: internal error")
 
 
 @router.post("/check")
@@ -299,7 +299,7 @@ async def check_feature(
         raise
     except Exception as exc:
         logger.error("Failed to check feature: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to check feature: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check feature: internal error")
 
 
 ALLOWED_SCREENSHOT_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -348,7 +348,7 @@ async def create_payment_request(
         raise
     except Exception as exc:
         logger.error("Failed to create payment request: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to create payment request: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create payment request: internal error")
 
 
 @router.get("/payment-requests")
@@ -359,7 +359,7 @@ async def list_payment_requests(
         return await payment_request_service.get_by_teacher(current_user["id"])
     except Exception as exc:
         logger.error("Failed to list payment requests: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")
 
 
 @router.get("/notifications")
@@ -370,7 +370,7 @@ async def list_notifications(
         return await notification_service.get_unread(current_user["id"])
     except Exception as exc:
         logger.error("Failed to list notifications: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")
 
 
 @router.post("/notifications/{notification_id}/read")
@@ -383,7 +383,7 @@ async def mark_notification_read(
         return {"ok": True}
     except Exception as exc:
         logger.error("Failed to mark notification read: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")
 
 
 @router.get("/admin/codes")
@@ -395,7 +395,7 @@ async def list_all_codes(
         return codes
     except Exception as exc:
         logger.error("Failed to list admin codes: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")
 
 
 @router.post("/admin/codes/generate")
@@ -419,4 +419,4 @@ async def admin_generate_code(
         raise
     except Exception as exc:
         logger.error("Failed to generate admin code: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed: internal error")

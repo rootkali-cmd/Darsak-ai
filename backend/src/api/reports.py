@@ -148,7 +148,7 @@ async def get_student_reports(
         raise
     except Exception as exc:
         logger.error("Failed to get student reports: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get reports: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get reports: internal error")
 
 
 @router.get("/analytics/{teacher_id}")
@@ -209,4 +209,4 @@ async def get_analytics_summary(
         raise
     except Exception as exc:
         logger.error("Failed to get analytics: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get analytics: internal error")
