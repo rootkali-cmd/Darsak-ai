@@ -33,11 +33,9 @@ class _SidebarState extends State<Sidebar> {
     _NavItem(label: 'الإعدادات', icon: Icons.settings_outlined, activeIcon: Icons.settings),
     _NavItem(label: 'الاشتراك', icon: Icons.card_membership_outlined, activeIcon: Icons.card_membership),
     _NavItem(label: 'التقارير', icon: Icons.analytics_outlined, activeIcon: Icons.analytics),
-    _NavItem(label: 'طلبات التسجيل', icon: Icons.how_to_reg_outlined, activeIcon: Icons.how_to_reg),
+    _NavItem(label: 'المساعدين', icon: Icons.support_agent_outlined, activeIcon: Icons.support_agent),
     _NavItem(label: 'الملف الشخصي', icon: Icons.person_outline, activeIcon: Icons.person),
-    _NavItem(label: 'كود المعلم', icon: Icons.qr_code_2_outlined, activeIcon: Icons.qr_code_2),
     _NavItem(label: 'جهات الاتصال', icon: Icons.contact_phone_outlined, activeIcon: Icons.contact_phone),
-    _NavItem(label: 'الفواتير المتقدمة', icon: Icons.receipt_outlined, activeIcon: Icons.receipt),
   ];
 
   @override

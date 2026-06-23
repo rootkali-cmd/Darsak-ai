@@ -29,6 +29,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _loading = true;
   bool _showCelebration = false;
   int _studentCount = 0;
+  int _selectedStudentCount = 700;
   String? _error;
   bool _isYearly = false;
 
@@ -161,6 +162,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   int _getYearlyPrice(int monthlyPrice) => monthlyPrice * 10;
+
+  int _calculatePremiumPrice() {
+    final base = 1100;
+    final extra = ((_selectedStudentCount - 700) / 50).floor() * 175;
+    return base + extra;
+  }
 
   List<Map<String, dynamic>> get _plansToShow {
     if (_plans.isNotEmpty && _plans.every((p) => p['price_egp'] != null || p['price'] != null)) {
@@ -646,11 +653,52 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
+  Widget _buildStudentSlider() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text('عدد الطلاب', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: GlassTheme.textSecondary(context))),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppTheme.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text('$_selectedStudentCount طالب', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.success)),
+        ),
+      ]),
+      const SizedBox(height: 4),
+      SliderTheme(
+        data: SliderThemeData(
+          activeTrackColor: AppTheme.success,
+          inactiveTrackColor: AppTheme.success.withValues(alpha: 0.15),
+          thumbColor: AppTheme.success,
+          overlayColor: AppTheme.success.withValues(alpha: 0.1),
+          trackHeight: 4,
+          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+        ),
+        child: Slider(
+          value: _selectedStudentCount.toDouble(),
+          min: 700,
+          max: 5000,
+          divisions: 86,
+          onChanged: (v) => setState(() => _selectedStudentCount = v.round()),
+        ),
+      ),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text('700', style: TextStyle(fontSize: 11, color: GlassTheme.textMuted(context))),
+        Text('5000', style: TextStyle(fontSize: 11, color: GlassTheme.textMuted(context))),
+      ]),
+    ]);
+  }
+
   // ─── Plan Card ───────────────────────────────────────────────
 
   Widget _buildPlanCard(Map<String, dynamic> plan, int index) {
     final name = plan['name'] ?? '';
-    final monthlyPrice = (plan['price_egp'] ?? plan['price'] ?? 0).toInt();
+    final planId = plan['id']?.toString() ?? '';
+    final isPremium = planId == 'premium';
+    final basePrice = (plan['price_egp'] ?? plan['price'] ?? 0).toInt();
+    final monthlyPrice = isPremium ? _calculatePremiumPrice() : basePrice;
     final displayPrice = _isYearly ? _getYearlyPrice(monthlyPrice) : monthlyPrice;
     final features = plan['features'] is List ? plan['features'] as List : <dynamic>[];
     final maxStudents = plan['max_students'];
@@ -737,6 +785,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context)),
                 ),
               ]),
+            ],
+            if (isPremium) ...[
+              const SizedBox(height: 12),
+              _buildStudentSlider(),
             ],
             const SizedBox(height: 12),
             ...features.map((f) => Padding(

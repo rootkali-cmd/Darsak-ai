@@ -515,6 +515,9 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                 } catch (e) {
                   if (!context.mounted) return;
                   setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('فشل الحذف: $e'), backgroundColor: AppTheme.danger),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
@@ -753,10 +756,13 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    setState(() => _isLoading = false);
-                  }
+                } catch (e) {
+                  if (!context.mounted) return;
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('فشل النشر: $e'), backgroundColor: AppTheme.danger),
+                  );
+                }
                 },
                 child: const Text('حفظ'),
               ),
@@ -896,6 +902,9 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                         } catch (e) {
                           if (!context.mounted) return;
                           setState(() => _isLoading = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('فشل التوليد: $e'), backgroundColor: AppTheme.danger),
+                          );
                         }
                       },
                 child: const Text('توليد'),

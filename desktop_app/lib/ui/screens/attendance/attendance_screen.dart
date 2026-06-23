@@ -47,7 +47,10 @@ final class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         }
       }
-      if (mounted) setState(() => _records.addAll(map));
+      if (mounted) setState(() {
+        _records.clear();
+        _records.addAll(map);
+      });
     } catch (_) {}
     if (mounted) setState(() => _isLoadingExisting = false);
   }
@@ -63,7 +66,10 @@ final class _AttendanceScreenState extends State<AttendanceScreen> {
       confirmText: 'تأكيد',
     );
     if (picked != null && mounted) {
-      setState(() => _selectedDate = picked);
+      setState(() {
+        _selectedDate = picked;
+        _records.clear();
+      });
       _loadExistingAttendance();
     }
   }

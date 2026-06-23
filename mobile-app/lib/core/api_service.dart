@@ -178,7 +178,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getMySubscription() async {
-    final response = await _dio.get('/subscriptions/my');
+    final response = await _dio.get('/students/me/teacher-subscription');
     return response.data;
   }
 

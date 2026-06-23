@@ -23,6 +23,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   Map<String, dynamic>? _subscription;
   Map<String, dynamic>? _paymentConfig;
   Map<String, dynamic>? _instaPayConfig;
+  bool _isYearly = false;
+  int _selectedStudentCount = 700;
 
   static const _defaultPlans = [
     {
@@ -100,6 +102,24 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     return _defaultPlans;
   }
 
+  int _calculatePremiumPrice() {
+    final base = 1100;
+    final extra = ((_selectedStudentCount - 700) / 50).floor() * 175;
+    return base + extra;
+  }
+
+  int _getPlanPrice(Map<String, dynamic> plan) {
+    final id = plan['id']?.toString() ?? '';
+    if (id == 'premium') {
+      final monthly = _calculatePremiumPrice();
+      return _isYearly ? monthly * 10 : monthly;
+    }
+    final base = (plan['price_egp'] ?? plan['price'] ?? 0) as int;
+    return _isYearly ? base * 10 : base;
+  }
+
+  String _getPriceSuffix() => _isYearly ? 'ج.م/سنه' : 'ج.م/شهر';
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -129,6 +149,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     children: [
                       _buildCurrentStatus(),
                       const SizedBox(height: 20),
+                      _buildBillingToggle(),
+                      const SizedBox(height: 16),
                       Text('اختر باقتك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
                       const SizedBox(height: 4),
                       Text('جميع الباقات تشمل الدعم الفني والتحديثات المجانية', style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
@@ -141,6 +163,72 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _buildBillingToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: GlassTheme.cardBg(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: GlassTheme.cardBorder(context)),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _isYearly = false),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                gradient: !_isYearly ? const LinearGradient(colors: [AppTheme.accent, Color(0xFF8B5CF6)]) : null,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                if (!_isYearly) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                if (!_isYearly) const SizedBox(width: 6),
+                Text('شهري', style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.bold,
+                  color: !_isYearly ? Colors.white : GlassTheme.textSecondary(context),
+                )),
+              ]),
+            ),
+          ),
+        ),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _isYearly = true),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                gradient: _isYearly ? const LinearGradient(colors: [AppTheme.accent, Color(0xFF8B5CF6)]) : null,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                if (_isYearly) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                if (_isYearly) const SizedBox(width: 6),
+                Text('سنوي', style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.bold,
+                  color: _isYearly ? Colors.white : GlassTheme.textSecondary(context),
+                )),
+                if (_isYearly) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.success,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('وفّر شهرين', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
+                ],
+              ]),
+            ),
+          ),
+        ),
+      ]),
     );
   }
 
@@ -194,9 +282,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   Widget _buildPlanCard(Map<String, dynamic> plan, int index) {
     final name = plan['name'] ?? '';
-    final price = plan['price_egp'] ?? plan['price'] ?? 0;
+    final price = _getPlanPrice(plan);
     final features = plan['features'] is List ? plan['features'] as List : <dynamic>[];
     final isPopular = plan['popular'] == true;
+    final planId = plan['id']?.toString() ?? '';
+    final isPremium = planId == 'premium';
 
     final planColors = [
       [const Color(0xFF6366F1), const Color(0xFF818CF8)],
@@ -242,8 +332,12 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text('$price', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
                 const SizedBox(width: 4),
-                Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('ج.م/شهر', style: TextStyle(fontSize: 14, color: GlassTheme.textSecondary(context)))),
+                Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(_getPriceSuffix(), style: TextStyle(fontSize: 14, color: GlassTheme.textSecondary(context)))),
               ]),
+              if (isPremium) ...[
+                const SizedBox(height: 12),
+                _buildStudentSlider(),
+              ],
               const SizedBox(height: 16),
               ...features.map((f) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -293,9 +387,47 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
+  Widget _buildStudentSlider() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text('عدد الطلاب', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: GlassTheme.textSecondary(context))),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppTheme.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text('$_selectedStudentCount طالب', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.success)),
+        ),
+      ]),
+      const SizedBox(height: 4),
+      SliderTheme(
+        data: SliderThemeData(
+          activeTrackColor: AppTheme.success,
+          inactiveTrackColor: AppTheme.success.withValues(alpha: 0.15),
+          thumbColor: AppTheme.success,
+          overlayColor: AppTheme.success.withValues(alpha: 0.1),
+          trackHeight: 4,
+          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+        ),
+        child: Slider(
+          value: _selectedStudentCount.toDouble(),
+          min: 700,
+          max: 5000,
+          divisions: 86,
+          onChanged: (v) => setState(() => _selectedStudentCount = v.round()),
+        ),
+      ),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text('700', style: TextStyle(fontSize: 11, color: GlassTheme.textMuted(context))),
+        Text('5000', style: TextStyle(fontSize: 11, color: GlassTheme.textMuted(context))),
+      ]),
+    ]);
+  }
+
   void _showPaymentBottomSheet(Map<String, dynamic> plan) {
     final planName = plan['name'] ?? '';
-    final planPrice = plan['price_egp'] ?? plan['price'] ?? 0;
+    final planPrice = _getPlanPrice(plan);
     final planId = plan['id']?.toString() ?? '';
 
     showModalBottomSheet(

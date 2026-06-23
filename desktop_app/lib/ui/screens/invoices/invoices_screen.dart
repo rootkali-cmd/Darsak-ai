@@ -76,6 +76,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
   Widget build(BuildContext context) {
     final data = context.watch<DataProvider>();
     final sync = context.watch<SyncProvider>();
+    _students = data.students;
+    if (_students.isNotEmpty && _selectedStudentId.isEmpty) {
+      _selectedStudentId = _students.first.id;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;

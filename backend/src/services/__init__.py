@@ -15,6 +15,7 @@ from src.services.supabase_services import (
     StudentExamService,
     LessonService,
     VideoAnalyticsService,
+    AssistantService,
 )
 from src.services.ai_analyzer import ai_analyzer
 from src.services.exam_ai import exam_ai_service
@@ -40,6 +41,7 @@ exam_service = ExamService()
 student_exam_service = StudentExamService()
 lesson_service = LessonService()
 video_analytics_service = VideoAnalyticsService()
+assistant_service = AssistantService()
 
 __all__ = [
     "user_service",
@@ -58,6 +60,7 @@ __all__ = [
     "student_exam_service",
     "lesson_service",
     "video_analytics_service",
+    "assistant_service",
     "ai_analyzer",
     "exam_ai_service",
     "sync_buffer",

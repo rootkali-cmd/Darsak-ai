@@ -3,11 +3,9 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/data_provider.dart';
-import '../../../providers/sync_provider.dart';
 import '../../widgets/sidebar.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/quick_action.dart';
-import '../../widgets/sync_status_indicator.dart';
 import '../../widgets/glass_notification_overlay.dart';
 import '../students/students_screen.dart';
 import '../groups/groups_screen.dart';
@@ -19,11 +17,9 @@ import '../qr/qr_screen.dart';
 import '../subscription/subscription_screen.dart';
 import '../settings/settings_screen.dart';
 import '../reports/ai_reports_screen.dart';
-import '../students/online_requests_screen.dart';
 import '../profile/profile_screen.dart';
-import '../profile/teacher_code_screen.dart';
 import '../contacts/teacher_contacts_screen.dart';
-import '../invoices/teacher_invoices_screen.dart';
+import '../assistants/assistants_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -78,7 +74,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final sync = context.watch<SyncProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
@@ -110,35 +105,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: sync.isOnline ? AppTheme.success : AppTheme.danger,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        sync.isOnline ? 'متصل' : 'غير متصل',
-                        style: TextStyle(
-                          color: sync.isOnline ? AppTheme.success : AppTheme.danger,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        '/',
-                        style: TextStyle(color: borderColor, fontSize: 13),
-                      ),
-                      const SizedBox(width: 16),
                       Text(
                         _getPageTitle(),
-                        style: TextStyle(color: textMuted, fontSize: 13),
+                        style: TextStyle(color: textMuted, fontSize: 14),
                       ),
                       const Spacer(),
-                      const SyncStatusIndicator(),
-                      const SizedBox(width: 8),
                       MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: IconButton(
@@ -189,11 +160,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 8: return 'الإعدادات';
       case 9: return 'الاشتراك';
       case 10: return 'التقارير';
-      case 11: return 'طلبات التسجيل';
+      case 11: return 'المساعدين';
       case 12: return 'الملف الشخصي';
-      case 13: return 'كود المعلم';
-      case 14: return 'جهات الاتصال';
-      case 15: return 'الفواتير المتقدمة';
+      case 13: return 'جهات الاتصال';
       default: return 'لوحة التحكم';
     }
   }
@@ -227,15 +196,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 10:
         return const AiReportsScreen(key: ValueKey('reports'));
       case 11:
-        return const OnlineRequestsScreen(key: ValueKey('online_requests'));
+        return const AssistantsScreen(key: ValueKey('assistants'));
       case 12:
         return const ProfileScreen(key: ValueKey('profile'));
       case 13:
-        return const TeacherCodeScreen(key: ValueKey('teacher_code'));
-      case 14:
         return const TeacherContactsScreen(key: ValueKey('contacts'));
-      case 15:
-        return const TeacherInvoicesScreen(key: ValueKey('advanced_invoices'));
       default:
         return _buildHome(key: const ValueKey('home'));
     }

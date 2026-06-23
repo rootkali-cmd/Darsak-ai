@@ -35,6 +35,7 @@ from src.api import (
     subjects_router,
     payments_router,
     reports_router,
+    assistants_router,
 )
 
 settings = get_settings()
@@ -324,6 +325,22 @@ async def _run_schema_migrations():
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
         );""",
+        # ─── Assistants table ────────────────────────────────────────
+        """CREATE TABLE IF NOT EXISTS assistants (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            full_name VARCHAR(255) NOT NULL,
+            phone VARCHAR(20),
+            salary DECIMAL(10,2) DEFAULT 0,
+            incentives DECIMAL(10,2) DEFAULT 0,
+            payment_status VARCHAR(20) DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'paid', 'partial')),
+            notes TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        # ─── Assistants password column on users table ──────────────
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS assistants_password_hash VARCHAR(255);",
     ]
 
     try:
@@ -715,3 +732,4 @@ app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
 app.include_router(subjects_router, prefix=settings.API_V1_PREFIX)
 app.include_router(payments_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
+app.include_router(assistants_router, prefix=settings.API_V1_PREFIX)

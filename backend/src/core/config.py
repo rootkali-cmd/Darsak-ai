@@ -28,13 +28,13 @@ class Settings(BaseSettings):
     # Plan student limits
     PLAN_BASIC_MAX_STUDENTS: int = 100
     PLAN_PRO_MAX_STUDENTS: int = 400
-    PLAN_PREMIUM_MAX_STUDENTS: int = -1  # Unlimited
+    PLAN_PREMIUM_MAX_STUDENTS: int = 700
     PLAN_ENTERPRISE_MAX_STUDENTS: int = -1  # Unlimited
 
-    # Plan AI request limits per month
+    # Plan AI request limits per day
     PLAN_BASIC_AI_LIMIT: int = 5
-    PLAN_PRO_AI_LIMIT: int = 30
-    PLAN_PREMIUM_AI_LIMIT: int = -1  # Unlimited
+    PLAN_PRO_AI_LIMIT: int = 10
+    PLAN_PREMIUM_AI_LIMIT: int = 20
     PLAN_ENTERPRISE_AI_LIMIT: int = -1  # Unlimited
 
     # Plan video storage limits (bytes)

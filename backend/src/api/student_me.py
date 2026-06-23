@@ -389,3 +389,63 @@ async def get_my_stats(
         logger = logging.getLogger("darsak")
         logger.error("Failed to get student stats: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get stats")
+
+
+# ─── Teacher Subscription Check (for students) ─────────────────────
+
+@router.get("/teacher-subscription")
+async def get_my_teacher_subscription(
+    current_student: dict = Depends(get_current_student),
+):
+    teacher_id = current_student.get("teacher_id")
+    if not teacher_id:
+        return {
+            "has_active_subscription": False,
+            "plan_name": None,
+            "expires_at": None,
+            "days_remaining": 0,
+            "is_trial": False,
+        }
+
+    try:
+        sub = await teacher_subscription_service.get_active_subscription(teacher_id)
+        if not sub:
+            return {
+                "has_active_subscription": False,
+                "plan_name": None,
+                "expires_at": None,
+                "days_remaining": 0,
+                "is_trial": sub.get("is_trial", False) if sub else False,
+            }
+
+        plan_id = sub.get("plan_id", "")
+        plan = await subscription_plan_service.get_by_id(plan_id) if plan_id else None
+        plan_name = plan.get("name", "Basic") if plan else "Basic"
+
+        expires_at = sub.get("expires_at")
+        days_remaining = 0
+        if expires_at:
+            from datetime import datetime, timezone
+            if isinstance(expires_at, str):
+                exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            else:
+                exp_dt = expires_at
+            diff = exp_dt - datetime.now(timezone.utc)
+            days_remaining = max(0, diff.days)
+
+        return {
+            "has_active_subscription": True,
+            "plan_name": plan_name,
+            "expires_at": expires_at,
+            "days_remaining": days_remaining,
+            "is_trial": sub.get("is_trial", False),
+        }
+    except Exception as e:
+        logging.getLogger("darsak").warning("Failed to get teacher subscription: %s", e)
+        return {
+            "has_active_subscription": False,
+            "plan_name": None,
+            "expires_at": None,
+            "days_remaining": 0,
+            "is_trial": False,
+        }

@@ -32,9 +32,7 @@ class GradeModel {
       subject: json['subject']?.toString() ?? '',
       score: (json['score'] ?? 0).toDouble(),
       maxScore: (json['max_score'] ?? 100).toDouble(),
-      wrongQuestions: json['wrong_questions'] != null
-          ? List<int>.from(json['wrong_questions'] as List)
-          : null,
+      wrongQuestions: _parseWrongQuestions(json['wrong_questions']),
       notes: json['notes']?.toString(),
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
@@ -54,4 +52,19 @@ class GradeModel {
       };
 
   double get percentage => maxScore > 0 ? (score / maxScore) * 100 : 0;
+
+  static List<int>? _parseWrongQuestions(dynamic value) {
+    if (value == null) return null;
+    if (value is List) return List<int>.from(value.map((e) => (e as num).toInt()));
+    if (value is String) {
+      try {
+        final cleaned = value.replaceAll('[', '').replaceAll(']', '').trim();
+        if (cleaned.isEmpty) return null;
+        return cleaned.split(',').map((e) => int.parse(e.trim())).toList();
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
 }

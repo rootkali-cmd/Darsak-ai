@@ -781,3 +781,24 @@ class VideoAnalyticsService:
             "delayed": delayed,
             "total_watched_minutes": total_minutes,
         }
+
+
+class AssistantService:
+    def __init__(self):
+        self.repo = SupabaseRepository("assistants")
+
+    async def create(self, teacher_id: str, **kwargs) -> dict:
+        return await self.repo.insert({"teacher_id": teacher_id, **kwargs})
+
+    async def get_by_id(self, assistant_id: str) -> dict | None:
+        return await self.repo.select_one({"id": assistant_id})
+
+    async def list_by_teacher(self, teacher_id: str, limit: int = 100) -> list[dict]:
+        return await self.repo.select({"teacher_id": teacher_id, "is_active": True}, limit=limit)
+
+    async def update(self, assistant_id: str, data: dict) -> dict:
+        return await self.repo.update({"id": assistant_id}, data)
+
+    async def delete(self, assistant_id: str) -> bool:
+        await self.repo.delete({"id": assistant_id})
+        return True

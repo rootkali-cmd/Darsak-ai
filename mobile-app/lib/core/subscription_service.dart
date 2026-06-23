@@ -27,7 +27,7 @@ class SubscriptionService {
   }
 
   Future<Map<String, dynamic>> getMySubscription() async {
-    final response = await _dio.get('/subscriptions/my');
+    final response = await _dio.get('/students/me/teacher-subscription');
     final data = response.data is Map<String, dynamic>
         ? response.data as Map<String, dynamic>
         : <String, dynamic>{};

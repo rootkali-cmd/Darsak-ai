@@ -22,6 +22,7 @@ from src.api.admin import router as admin_router
 from src.api.subjects import router as subjects_router
 from src.api.payments import router as payments_router
 from src.api.reports import router as reports_router
+from src.api.assistants import router as assistants_router
 
 __all__ = [
     "admin_router",
