@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/api/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/data_provider.dart';
 import '../../widgets/sidebar.dart';
@@ -44,6 +45,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   late VoidCallback _goToAttendance;
   late VoidCallback _goToGrades;
 
+  // Dashboard API data
+  Map<String, dynamic>? _dashboardStats;
+  bool _dashboardLoading = false;
+  String? _dashboardError;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DataProvider>().loadData();
+      _fetchDashboardStats();
     });
   }
 
@@ -69,6 +76,19 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   void dispose() {
     _slideController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchDashboardStats() async {
+    if (_dashboardLoading) return;
+    setState(() { _dashboardLoading = true; _dashboardError = null; });
+    try {
+      final api = context.read<AuthProvider>().client;
+      final apiService = ApiService(api);
+      final stats = await apiService.get('/dashboard/stats');
+      setState(() { _dashboardStats = stats; _dashboardLoading = false; });
+    } catch (e) {
+      setState(() { _dashboardError = 'فشل تحميل الإحصائيات'; _dashboardLoading = false; });
+    }
   }
 
   @override
@@ -109,6 +129,22 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         _getPageTitle(),
                         style: TextStyle(color: textMuted, fontSize: 14),
                       ),
+                      const SizedBox(width: 12),
+                      if (_selectedIndex == 0)
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: _fetchDashboardStats,
+                            child: Tooltip(
+                              message: 'تحديث',
+                              child: Icon(
+                                Icons.refresh,
+                                size: 16,
+                                color: textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
                       const Spacer(),
                       MouseRegion(
                         cursor: SystemMouseCursors.click,
@@ -206,12 +242,38 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     }
   }
 
+  String _planLabel(String? plan) {
+    switch (plan?.toLowerCase()) {
+      case 'basic': return 'Basic';
+      case 'pro': return 'Pro';
+      case 'premium': return 'Premium';
+      default: return 'مجاني';
+    }
+  }
+
+  Color _planColor(String? plan) {
+    switch (plan?.toLowerCase()) {
+      case 'pro': return AppTheme.accent;
+      case 'premium': return AppTheme.warning;
+      default: return AppTheme.success;
+    }
+  }
+
   Widget _buildHome({Key? key}) {
     final data = context.watch<DataProvider>();
+    final auth = context.watch<AuthProvider>();
     final students = data.students;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
     final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
+    final todayAttendance = _dashboardStats?['today_attendance'] ?? '-';
+    final totalRevenue = _dashboardStats?['total_revenue'] ?? '-';
+    final totalStudents = _dashboardStats?['total_students'] ?? students.length;
+    final totalGroups = _dashboardStats?['total_groups'] ?? data.groups.length;
+    final planName = auth.subscriptionData?['plan']?.toString();
+    final planLabel = _planLabel(planName);
+    final planColor = _planColor(planName);
 
     return SingleChildScrollView(
       key: key,
@@ -240,23 +302,48 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.accent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.waving_hand, size: 14, color: AppTheme.accent),
-                          const SizedBox(width: 6),
-                          Text(
-                            'مرحباً بك',
-                            style: TextStyle(color: AppTheme.accent, fontSize: 12),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.waving_hand, size: 14, color: AppTheme.accent),
+                              const SizedBox(width: 6),
+                              Text(
+                                'مرحباً بك',
+                                style: TextStyle(color: AppTheme.accent, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        if (auth.subscriptionLoaded)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: planColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: planColor.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.workspace_premium, size: 14, color: planColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  planLabel,
+                                  style: TextStyle(color: planColor, fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -272,9 +359,27 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'إحصائيات سريعة',
-                style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Text(
+                    'إحصائيات سريعة',
+                    style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  if (_dashboardLoading)
+                    SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accent),
+                    ),
+                  if (_dashboardError != null)
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _fetchDashboardStats,
+                        child: Text('إعادة المحاولة', style: TextStyle(color: AppTheme.danger, fontSize: 12)),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 16),
               GridView.count(
@@ -287,26 +392,26 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 children: [
                   StatCard(
                     title: 'عدد الطلاب',
-                    value: students.length.toString(),
+                    value: totalStudents.toString(),
                     icon: Icons.people,
                     color: AppTheme.accent,
                   ),
                   StatCard(
                     title: 'عدد المجموعات',
-                    value: data.groups.length.toString(),
+                    value: totalGroups.toString(),
                     icon: Icons.groups,
                     color: AppTheme.accentLight,
                   ),
                   StatCard(
                     title: 'الحضور اليوم',
-                    value: '-',
+                    value: todayAttendance.toString(),
                     icon: Icons.check_circle,
                     color: AppTheme.success,
                   ),
                   StatCard(
-                    title: 'الدرجات',
-                    value: '-',
-                    icon: Icons.grade,
+                    title: 'الإيرادات',
+                    value: _dashboardStats != null ? '$totalRevenue ج.م' : '-',
+                    icon: Icons.account_balance,
                     color: AppTheme.warning,
                   ),
                 ],
@@ -344,6 +449,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     icon: Icons.receipt,
                     color: AppTheme.accentLight,
                     onTap: () => setState(() => _selectedIndex = 5),
+                  ),
+                  QuickAction(
+                    title: 'التقارير',
+                    icon: Icons.analytics,
+                    color: AppTheme.accentDark,
+                    onTap: () => setState(() => _selectedIndex = 10),
+                  ),
+                  QuickAction(
+                    title: 'الامتحانات',
+                    icon: Icons.quiz,
+                    color: AppTheme.danger,
+                    onTap: () => setState(() => _selectedIndex = 6),
                   ),
                 ],
               ),

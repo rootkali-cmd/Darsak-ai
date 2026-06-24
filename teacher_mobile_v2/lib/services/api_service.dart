@@ -45,9 +45,14 @@ class ApiService {
             final newToken = prefs.getString(_tokenKey);
             if (newToken != null) {
               error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
-              final clone = await dio.fetch(error.requestOptions);
-              handler.resolve(clone);
-              return;
+              // Add retry count header to prevent infinite loop
+              final retryCount = (error.requestOptions.extra['_retry'] ?? 0) as int;
+              if (retryCount < 2) {
+                error.requestOptions.extra['_retry'] = retryCount + 1;
+                final clone = await dio.fetch(error.requestOptions);
+                handler.resolve(clone);
+                return;
+              }
             }
           }
           // Refresh failed - logout

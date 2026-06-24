@@ -25,14 +25,14 @@ async def dashboard_stats(current_user: dict = Depends(get_current_teacher)):
 
     try:
         attendance_stats = await attendance_service.get_stats(teacher_id)
-        today_attendance = attendance_stats.get("today_count", 0) if attendance_stats else 0
+        today_attendance = attendance_stats.get("present", 0) if attendance_stats else 0
     except Exception as e:
         logger.warning("Failed to get today attendance for %s: %s", teacher_id, e)
         today_attendance = 0
 
     try:
         invoice_stats = await invoice_service.get_stats(teacher_id)
-        total_revenue = invoice_stats.get("total_paid", 0) if invoice_stats else 0
+        total_revenue = invoice_stats.get("paid_amount", 0) if invoice_stats else 0
     except Exception as e:
         logger.warning("Failed to get invoice stats for %s: %s", teacher_id, e)
         total_revenue = 0

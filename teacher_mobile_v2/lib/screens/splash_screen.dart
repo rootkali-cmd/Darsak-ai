@@ -24,35 +24,44 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _navigate() async {
     final auth = context.read<AuthProvider>();
-    final start = DateTime.now();
-    while (!auth.isInitialized && DateTime.now().difference(start).inSeconds < 5) {
-      await Future.delayed(const Duration(milliseconds: 100));
+    if (auth.isInitialized) {
+      _doNavigate(auth);
+      return;
     }
+    // Listen for init completion instead of polling
+    late void Function() listener;
+    listener = () {
+      if (auth.isInitialized && mounted) {
+        auth.removeListener(listener);
+        _doNavigate(auth);
+      }
+    };
+    auth.addListener(listener);
+    // Safety timeout
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        auth.removeListener(listener);
+        _doNavigate(auth);
+      }
+    });
+  }
+
+  void _doNavigate(AuthProvider auth) {
     if (!mounted) return;
-
-    final sharedPdf = await NativeFilePicker.getSharedPdf();
-
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-
-    if (!auth.isAuthenticated) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LandingPage()));
-      return;
-    }
-
-    if (auth.needsOnboarding) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const OnboardingScreen()));
-      return;
-    }
-
-    if (sharedPdf != null) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => AiGenerateExamScreen(initialFilePath: sharedPdf),
-      ));
-      return;
-    }
-
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    final sharedPdf = NativeFilePicker.getSharedPdf() as Future<String?>?;
+    // Skip shared PDF on cold start, only check on app open from file
+    Future.delayed(const Duration(milliseconds: 600), () async {
+      if (!mounted) return;
+      if (!auth.isAuthenticated) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LandingPage()));
+        return;
+      }
+      if (auth.needsOnboarding) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const OnboardingScreen()));
+        return;
+      }
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    });
   }
 
   @override

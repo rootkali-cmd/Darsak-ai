@@ -19,16 +19,15 @@ class AuthProvider extends ChangeNotifier {
   StudentModel? _student;
   String? _error;
   String? _teacherCode;
-  bool _isOnline = true;
   Map<String, dynamic>? _subscriptionData;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _connectivityDebounce;
 
   AuthStatus get status => _status;
   StudentModel? get student => _student;
   String? get error => _error;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   String? get teacherCode => _teacherCode;
-  bool get isOnline => _isOnline;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
   bool get isSubscriptionActive {
     if (_subscriptionData == null) return false;
@@ -47,24 +46,22 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void _initConnectivity() {
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
-      _isOnline = results.any((r) => r != ConnectivityResult.none);
-      notifyListeners();
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((_) {
+      _connectivityDebounce?.cancel();
+      _connectivityDebounce = Timer(const Duration(milliseconds: 500), () {
+        _checkConnectivity();
+      });
     });
-    _checkConnectivity();
   }
 
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
+    _connectivityDebounce?.cancel();
     super.dispose();
   }
 
-  Future<void> _checkConnectivity() async {
-    final results = await _connectivity.checkConnectivity();
-    _isOnline = results.any((r) => r != ConnectivityResult.none);
-    notifyListeners();
-  }
+  Future<void> _checkConnectivity() async {}
 
   Future<void> refreshSubscription() async {
     try {
@@ -92,18 +89,16 @@ class AuthProvider extends ChangeNotifier {
       _student = StudentModel.fromJson(cached);
     }
 
-    // Show the app — don't block on network
-    _status = AuthStatus.authenticated;
-    notifyListeners();
-
     // Load subscription data in background
     refreshSubscription();
 
-    // Verify token and refresh data in background
+    // Verify token and refresh data — show authenticated only after success
     try {
       final data = await _api.getProfile();
       _student = StudentModel.fromJson(data);
       LocalDB.saveProfile(data);
+      _status = AuthStatus.authenticated;
+      notifyListeners();
     } catch (e) {
       if (e is DioException && e.response != null) {
         final code = e.response?.statusCode;
@@ -116,6 +111,9 @@ class AuthProvider extends ChangeNotifier {
           return;
         }
       }
+      // Other errors — show authenticated with cached data
+      _status = AuthStatus.authenticated;
+      notifyListeners();
     }
   }
 

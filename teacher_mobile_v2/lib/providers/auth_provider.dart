@@ -47,9 +47,23 @@ class AuthProvider extends ChangeNotifier {
         _token = null;
       }
     }
+
+    // Validate subscription before first notify
+    if (_token != null && _subscription == null) {
+      try {
+        final meResp = await _api.dio.get('/auth/me',
+          options: Options(receiveTimeout: const Duration(seconds: 10), sendTimeout: const Duration(seconds: 10)),
+        );
+        final me = meResp.data is Map ? meResp.data as Map<String, dynamic> : <String, dynamic>{};
+        _subscription = me['subscription'] is Map ? Map<String, dynamic>.from(me['subscription']) : null;
+        if (_subscription != null) {
+          await prefs.setString('subscription_cache', jsonEncode(_subscription));
+        }
+      } catch (_) {}
+    }
+
     _isInitialized = true;
     notifyListeners();
-    refreshSubscription();
   }
 
   static Map<String, dynamic>? _parseJwt(String token) {

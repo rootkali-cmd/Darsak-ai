@@ -272,6 +272,7 @@ void showSubscriptionRequiredDialog(BuildContext context) {
 class SubscriptionRequiredWidget extends StatelessWidget {
   final Widget child;
   final String? message;
+  static bool _isRedirecting = false;
 
   const SubscriptionRequiredWidget({
     super.key,
@@ -283,12 +284,18 @@ class SubscriptionRequiredWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
-        if (!auth.hasSubscription) {
+        if (!auth.hasSubscription && !_isRedirecting) {
+          _isRedirecting = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-            );
+            final currentRoute = ModalRoute.of(context)?.settings.name;
+            // Only redirect if not already on subscription screen
+            if (currentRoute != '/subscription') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+              );
+            }
+            _isRedirecting = false;
           });
           return const SizedBox.shrink();
         }
