@@ -139,6 +139,12 @@ class AppColors {
         : const Color(0xFF111827);
   }
 
+  static Color textMuted(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF707070)
+        : const Color(0xFF9CA3AF);
+  }
+
   static Color textSecondary(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF9CA3AF)

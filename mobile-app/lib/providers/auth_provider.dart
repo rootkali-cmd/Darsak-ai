@@ -22,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? _subscriptionData;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Timer? _connectivityDebounce;
+  bool _isOnline = true;
 
   AuthStatus get status => _status;
   StudentModel? get student => _student;
@@ -29,6 +30,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   String? get teacherCode => _teacherCode;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
+  bool get isOnline => _isOnline;
   bool get isSubscriptionActive {
     if (_subscriptionData == null) return false;
     final isActive = _subscriptionData!['is_active'] ?? false;
@@ -61,7 +63,10 @@ class AuthProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> _checkConnectivity() async {}
+  Future<void> _checkConnectivity() async {
+    final result = await _connectivity.checkConnectivity();
+    _isOnline = result.any((r) => r != ConnectivityResult.none);
+  }
 
   Future<void> refreshSubscription() async {
     try {
