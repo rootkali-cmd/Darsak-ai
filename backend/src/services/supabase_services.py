@@ -486,7 +486,7 @@ class ExamService:
         return await self.repo.select_one({"id": exam_id})
 
     async def get_by_teacher(self, teacher_id: str) -> list[dict]:
-        return await self.repo.select({"teacher_id": teacher_id}, limit=100)
+        return await self.repo.select({"teacher_id": teacher_id}, limit=200, order="created_at desc")
 
     async def update(self, exam_id: str, data: dict) -> dict:
         data["updated_at"] = datetime.now(timezone.utc).isoformat()

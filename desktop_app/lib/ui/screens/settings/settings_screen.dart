@@ -189,7 +189,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 12),
                   _ProfileField(label: 'الدور', value: _roleDisplay(user?.role), textMuted: textMuted, textPrimary: textPrimary),
                   const SizedBox(height: 12),
-                  _ProfileField(label: 'كود المدرس', value: user?.teacherCode ?? '-', textMuted: textMuted, textPrimary: textPrimary),
                   const SizedBox(height: 16),
                   MouseRegion(
                     cursor: SystemMouseCursors.click,

@@ -31,6 +31,7 @@ class AuthProvider extends ChangeNotifier {
   String? get teacherCode => _teacherCode;
   Map<String, dynamic>? get subscriptionData => _subscriptionData;
   bool get isOnline => _isOnline;
+  bool get subscriptionLoaded => _subscriptionData != null;
   bool get isSubscriptionActive {
     if (_subscriptionData == null) return false;
     final isActive = _subscriptionData!['is_active'] ?? false;
@@ -94,16 +95,10 @@ class AuthProvider extends ChangeNotifier {
       _student = StudentModel.fromJson(cached);
     }
 
-    // Load subscription data in background
-    refreshSubscription();
-
-    // Verify token and refresh data — show authenticated only after success
+    // Verify token first
+    Map<String, dynamic>? profileData;
     try {
-      final data = await _api.getProfile();
-      _student = StudentModel.fromJson(data);
-      LocalDB.saveProfile(data);
-      _status = AuthStatus.authenticated;
-      notifyListeners();
+      profileData = await _api.getProfile();
     } catch (e) {
       if (e is DioException && e.response != null) {
         final code = e.response?.statusCode;
@@ -116,10 +111,18 @@ class AuthProvider extends ChangeNotifier {
           return;
         }
       }
-      // Other errors — show authenticated with cached data
-      _status = AuthStatus.authenticated;
-      notifyListeners();
     }
+
+    // Load subscription data BEFORE marking authenticated
+    await refreshSubscription();
+
+    if (profileData != null) {
+      _student = StudentModel.fromJson(profileData);
+      LocalDB.saveProfile(profileData);
+    }
+
+    _status = AuthStatus.authenticated;
+    notifyListeners();
   }
 
   Future<bool> login(String code, String pin, {String? teacherCode}) async {

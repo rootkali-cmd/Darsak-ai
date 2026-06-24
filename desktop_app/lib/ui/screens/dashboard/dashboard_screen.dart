@@ -14,8 +14,6 @@ import '../attendance/attendance_screen.dart';
 import '../grades/grades_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../exams/exam_list_screen.dart';
-import '../qr/qr_screen.dart';
-import '../subscription/subscription_screen.dart';
 import '../settings/settings_screen.dart';
 import '../reports/ai_reports_screen.dart';
 import '../profile/profile_screen.dart';
@@ -192,13 +190,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 4: return 'الدرجات';
       case 5: return 'الفواتير';
       case 6: return 'الامتحانات';
-      case 7: return 'QR';
-      case 8: return 'الإعدادات';
-      case 9: return 'الاشتراك';
-      case 10: return 'التقارير';
-      case 11: return 'المساعدين';
-      case 12: return 'الملف الشخصي';
-      case 13: return 'جهات الاتصال';
+      case 7: return 'الإعدادات';
+      case 8: return 'التقارير';
+      case 9: return 'المساعدين';
+      case 10: return 'الملف الشخصي';
+      case 11: return 'جهات الاتصال';
       default: return 'لوحة التحكم';
     }
   }
@@ -220,22 +216,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 6:
         return const ExamListScreen(key: ValueKey('exams'));
       case 7:
-        return const QrScreen(key: ValueKey('qr'));
-      case 8:
         return SettingsScreen(
           key: const ValueKey('settings'),
           toggleTheme: widget.toggleTheme,
           themeMode: widget.themeMode,
         );
-      case 9:
-        return const SubscriptionScreen(key: ValueKey('subscription'));
-      case 10:
+      case 8:
         return const AiReportsScreen(key: ValueKey('reports'));
-      case 11:
+      case 9:
         return const AssistantsScreen(key: ValueKey('assistants'));
-      case 12:
+      case 10:
         return const ProfileScreen(key: ValueKey('profile'));
-      case 13:
+      case 11:
         return const TeacherContactsScreen(key: ValueKey('contacts'));
       default:
         return _buildHome(key: const ValueKey('home'));
@@ -454,7 +446,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     title: 'التقارير',
                     icon: Icons.analytics,
                     color: AppTheme.accentDark,
-                    onTap: () => setState(() => _selectedIndex = 10),
+                    onTap: () => setState(() => _selectedIndex = 8),
                   ),
                   QuickAction(
                     title: 'الامتحانات',

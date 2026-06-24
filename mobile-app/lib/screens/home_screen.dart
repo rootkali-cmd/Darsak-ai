@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _checkSubscription() {
     final auth = context.read<AuthProvider>();
-    if (!auth.isSubscriptionActive) {
+    if (auth.subscriptionLoaded && !auth.isSubscriptionActive) {
       showDialog(
         context: context,
         barrierDismissible: false,

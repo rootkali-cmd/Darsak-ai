@@ -45,7 +45,7 @@ async def get_student_reports(
             client.table("student_exams")
             .select("id, student_id, exam_id, total_score, max_score, status, submitted_at, exam:exams(title)")
             .in_("student_id", student_ids)
-            .eq("status", "graded")
+            .in_("status", ["graded", "submitted"])
             .execute()
         )
         student_exams = se_res.data or []
@@ -188,7 +188,7 @@ async def get_analytics_summary(
         else:
             student_exams = []
 
-        graded = [se for se in student_exams if se.get("status") == "graded"]
+        graded = [se for se in student_exams if se.get("status") in ("graded", "submitted")]
 
         total_exams = len(graded)
         if total_exams > 0:

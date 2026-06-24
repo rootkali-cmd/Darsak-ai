@@ -9,7 +9,6 @@ import '../../core/error_utils.dart';
 import '../../core/subscription_guard.dart';
 import 'add_edit_student_screen.dart';
 import 'student_detail_screen.dart';
-import 'online_requests_screen.dart';
 
 class StudentsScreen extends StatefulWidget {
   const StudentsScreen({super.key});
@@ -135,23 +134,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
               onChanged: _onSearchChanged,
               style: TextStyle(color: GlassTheme.textPrimary(context)),
               decoration: GlassTheme.glassInput(context, 'بحث عن طالب...', Icons.search),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OnlineRequestsScreen())),
-                icon: const Icon(Icons.person_add, size: 20),
-                label: const Text('طلبات التسجيل الأونلاين'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: GlassTheme.indigo,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
             ),
           ),
           Expanded(

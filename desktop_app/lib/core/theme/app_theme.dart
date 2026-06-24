@@ -20,7 +20,7 @@ final class AppTheme {
   static const Color lightBg = Color(0xFFF5F7FA);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurface2 = Color(0xFFF0F2F5);
-  static const Color lightBorder = Color(0xFFE2E5EA);
+  static const Color lightBorder = Color(0xFFD1D5DB);
   static const Color lightTextPrimary = Color(0xFF1A1A2E);
   static const Color lightTextSecondary = Color(0xFF555570);
   static const Color lightTextMuted = Color(0xFF8888A0);

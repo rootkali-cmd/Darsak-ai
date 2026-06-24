@@ -29,6 +29,7 @@ def _to_exam_response(exam: dict) -> dict:
         "status": exam.get("status"),
         "source_type": exam.get("source_type"),
         "deadline_at": exam.get("deadline_at"),
+        "show_results_at": exam.get("show_results_at"),
         "created_at": str(exam.get("created_at", "")),
         "updated_at": str(exam.get("updated_at", "")),
     }
@@ -55,6 +56,8 @@ def _to_student_exam_response(se: dict) -> dict:
         "id": str(se.get("id", "")),
         "exam_id": str(se.get("exam_id", "")),
         "student_id": str(se.get("student_id", "")),
+        "student_name": se.get("student_name", ""),
+        "student_code": se.get("student_code", ""),
         "started_at": str(se.get("started_at", "")),
         "submitted_at": str(se.get("submitted_at", "")),
         "duration_seconds": se.get("duration_seconds"),
@@ -292,7 +295,7 @@ async def submit_exam(
             if datetime.now(timezone.utc) > deadline_dt:
                 raise HTTPException(status_code=403, detail="الامتحان انتهى")
         se = await student_exam_service.start(exam_id, current_student["id"])
-        if se.get("status") == "graded":
+        if se.get("status") in ("graded", "submitted"):
             se["exam"] = exam
             return _to_student_exam_response(se)
         await student_exam_service.submit(se["id"], [a.model_dump() for a in data.answers])
