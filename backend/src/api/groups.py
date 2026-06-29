@@ -49,7 +49,7 @@ async def create_group(
 
 
 async def _add_student_count(groups: list[dict], teacher_id: str) -> list[dict]:
-    all_students = await student_service.list_by_teacher(teacher_id, limit=10000)
+    all_students = await student_service.list_by_teacher(teacher_id, limit=10000, include_inactive=True)
     group_counts: dict[str, int] = {}
     for s in all_students:
         gid = s.get("group_id")
@@ -92,7 +92,7 @@ async def group_student_count(
     group = await group_service.get_by_id(group_id)
     if not group or group["teacher_id"] != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
-    students = await student_service.list_by_teacher(current_user["id"], limit=10000)
+    students = await student_service.list_by_teacher(current_user["id"], limit=10000, include_inactive=True)
     count = sum(1 for s in students if s.get("group_id") == group_id)
     return {"student_count": count}
 

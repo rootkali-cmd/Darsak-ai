@@ -142,7 +142,7 @@ async def get_attendance(
     student_map = {}
     if student_ids:
         students = await student_service.list_by_teacher(
-            teacher_id=current_user["id"], limit=500
+            teacher_id=current_user["id"], limit=5000, include_inactive=True
         )
         student_map = {s["id"]: s for s in students}
 

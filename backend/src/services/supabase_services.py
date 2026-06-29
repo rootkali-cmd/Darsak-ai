@@ -73,8 +73,10 @@ class StudentService:
     async def get_by_code(self, code: str) -> dict | None:
         return await self.repo.select_one_ilike({"code": code})
 
-    async def list_by_teacher(self, teacher_id: str, search: str | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+    async def list_by_teacher(self, teacher_id: str, search: str | None = None, limit: int = 500, offset: int = 0, include_inactive: bool = False) -> list[dict]:
         filters = {"teacher_id": teacher_id}
+        if not include_inactive:
+            filters["is_active"] = True
         if search:
             # Use Supabase text search for efficiency
             students = await self.repo.search(
@@ -247,27 +249,36 @@ class SubscriptionPlanService:
     async def get_plan_storage_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower() or "premium" in plan_name.lower() or "متكاملة" in plan_name:
-            return s.PLAN_ENTERPRISE_STORAGE_LIMIT
-        if "pro" in plan_name.lower() or "احترافية" in plan_name:
+        name_lower = plan_name.lower()
+        if "golden" in name_lower or "ذهبي" in name_lower:
+            return s.PLAN_GOLDEN_STORAGE_LIMIT
+        if "premium" in name_lower or "متكاملة" in name_lower:
+            return s.PLAN_PREMIUM_STORAGE_LIMIT
+        if "pro" in name_lower or "احترافية" in name_lower:
             return s.PLAN_PRO_STORAGE_LIMIT
         return s.PLAN_BASIC_STORAGE_LIMIT
 
     async def get_plan_ai_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower() or "premium" in plan_name.lower() or "متكاملة" in plan_name:
+        name_lower = plan_name.lower()
+        if "golden" in name_lower or "ذهبي" in name_lower:
+            return s.PLAN_GOLDEN_AI_LIMIT
+        if "premium" in name_lower or "متكاملة" in name_lower:
             return s.PLAN_PREMIUM_AI_LIMIT
-        if "pro" in plan_name.lower() or "احترافية" in plan_name:
+        if "pro" in name_lower or "احترافية" in name_lower:
             return s.PLAN_PRO_AI_LIMIT
         return s.PLAN_BASIC_AI_LIMIT
 
     async def get_plan_student_limit(self, plan_name: str) -> int:
         from src.core.config import get_settings
         s = get_settings()
-        if "unlimited" in plan_name.lower() or "enterprise" in plan_name.lower() or "premium" in plan_name.lower() or "متكاملة" in plan_name:
+        name_lower = plan_name.lower()
+        if "golden" in name_lower or "ذهبي" in name_lower:
+            return s.PLAN_GOLDEN_MAX_STUDENTS
+        if "premium" in name_lower or "متكاملة" in name_lower:
             return s.PLAN_PREMIUM_MAX_STUDENTS
-        if "pro" in plan_name.lower() or "احترافية" in plan_name:
+        if "pro" in name_lower or "احترافية" in name_lower:
             return s.PLAN_PRO_MAX_STUDENTS
         return s.PLAN_BASIC_MAX_STUDENTS
 
@@ -278,6 +289,30 @@ class SubscriptionPlanService:
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
         records = await audit_repo.select(
             {"actor_id": teacher_id, "action": "ai_request"},
+            limit=10000
+        )
+        count = sum(1 for r in records if r.get("created_at", "") >= start_of_month)
+        return count
+
+    async def get_teacher_ai_exam_usage_this_month(self, teacher_id: str) -> int:
+        from datetime import datetime, timezone
+        audit_repo = SupabaseRepository("audit_logs")
+        now = datetime.now(timezone.utc)
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+        records = await audit_repo.select(
+            {"actor_id": teacher_id, "action": "ai_exam_generate"},
+            limit=10000
+        )
+        count = sum(1 for r in records if r.get("created_at", "") >= start_of_month)
+        return count
+
+    async def get_teacher_ai_grading_usage_this_month(self, teacher_id: str) -> int:
+        from datetime import datetime, timezone
+        audit_repo = SupabaseRepository("audit_logs")
+        now = datetime.now(timezone.utc)
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+        records = await audit_repo.select(
+            {"actor_id": teacher_id, "action": "ai_grading"},
             limit=10000
         )
         count = sum(1 for r in records if r.get("created_at", "") >= start_of_month)
@@ -319,7 +354,7 @@ class TeacherSubscriptionService:
     def __init__(self):
         self.repo = SupabaseRepository("teacher_subscriptions")
 
-    async def create(self, teacher_id: str, plan_id: str, code_id: str, expires_at: str, is_trial: bool = False) -> dict:
+    async def create(self, teacher_id: str, plan_id: str, code_id: str, expires_at: str, is_trial: bool = False, max_students_override: int | None = None) -> dict:
         data = {
             "teacher_id": teacher_id,
             "plan_id": plan_id,
@@ -329,6 +364,8 @@ class TeacherSubscriptionService:
         }
         if code_id:
             data["code_id"] = code_id
+        if max_students_override and max_students_override > 0:
+            data["custom_max_students"] = max_students_override
         return await self.repo.insert(data)
 
     async def get_by_teacher(self, teacher_id: str) -> dict | None:
@@ -407,7 +444,7 @@ class PaymentRequestService:
     def __init__(self):
         self.repo = SupabaseRepository("payment_requests")
 
-    async def create(self, teacher_id: str, plan_id: str, phone_number: str, amount: float, screenshot: str | None = None, billing_period: str = "monthly") -> dict:
+    async def create(self, teacher_id: str, plan_id: str, phone_number: str, amount: float, screenshot: str | None = None, billing_period: str = "monthly", max_students: int = 0) -> dict:
         return await self.repo.insert({
             "teacher_id": teacher_id,
             "plan_id": plan_id,
@@ -416,6 +453,7 @@ class PaymentRequestService:
             "screenshot": screenshot,
             "status": "pending",
             "billing_period": billing_period,
+            "max_students": max_students,
         })
 
     async def get_by_id(self, payment_id: str) -> dict | None:
@@ -452,6 +490,9 @@ class NotificationService:
             "body": body,
             "type": type,
         })
+
+    async def get_by_id(self, notification_id: str) -> dict | None:
+        return await self.repo.select_one({"id": notification_id})
 
     async def get_unread(self, teacher_id: str) -> list[dict]:
         return await self.repo.select({"teacher_id": teacher_id, "read": False}, limit=50, order="created_at desc")
@@ -620,7 +661,7 @@ class StudentExamService:
         se = await self.repo.select_one({"id": student_exam_id})
         if not se:
             raise ValueError("Student exam not found")
-        answers = await self.answers_repo.select({"student_exam_id": student_exam_id})
+        answers = await self.answers_repo.select({"student_exam_id": student_exam_id}, limit=500)
         questions = await SupabaseRepository("questions").select({"exam_id": se["exam_id"]}, limit=200)
         questions_map = {q["id"]: q for q in questions}
         total = 0
@@ -644,15 +685,19 @@ class StudentExamService:
                     wrong += 1
                     batch_updates.append(self.answers_repo.update({"id": a["id"]}, {"is_correct": False, "score": 0}))
             else:
-                essay_score += pts
+                pass  # essays require manual grading — don't auto-score
         # Execute all answer updates concurrently
         if batch_updates:
             await asyncio.gather(*batch_updates, return_exceptions=True)
-        total += essay_score
+        has_essay_questions = any(
+            questions_map.get(a.get("question_id"), {}).get("type") == "essay"
+            for a in answers
+        )
+        new_status = "submitted" if has_essay_questions else "graded"
         await self.repo.update({"id": student_exam_id}, {
             "total_score": total,
             "max_score": max_score,
-            "status": "graded",
+            "status": new_status,
         })
         return {
             "total_score": total,
@@ -660,6 +705,7 @@ class StudentExamService:
             "correct_count": correct,
             "wrong_count": wrong,
             "essay_score": essay_score,
+            "status": new_status,
         }
 
     async def get_result(self, student_exam_id: str) -> dict | None:
@@ -682,7 +728,7 @@ class StudentExamService:
         return await self.repo.select_one({"id": student_exam_id})
 
     async def get_answers(self, student_exam_id: str) -> list[dict]:
-        return await self.answers_repo.select({"student_exam_id": student_exam_id})
+        return await self.answers_repo.select({"student_exam_id": student_exam_id}, limit=500)
 
     async def get_class_results(self, exam_id: str) -> list[dict]:
         from src.core.security.supabase_repo import get_supabase
