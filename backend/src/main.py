@@ -77,6 +77,7 @@ from src.core.config import get_settings
 from src.core.logging import setup_logging
 from src.core.security.supabase_repo import get_supabase
 from src.infrastructure.rate_limiter import rate_limiter
+from src.core.security.rate_limit_middleware import RateLimitMiddleware
 from src.infrastructure.audit_events import audit as audit_publisher
 from src.infrastructure.cache import user_cache, student_cache, cache
 from src.services import sync_buffer, start_scheduler, stop_scheduler, audit_service
@@ -93,7 +94,16 @@ from src.api import (
     payments_router,
     reports_router,
     assistants_router,
+    teacher_contacts_router,
+    app_status_router,
+    fcm_router,
 )
+from src.modules.admission.routes import router as admission_router
+from src.modules.wallet.routes import router as wallet_router
+from src.modules.finance.routes import router as finance_router
+from src.modules.support_links.routes import router as support_links_router
+from src.modules.storage.routes import router as storage_router
+from src.modules.courses.routes import router as courses_router
 
 settings = get_settings()
 logger = setup_logging(settings.LOG_LEVEL)
@@ -295,10 +305,17 @@ async def _run_schema_migrations():
             name VARCHAR(100) NOT NULL UNIQUE,
             description TEXT,
             price_egp DECIMAL(10,2) DEFAULT 0,
+            price_monthly DECIMAL(10,2) DEFAULT 0,
+            price_yearly DECIMAL(10,2) DEFAULT 0,
             max_students INT DEFAULT 100,
-            ai_requests_per_month INT DEFAULT 10,
+            max_assistants INT DEFAULT 0,
+            ai_requests_per_day INT DEFAULT 5,
+            max_ai_exams_per_month INT DEFAULT 5,
+            max_ai_grading_per_month INT DEFAULT 100,
             storage_limit_gb INT DEFAULT 2,
+            features_json JSONB DEFAULT '[]'::jsonb,
             is_active BOOLEAN DEFAULT TRUE,
+            sort_order INT DEFAULT 0,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );""",
@@ -325,37 +342,117 @@ async def _run_schema_migrations():
         "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS features_json JSONB DEFAULT '[]'::jsonb;",
         "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS description TEXT;",
         "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS storage_limit_gb INT DEFAULT 2;",
-        """DELETE FROM subscription_plans WHERE name NOT IN ('Basic', 'Pro', 'Premium');""",
-        """INSERT INTO subscription_plans (name, description, price_egp, max_students, max_ai_requests, storage_limit_gb, features_json)
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS price_monthly DECIMAL(10,2) DEFAULT 0;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS price_yearly DECIMAL(10,2) DEFAULT 0;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_assistants INT DEFAULT 0;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS ai_requests_per_day INT DEFAULT 5;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_ai_exams_per_month INT DEFAULT 5;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS max_ai_grading_per_month INT DEFAULT 100;",
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;",
+        """DELETE FROM subscription_plans WHERE name NOT IN ('Basic', 'Pro', 'Premium', 'Golden');""",
+        """INSERT INTO subscription_plans (name, description, price_egp, price_monthly, price_yearly, max_students, max_assistants, ai_requests_per_day, max_ai_exams_per_month, max_ai_grading_per_month, storage_limit_gb, features_json, sort_order)
          VALUES
-            ('Basic', 'الأساسية - 250ج/شهر', 250.00, 100, 10, 5, '["حضور وغياب","درجات الطلاب","تقارير بسيطة","دعم فني"]'::jsonb),
-            ('Pro', 'الاحترافية - 600ج/شهر - الأكثر شعبية', 600.00, 400, 50, 10, '["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني"]'::jsonb),
-            ('Premium', 'المتكاملة - 1100ج/شهر - بدون حدود', 1100.00, -1, -1, -1, '["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","طلاب غير محدود","دعم فني أولوية"]'::jsonb)
+            ('Basic', 'ظبط مجموعتك', 350.00, 350.00, 3000.00, 100, 0, 5, 5, 100, 15, '["حضور وغياب QR","درجات الطلاب","تقارير بسيطة","5 اختبارات AI شهرياً","100 تصحيح AI شهرياً","15GB تخزين","دعم فني"]'::jsonb, 1),
+            ('Pro', 'إدارة السنتر الذكية', 750.00, 750.00, 7200.00, 400, 2, 10, 15, 500, 60, '["كل ميزات Basic","كورسات مشتركة","15 اختبار AI شهرياً","500 تصحيح AI شهرياً","60GB تخزين","2 مساعدين","تقارير AI","دعم فني سريع"]'::jsonb, 2),
+            ('Premium', 'نظام السعر المرن', 1400.00, 1400.00, 13500.00, 1000, 5, 20, 20, 2000, 200, '["كل ميزات Pro","تحضير اختبارات AI","20 اختبار AI شهرياً","2000 تصحيح AI شهرياً","200GB تخزين","5 مساعدين","دعم VIP"]'::jsonb, 3),
+            ('Golden', 'الباقة الذهبية', 20000.00, 20000.00, 80000.00, 40000, 25, 20, 20, 25000, 2000, '["كل ميزات Premium","40,000 طالب","25 مساعد","25,000 تصحيح AI شهرياً","2TB تخزين","دعم VIP مخصص","الدفع عبر إنستاباي فقط"]'::jsonb, 4)
          ON CONFLICT (name) DO UPDATE SET
             price_egp = EXCLUDED.price_egp,
+            price_monthly = EXCLUDED.price_monthly,
+            price_yearly = EXCLUDED.price_yearly,
             max_students = EXCLUDED.max_students,
-            max_ai_requests = EXCLUDED.max_ai_requests,
+            max_assistants = EXCLUDED.max_assistants,
+            ai_requests_per_day = EXCLUDED.ai_requests_per_day,
+            max_ai_exams_per_month = EXCLUDED.max_ai_exams_per_month,
+            max_ai_grading_per_month = EXCLUDED.max_ai_grading_per_month,
             storage_limit_gb = EXCLUDED.storage_limit_gb,
             description = EXCLUDED.description,
-            features_json = EXCLUDED.features_json;""",
+            features_json = EXCLUDED.features_json,
+            sort_order = EXCLUDED.sort_order;""",
         "ALTER TABLE exams ADD COLUMN IF NOT EXISTS deadline_at TIMESTAMP WITH TIME ZONE;",
         """CREATE TABLE IF NOT EXISTS instapay_config (
             id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-            barcode_url TEXT NOT NULL,
-            username VARCHAR(255) NOT NULL,
+            barcode_url TEXT,
+            username VARCHAR(255),
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );""",
         """INSERT INTO instapay_config (barcode_url, username, is_active)
-         SELECT 'https://example.com/instapay-barcode.png', 'ahmed_instapay', TRUE
+         SELECT 'https://example.com/instapay-barcode.png', '', TRUE
          WHERE NOT EXISTS (SELECT 1 FROM instapay_config WHERE is_active = TRUE);""",
-        "UPDATE instapay_config SET barcode_url='https://api.darsak-backend.fly.dev/api/instapay-barcode', username='ahmed-mahmoud-1@instapay' WHERE is_active=TRUE;",
-        """UPDATE subscription_plans SET price_egp=250, max_students=100, max_ai_requests=10, storage_limit_gb=5, features_json='["حضور وغياب","درجات الطلاب","تقارير بسيطة","دعم فني"]'::jsonb WHERE name='Basic';""",
-        """UPDATE subscription_plans SET price_egp=600, max_students=400, max_ai_requests=50, storage_limit_gb=10, features_json='["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني"]'::jsonb WHERE name='Pro';""",
-        """UPDATE subscription_plans SET price_egp=1100, max_students=-1, max_ai_requests=-1, storage_limit_gb=-1, features_json='["حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","طلاب غير محدود","دعم فني أولوية"]'::jsonb WHERE name='Premium';""",
+        "UPDATE instapay_config SET barcode_url='https://api.darsak-backend.fly.dev/api/instapay-barcode' WHERE barcode_url IS NULL;",
+        """UPDATE subscription_plans SET price_monthly=350, price_yearly=3000, max_students=100, max_assistants=0, ai_requests_per_day=5, max_ai_exams_per_month=5, max_ai_grading_per_month=100, storage_limit_gb=15, features_json='["حضور وغياب QR","درجات الطلاب","تقارير بسيطة","5 اختبارات AI شهرياً","100 تصحيح AI شهرياً","15GB تخزين","دعم فني"]'::jsonb, sort_order=1 WHERE name='Basic';""",
+        """UPDATE subscription_plans SET price_monthly=750, price_yearly=7200, max_students=400, max_assistants=2, ai_requests_per_day=10, max_ai_exams_per_month=15, max_ai_grading_per_month=500, storage_limit_gb=60, features_json='["كل ميزات Basic","كورسات مشتركة","15 اختبار AI شهرياً","500 تصحيح AI شهرياً","60GB تخزين","2 مساعدين","تقارير AI","دعم فني سريع"]'::jsonb, sort_order=2 WHERE name='Pro';""",
+        """UPDATE subscription_plans SET price_monthly=1400, price_yearly=13500, max_students=1000, max_assistants=5, ai_requests_per_day=20, max_ai_exams_per_month=20, max_ai_grading_per_month=2000, storage_limit_gb=200, features_json='["كل ميزات Pro","تحضير اختبارات AI","20 اختبار AI شهرياً","2000 تصحيح AI شهرياً","200GB تخزين","5 مساعدين","دعم VIP"]'::jsonb, sort_order=3 WHERE name='Premium';""",
+        """UPDATE subscription_plans SET price_monthly=20000, price_yearly=80000, max_students=40000, max_assistants=25, ai_requests_per_day=20, max_ai_exams_per_month=20, max_ai_grading_per_month=25000, storage_limit_gb=2000, features_json='["كل ميزات Premium","40,000 طالب","25 مساعد","25,000 تصحيح AI شهرياً","2TB تخزين","دعم VIP مخصص","الدفع عبر إنستاباي فقط"]'::jsonb, sort_order=4 WHERE name='Golden';""",
         "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) CHECK (payment_method IN ('vodafone_cash', 'instapay', 'cash'));",
         "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS screenshot_url TEXT;",
         "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS billing_period VARCHAR(20) DEFAULT 'monthly' CHECK (billing_period IN ('monthly', 'yearly'));",
+        "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS max_students INT DEFAULT 0;",
+        "ALTER TABLE teacher_subscriptions ADD COLUMN IF NOT EXISTS custom_max_students INT DEFAULT 0;",
+        # ─── Platform capital & revenue distribution ────────────────
+        """CREATE TABLE IF NOT EXISTS platform_capital (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            category VARCHAR(50) NOT NULL UNIQUE,
+            name_ar VARCHAR(100) NOT NULL,
+            percentage DECIMAL(5,2) NOT NULL DEFAULT 0,
+            current_balance DECIMAL(12,2) NOT NULL DEFAULT 0,
+            total_inflow DECIMAL(12,2) NOT NULL DEFAULT 0,
+            description TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """INSERT INTO platform_capital (category, name_ar, percentage, description)
+         VALUES
+            ('platform', 'نفقات المنصة', 35.00, 'الاستضافة، السيرفرات، التراخيص، الصيانة'),
+            ('operations', 'التشغيل', 25.00, 'الرواتب الإدارية، الم办公، المرافق'),
+            ('emergency', 'الاحتياطي', 20.00, 'الطوارئ والmuxtarن'),
+            ('labor', 'العمالة', 15.00, 'فريق الدعم والتطوير'),
+            ('marketing', 'التسويق', 5.00, 'إعلانات وحملات تسويقية')
+         ON CONFLICT (category) DO NOTHING;""",
+        """CREATE TABLE IF NOT EXISTS subscription_revenue (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            subscription_id UUID REFERENCES teacher_subscriptions(id) ON DELETE SET NULL,
+            plan_name VARCHAR(50) NOT NULL,
+            billing_period VARCHAR(20) NOT NULL,
+            total_amount DECIMAL(10,2) NOT NULL,
+            platform_share DECIMAL(10,2) NOT NULL,
+            operations_share DECIMAL(10,2) NOT NULL,
+            emergency_share DECIMAL(10,2) NOT NULL,
+            labor_share DECIMAL(10,2) NOT NULL,
+            marketing_share DECIMAL(10,2) NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'distributed', 'held')),
+            distributed_at TIMESTAMPTZ,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS deposit_revenue (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            deposit_id UUID REFERENCES student_deposit_requests(id) ON DELETE SET NULL,
+            student_id UUID REFERENCES students(id) ON DELETE SET NULL,
+            tax_amount DECIMAL(10,2) NOT NULL,
+            platform_share DECIMAL(10,2) NOT NULL,
+            operations_share DECIMAL(10,2) NOT NULL,
+            emergency_share DECIMAL(10,2) NOT NULL,
+            labor_share DECIMAL(10,2) NOT NULL,
+            marketing_share DECIMAL(10,2) NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'distributed', 'held')),
+            distributed_at TIMESTAMPTZ,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS commission_revenue (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            payout_id UUID REFERENCES payout_requests(id) ON DELETE SET NULL,
+            teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            commission_amount DECIMAL(10,2) NOT NULL,
+            platform_share DECIMAL(10,2) NOT NULL,
+            operations_share DECIMAL(10,2) NOT NULL,
+            emergency_share DECIMAL(10,2) NOT NULL,
+            labor_share DECIMAL(10,2) NOT NULL,
+            marketing_share DECIMAL(10,2) NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'distributed', 'held')),
+            distributed_at TIMESTAMPTZ,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );""",
         """CREATE TABLE IF NOT EXISTS invoices (
             id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
             student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
@@ -398,6 +495,336 @@ async def _run_schema_migrations():
         );""",
         # ─── Assistants password column on users table ──────────────
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS assistants_password_hash VARCHAR(255);",
+        # ─── Phase 1: Student Segregation & Admission ──────────────────
+        """ALTER TABLE students ADD COLUMN IF NOT EXISTS registration_type VARCHAR(20) DEFAULT 'center' CHECK (registration_type IN ('center', 'online'));""",
+        """ALTER TABLE students ADD COLUMN IF NOT EXISTS admission_status VARCHAR(20) DEFAULT 'approved' CHECK (admission_status IN ('pending', 'approved', 'rejected'));""",
+        """ALTER TABLE students ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES users(id);""",
+        """ALTER TABLE students ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;""",
+        """ALTER TABLE students ADD COLUMN IF NOT EXISTS rejection_reason TEXT;""",
+        """ALTER TABLE students ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(100);""",
+        """CREATE INDEX IF NOT EXISTS idx_students_admission_status ON students(teacher_id, admission_status) WHERE admission_status = 'pending';""",
+        """CREATE TABLE IF NOT EXISTS student_admission_requests (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            full_name VARCHAR(255) NOT NULL,
+            phone VARCHAR(20),
+            parent_phone VARCHAR(20),
+            grade_level VARCHAR(50),
+            email VARCHAR(255),
+            birth_date DATE,
+            address TEXT,
+            parent_name VARCHAR(255),
+            school_name VARCHAR(255),
+            registration_type VARCHAR(20) DEFAULT 'online' CHECK (registration_type IN ('center', 'online')),
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+            student_id UUID REFERENCES students(id) ON DELETE SET NULL,
+            approved_by UUID REFERENCES users(id),
+            approved_at TIMESTAMPTZ,
+            rejection_reason TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        """CREATE INDEX IF NOT EXISTS idx_admission_teacher_status ON student_admission_requests(teacher_id, status);""",
+        """CREATE INDEX IF NOT EXISTS idx_admission_created ON student_admission_requests(created_at DESC);""",
+        # ─── Phase 2: Wallet & Payout (Financial Ledger) ──────────────
+        """CREATE TABLE IF NOT EXISTS teacher_wallets (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            teacher_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+            available_balance DECIMAL(12,2) DEFAULT 0.00 CHECK (available_balance >= 0),
+            pending_balance DECIMAL(12,2) DEFAULT 0.00 CHECK (pending_balance >= 0),
+            total_earned DECIMAL(12,2) DEFAULT 0.00,
+            total_withdrawn DECIMAL(12,2) DEFAULT 0.00,
+            currency VARCHAR(10) DEFAULT 'EGP',
+            version INT DEFAULT 1,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        """CREATE INDEX IF NOT EXISTS idx_wallet_teacher ON teacher_wallets(teacher_id);""",
+        """CREATE TABLE IF NOT EXISTS payout_requests (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            requested_amount DECIMAL(12,2) NOT NULL CHECK (requested_amount > 0),
+            commission_rate DECIMAL(5,2) NOT NULL,
+            commission_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            net_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            payout_method VARCHAR(20) NOT NULL CHECK (payout_method IN ('vodafone_cash', 'instapay', 'bank_transfer', 'cash')),
+            payout_phone VARCHAR(20),
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed', 'failed')),
+            telegram_message_id VARCHAR(100),
+            admin_response TEXT,
+            processed_by UUID REFERENCES users(id),
+            processed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        """CREATE INDEX IF NOT EXISTS idx_payout_teacher_status ON payout_requests(teacher_id, status);""",
+        """CREATE INDEX IF NOT EXISTS idx_payout_created ON payout_requests(created_at DESC);""",
+        """CREATE INDEX IF NOT EXISTS idx_payout_telegram_msg ON payout_requests(telegram_message_id) WHERE telegram_message_id IS NOT NULL;""",
+        """CREATE TABLE IF NOT EXISTS wallet_transactions (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            wallet_id UUID NOT NULL REFERENCES teacher_wallets(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('credit', 'debit', 'commission', 'refund')),
+            amount DECIMAL(12,2) NOT NULL,
+            balance_after DECIMAL(12,2) NOT NULL,
+            reference_type VARCHAR(20),
+            reference_id UUID,
+            description TEXT,
+            created_at TIMESTAMPTZ(3) DEFAULT NOW()
+        );""",
+        """CREATE INDEX IF NOT EXISTS idx_wallet_tx_teacher ON wallet_transactions(teacher_id, created_at DESC);""",
+        """CREATE INDEX IF NOT EXISTS idx_wallet_tx_reference ON wallet_transactions(reference_type, reference_id);""",
+        # ─── Phase 4: Telegram Deep Linking ───────────────────────────
+        """CREATE TABLE IF NOT EXISTS student_telegram_links (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+            teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            phone VARCHAR(20),
+            telegram_chat_id VARCHAR(100) NOT NULL,
+            telegram_user_id VARCHAR(100),
+            telegram_username VARCHAR(100),
+            deep_link_token VARCHAR(255) UNIQUE,
+            linked_at TIMESTAMPTZ DEFAULT NOW(),
+            is_active BOOLEAN DEFAULT TRUE
+        );""",
+        """CREATE INDEX IF NOT EXISTS idx_telegram_chat_id ON student_telegram_links(telegram_chat_id);""",
+        """CREATE INDEX IF NOT EXISTS idx_telegram_teacher ON student_telegram_links(teacher_id);""",
+        """CREATE INDEX IF NOT EXISTS idx_telegram_phone ON student_telegram_links(phone);""",
+        # ─── Phase 5: Teacher Support Links ───────────────────────────
+        """CREATE TABLE IF NOT EXISTS teacher_support_links (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            platform VARCHAR(20) NOT NULL CHECK (platform IN ('whatsapp', 'telegram', 'instagram', 'facebook', 'youtube', 'website', 'other')),
+            label VARCHAR(100),
+            url TEXT NOT NULL,
+            icon_name VARCHAR(50),
+            is_active BOOLEAN DEFAULT TRUE,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        """CREATE INDEX IF NOT EXISTS idx_support_teacher_active ON teacher_support_links(teacher_id, is_active, sort_order);""",
+        # ─── PostgreSQL RPC: Atomic Payout ────────────────────────────
+        """CREATE OR REPLACE FUNCTION request_payout_atomic(
+            p_teacher_id UUID, p_amount DECIMAL(12,2)
+        ) RETURNS TABLE (id UUID, available_balance DECIMAL(12,2), pending_balance DECIMAL(12,2))
+        LANGUAGE plpgsql SECURITY DEFINER AS $$
+        BEGIN
+            UPDATE teacher_wallets
+            SET available_balance = available_balance - p_amount,
+                pending_balance = pending_balance + p_amount,
+                updated_at = NOW(),
+                version = version + 1
+            WHERE teacher_id = p_teacher_id AND available_balance >= p_amount
+            RETURNING id, available_balance, pending_balance;
+        END;
+        $$;""",
+        # ─── Course Management System ───────────────────────────────
+        """CREATE TABLE IF NOT EXISTS courses (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            subject VARCHAR(100),
+            level VARCHAR(50),
+            cover_image_r2_key TEXT,
+            is_published BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_courses_teacher ON courses(teacher_id);",
+        """CREATE TABLE IF NOT EXISTS course_chapters (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_chapters_course ON course_chapters(course_id, sort_order);",
+        """CREATE TABLE IF NOT EXISTS course_lessons (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            chapter_id UUID NOT NULL REFERENCES course_chapters(id) ON DELETE CASCADE,
+            course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            video_url TEXT,
+            r2_video_key TEXT,
+            video_duration_seconds INT,
+            has_exam BOOLEAN DEFAULT FALSE,
+            has_homework BOOLEAN DEFAULT FALSE,
+            is_free BOOLEAN DEFAULT FALSE,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_lessons_chapter ON course_lessons(chapter_id, sort_order);",
+        "CREATE INDEX IF NOT EXISTS idx_lessons_course ON course_lessons(course_id);",
+        """CREATE TABLE IF NOT EXISTS course_files (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            lesson_id UUID NOT NULL REFERENCES course_lessons(id) ON DELETE CASCADE,
+            course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            file_name VARCHAR(500) NOT NULL,
+            file_size_bytes BIGINT,
+            mime_type VARCHAR(100),
+            r2_key TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_course_files_lesson ON course_files(lesson_id);",
+        """CREATE TABLE IF NOT EXISTS course_pricing (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            course_id UUID NOT NULL UNIQUE REFERENCES courses(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            center_price DECIMAL(10,2) DEFAULT 0.00,
+            platform_price DECIMAL(10,2) DEFAULT 0.00,
+            is_free_for_center BOOLEAN DEFAULT TRUE,
+            currency VARCHAR(10) DEFAULT 'EGP',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        """CREATE TABLE IF NOT EXISTS content_locks (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            lesson_id UUID NOT NULL REFERENCES course_lessons(id) ON DELETE CASCADE,
+            course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            requires_exam_id UUID REFERENCES exams(id) ON DELETE SET NULL,
+            lock_type VARCHAR(20) DEFAULT 'exam' CHECK (lock_type IN ('exam', 'payment', 'both')),
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_content_locks_lesson ON content_locks(lesson_id);",
+        """CREATE TABLE IF NOT EXISTS student_course_progress (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            lesson_id UUID NOT NULL REFERENCES course_lessons(id) ON DELETE CASCADE,
+            course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            is_completed BOOLEAN DEFAULT FALSE,
+            video_position_seconds INT DEFAULT 0,
+            completed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(student_id, lesson_id)
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_progress_student_course ON student_course_progress(student_id, course_id);",
+        # ─── Student Wallet & Finance ────────────────────────────────
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS fcm_token TEXT;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS fcm_token TEXT;",
+        """CREATE TABLE IF NOT EXISTS student_wallets (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            student_id UUID NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
+            balance DECIMAL(12,2) DEFAULT 0.00 CHECK (balance >= 0),
+            total_deposited DECIMAL(12,2) DEFAULT 0.00,
+            total_spent DECIMAL(12,2) DEFAULT 0.00,
+            version INT DEFAULT 1,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_student_wallet ON student_wallets(student_id);",
+        """CREATE TABLE IF NOT EXISTS student_deposit_requests (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+            tax_rate DECIMAL(5,2) NOT NULL DEFAULT 1.50,
+            tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            screenshot TEXT,
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+            telegram_message_id VARCHAR(100),
+            admin_response TEXT,
+            processed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_deposit_requests_student ON student_deposit_requests(student_id, status);",
+        """CREATE TABLE IF NOT EXISTS student_transactions (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            wallet_id UUID NOT NULL REFERENCES student_wallets(id) ON DELETE CASCADE,
+            transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('deposit', 'purchase', 'refund')),
+            amount DECIMAL(12,2) NOT NULL,
+            balance_after DECIMAL(12,2) NOT NULL,
+            reference_type VARCHAR(50),
+            reference_id UUID,
+            description TEXT,
+            created_at TIMESTAMPTZ(3) DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_student_tx ON student_transactions(student_id, created_at DESC);",
+        # ─── Course Enrollments ──────────────────────────────────────
+        """CREATE TABLE IF NOT EXISTS student_course_enrollments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            paid_amount DECIMAL(12,2) DEFAULT 0.00,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(student_id, course_id)
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_enrollment_student ON student_course_enrollments(student_id, course_id);",
+        "CREATE INDEX IF NOT EXISTS idx_enrollment_teacher ON student_course_enrollments(teacher_id);",
+        # ─── Phase 7: Payment Config ─────────────────────────────────
+        "ALTER TABLE instapay_config ADD COLUMN IF NOT EXISTS vodafone_cash_number VARCHAR(20) DEFAULT '01031524947';",
+        "UPDATE instapay_config SET vodafone_cash_number='01031524947' WHERE vodafone_cash_number IS NULL;",
+        # ─── Phase 8: Deposit request fields ──────────────────────────
+        "ALTER TABLE student_deposit_requests ADD COLUMN IF NOT EXISTS sender_phone VARCHAR(30);",
+        "ALTER TABLE student_deposit_requests ADD COLUMN IF NOT EXISTS method VARCHAR(30) DEFAULT 'vodafone_cash';",
+        # ─── Phase 9: Storage expansion ─────────────────────────────────
+        "ALTER TABLE teacher_subscriptions ADD COLUMN IF NOT EXISTS extra_storage_gb INT DEFAULT 0;",
+        """CREATE TABLE IF NOT EXISTS storage_expansion_requests (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL,
+            type VARCHAR(30) DEFAULT 'storage_expansion',
+            amount DECIMAL(10,2) DEFAULT 50,
+            extra_gb INT DEFAULT 10,
+            status VARCHAR(20) DEFAULT 'pending',
+            created_at TIMESTAMPTZ DEFAULT now(),
+            confirmed_at TIMESTAMPTZ
+        );""",
+        # ─── Phase 10: Ensure all course columns exist ─────────────────
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS cover_image_r2_key TEXT;",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS subject VARCHAR(100);",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS level VARCHAR(50);",
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS video_url TEXT;",
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS r2_video_key TEXT;",
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS video_duration_seconds INT;",
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS has_exam BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS has_homework BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;",
+        # ─── Phase 11: Admin password hash ────────────────────────────────────
+        """CREATE TABLE IF NOT EXISTS admin_config (
+            key VARCHAR(100) PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        # ─── Phase 12: Teacher contacts ────────────────────────────────────────
+        """CREATE TABLE IF NOT EXISTS teacher_contacts (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            platform VARCHAR(30) NOT NULL CHECK (platform IN ('whatsapp', 'telegram', 'instagram', 'facebook', 'tiktok', 'messenger', 'phone', 'email')),
+            label VARCHAR(200) NOT NULL,
+            url VARCHAR(500) NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        # ─── Phase 13: Shared lectures across groups ──────────────────────────
+        """CREATE TABLE IF NOT EXISTS shared_lectures (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            group_ids JSONB DEFAULT '[]'::jsonb,
+            video_url TEXT,
+            r2_video_key TEXT,
+            is_free BOOLEAN DEFAULT FALSE,
+            has_exam BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_shared_lectures_course ON shared_lectures(course_id);",
+        "CREATE INDEX IF NOT EXISTS idx_shared_lectures_teacher ON shared_lectures(teacher_id);",
     ]
 
     try:
@@ -437,28 +864,64 @@ async def _run_schema_migrations():
         # Ensure Premium plan exists
         try:
             client2 = await get_supabase()
-            existing = await client2.table("subscription_plans").select("name").eq("name", "Premium").execute()
-            if not existing.data:
+            existing = await client2.table("subscription_plans").select("name").in_("name", ["Premium", "Golden"]).execute()
+            existing_names = {p["name"] for p in (existing.data or [])}
+            if "Premium" not in existing_names:
                 await client2.table("subscription_plans").insert({
                     "name": "Premium",
-                    "price_egp": 1100.00,
-                    "max_students": 15,
-                    "max_ai_requests": 100,
-                    "features_json": ["15 اختبار شهرياً","حضور وغياب","درجات الطلاب","تقارير AI","دروس مشتركة","تحضير اختبارات بالـ AI","دعم فني أولوية"],
+                    "description": "نظام السعر المرن",
+                    "price_egp": 1400.00,
+                    "price_monthly": 1400.00,
+                    "price_yearly": 13500.00,
+                    "max_students": 1000,
+                    "max_assistants": 5,
+                    "ai_requests_per_day": 20,
+                    "max_ai_exams_per_month": 20,
+                    "max_ai_grading_per_month": 2000,
+                    "storage_limit_gb": 200,
+                    "features_json": ["كل ميزات Pro", "تحضير اختبارات AI", "20 اختبار AI شهرياً", "2000 تصحيح AI شهرياً", "200GB تخزين", "5 مساعدين", "دعم VIP"],
+                    "sort_order": 3,
                     "is_active": True,
                 }).execute()
                 logger.info("Premium plan created via direct insert")
+            if "Golden" not in existing_names:
+                await client2.table("subscription_plans").insert({
+                    "name": "Golden",
+                    "description": "الباقة الذهبية",
+                    "price_egp": 20000.00,
+                    "price_monthly": 20000.00,
+                    "price_yearly": 80000.00,
+                    "max_students": 40000,
+                    "max_assistants": 25,
+                    "ai_requests_per_day": 20,
+                    "max_ai_exams_per_month": 20,
+                    "max_ai_grading_per_month": 25000,
+                    "storage_limit_gb": 2000,
+                    "features_json": ["كل ميزات Premium", "40,000 طالب", "25 مساعد", "25,000 تصحيح AI شهرياً", "2TB تخزين", "دعم VIP مخصص", "الدفع عبر إنستاباي فقط"],
+                    "sort_order": 4,
+                    "is_active": True,
+                }).execute()
+                logger.info("Golden plan created via direct insert")
         except Exception as pre_ex:
             logger.warning("Premium plan insert check: %s", pre_ex)
 
         logger.info("Schema migration done: %d created, %d skipped", created, skipped)
+
+        # Initialize admin password hash
+        if settings.ADMIN_PASSWORD:
+            from src.core.security.auth import hash_password as _hash_admin_pw
+            admin_pw_hash = _hash_admin_pw(settings.ADMIN_PASSWORD)
+            await client.table("admin_config").upsert(
+                {"key": "admin_password_hash", "value": admin_pw_hash},
+                on_conflict="key",
+            ).execute()
     except Exception as e:
         logger.warning("Schema migration skipped: %s", e)
 
 
 async def _ensure_plans():
-    """Ensure all 3 subscription plans exist in DB.
-    DB columns: id, name, price_egp, max_students, max_ai_requests, features_json, is_active, created_at, updated_at
+    """Ensure all 4 subscription plans exist in DB.
+    DB columns: id, name, price_egp, max_students, features_json, is_active, etc.
     Only creates missing plans - never overwrites existing data.
     """
     try:
@@ -466,9 +929,10 @@ async def _ensure_plans():
         client = await get_supabase()
         
         PLANS = [
-            {"name": "Basic", "price_egp": 250.00, "max_students": 100, "max_ai_requests": 10, "storage_limit_gb": 5, "features_json": ["حضور وغياب", "درجات الطلاب", "تقارير بسيطة", "دعم فني"]},
-            {"name": "Pro", "price_egp": 600.00, "max_students": 400, "max_ai_requests": 50, "storage_limit_gb": 10, "features_json": ["حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "دعم فني"]},
-            {"name": "Premium", "price_egp": 1100.00, "max_students": -1, "max_ai_requests": -1, "storage_limit_gb": -1, "features_json": ["حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "طلاب غير محدود", "دعم فني أولوية"]},
+            {"name": "Basic", "price_egp": 350.00, "price_monthly": 350.00, "price_yearly": 3000.00, "max_students": 100, "max_assistants": 0, "ai_requests_per_day": 5, "max_ai_exams_per_month": 5, "max_ai_grading_per_month": 100, "storage_limit_gb": 15, "sort_order": 1, "features_json": ["حضور وغياب QR", "درجات الطلاب", "تقارير بسيطة", "5 اختبارات AI شهرياً", "100 تصحيح AI شهرياً", "15GB تخزين", "دعم فني"]},
+            {"name": "Pro", "price_egp": 750.00, "price_monthly": 750.00, "price_yearly": 7200.00, "max_students": 400, "max_assistants": 2, "ai_requests_per_day": 10, "max_ai_exams_per_month": 15, "max_ai_grading_per_month": 500, "storage_limit_gb": 60, "sort_order": 2, "features_json": ["كل ميزات Basic", "كورسات مشتركة", "15 اختبار AI شهرياً", "500 تصحيح AI شهرياً", "60GB تخزين", "2 مساعدين", "تقارير AI", "دعم فني سريع"]},
+            {"name": "Premium", "price_egp": 1400.00, "price_monthly": 1400.00, "price_yearly": 13500.00, "max_students": 1000, "max_assistants": 5, "ai_requests_per_day": 20, "max_ai_exams_per_month": 20, "max_ai_grading_per_month": 2000, "storage_limit_gb": 200, "sort_order": 3, "features_json": ["كل ميزات Pro", "تحضير اختبارات AI", "20 اختبار AI شهرياً", "2000 تصحيح AI شهرياً", "200GB تخزين", "5 مساعدين", "دعم VIP"]},
+            {"name": "Golden", "price_egp": 20000.00, "price_monthly": 20000.00, "price_yearly": 80000.00, "max_students": 40000, "max_assistants": 25, "ai_requests_per_day": 20, "max_ai_exams_per_month": 20, "max_ai_grading_per_month": 25000, "storage_limit_gb": 2000, "sort_order": 4, "features_json": ["كل ميزات Premium", "40,000 طالب", "25 مساعد", "25,000 تصحيح AI شهرياً", "2TB تخزين", "دعم VIP مخصص", "الدفع عبر إنستاباي فقط"]},
         ]
         
         existing = await client.table("subscription_plans").select("name,id").execute()
@@ -626,6 +1090,7 @@ app.add_middleware(
 
 logger.info("CORS configured for origins: %s", _cors_origins)
 
+app.add_middleware(RateLimitMiddleware)
 
 # ── Middleware ──
 
@@ -828,6 +1293,24 @@ async def deep_health(request: Request):
     )
 
 
+@app.get("/api/teacher/storage-usage")
+async def teacher_storage_usage():
+    from fastapi import Depends as _Depends
+    from src.utils.dependencies import get_current_teacher
+    from src.modules.storage.routes import _compute_storage_usage
+
+    async def _get_teacher() -> dict:
+        from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+        from fastapi import Request as _Request
+        import inspect
+
+    @app.get("/api/teacher/storage-usage")
+    async def teacher_storage_usage_route(
+        current_user: dict = Depends(get_current_teacher),
+    ):
+        return await _compute_storage_usage(current_user["id"])
+
+
 # ── Router Registration ──
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
@@ -858,3 +1341,12 @@ app.include_router(subjects_router, prefix=settings.API_V1_PREFIX)
 app.include_router(payments_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(assistants_router, prefix=settings.API_V1_PREFIX)
+app.include_router(admission_router, prefix=settings.API_V1_PREFIX)
+app.include_router(wallet_router, prefix=settings.API_V1_PREFIX)
+app.include_router(finance_router, prefix=settings.API_V1_PREFIX)
+app.include_router(support_links_router, prefix=settings.API_V1_PREFIX)
+app.include_router(storage_router, prefix=settings.API_V1_PREFIX)
+app.include_router(courses_router, prefix=settings.API_V1_PREFIX)
+app.include_router(teacher_contacts_router, prefix=settings.API_V1_PREFIX)
+app.include_router(app_status_router, prefix=settings.API_V1_PREFIX)
+app.include_router(fcm_router, prefix=settings.API_V1_PREFIX)
