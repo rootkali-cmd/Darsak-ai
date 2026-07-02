@@ -22,11 +22,8 @@ const pricingPlans = [
 
 function AnimatedNavLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} className="group relative inline-block overflow-hidden h-5 flex items-center text-sm">
-      <div className="flex flex-col transition-transform duration-300 ease-out group-hover:-translate-y-1/2">
-        <span className="text-gray-300">{children}</span>
-        <span className="text-white">{children}</span>
-      </div>
+    <a href={href} className="relative text-sm text-gray-300 hover:text-white transition-colors duration-300">
+      {children}
     </a>
   )
 }
