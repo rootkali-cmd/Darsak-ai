@@ -42,10 +42,10 @@ function Navbar() {
   }, [isOpen])
 
   const navLinks = [
-    { label: 'المميزات', href: '#features' },
-    { label: 'الباقات', href: '#pricing' },
-    { label: 'تحميل', href: '#download' },
-    { label: 'تواصل', href: '#contact' },
+    { label: 'المميزات', href: '/#features' },
+    { label: 'الباقات', href: '/#pricing' },
+    { label: 'تحميل', href: '/download' },
+    { label: 'تواصل', href: '/contact' },
   ]
 
   return (
@@ -103,7 +103,7 @@ export default function LandingPage() {
             منصة تعليمية ذكية بالذكاء الاصطناعي — إدارة الطلاب، الامتحانات، الكورسات، والتحليلات في مكان واحد
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="#download" className="px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors text-sm">حمّل التطبيق</a>
+            <a href="/download" className="px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors text-sm">حمّل التطبيق</a>
             <a href="#features" className="px-8 py-3 border border-white/20 text-white/70 rounded-full hover:border-white/40 hover:text-white transition-colors text-sm">اكتشف المزيد</a>
           </div>
         </motion.div>
@@ -244,10 +244,10 @@ export default function LandingPage() {
             <div>
               <h4 className="text-xs font-bold text-white/50 mb-3 tracking-wider">روابط سريعة</h4>
               <div className="flex flex-col gap-2">
-                <a href="#features" className="text-xs text-white/30 hover:text-white/60 transition-colors">المميزات</a>
-                <a href="#pricing" className="text-xs text-white/30 hover:text-white/60 transition-colors">الباقات</a>
-                <a href="#download" className="text-xs text-white/30 hover:text-white/60 transition-colors">تحميل التطبيق</a>
-                <a href="#contact" className="text-xs text-white/30 hover:text-white/60 transition-colors">تواصل معنا</a>
+                <a href="/#features" className="text-xs text-white/30 hover:text-white/60 transition-colors">المميزات</a>
+                <a href="/#pricing" className="text-xs text-white/30 hover:text-white/60 transition-colors">الباقات</a>
+                <Link href="/download" className="text-xs text-white/30 hover:text-white/60 transition-colors">تحميل التطبيق</Link>
+                <Link href="/contact" className="text-xs text-white/30 hover:text-white/60 transition-colors">تواصل معنا</Link>
               </div>
             </div>
             <div>

@@ -21,17 +21,8 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      { source: '/download', destination: '/#download', permanent: true },
-      { source: '/pricing', destination: '/#pricing', permanent: true },
-      { source: '/features', destination: '/#features', permanent: true },
-      { source: '/contact', destination: '/#contact', permanent: true },
       { source: '/login', destination: '/', permanent: true },
       { source: '/register', destination: '/', permanent: true },
-      { source: '/about', destination: '/', permanent: true },
-      { source: '/faq', destination: '/', permanent: true },
-      { source: '/terms', destination: '/terms', permanent: false },
-      { source: '/privacy', destination: '/privacy', permanent: false },
-      { source: '/refund', destination: '/refund', permanent: false },
       { source: '/dashboard', destination: '/', permanent: true },
       { source: '/dashboard/:path*', destination: '/', permanent: true },
     ]
