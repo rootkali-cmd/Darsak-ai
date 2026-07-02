@@ -67,7 +67,7 @@ function Navbar() {
           }
         </button>
       </div>
-      <div className={`absolute top-full left-0 right-0 sm:hidden flex flex-col items-center w-full transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-[500px] opacity-100 pt-4' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+      <div className={`absolute top-full left-0 right-0 sm:hidden flex flex-col items-center w-full transition-all duration-300 overflow-hidden backdrop-blur-sm bg-[rgba(31,31,31,0.85)] border border-[#333] border-t-0 rounded-b-2xl mt-1 ${isOpen ? 'max-h-[500px] opacity-100 pt-4 pb-4' : 'max-h-0 opacity-0 pointer-events-none'}`}>
         <nav className="flex flex-col items-center gap-4 w-full">
           {navLinks.map((l) => (
             <a key={l.href} href={l.href} className="text-gray-300 hover:text-white transition-colors w-full text-center" onClick={() => setIsOpen(false)}>{l.label}</a>
