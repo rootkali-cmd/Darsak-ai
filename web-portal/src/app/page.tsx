@@ -183,8 +183,8 @@ export default function LandingPage() {
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
-              { t: 'تطبيق المعلمين', d: 'إدارة الطلاب، الامتحانات، الكورسات، الحضور، الفواتير، والتقارير الذكية', v: 'v2.5.0', s: '38 MB', f: 'teacher-v2.5.0.apk', n: 'DarsakAI-Teacher-v2.5.0.apk' },
-              { t: 'تطبيق الطلاب', d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي', v: 'v1.7.3', s: '36 MB', f: 'student-v1.7.3.apk', n: 'DarsakAI-Student-v1.7.3.apk' },
+              { t: 'تطبيق المعلمين', d: 'إدارة الطلاب، الامتحانات، الكورسات، الحضور، الفواتير، والتقارير الذكية', v: 'v2.5.1', s: '38 MB', f: 'teacher-v2.5.1.apk', n: 'DarsakAI-Teacher-v2.5.1.apk' },
+              { t: 'تطبيق الطلاب', d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي', v: 'v1.7.4', s: '36 MB', f: 'student-v1.7.4.apk', n: 'DarsakAI-Student-v1.7.4.apk' },
             ].map((app, i) => (
               <motion.div key={app.t} className="p-7 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition-all duration-500 flex flex-col items-center text-center" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                 <div className="w-16 h-16 rounded-2xl overflow-hidden mb-5 bg-white/10 flex items-center justify-center">
