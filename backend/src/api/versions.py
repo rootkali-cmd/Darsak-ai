@@ -61,37 +61,46 @@ CHANNELS: dict[str, dict[str, dict]] = {
             "release_date": "2026-05-26",
         },
         "android": {
-            "version": "2.1.1",
-            "build": 37,
+            "version": "2.5.1",
+            "build": 46,
             "mandatory": False,
             "min_supported_version": "2.0.0",
             "rollout": 100,
             "sha256": None,
             "changelog": [
-                "إصلاح الوضع الفاتح والداكن",
-                "نظام حظر المحاولات",
-                "إصلاح تسجيل دخول الطلاب",
-                "تحسين رسائل الخطأ بالعربية",
-                "إصلاح مشكلة التحديث المتكرر",
-                "تسريع فتح التطبيق",
-                "إصلاح overflow error في الكروت",
-                "إصلاح الكاميرا والباركود",
-                "تصميم جديد لصفحة الهبوط",
+                "تحسين شاشة مسح الباركود — سرعة القراءة والدقة",
+                "إصلاح دوران الكاميرا تلقائياً حسب اتجاه الجهاز",
+                "تحسين دقة الكاميرا لتقليل استهلاك المعالج",
             ],
             "changelog_en": [
-                "Fixed light and dark mode",
-                "Rate limiting and ban system",
-                "Fixed student login",
-                "Improved Arabic error messages",
-                "Fixed repeated update notification",
-                "Faster app startup",
-                "Fixed overflow error in cards",
-                "Fixed camera and barcode scanning",
-                "New landing page design",
+                "Improved barcode scanner — faster and more accurate",
+                "Fixed camera rotation based on device sensor",
+                "Optimized camera resolution for lower CPU usage",
             ],
-            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v2.1.1/teacher-v2.1.1.apk",
-            "size_mb": 75,
-            "release_date": "2026-06-09",
+            "download_url": "https://darsak-backend.fly.dev/api/downloads/teacher-v2.5.1.apk",
+            "size_mb": 38,
+            "release_date": "2026-07-02",
+        },
+        "android_student": {
+            "version": "1.7.4",
+            "build": 15,
+            "mandatory": False,
+            "min_supported_version": "1.5.0",
+            "rollout": 100,
+            "sha256": None,
+            "changelog": [
+                "تحسين مسح الباركود — سرعة ودقة أعلى",
+                "إصلاح دوران الكاميرا حسب اتجاه الجهاز",
+                "تحسين أداء الكاميرا وتقليل البطء",
+            ],
+            "changelog_en": [
+                "Improved barcode scanning — faster and more accurate",
+                "Fixed camera rotation based on device sensor",
+                "Optimized camera performance",
+            ],
+            "download_url": "https://darsak-backend.fly.dev/api/downloads/student-v1.7.4.apk",
+            "size_mb": 36,
+            "release_date": "2026-07-02",
         },
         "accounts": {
             "version": "1.0.0",
@@ -332,6 +341,17 @@ async def download_latest(
     return RedirectResponse(url=entry["download_url"], status_code=302)
 
 
+@router.get("/downloads/{filename}")
+async def download_file(filename: str):
+    downloads_dir = os.path.join(os.path.dirname(__file__), "..", "..", "downloads")
+    file_path = os.path.normpath(os.path.join(downloads_dir, filename))
+    if not file_path.startswith(os.path.normpath(downloads_dir)):
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path, media_type="application/vnd.android.package-archive", filename=filename)
+
+
 TELEMETRY_LOG = "telemetry.jsonl"
 ANALYTICS_LOG = "analytics.jsonl"
 
@@ -414,16 +434,11 @@ async def get_instapay_config():
         client = await get_supabase()
         result = client.table("instapay_config").select("barcode_url, username").eq("is_active", True).limit(1).execute()
         rows = result.data if hasattr(result, "data") else []
+        default = {"barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode", "username": ""}
         if not rows:
-            return {
-                "barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode",
-                "username": "ahmed-mahmoud-1@instapay",
-            }
+            return default
         row = rows[0]
-        return {"barcode_url": row["barcode_url"], "username": row["username"]}
+        return {"barcode_url": row.get("barcode_url", default["barcode_url"]), "username": row.get("username", "")}
     except Exception as e:
         logger.error("Failed to fetch instapay config: %s", e, exc_info=True)
-        return {
-            "barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode",
-            "username": "ahmed-mahmoud-1@instapay",
-        }
+        return {"barcode_url": "https://api.darsak-backend.fly.dev/api/instapay-barcode", "username": ""}
