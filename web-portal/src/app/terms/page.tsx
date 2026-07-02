@@ -21,7 +21,7 @@ export default function TermsPage() {
         <div className="space-y-8 text-sm leading-relaxed">
           <section>
             <h2 className="text-lg font-bold text-white mb-3">1. قبول الشروط</h2>
-            <p>باستخدامك لمنصة DarsakAI (&quot;المنصة&quot;)، أنت توافق على الالتزام بهذه الشروط والأحكام بالكامل. إذا لا توافق على أي شرط، يُرجى عدم استخدام المنصة.</p>
+            <p>باستخدامك لمنصة DarsakAI ("المنصة")، أنت توافق على الالتزام بهذه الشروط والأحكام بالكامل. إذا لا توافق على أي شرط، يُرجى عدم استخدام المنصة.</p>
           </section>
 
           <section>
@@ -66,7 +66,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-bold text-white mb-3">7. المسؤولية والضمانات</h2>
             <ul className="list-disc list-inside space-y-2 text-white/60">
-              <li>المنصة تُقدم &quot;كما هي&quot; و&quot;حسب التوفر&quot; بدون ضمانات صريحة أو ضمنية.</li>
+              <li>المنصة تُقدم "كما هي" و"حسب التوفر" بدون ضمانات صريحة أو ضمنية.</li>
               <li>لا نضمن عدم انقطاع الخدمة أو خلوها من الأخطاء.</li>
               <li>لا نتحمل المسؤولية عن أي أضرار غير مباشرة أو تبعية ناتجة عن استخدام المنصة.</li>
               <li>أنت المسؤول الوحيد عن محتوى數據 الذي تدخله في المنصة.</li>
