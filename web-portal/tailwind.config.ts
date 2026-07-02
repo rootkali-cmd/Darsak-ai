@@ -48,6 +48,15 @@ const config: Config = {
         'neon': '0 0 20px rgba(255, 0, 60, 0.4), 0 0 40px rgba(255, 0, 60, 0.2)',
         'neon-hover': '0 0 30px rgba(255, 0, 60, 0.6), 0 0 60px rgba(255, 0, 60, 0.3)',
       },
+      keyframes: {
+        spotlight: {
+          '0%': { opacity: '0', transform: 'translate(-72%, -62%) scale(0.5)' },
+          '100%': { opacity: '1', transform: 'translate(-50%, -40%) scale(1)' },
+        },
+      },
+      animation: {
+        spotlight: 'spotlight 2s ease .75s 1 forwards',
+      },
     },
   },
   plugins: [],

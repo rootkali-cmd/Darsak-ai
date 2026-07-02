@@ -3,11 +3,27 @@ import { Providers } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'DARSAK AI',
+  metadataBase: new URL('https://darsakai.com'),
+  title: 'DARSAK AI — منصة تعليمية ذكية',
   description: 'منصة متكاملة لإدارة السناتر التعليمية — متابعة الطلاب، الحضور، الدرجات، والتحليلات بالذكاء الاصطناعي',
   icons: {
     icon: '/icon.png',
-    apple: '/icon.png',
+    apple: '/apple-touch-icon.png',
+  },
+  openGraph: {
+    title: 'DarsakAI — منصة تعليمية ذكية بالذكاء الاصطناعي',
+    description: 'منصة متكاملة لإدارة السناتر التعليمية — إدارة الطلاب، الامتحانات والتصحيح بالذكاء الاصطناعي، الحضور والغياب، الكورسات، الفواتير، وتحليلات الأداء.',
+    url: 'https://darsakai.com',
+    siteName: 'DarsakAI',
+    locale: 'ar_EG',
+    type: 'website',
+    images: [{ url: '/icon.png', width: 192, height: 192 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'DarsakAI — منصة تعليمية ذكية',
+    description: 'منصة متكاملة لإدارة السناتر التعليمية بالذكاء الاصطناعي',
+    images: ['/icon.png'],
   },
 }
 
