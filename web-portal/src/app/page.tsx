@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import Link from 'next/link'
 import { CanvasRevealEffect } from '@/components/ui/canvas-reveal-effect'
 
 const features = [
