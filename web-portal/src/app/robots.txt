@@ -3,6 +3,9 @@ Allow: /
 Allow: /privacy
 Allow: /terms
 Allow: /refund
+Allow: /about
+Allow: /contact
+Allow: /faq
 Disallow: /api/
 Disallow: /_next/
 Disallow: /static/

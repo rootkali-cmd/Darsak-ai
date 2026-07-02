@@ -251,6 +251,14 @@ export default function LandingPage() {
               </div>
             </div>
             <div>
+              <h4 className="text-xs font-bold text-white/50 mb-3 tracking-wider">المنصة</h4>
+              <div className="flex flex-col gap-2">
+                <Link href="/about" className="text-xs text-white/30 hover:text-white/60 transition-colors">من نحن</Link>
+                <Link href="/contact" className="text-xs text-white/30 hover:text-white/60 transition-colors">تواصل معنا</Link>
+                <Link href="/faq" className="text-xs text-white/30 hover:text-white/60 transition-colors">الأسئلة الشائعة</Link>
+              </div>
+            </div>
+            <div>
               <h4 className="text-xs font-bold text-white/50 mb-3 tracking-wider">سياسات وشروط</h4>
               <div className="flex flex-col gap-2">
                 <Link href="/privacy" className="text-xs text-white/30 hover:text-white/60 transition-colors">سياسة الخصوصية</Link>
