@@ -1,565 +1,247 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { auth } from '@/lib/auth'
-
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 24 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true },
-  transition: { delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] },
-})
-
-const stagger = {
-  initial: {},
-  whileInView: { transition: { staggerChildren: 0.06 } },
-  viewport: { once: true },
-}
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
+import { CanvasRevealEffect } from '@/components/ui/canvas-reveal-effect'
 
 const features = [
-  {
-    num: '01',
-    title: 'إدارة الطلاب',
-    desc: 'إضافة الطلاب بالباركود، متابعة بياناتهم، تواصل مع أولياء الأمور — كل طالب وله ملف كامل متكامل.',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    num: '02',
-    title: 'الحضور والغياب',
-    desc: 'سجل حضور الطلاب بالباركود أو يدوياً. تقارير يومية وشهرية بنسبة حضور كل طالب.',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-      </svg>
-    ),
-  },
-  {
-    num: '03',
-    title: 'الدرجات والامتحانات',
-    desc: 'إنشاء امتحانات، تصحيح آلي، تحليل النتائج، وإشعار أولياء الأمور بالنتائج.',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
-      </svg>
-    ),
-  },
-  {
-    num: '04',
-    title: 'المجموعات والفصول',
-    desc: 'قسم الطلاب حسب المرحلة والمادة والوقت. كل مجموعة لها جدول منفصل.',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-        <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-      </svg>
-    ),
-  },
-  {
-    num: '05',
-    title: 'الفواتير والمصاريف',
-    desc: 'تحصيل المصاريف إلكترونياً، فواتير مدفوعة وغير مدفوعة، تقارير مالية.',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
-      </svg>
-    ),
-  },
-  {
-    num: '06',
-    title: 'تحليلات AI',
-    desc: 'تحليل أداء كل طالب بالذكاء الاصطناعي، اكتشف نقاط القوة والضعف.',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
-    ),
-  },
-]
-
-const howItWorks = [
-  { step: '1', title: 'سجل حسابك', desc: 'أنشئ حساب مجاني في دقيقة. لا تحتاج بطاقة ائتمان.' },
-  { step: '2', title: 'أضف طلابك', desc: 'استورد الطلاب أو أضفهم واحداً واحداً. النظام يولد كود QR لكل طالب.' },
-  { step: '3', title: 'نظم مجموعاتك', desc: 'قسم الطلاب حسب المستوى والمادة والوقت. كل مجموعة بجدول مستقل.' },
-  { step: '4', title: 'تابع وأنجز', desc: 'سجل الحضور، اعمل امتحانات، حصّل المصاريف — كل حاجة من لوحة تحكم واحدة.' },
+  { num: '01', title: 'إدارة الطلاب', desc: 'إضافة الطلاب بالباركود، متابعة بياناتهم، تواصل مع أولياء الأمور.' },
+  { num: '02', title: 'الحضور والغياب', desc: 'سجل حضور الطلاب بالباركود أو يدوياً مع تقارير يومية.' },
+  { num: '03', title: 'الامتحانات والتصحيح', desc: 'إنشاء امتحانات، تصحيح آلي بالذكاء الاصطناعي، وتحليل النتائج.' },
+  { num: '04', title: 'الكورسات التعليمية', desc: 'رفع فيديوهات وملفات، أبواب ودروس، مع حماية المحتوى.' },
+  { num: '05', title: 'الفواتير والمصاريف', desc: 'تحصيل المصاريف إلكترونياً مع تقارير مالية مفصلة.' },
+  { num: '06', title: 'تحليلات AI', desc: 'تحليل أداء كل طالب بالذكاء الاصطناعي — نقاط القوة والضعف.' },
 ]
 
 const pricingPlans = [
-  {
-    name: 'Basic',
-    nameAr: 'الأساسي',
-    price: '250',
-    period: '/شهر',
-    desc: 'للسناتر الصغيرة',
-    features: ['إدارة حتى 100 طالب', 'تسجيل حضور وغياب', 'تخزين فيديو 2GB', '5 تحليلات AI شهرياً'],
-    cta: 'ابدأ مجاناً',
-    trial: true,
-    popular: false,
-  },
-  {
-    name: 'Pro',
-    nameAr: 'المحترف',
-    price: '600',
-    period: '/شهر',
-    desc: 'للسناتر المتوسطة',
-    features: ['إدارة حتى 400 طالب', 'كل ميزات الأساسي', 'تخزين فيديو 6GB', '30 تحليل AI شهرياً', 'فواتير إلكترونية', 'دعم فني مباشر'],
-    cta: 'اشتراك',
-    popular: true,
-  },
-  {
-    name: 'Premium',
-    nameAr: 'المتكاملة',
-    price: '1100',
-    period: '/شهر',
-    desc: 'للسناتر الكبيرة',
-    features: ['عدد غير محدود من الطلاب', 'كل ميزات Pro', 'تخزين فيديو غير محدود', 'AI غير محدود', 'تخصيص كامل', 'دعم 24/7'],
-    cta: 'اشتراك',
-    popular: false,
-  },
+  { name: 'الأساسي', price: '350', features: ['100 طالب', '5 طلبات AI يومياً', '15GB تخزين', 'حضور QR', 'درجات'], popular: false },
+  { name: 'المحترف', price: '750', features: ['400 طالب', '10 طلبات AI يومياً', '60GB تخزين', '2 مساعدين', 'كورسات', 'تقارير AI'], popular: true },
+  { name: 'المتكاملة', price: '1250', features: ['1000 طالب', '20 طلب AI يومياً', '200GB تخزين', '5 مساعدين', 'تحضير AI', 'دعم VIP'], popular: false },
 ]
 
-export default function LandingPage() {
-  const router = useRouter()
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+function AnimatedNavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} className="group relative inline-block overflow-hidden h-5 flex items-center text-sm">
+      <div className="flex flex-col transition-transform duration-300 ease-out group-hover:-translate-y-1/2">
+        <span className="text-gray-300">{children}</span>
+        <span className="text-white">{children}</span>
+      </div>
+    </a>
+  )
+}
+
+function Navbar() {
+  const [isOpen, setIsOpen] = useState(false)
+  const [shapeClass, setShapeClass] = useState('rounded-full')
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    setLoggedIn(auth.isAuthenticated())
-  }, [])
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    if (isOpen) setShapeClass('rounded-2xl')
+    else timeoutRef.current = setTimeout(() => setShapeClass('rounded-full'), 300)
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }
+  }, [isOpen])
 
-  const navLinks = (
-    <>
-      <a href="/about" className="text-sm text-slate-300 hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>من نحن</a>
-      <a href="/pricing" className="text-sm text-slate-300 hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>الباقات</a>
-      <a href="/download" className="text-sm text-slate-300 hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>التطبيقات</a>
-      <a href="/faq" className="text-sm text-slate-300 hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>الأسئلة الشائعة</a>
-      {loggedIn ? (
-        <motion.button
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors w-full sm:w-auto"
-          onClick={() => router.push('/dashboard')}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-        >لوحة التحكم</motion.button>
-      ) : (
-        <>
-          <motion.button
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white rounded-lg border border-slate-600 hover:border-slate-400 transition-colors w-full sm:w-auto"
-            onClick={() => router.push('/login')}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-          >دخول</motion.button>
-          <motion.button
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors w-full sm:w-auto"
-            onClick={() => router.push('/register')}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-          >ابدأ مجاناً</motion.button>
-        </>
-      )}
-    </>
-  )
+  const navLinks = [
+    { label: 'المميزات', href: '#features' },
+    { label: 'الباقات', href: '#pricing' },
+    { label: 'تحميل', href: '#download' },
+    { label: 'تواصل', href: '#contact' },
+  ]
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0a1a]">
-      {/* ─── Header ─── */}
-      <motion.header
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-10 py-4"
-        style={{ background: 'rgba(10,10,26,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-white">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" opacity="0.3" />
-              <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <span className="font-bold text-base text-white tracking-tight" style={{ fontFamily: "'JetBrains Mono', monospace" }}>DARSAK AI</span>
+    <header className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center px-6 py-3 backdrop-blur-sm ${shapeClass} border border-[#333] bg-[rgba(31,31,31,0.57)] w-[calc(100%-2rem)] sm:w-auto transition-[border-radius] duration-300`}>
+      <div className="flex items-center justify-between w-full gap-6 sm:gap-8">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Image src="/logo.png" alt="DARSAK AI" width={24} height={24} className="rounded-md" style={{ width: 24, height: 24 }} />
+          <span className="font-bold text-sm text-white whitespace-nowrap">DARSAK AI</span>
         </div>
-        <nav className="hidden md:flex items-center gap-6">
-          {navLinks}
+        <nav className="hidden sm:flex items-center gap-6">
+          {navLinks.map((l) => (
+            <AnimatedNavLink key={l.href} href={l.href}>{l.label}</AnimatedNavLink>
+          ))}
         </nav>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 text-slate-300 hover:text-white"
-          aria-label="القائمة"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {mobileMenuOpen ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></> : <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>}
-          </svg>
+        <button className="sm:hidden w-8 h-8 text-gray-300" onClick={() => setIsOpen(!isOpen)}>
+          {isOpen
+            ? <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            : <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+          }
         </button>
-      </motion.header>
+      </div>
+      <div className={`absolute top-full left-0 right-0 sm:hidden flex flex-col items-center w-full transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-[500px] opacity-100 pt-4' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+        <nav className="flex flex-col items-center gap-4 w-full">
+          {navLinks.map((l) => (
+            <a key={l.href} href={l.href} className="text-gray-300 hover:text-white transition-colors w-full text-center" onClick={() => setIsOpen(false)}>{l.label}</a>
+          ))}
+        </nav>
+      </div>
+    </header>
+  )
+}
 
-      {mobileMenuOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed top-16 left-0 right-0 z-40 flex flex-col items-center gap-4 p-6 bg-[#0a0a1a] border-b border-white/10"
-        >
-          {navLinks}
+export default function LandingPage() {
+  return (
+    <div className="flex w-full flex-col min-h-screen bg-black relative overflow-x-hidden">
+      {/* Background shader */}
+      <div className="fixed inset-0 z-0">
+        <CanvasRevealEffect
+          containerClassName="bg-black"
+          dotSize={5}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,1)_0%,_transparent_100%)]" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black to-transparent" />
+      </div>
+
+      <Navbar />
+
+      {/* Hero */}
+      <section className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 text-center">
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="max-w-3xl">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.95] mb-6 tracking-tight text-white">
+            DARSAK <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-200 via-white to-gray-400">AI</span>
+          </h1>
+          <p className="text-lg md:text-xl text-white/50 font-light mb-10 max-w-xl mx-auto leading-relaxed">
+            منصة تعليمية ذكية بالذكاء الاصطناعي — إدارة الطلاب، الامتحانات، الكورسات، والتحليلات في مكان واحد
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="#download" className="px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors text-sm">حمّل التطبيق</a>
+            <a href="#features" className="px-8 py-3 border border-white/20 text-white/70 rounded-full hover:border-white/40 hover:text-white transition-colors text-sm">اكتشف المزيد</a>
+          </div>
         </motion.div>
-      )}
+      </section>
 
-      <main className="flex-1">
-        {/* ─── Hero ─── */}
-        <section className="relative min-h-screen flex items-center overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-indigo-600/10 via-transparent to-transparent" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-gradient-to-b from-indigo-600/15 via-purple-600/5 to-transparent rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-blue-600/5 to-transparent rounded-full blur-3xl" />
-          <div
-            className="absolute inset-0 opacity-[0.02]"
-            style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '64px 64px' }}
-          />
-
-          <div className="relative z-10 w-full max-w-6xl mx-auto px-4 md:px-6 pt-24 md:pt-28 pb-16">
-            <div className="text-center max-w-4xl mx-auto">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="mb-6"
-              >
-                <span className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                  منصة إدارة السناتر التعليمية
-                </span>
-              </motion.div>
-
-              <motion.h1
-                className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white leading-[1.1] mb-6"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.7 }}
-              >
-                أدر سنترك التعليمي
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-l from-indigo-400 via-purple-400 to-pink-400">بذكاء وسهولة</span>
-              </motion.h1>
-
-              <motion.p
-                className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-2xl mx-auto mb-10"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-              >
-                وفر 80% من وقتك الإداري. نظام متكامل لإدارة الطلاب، الحضور، الدرجات، الفواتير، والفيديوهات التعليمية — بالذكاء الاصطناعي
-              </motion.p>
-
-              <motion.div
-                className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-              >
-                {loggedIn ? (
-                  <motion.button
-                    className="inline-flex items-center justify-center gap-2 px-8 py-4 text-lg font-bold text-white bg-gradient-to-l from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl shadow-lg shadow-indigo-600/25 transition-all"
-                    onClick={() => router.push('/dashboard')}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >لوحة التحكم ←</motion.button>
-                ) : (
-                  <>
-                    <motion.button
-                      className="inline-flex items-center justify-center gap-2 px-8 py-4 text-lg font-bold text-white bg-gradient-to-l from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl shadow-lg shadow-indigo-600/25 transition-all"
-                      onClick={() => router.push('/register')}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                    >ابدأ مجاناً ←</motion.button>
-                    <motion.button
-                      className="inline-flex items-center justify-center gap-2 px-8 py-4 text-lg font-semibold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl transition-all"
-                      onClick={() => router.push('/download')}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                      تحميل التطبيقات
-                    </motion.button>
-                  </>
-                )}
-              </motion.div>
-
-              {/* Stats */}
-              <motion.div
-                className="flex flex-wrap items-center justify-center gap-8 md:gap-12"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-              >
-                {[
-                  { num: '+2000', label: 'معلم' },
-                  { num: '+50K', label: 'طالب' },
-                  { num: '+50', label: 'سنتر تعليمي' },
-                  { num: '99%', label: 'رضا' },
-                ].map((stat) => (
-                  <div key={stat.label} className="text-center">
-                    <div className="text-2xl md:text-3xl font-bold text-white" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stat.num}</div>
-                    <div className="text-xs text-slate-500">{stat.label}</div>
-                  </div>
-                ))}
-              </motion.div>
-            </div>
-          </div>
-
-          {/* Scroll indicator */}
-          <motion.div
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.5 }}
-          >
-            <span className="text-[10px] text-slate-500 tracking-widest">استكشف المزيد</span>
-            <motion.div
-              animate={{ y: [0, 6, 0] }}
-              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
+      {/* Stats */}
+      <section className="relative z-10 py-20 px-4">
+        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6">
+          {[{ n: '+50', l: 'مدرس نشط' }, { n: '+500', l: 'طالب مسجل' }, { n: '98%', l: 'رضا المستخدمين' }].map((s, i) => (
+            <motion.div key={s.l} className="text-center p-6 rounded-2xl border border-white/[0.06]" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+              <div className="text-3xl md:text-5xl font-black mb-1 text-white" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{s.n}</div>
+              <div className="text-sm text-white/40">{s.l}</div>
             </motion.div>
-          </motion.div>
-        </section>
-
-        {/* ─── Features ─── */}
-        <section className="py-20 md:py-28 px-6">
-          <div className="max-w-6xl mx-auto">
-            <motion.div className="text-center mb-16" {...fadeUp()}>
-              <span className="inline-block px-3 py-1 text-xs font-semibold text-indigo-400 bg-indigo-500/10 rounded-full mb-4">الميزات</span>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-3">كل اللي تحتاجه لإدارة سنترك</h2>
-              <p className="text-slate-400 max-w-lg mx-auto">من الطالب الأول لباقي الشهر — كل حاجة في مكان واحد</p>
-            </motion.div>
-
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-              variants={stagger}
-              initial="initial"
-              whileInView="whileInView"
-              viewport={{ once: true }}
-            >
-              {features.map((f) => (
-                <motion.div
-                  key={f.title}
-                  className="group bg-white/[0.03] border border-white/[0.08] rounded-xl p-6 hover:border-indigo-500/30 hover:bg-white/[0.06] transition-all duration-300"
-                  variants={{ initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 } }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <div className="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:bg-indigo-500/20 transition-colors duration-300">
-                    {f.icon}
-                  </div>
-                  <div className="text-xs font-bold text-indigo-500 mb-1">{f.num}</div>
-                  <h3 className="text-lg font-bold text-white mb-2">{f.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── How It Works ─── */}
-        <section className="py-20 md:py-28 px-6 bg-white/[0.02]">
-          <div className="max-w-5xl mx-auto">
-            <motion.div className="text-center mb-16" {...fadeUp()}>
-              <span className="inline-block px-3 py-1 text-xs font-semibold text-indigo-400 bg-indigo-500/10 rounded-full mb-4">كيف يعمل</span>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-3">ابدأ في ٤ خطوات بس</h2>
-              <p className="text-slate-400">من التسجيل لأول يوم دراسة — النظام جاهز في ١٠ دقائق</p>
-            </motion.div>
-
-            <motion.div
-              className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-              variants={{ ...stagger, whileInView: { transition: { staggerChildren: 0.1 } } }}
-              initial="initial"
-              whileInView="whileInView"
-              viewport={{ once: true }}
-            >
-              {/* Connecting line — desktop only */}
-              <div className="hidden lg:block absolute top-9 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-indigo-500/20 via-indigo-500/40 to-indigo-500/20" />
-
-              {howItWorks.map((item) => (
-                <motion.div
-                  key={item.step}
-                  className="relative text-center"
-                  variants={{ initial: { opacity: 0, y: 20, scale: 0.95 }, whileInView: { opacity: 1, y: 0, scale: 1 } }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <motion.div
-                    className="relative z-10 w-12 h-12 flex items-center justify-center mx-auto mb-5 rounded-full text-base font-extrabold text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25"
-                    whileHover={{ scale: 1.1 }}
-                  >{item.step}</motion.div>
-                  <h3 className="font-bold text-white mb-2">{item.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── Pricing ─── */}
-        <section className="py-20 md:py-28 px-6">
-          <div className="max-w-5xl mx-auto">
-            <motion.div className="text-center mb-16" {...fadeUp()}>
-              <span className="inline-block px-3 py-1 text-xs font-semibold text-indigo-400 bg-indigo-500/10 rounded-full mb-4">الباقات</span>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-3">باقات تناسب كل سنتر</h2>
-              <p className="text-slate-400 max-w-lg mx-auto">اختر الباقة المناسبة — الباقة الأساسية تبدأ بـ ٣٠ يوم مجاناً</p>
-            </motion.div>
-
-            <motion.div
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
-              variants={stagger}
-              initial="initial"
-              whileInView="whileInView"
-              viewport={{ once: true }}
-            >
-              {pricingPlans.map((plan) => (
-                <motion.div
-                  key={plan.name}
-                  className={`relative bg-white/[0.04] border rounded-2xl p-7 flex flex-col transition-all duration-300 hover:bg-white/[0.06] ${
-                    plan.popular ? 'border-indigo-500/50 shadow-lg shadow-indigo-500/10' : 'border-white/[0.08]'
-                  }`}
-                  variants={{ initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 } }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-l from-indigo-600 to-purple-600 text-white text-xs font-bold rounded-full">
-                      الأكثر طلباً
-                    </div>
-                  )}
-
-                  <div className="mb-6">
-                    <div className="text-sm font-semibold text-indigo-400 mb-1">{plan.nameAr}</div>
-                    <div className="text-xs text-slate-500">{plan.desc}</div>
-                  </div>
-
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-extrabold text-white">{plan.price}</span>
-                      <span className="text-sm text-slate-400">ج.م</span>
-                      <span className="text-sm text-slate-400">{plan.period}</span>
-                    </div>
-                  </div>
-
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {plan.features.map((f, i) => (
-                      <li key={i} className="flex items-center gap-2.5 text-sm text-slate-300">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818CF8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <motion.button
-                    className={`w-full py-3 text-sm font-bold rounded-xl transition-all ${
-                      plan.popular
-                        ? 'bg-gradient-to-l from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-500/25'
-                        : 'bg-white/[0.06] text-indigo-400 border border-white/[0.1] hover:bg-white/[0.1] hover:border-indigo-500/30'
-                    }`}
-                    onClick={() => router.push('/register')}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >{plan.cta}</motion.button>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── Final CTA ─── */}
-        <section className="py-24 md:py-32 px-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-indigo-600/10 to-transparent" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b from-indigo-600/10 to-transparent rounded-full blur-3xl" />
-
-          <motion.div
-            className="relative z-10 max-w-xl mx-auto text-center"
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">جاهز تبدأ؟</h2>
-            <p className="text-slate-400 mb-8 leading-relaxed">أول ٣٠ يوم مجاناً — بدون بطاقة ائتمان — إلغاء في أي وقت</p>
-
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder="أدخل بريدك الإلكتروني"
-                className="flex-1 px-4 py-3.5 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:bg-white/[0.08] transition-colors text-sm"
-              />
-              <motion.button
-                className="px-6 py-3.5 bg-gradient-to-l from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/25 transition-colors text-sm whitespace-nowrap"
-                onClick={() => router.push('/register')}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >ابدأ الآن ←</motion.button>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-6 text-xs text-slate-500">
-              <span>✓ لا تحتاج بطاقة بنكية</span>
-              <span className="w-1 h-1 rounded-full bg-slate-600" />
-              <span>✓ دعم فني مجاني</span>
-              <span className="w-1 h-1 rounded-full bg-slate-600" />
-              <span>✓ إلغاء في أي وقت</span>
-            </div>
-          </motion.div>
-        </section>
-      </main>
-
-      {/* ─── Footer ─── */}
-      <motion.footer
-        className="border-t border-white/[0.06] py-12 px-6"
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-10">
-            <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-white">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" opacity="0.3" />
-                    <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <span className="font-bold text-sm text-white tracking-tight" style={{ fontFamily: "'JetBrains Mono', monospace" }}>DARSAK AI</span>
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed">أول منصة مصرية متكاملة لإدارة السناتر التعليمية بالذكاء الاصطناعي.</p>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
-              <h4 className="font-bold text-sm mb-3 text-white">الروابط</h4>
-              <div className="flex flex-col gap-2 text-sm text-slate-500">
-                <a href="/about" className="hover:text-indigo-400 transition-colors">من نحن</a>
-                <a href="/pricing" className="hover:text-indigo-400 transition-colors">الباقات</a>
-                <a href="/download" className="hover:text-indigo-400 transition-colors">التطبيقات</a>
-                <a href="/faq" className="hover:text-indigo-400 transition-colors">الأسئلة الشائعة</a>
-              </div>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
-              <h4 className="font-bold text-sm mb-3 text-white">القانوني</h4>
-              <div className="flex flex-col gap-2 text-sm text-slate-500">
-                <a href="/privacy" className="hover:text-indigo-400 transition-colors">سياسة الخصوصية</a>
-                <a href="/terms" className="hover:text-indigo-400 transition-colors">شروط الخدمة</a>
-                <a href="/contact" className="hover:text-indigo-400 transition-colors">اتصل بنا</a>
-              </div>
-            </motion.div>
-          </div>
-          <motion.div
-            className="border-t border-white/[0.06] text-center pt-6 text-xs text-slate-500"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-          >© 2026 DARSAK AI. جميع الحقوق محفوظة.</motion.div>
+          ))}
         </div>
-      </motion.footer>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="relative z-10 py-24 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-3xl md:text-5xl font-black mb-3 text-white">كل اللي تحتاجه في مكان واحد</h2>
+            <p className="text-white/40 text-lg">أدوات ذكية تساعدك تدير سنترك بكفاءة</p>
+          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f, i) => (
+              <motion.div key={f.title} className="p-6 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.02] transition-all duration-500" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
+                <div className="text-[10px] font-bold text-white/20 mb-3 tracking-widest" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{f.num}</div>
+                <h3 className="text-lg font-bold text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-white/40 leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-5xl mx-auto h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-4" />
+
+      {/* Pricing */}
+      <section id="pricing" className="relative z-10 py-24 px-4">
+        <div className="max-w-5xl mx-auto">
+          <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-3xl md:text-5xl font-black mb-3 text-white">باقات تناسب كل سنتر</h2>
+            <p className="text-white/40 text-lg">جميع الأسعار بالجنيه المصري</p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {pricingPlans.map((plan, i) => (
+              <motion.div key={plan.name} className={`relative border rounded-2xl p-7 flex flex-col transition-all duration-500 hover:bg-white/[0.02] ${plan.popular ? 'border-white/30' : 'border-white/[0.06]'}`} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-white text-black text-xs font-bold rounded-full">الأكثر طلباً</div>}
+                <div className="text-sm font-semibold text-white/50 mb-1">{plan.name}</div>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-black text-white" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{plan.price}</span>
+                  <span className="text-sm text-white/40">ج.م/شهر</span>
+                </div>
+                <ul className="space-y-3 flex-1">
+                  {plan.features.map((f, j) => (
+                    <li key={j} className="flex items-center gap-2 text-sm text-white/60">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-white/30"><polyline points="20 6 9 17 4 12" /></svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-5xl mx-auto h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-4" />
+
+      {/* Download */}
+      <section id="download" className="relative z-10 py-24 px-4">
+        <div className="max-w-4xl mx-auto">
+          <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-3xl md:text-5xl font-black mb-3 text-white">حمّل التطبيق</h2>
+            <p className="text-white/40 text-lg">تطبيقان منفصلان — واحد للمعلمين وواحد للطلاب</p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              { t: 'تطبيق المعلمين', d: 'إدارة الطلاب، الامتحانات، الكورسات، الحضور، الفواتير، والتقارير الذكية', v: 'v2.5.0', s: '38 MB', f: 'teacher-v2.5.0.apk', n: 'DarsakAI-Teacher-v2.5.0.apk' },
+              { t: 'تطبيق الطلاب', d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي', v: 'v1.7.3', s: '36 MB', f: 'student-v1.7.3.apk', n: 'DarsakAI-Student-v1.7.3.apk' },
+            ].map((app, i) => (
+              <motion.div key={app.t} className="p-7 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition-all duration-500 flex flex-col items-center text-center" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                <div className="w-16 h-16 rounded-2xl overflow-hidden mb-5 bg-white/10 flex items-center justify-center">
+                  <Image src="/logo.png" alt={app.t} width={64} height={64} className="w-full h-full object-cover" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">{app.t}</h3>
+                <p className="text-sm text-white/40 mb-5 leading-relaxed">{app.d}</p>
+                <div className="flex items-center gap-2 text-xs text-white/30 mb-5">
+                  <span className="px-2 py-0.5 bg-white/5 rounded">Android</span>
+                  <span>•</span><span>{app.v}</span><span>•</span><span>{app.s}</span>
+                </div>
+                <a href={`https://darsak-backend.fly.dev/api/downloads/${app.f}`} download={app.n} className="w-full py-3 px-6 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors text-sm cursor-pointer">
+                  تحميل APK
+                </a>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-5xl mx-auto h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-4" />
+
+      {/* Contact */}
+      <section id="contact" className="relative z-10 py-24 px-4">
+        <div className="max-w-3xl mx-auto text-center">
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-3xl md:text-5xl font-black mb-3 text-white">عندك استفسار؟</h2>
+            <p className="text-white/40 text-lg mb-10">تواصل معنا وسنرد عليك في أقرب وقت</p>
+          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {[
+              { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, l: 'الموقع', v: 'مصر — القاهرة' },
+              { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, l: 'البريد', v: 'support@darsakai.com' },
+              { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, l: 'واتساب', v: '01055359719' },
+            ].map((item, i) => (
+              <motion.div key={item.l} className="p-6 rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition-all duration-500" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                <div className="w-10 h-10 rounded-xl bg-white/[0.04] text-white/40 flex items-center justify-center mx-auto mb-3">{item.icon}</div>
+                <div className="text-xs text-white/30 mb-1">{item.l}</div>
+                <div className="text-sm text-white font-semibold" dir="ltr">{item.v}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/[0.06] py-8 px-4">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Image src="/logo.png" alt="" width={18} height={18} className="rounded" style={{ width: 18, height: 18 }} />
+            <span className="text-xs text-white/30" style={{ fontFamily: "'JetBrains Mono', monospace" }}>DARSAK AI</span>
+          </div>
+          <div className="text-xs text-white/30">© 2026 — جميع الحقوق محفوظة</div>
+        </div>
+      </footer>
     </div>
   )
 }
