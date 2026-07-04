@@ -35,6 +35,8 @@ def _serialize_invoice(inv: dict) -> dict:
         "screenshot_url": inv.get("screenshot_url"),
         "status": inv.get("status", "pending"),
         "teacher_note": inv.get("teacher_note"),
+        "description": inv.get("description", ""),
+        "due_date": inv.get("due_date"),
         "created_at": str(inv.get("created_at", "")),
         "updated_at": str(inv.get("updated_at", "")),
     }
@@ -343,4 +345,124 @@ async def reject_invoice(
         raise
     except Exception as exc:
         logger.error("Failed to reject invoice %s: %s", invoice_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to reject invoice: internal error")
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+# ─── Teacher CRUD (matches teacher mobile app calls) ───────────────
+
+from pydantic import BaseModel as _BaseModel
+from typing import Optional as _Optional
+
+
+class _TeacherInvoiceCreate(_BaseModel):
+    student_id: _Optional[str] = None
+    amount: float = 0
+    description: _Optional[str] = None
+    due_date: _Optional[str] = None
+    status: str = "pending"
+    payment_method: str = "cash"
+
+
+class _TeacherInvoiceUpdate(_BaseModel):
+    student_id: _Optional[str] = None
+    amount: _Optional[float] = None
+    description: _Optional[str] = None
+    due_date: _Optional[str] = None
+    status: _Optional[str] = None
+    payment_method: _Optional[str] = None
+
+
+@router.post("", status_code=201)
+async def teacher_create_invoice_generic(
+    data: _TeacherInvoiceCreate,
+    current_teacher: dict = Depends(get_current_teacher),
+):
+    try:
+        await enforce_invoice_limit(current_teacher["id"])
+        if not data.student_id:
+            raise HTTPException(status_code=400, detail="student_id مطلوب")
+        student = await student_repo.select_one({"id": data.student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        invoice_data = {
+            "student_id": data.student_id,
+            "teacher_id": current_teacher["id"],
+            "amount": data.amount,
+            "status": data.status or "pending",
+            "payment_method": data.payment_method or "cash",
+        }
+        inv = await invoice_repo.insert(invoice_data)
+        return _serialize_invoice(inv)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("teacher_create_invoice_generic failed: %s", e)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+@router.put("/{invoice_id}")
+async def teacher_update_invoice(
+    invoice_id: str,
+    data: _TeacherInvoiceUpdate,
+    current_teacher: dict = Depends(get_current_teacher),
+):
+    try:
+        inv = await invoice_repo.select_one({"id": invoice_id})
+        if not inv:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        if inv.get("teacher_id") != current_teacher["id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        updates = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
+        if updates:
+            updated = await invoice_repo.update({"id": invoice_id}, updates)
+        else:
+            updated = inv
+        return _serialize_invoice(updated)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("teacher_update_invoice failed: %s", e)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+@router.delete("/{invoice_id}")
+async def teacher_delete_invoice(
+    invoice_id: str,
+    current_teacher: dict = Depends(get_current_teacher),
+):
+    try:
+        inv = await invoice_repo.select_one({"id": invoice_id})
+        if not inv:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        if inv.get("teacher_id") != current_teacher["id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        await invoice_repo.delete({"id": invoice_id})
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("teacher_delete_invoice failed: %s", e)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+@router.get("/stats")
+async def teacher_invoice_stats(
+    current_teacher: dict = Depends(get_current_teacher),
+):
+    try:
+        all_invoices = await invoice_repo.select({"teacher_id": current_teacher["id"]})
+        total = len(all_invoices)
+        paid = sum(1 for i in all_invoices if i.get("status") == "paid")
+        pending = sum(1 for i in all_invoices if i.get("status") == "pending")
+        rejected = sum(1 for i in all_invoices if i.get("status") == "rejected")
+        total_amount = sum(float(i.get("amount", 0)) for i in all_invoices if i.get("status") == "paid")
+        return {
+            "total": total,
+            "paid": paid,
+            "pending": pending,
+            "rejected": rejected,
+            "total_amount": total_amount,
+        }
+    except Exception as e:
+        logger.error("teacher_invoice_stats failed: %s", e)
+        return {"total": 0, "paid": 0, "pending": 0, "rejected": 0, "total_amount": 0}
