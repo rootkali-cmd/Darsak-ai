@@ -24,7 +24,7 @@ const apps = [
     d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي، وفصل ذكي بالذكاء الاصطناعي',
     v: 'v1.8.0',
     s: '71 MB',
-    f: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/student-v1.8.0-universal.apk',
+    f: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/app-release.apk',
     n: 'DarsakAI-Student-v1.8.0.apk',
     color: 'white',
     icon: (

@@ -102,7 +102,7 @@ CHANNELS: dict[str, dict[str, dict]] = {
                 "Performance and stability improvements",
                 "Fixed installation issues",
             ],
-            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/student-v1.8.0-universal.apk",
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/app-release.apk",
             "size_mb": 71,
             "release_date": "2026-07-04",
         },

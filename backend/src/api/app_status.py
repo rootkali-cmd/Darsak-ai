@@ -11,7 +11,7 @@ _config_repo = SupabaseRepository("admin_config")
 
 LATEST_VERSION_STUDENT = "1.8.0"
 LATEST_VERSION_TEACHER = "2.5.3"
-UPDATE_URL_STUDENT = "https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/student-v1.8.0-universal.apk"
+UPDATE_URL_STUDENT = "https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/app-release.apk"
 UPDATE_URL_TEACHER = "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/app-release.apk"
 
 
