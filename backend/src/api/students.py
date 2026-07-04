@@ -208,7 +208,7 @@ async def create_student(
     return StudentResponse(**student)
 
 
-@router.get("/", response_model=list[StudentResponse])
+@router.get("", response_model=list[StudentResponse])
 async def list_students(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),

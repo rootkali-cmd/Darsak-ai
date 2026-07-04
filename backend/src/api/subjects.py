@@ -4,7 +4,7 @@ from src.utils.dependencies import get_current_teacher
 router = APIRouter(prefix="/subjects", tags=["Subjects"])
 
 
-@router.get("/")
+@router.get("")
 async def get_my_subjects(current_user: dict = Depends(get_current_teacher)):
     subjects = current_user.get("subjects") or []
     return {"subjects": subjects}

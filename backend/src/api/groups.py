@@ -10,7 +10,7 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
 async def create_group(
     group_data: GroupCreate,
     request: Request,
@@ -60,7 +60,7 @@ async def _add_student_count(groups: list[dict], teacher_id: str) -> list[dict]:
     return groups
 
 
-@router.get("/", response_model=list[GroupResponse])
+@router.get("", response_model=list[GroupResponse])
 async def list_groups(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),

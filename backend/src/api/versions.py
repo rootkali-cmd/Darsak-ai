@@ -79,7 +79,7 @@ CHANNELS: dict[str, dict[str, dict]] = {
                 "Fixed exam not linking to lesson",
                 "Improved course exam questions UI",
             ],
-            "download_url": "https://darsak-backend.fly.dev/api/downloads/teacher-v2.5.3.apk",
+            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/teacher-v2.5.3.apk",
             "size_mb": 38,
             "release_date": "2026-07-03",
         },

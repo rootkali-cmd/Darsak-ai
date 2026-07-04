@@ -13,7 +13,7 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.post("/", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
 async def mark_attendance(
     attendance_data: AttendanceCreate,
     request: Request,
@@ -113,7 +113,7 @@ async def mark_bulk_attendance(
     return results
 
 
-@router.get("/", response_model=list[AttendanceResponse])
+@router.get("", response_model=list[AttendanceResponse])
 async def get_attendance(
     student_id: str | None = None,
     group_id: str | None = None,

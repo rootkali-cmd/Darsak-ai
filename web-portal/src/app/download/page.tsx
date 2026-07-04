@@ -9,7 +9,7 @@ const apps = [
     d: 'إدارة الطلاب، الامتحانات، الكورسات، الحضور، الفواتير، والتقارير الذكية',
     v: 'v2.5.3',
     s: '38 MB',
-    f: 'teacher-v2.5.3.apk',
+    f: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/teacher-v2.5.3.apk',
     n: 'DarsakAI-Teacher-v2.5.3.apk',
     color: 'white',
     icon: (

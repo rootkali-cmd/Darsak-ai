@@ -39,7 +39,7 @@ def _to_response(lesson: dict) -> dict:
     }
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_lesson(
     lesson_data: LessonCreate,
     current_user: dict = Depends(get_current_teacher),
@@ -67,7 +67,7 @@ async def create_lesson(
         raise HTTPException(status_code=500, detail=f"Failed to create lesson: {str(exc)}")
 
 
-@router.get("/")
+@router.get("")
 async def list_lessons(
     group_id: str | None = None,
     is_published: bool | None = None,

@@ -55,7 +55,7 @@ async def _enrich_grades(grades: list[dict]) -> list[GradeResponse]:
     return result
 
 
-@router.post("/", response_model=GradeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=GradeResponse, status_code=status.HTTP_201_CREATED)
 async def create_grade(
     grade_data: GradeCreate,
     request: Request,
@@ -134,7 +134,7 @@ async def bulk_upload_grades(
     return results
 
 
-@router.get("/", response_model=list[GradeResponse])
+@router.get("", response_model=list[GradeResponse])
 async def list_grades(
     student_id: str | None = None,
     subject: str | None = None,

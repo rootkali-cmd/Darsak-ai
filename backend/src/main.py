@@ -1168,6 +1168,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None,
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 # ── CORS ──
