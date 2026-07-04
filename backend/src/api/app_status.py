@@ -9,9 +9,9 @@ router = APIRouter(tags=["App Status"])
 
 _config_repo = SupabaseRepository("admin_config")
 
-LATEST_VERSION_STUDENT = "1.7.4"
+LATEST_VERSION_STUDENT = "1.8.0"
 LATEST_VERSION_TEACHER = "2.5.3"
-UPDATE_URL_STUDENT = "https://darsak-backend.fly.dev/api/downloads/student-v1.7.4.apk"
+UPDATE_URL_STUDENT = "https://darsak-backend.fly.dev/api/downloads/student-v1.8.0-universal.apk"
 UPDATE_URL_TEACHER = "https://darsak-backend.fly.dev/api/downloads/teacher-v2.5.3.apk"
 
 

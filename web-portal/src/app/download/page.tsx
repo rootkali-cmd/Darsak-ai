@@ -23,8 +23,8 @@ const apps = [
     t: 'تطبيق الطلاب',
     d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي، وفصل ذكي بالذكاء الاصطناعي',
     v: 'v1.8.0',
-    s: '37 MB',
-    f: 'student-v1.8.0.apk',
+    s: '71 MB',
+    f: 'student-v1.8.0-universal.apk',
     n: 'DarsakAI-Student-v1.8.0.apk',
     color: 'white',
     icon: (
