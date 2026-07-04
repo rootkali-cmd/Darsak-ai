@@ -129,6 +129,10 @@ class ApiService {
     ));
   }
 
+  Future<String?> getStoredToken() async {
+    return await _storage.read(key: AppConstants.storageKeyToken);
+  }
+
   Future<Map<String, dynamic>> verifyTeacher(String teacherCode) async {
     final response = await _dio.post('/students/verify-teacher', data: {
       'teacher_code': teacherCode,
@@ -265,5 +269,165 @@ class ApiService {
 
   Future<void> markNotificationRead(String notificationId) async {
     await _dio.post('/students/me/notifications/$notificationId/read');
+  }
+
+  // ── Courses (Student view) ──
+  Future<List<dynamic>> getAvailableCourses() async {
+    final res = await _dio.get('/courses/available');
+    if (res.data is Map && res.data['items'] is List) {
+      return res.data['items'] as List;
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> getCourseDetail(String courseId) async {
+    final res = await _dio.get('/courses/student/$courseId');
+    if (res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    return <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getLesson(String courseId, String lessonId) async {
+    final res = await _dio.get('/courses/student/$courseId/lessons/$lessonId');
+    if (res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    return <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> purchaseCourse(String courseId) async {
+    final res = await _dio.post('/courses/student/$courseId/purchase');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> checkCourseAccess(String courseId) async {
+    final res = await _dio.get('/courses/student/$courseId/access');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<List<dynamic>> getEnrolledCourses() async {
+    final res = await _dio.get('/courses/student/enrolled/list');
+    if (res.data is Map && res.data['items'] is List) {
+      return res.data['items'] as List;
+    }
+    return [];
+  }
+
+  // ── Support Links ──
+  Future<List<dynamic>> getTeacherSupportLinks(String teacherId) async {
+    final res = await _dio.get('/support-links/teacher/$teacherId');
+    return res.data is List ? res.data as List : [];
+  }
+
+  Future<void> registerOnlineStudent(Map<String, dynamic> data) async {
+    await _dio.post('/admission/register-online', data: data);
+  }
+
+  // ── Telegram Deep Link ──
+  Future<String?> getTelegramLink() async {
+    try {
+      final res = await _dio.get('/students/me/telegram-link');
+      return res.data['link'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Wallet ──
+  Future<Map<String, dynamic>> getWallet() async {
+    final res = await _dio.get('/students/me/wallet');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<List<dynamic>> getWalletTransactions({int limit = 50, int offset = 0}) async {
+    final res = await _dio.get('/students/me/transactions', queryParameters: {'limit': limit, 'offset': offset});
+    if (res.data is Map && res.data['items'] is List) {
+      return res.data['items'] as List;
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> depositRequest({
+    required double amount,
+    required String senderPhone,
+    required String method,
+  }) async {
+    final res = await _dio.post('/students/me/deposit-request', data: {
+      'amount': amount,
+      'sender_phone': senderPhone,
+      'method': method,
+    });
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> depositRequestWithScreenshot({
+    required double amount,
+    required String senderPhone,
+    required String method,
+    required String filePath,
+  }) async {
+    final formData = FormData.fromMap({
+      'amount': amount,
+      'sender_phone': senderPhone,
+      'method': method,
+      'screenshot': await MultipartFile.fromFile(filePath),
+    });
+    final res = await _dio.post('/students/me/deposit-request-with-screenshot', data: formData);
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getPaymentConfig() async {
+    final res = await _dio.get('/students/me/payment-config');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getAppStatus() async {
+    final res = await _dio.get('/app-status');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getLessonProgress(String lessonId) async {
+    final res = await _dio.get('/lessons/$lessonId/progress');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<void> saveLessonProgress(String lessonId, double positionSeconds) async {
+    await _dio.post('/lessons/$lessonId/progress', data: {
+      'position_seconds': positionSeconds,
+    });
+  }
+
+  // ── AI Classroom ──
+  Future<Map<String, dynamic>> startAiLesson({
+    String? classroomUrl,
+    required String title,
+  }) async {
+    final data = <String, dynamic>{'title': title};
+    if (classroomUrl != null) data['classroom_url'] = classroomUrl;
+    final res = await _dio.post('/students/me/ai-classroom/start', data: data);
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> aiLessonHeartbeat(String sessionId) async {
+    final res = await _dio.post('/students/me/ai-classroom/session/$sessionId/heartbeat');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> endAiLesson(String sessionId) async {
+    final res = await _dio.post('/students/me/ai-classroom/session/$sessionId/end');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getAiLessonSessions({int limit = 20, int offset = 0}) async {
+    final res = await _dio.get('/students/me/ai-classroom/sessions', queryParameters: {
+      'limit': limit, 'offset': offset,
+    });
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getAiClassroomConfig() async {
+    final res = await _dio.get('/students/me/ai-classroom/config');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
   }
 }

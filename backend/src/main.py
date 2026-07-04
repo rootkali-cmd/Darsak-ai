@@ -3,9 +3,10 @@ import time
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from src.utils.dependencies import get_current_teacher
 
 import sentry_sdk
 import re
@@ -97,6 +98,8 @@ from src.api import (
     teacher_contacts_router,
     app_status_router,
     fcm_router,
+    error_reporter_router,
+    ai_classroom_router,
 )
 from src.modules.admission.routes import router as admission_router
 from src.modules.wallet.routes import router as wallet_router
@@ -353,8 +356,8 @@ async def _run_schema_migrations():
         """INSERT INTO subscription_plans (name, description, price_egp, price_monthly, price_yearly, max_students, max_assistants, ai_requests_per_day, max_ai_exams_per_month, max_ai_grading_per_month, storage_limit_gb, features_json, sort_order)
          VALUES
             ('Basic', 'ظبط مجموعتك', 350.00, 350.00, 3000.00, 100, 0, 5, 5, 100, 15, '["حضور وغياب QR","درجات الطلاب","تقارير بسيطة","5 اختبارات AI شهرياً","100 تصحيح AI شهرياً","15GB تخزين","دعم فني"]'::jsonb, 1),
-            ('Pro', 'إدارة السنتر الذكية', 750.00, 750.00, 7200.00, 400, 2, 10, 15, 500, 60, '["كل ميزات Basic","كورسات مشتركة","15 اختبار AI شهرياً","500 تصحيح AI شهرياً","60GB تخزين","2 مساعدين","تقارير AI","دعم فني سريع"]'::jsonb, 2),
-            ('Premium', 'نظام السعر المرن', 1400.00, 1400.00, 13500.00, 1000, 5, 20, 20, 2000, 200, '["كل ميزات Pro","تحضير اختبارات AI","20 اختبار AI شهرياً","2000 تصحيح AI شهرياً","200GB تخزين","5 مساعدين","دعم VIP"]'::jsonb, 3),
+            ('Pro', 'إدارة السنتر الذكية', 750.00, 750.00, 7800.00, 400, 2, 10, 15, 500, 60, '["كل ميزات Basic","كورسات مشتركة","15 اختبار AI شهرياً","500 تصحيح AI شهرياً","60GB تخزين","2 مساعدين","تقارير AI","دعم فني سريع"]'::jsonb, 2),
+            ('Premium', 'نظام السعر المرن', 1400.00, 1250.00, 13500.00, 1000, 5, 20, 20, 2000, 200, '["كل ميزات Pro","تحضير اختبارات AI","20 اختبار AI شهرياً","2000 تصحيح AI شهرياً","200GB تخزين","5 مساعدين","دعم VIP"]'::jsonb, 3),
             ('Golden', 'الباقة الذهبية', 20000.00, 20000.00, 80000.00, 40000, 25, 20, 20, 25000, 2000, '["كل ميزات Premium","40,000 طالب","25 مساعد","25,000 تصحيح AI شهرياً","2TB تخزين","دعم VIP مخصص","الدفع عبر إنستاباي فقط"]'::jsonb, 4)
          ON CONFLICT (name) DO UPDATE SET
             price_egp = EXCLUDED.price_egp,
@@ -382,8 +385,8 @@ async def _run_schema_migrations():
          WHERE NOT EXISTS (SELECT 1 FROM instapay_config WHERE is_active = TRUE);""",
         "UPDATE instapay_config SET barcode_url='https://api.darsak-backend.fly.dev/api/instapay-barcode' WHERE barcode_url IS NULL;",
         """UPDATE subscription_plans SET price_monthly=350, price_yearly=3000, max_students=100, max_assistants=0, ai_requests_per_day=5, max_ai_exams_per_month=5, max_ai_grading_per_month=100, storage_limit_gb=15, features_json='["حضور وغياب QR","درجات الطلاب","تقارير بسيطة","5 اختبارات AI شهرياً","100 تصحيح AI شهرياً","15GB تخزين","دعم فني"]'::jsonb, sort_order=1 WHERE name='Basic';""",
-        """UPDATE subscription_plans SET price_monthly=750, price_yearly=7200, max_students=400, max_assistants=2, ai_requests_per_day=10, max_ai_exams_per_month=15, max_ai_grading_per_month=500, storage_limit_gb=60, features_json='["كل ميزات Basic","كورسات مشتركة","15 اختبار AI شهرياً","500 تصحيح AI شهرياً","60GB تخزين","2 مساعدين","تقارير AI","دعم فني سريع"]'::jsonb, sort_order=2 WHERE name='Pro';""",
-        """UPDATE subscription_plans SET price_monthly=1400, price_yearly=13500, max_students=1000, max_assistants=5, ai_requests_per_day=20, max_ai_exams_per_month=20, max_ai_grading_per_month=2000, storage_limit_gb=200, features_json='["كل ميزات Pro","تحضير اختبارات AI","20 اختبار AI شهرياً","2000 تصحيح AI شهرياً","200GB تخزين","5 مساعدين","دعم VIP"]'::jsonb, sort_order=3 WHERE name='Premium';""",
+        """UPDATE subscription_plans SET price_monthly=750, price_yearly=7800, max_students=400, max_assistants=2, ai_requests_per_day=10, max_ai_exams_per_month=15, max_ai_grading_per_month=500, storage_limit_gb=60, features_json='["كل ميزات Basic","كورسات مشتركة","15 اختبار AI شهرياً","500 تصحيح AI شهرياً","60GB تخزين","2 مساعدين","تقارير AI","دعم فني سريع"]'::jsonb, sort_order=2 WHERE name='Pro';""",
+        """UPDATE subscription_plans SET price_monthly=1250, price_yearly=13500, max_students=1000, max_assistants=5, ai_requests_per_day=20, max_ai_exams_per_month=20, max_ai_grading_per_month=2000, storage_limit_gb=200, features_json='["كل ميزات Pro","تحضير اختبارات AI","20 اختبار AI شهرياً","2000 تصحيح AI شهرياً","200GB تخزين","5 مساعدين","دعم VIP"]'::jsonb, sort_order=3 WHERE name='Premium';""",
         """UPDATE subscription_plans SET price_monthly=20000, price_yearly=80000, max_students=40000, max_assistants=25, ai_requests_per_day=20, max_ai_exams_per_month=20, max_ai_grading_per_month=25000, storage_limit_gb=2000, features_json='["كل ميزات Premium","40,000 طالب","25 مساعد","25,000 تصحيح AI شهرياً","2TB تخزين","دعم VIP مخصص","الدفع عبر إنستاباي فقط"]'::jsonb, sort_order=4 WHERE name='Golden';""",
         "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) CHECK (payment_method IN ('vodafone_cash', 'instapay', 'cash'));",
         "ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS screenshot_url TEXT;",
@@ -825,6 +828,55 @@ async def _run_schema_migrations():
         );""",
         "CREATE INDEX IF NOT EXISTS idx_shared_lectures_course ON shared_lectures(course_id);",
         "CREATE INDEX IF NOT EXISTS idx_shared_lectures_teacher ON shared_lectures(teacher_id);",
+        # ─── Phase 14: Video progress tracking ─────────────────────────
+        """CREATE TABLE IF NOT EXISTS video_progress (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+            position_seconds FLOAT DEFAULT 0,
+            duration_seconds FLOAT,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            UNIQUE(student_id, lesson_id)
+        );""",
+        # ─── Phase 16: teacher_media table ─────────────────────────────
+        """CREATE TABLE IF NOT EXISTS teacher_media (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
+            file_key TEXT,
+            file_size_bytes BIGINT DEFAULT 0,
+            mime_type TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_teacher_media_teacher ON teacher_media(teacher_id);",
+        # ─── Phase 17: AI Classroom sessions ────────────────────────────
+        """CREATE TABLE IF NOT EXISTS ai_lesson_sessions (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            classroom_url TEXT NOT NULL,
+            title VARCHAR(255) DEFAULT 'درس AI',
+            rate_per_minute DECIMAL(6,2) DEFAULT 0.42,
+            min_balance DECIMAL(10,2) DEFAULT 10.00,
+            started_at TIMESTAMPTZ DEFAULT NOW(),
+            ended_at TIMESTAMPTZ,
+            duration_seconds INT DEFAULT 0,
+            cost DECIMAL(10,2) DEFAULT 0,
+            balance_before DECIMAL(12,2),
+            balance_after DECIMAL(12,2),
+            status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'force_ended')),
+            heartbeat_at TIMESTAMPTZ DEFAULT NOW(),
+            warning_sent_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_ai_sessions_student ON ai_lesson_sessions(student_id, created_at DESC);",
+        """DO $$
+        BEGIN
+            ALTER TABLE student_transactions DROP CONSTRAINT IF EXISTS student_transactions_transaction_type_check;
+        EXCEPTION WHEN others THEN NULL;
+        END $$;""",
+        """ALTER TABLE student_transactions ADD CONSTRAINT student_transactions_transaction_type_check
+            CHECK (transaction_type IN ('deposit', 'purchase', 'refund', 'lesson_consumption'));""",
     ]
 
     try:
@@ -861,6 +913,25 @@ async def _run_schema_migrations():
                 logger.warning("Migration [%d] failed: %s", i, str(e)[:200])
                 skipped += 1
 
+        # ─── Phase 18: AI classroom chat_token column ───────────────────
+        for sql in [
+            "ALTER TABLE ai_lesson_sessions ADD COLUMN IF NOT EXISTS chat_token VARCHAR(64);",
+            "CREATE INDEX IF NOT EXISTS idx_ai_sessions_chat_token ON ai_lesson_sessions(chat_token) WHERE chat_token IS NOT NULL;",
+        ]:
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as http:
+                    resp = await http.post(
+                        f"{url}/rest/v1/rpc/exec_sql",
+                        json={"query": sql.strip()},
+                        headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    )
+                if resp.status_code == 200:
+                    created += 1
+                else:
+                    skipped += 1
+            except Exception:
+                skipped += 1
+
         # Ensure Premium plan exists
         try:
             client2 = await get_supabase()
@@ -871,9 +942,9 @@ async def _run_schema_migrations():
                     "name": "Premium",
                     "description": "نظام السعر المرن",
                     "price_egp": 1400.00,
-                    "price_monthly": 1400.00,
+                    "price_monthly": 1100.00,
                     "price_yearly": 13500.00,
-                    "max_students": 1000,
+                    "max_students": 5000,
                     "max_assistants": 5,
                     "ai_requests_per_day": 20,
                     "max_ai_exams_per_month": 20,
@@ -907,6 +978,20 @@ async def _run_schema_migrations():
 
         logger.info("Schema migration done: %d created, %d skipped", created, skipped)
 
+        # Ensure Supabase storage bucket exists for course images
+        try:
+            client3 = await get_supabase()
+            try:
+                client3.storage.create_bucket("darsak-media", {"public": True})
+                logger.info("Created Supabase storage bucket: darsak-media")
+            except Exception as be:
+                if "already exists" in str(be).lower() or "duplicate" in str(be).lower():
+                    logger.info("Supabase storage bucket darsak-media already exists")
+                else:
+                    logger.warning("Storage bucket creation: %s", str(be)[:200])
+        except Exception as sbe:
+            logger.warning("Could not ensure storage bucket: %s", sbe)
+
         # Initialize admin password hash
         if settings.ADMIN_PASSWORD:
             from src.core.security.auth import hash_password as _hash_admin_pw
@@ -930,11 +1015,30 @@ async def _ensure_plans():
         
         PLANS = [
             {"name": "Basic", "price_egp": 350.00, "price_monthly": 350.00, "price_yearly": 3000.00, "max_students": 100, "max_assistants": 0, "ai_requests_per_day": 5, "max_ai_exams_per_month": 5, "max_ai_grading_per_month": 100, "storage_limit_gb": 15, "sort_order": 1, "features_json": ["حضور وغياب QR", "درجات الطلاب", "تقارير بسيطة", "5 اختبارات AI شهرياً", "100 تصحيح AI شهرياً", "15GB تخزين", "دعم فني"]},
-            {"name": "Pro", "price_egp": 750.00, "price_monthly": 750.00, "price_yearly": 7200.00, "max_students": 400, "max_assistants": 2, "ai_requests_per_day": 10, "max_ai_exams_per_month": 15, "max_ai_grading_per_month": 500, "storage_limit_gb": 60, "sort_order": 2, "features_json": ["كل ميزات Basic", "كورسات مشتركة", "15 اختبار AI شهرياً", "500 تصحيح AI شهرياً", "60GB تخزين", "2 مساعدين", "تقارير AI", "دعم فني سريع"]},
-            {"name": "Premium", "price_egp": 1400.00, "price_monthly": 1400.00, "price_yearly": 13500.00, "max_students": 1000, "max_assistants": 5, "ai_requests_per_day": 20, "max_ai_exams_per_month": 20, "max_ai_grading_per_month": 2000, "storage_limit_gb": 200, "sort_order": 3, "features_json": ["كل ميزات Pro", "تحضير اختبارات AI", "20 اختبار AI شهرياً", "2000 تصحيح AI شهرياً", "200GB تخزين", "5 مساعدين", "دعم VIP"]},
+            {"name": "Pro", "price_egp": 750.00, "price_monthly": 750.00, "price_yearly": 7800.00, "max_students": 400, "max_assistants": 2, "ai_requests_per_day": 10, "max_ai_exams_per_month": 15, "max_ai_grading_per_month": 500, "storage_limit_gb": 60, "sort_order": 2, "features_json": ["كل ميزات Basic", "كورسات مشتركة", "15 اختبار AI شهرياً", "500 تصحيح AI شهرياً", "60GB تخزين", "2 مساعدين", "تقارير AI", "دعم فني سريع"]},
+            {"name": "Premium", "price_egp": 1400.00, "price_monthly": 1250.00, "price_yearly": 13500.00, "max_students": 1000, "max_assistants": 5, "ai_requests_per_day": 20, "max_ai_exams_per_month": 20, "max_ai_grading_per_month": 2000, "storage_limit_gb": 200, "sort_order": 3, "features_json": ["كل ميزات Pro", "تحضير اختبارات AI", "20 اختبار AI شهرياً", "2000 تصحيح AI شهرياً", "200GB تخزين", "5 مساعدين", "دعم VIP"]},
             {"name": "Golden", "price_egp": 20000.00, "price_monthly": 20000.00, "price_yearly": 80000.00, "max_students": 40000, "max_assistants": 25, "ai_requests_per_day": 20, "max_ai_exams_per_month": 20, "max_ai_grading_per_month": 25000, "storage_limit_gb": 2000, "sort_order": 4, "features_json": ["كل ميزات Premium", "40,000 طالب", "25 مساعد", "25,000 تصحيح AI شهرياً", "2TB تخزين", "دعم VIP مخصص", "الدفع عبر إنستاباي فقط"]},
-        ]
-        
+        # ─── Phase 15: Fix is_active NULL values — backfill + NOT NULL ─────
+        """DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM students WHERE is_active IS NULL) THEN
+                UPDATE students SET is_active = TRUE WHERE is_active IS NULL;
+            END IF;
+        END $$;""",
+        """DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name='students' AND column_name='is_active' AND is_nullable='YES'
+            ) THEN
+                ALTER TABLE students ALTER COLUMN is_active SET NOT NULL;
+            END IF;
+        END $$;""",
+
+        # ─── Phase 17: course_lessons exam_id column ─────────────────────
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS exam_id UUID REFERENCES exams(id) ON DELETE SET NULL;",
+    ]
+
         existing = await client.table("subscription_plans").select("name,id").execute()
         existing_names = {p["name"] for p in (existing.data or [])}
         
@@ -1294,21 +1398,11 @@ async def deep_health(request: Request):
 
 
 @app.get("/api/teacher/storage-usage")
-async def teacher_storage_usage():
-    from fastapi import Depends as _Depends
-    from src.utils.dependencies import get_current_teacher
+async def teacher_storage_usage(
+    current_user: dict = Depends(get_current_teacher),
+):
     from src.modules.storage.routes import _compute_storage_usage
-
-    async def _get_teacher() -> dict:
-        from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-        from fastapi import Request as _Request
-        import inspect
-
-    @app.get("/api/teacher/storage-usage")
-    async def teacher_storage_usage_route(
-        current_user: dict = Depends(get_current_teacher),
-    ):
-        return await _compute_storage_usage(current_user["id"])
+    return await _compute_storage_usage(current_user["id"])
 
 
 # ── Router Registration ──
@@ -1329,9 +1423,8 @@ app.include_router(exams_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(audit_router, prefix=settings.API_V1_PREFIX)
 app.include_router(dashboard_router, prefix=settings.API_V1_PREFIX)
+app.include_router(lessons_router, prefix=settings.API_V1_PREFIX)
 # ─── DISABLED FOR OFFLINE-FIRST LAUNCH ───────────────────────────────
-# FUTURE ROADMAP: Video/Live Streaming features - will be re-enabled for online mode
-# app.include_router(lessons_router, prefix=settings.API_V1_PREFIX)
 # app.include_router(video_analytics_router, prefix=settings.API_V1_PREFIX)
 # app.include_router(whatsapp_router, prefix=settings.API_V1_PREFIX)
 # app.include_router(quiz_router, prefix=settings.API_V1_PREFIX)
@@ -1350,3 +1443,5 @@ app.include_router(courses_router, prefix=settings.API_V1_PREFIX)
 app.include_router(teacher_contacts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(app_status_router, prefix=settings.API_V1_PREFIX)
 app.include_router(fcm_router, prefix=settings.API_V1_PREFIX)
+app.include_router(error_reporter_router, prefix=settings.API_V1_PREFIX)
+app.include_router(ai_classroom_router, prefix=settings.API_V1_PREFIX)
