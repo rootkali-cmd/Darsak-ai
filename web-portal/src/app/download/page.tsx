@@ -24,7 +24,7 @@ const apps = [
     d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي، وفصل ذكي بالذكاء الاصطناعي',
     v: 'v1.8.0',
     s: '71 MB',
-    f: 'student-v1.8.0-universal.apk',
+    f: 'https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/student-v1.8.0-universal.apk',
     n: 'DarsakAI-Student-v1.8.0.apk',
     color: 'white',
     icon: (
@@ -62,7 +62,7 @@ export default function DownloadPage() {
                 <span className="px-2 py-0.5 bg-white/5 rounded">Android</span>
                 <span>•</span><span>{app.v}</span><span>•</span><span>{app.s}</span>
               </div>
-              <a href={`https://darsak-backend.fly.dev/api/downloads/${app.f}`} download={app.n} className="w-full py-3 px-6 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors text-sm cursor-pointer">
+              <a href={app.f.startsWith('http') ? app.f : `https://darsak-backend.fly.dev/api/downloads/${app.f}`} download={app.n} className="w-full py-3 px-6 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors text-sm cursor-pointer">
                 تحميل APK
               </a>
             </div>
