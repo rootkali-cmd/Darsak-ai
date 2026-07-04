@@ -102,3 +102,28 @@ async def get_current_student(
     if not student.get("is_active", True):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account deactivated")
     return student
+
+
+optional_security = HTTPBearer(auto_error=False)
+
+async def get_current_student_optional(
+    credentials: HTTPAuthorizationCredentials = Depends(optional_security),
+) -> dict | None:
+    if not credentials:
+        return None
+    token = credentials.credentials
+    token_data = decode_token(token)
+    if token_data is None:
+        return None
+    student_id = token_data.get("sub")
+    if not student_id:
+        return None
+    cache_key = f"student:{student_id}"
+    student = await student_cache.get(cache_key)
+    if student is None:
+        student = await student_service.get_by_id(student_id)
+        if student:
+            await student_cache.set(cache_key, student)
+    if not student or not student.get("is_active", True):
+        return None
+    return student

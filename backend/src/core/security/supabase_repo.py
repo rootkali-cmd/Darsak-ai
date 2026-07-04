@@ -12,9 +12,9 @@ from src.infrastructure.circuit_breaker import supabase_breaker
 logger = logging.getLogger("darsak")
 settings = get_settings()
 
-SUPABASE_TIMEOUT = 30.0
-SUPABASE_MAX_RETRIES = 3
-SUPABASE_INITIAL_BACKOFF = 1.0
+SUPABASE_TIMEOUT = 10.0
+SUPABASE_MAX_RETRIES = 2
+SUPABASE_INITIAL_BACKOFF = 0.5
 SUPABASE_POOL_SIZE = 5
 SUPABASE_MAX_OVERFLOW = 10
 
@@ -55,6 +55,8 @@ async def get_supabase() -> AsyncClient:
 
 async def _execute_with_retry(coro_factory, description: str = "Supabase operation"):
     """Execute Supabase operation with retry, timeout, and circuit breaker."""
+    from src.infrastructure.circuit_breaker import CircuitBreakerOpenError
+    
     async def attempt():
         coro = coro_factory()
         return await asyncio.wait_for(coro, timeout=SUPABASE_TIMEOUT)
@@ -63,6 +65,12 @@ async def _execute_with_retry(coro_factory, description: str = "Supabase operati
     for attempt_num in range(SUPABASE_MAX_RETRIES + 1):
         try:
             return await supabase_breaker.call(attempt, f"{description} (attempt {attempt_num + 1})")
+        except CircuitBreakerOpenError:
+            logger.warning("Supabase circuit breaker OPEN for '%s' (state=%s)", description, supabase_breaker.state)
+            if attempt_num < SUPABASE_MAX_RETRIES:
+                await asyncio.sleep(SUPABASE_INITIAL_BACKOFF)
+            else:
+                raise
         except Exception as e:
             last_error = e
             if attempt_num < SUPABASE_MAX_RETRIES:
@@ -222,3 +230,11 @@ class SupabaseRepository:
             f"count {self.table_name}",
         )
         return result.count or 0
+
+    async def upsert(self, data: dict, on_conflict: str = "id") -> dict:
+        client = await self._get_client()
+        result = await _execute_with_retry(
+            lambda: client.table(self.table_name).upsert(data, on_conflict=on_conflict).execute(),
+            f"upsert {self.table_name}",
+        )
+        return result.data[0] if result.data else {}

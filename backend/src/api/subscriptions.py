@@ -26,14 +26,18 @@ logger = logging.getLogger("darsak")
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
-def _get_limit(name: str, basic: int, pro: int, unlimited: int):
-    if "premium" in name or "متكاملة" in name: return -1
-    if "pro" in name or "احترافية" in name: return pro
+def _get_limit(name: str, basic: int, pro: int, premium: int):
+    name_lower = name.lower()
+    if "golden" in name_lower or "ذهبي" in name_lower: return 40000
+    if "premium" in name_lower or "متكاملة" in name_lower: return premium
+    if "pro" in name_lower or "احترافية" in name_lower: return pro
     return basic
 
-def _get_limit_gb(name: str, basic: int, pro: int, unlimited: int):
-    if "premium" in name or "متكاملة" in name: return -1
-    if "pro" in name or "احترافية" in name: return pro
+def _get_limit_gb(name: str, basic: int, pro: int, premium: int):
+    name_lower = name.lower()
+    if "golden" in name_lower or "ذهبي" in name_lower: return 2000
+    if "premium" in name_lower or "متكاملة" in name_lower: return premium
+    if "pro" in name_lower or "احترافية" in name_lower: return pro
     return basic
 
 
@@ -45,30 +49,31 @@ def _get_features(plan: dict) -> list:
     if features:
         return features
     name = (plan.get("name") or "").lower()
-    if "pro" in name:
-        return ["6 اختبارات شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "دعم فني"]
-    if "premium" in name:
-        return ["15 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "تقارير AI", "دروس مشتركة", "تحضير اختبارات بالـ AI", "دعم فني أولوية"]
-    return ["2 اختبار شهرياً", "حضور وغياب", "درجات الطلاب", "دعم فني"]
+    if "golden" in name or "ذهبي" in name:
+        return ["كل ميزات Premium", "40,000 طالب", "25 مساعد", "25,000 تصحيح AI شهرياً", "2TB تخزين", "دعم VIP مخصص", "الدفع عبر إنستاباي فقط"]
+    if "pro" in name or "احترافية" in name:
+        return ["كل ميزات Basic", "كورسات مشتركة", "15 اختبار AI شهرياً", "500 تصحيح AI شهرياً", "60GB تخزين", "2 مساعدين", "تقارير AI", "دعم فني سريع"]
+    if "premium" in name or "متكاملة" in name:
+        return ["كل ميزات Pro", "تحضير اختبارات AI", "20 اختبار AI شهرياً", "2000 تصحيح AI شهرياً", "200GB تخزين", "5 مساعدين", "دعم VIP"]
+    return ["حضور وغياب QR", "درجات الطلاب", "تقارير بسيطة", "5 اختبارات AI شهرياً", "100 تصحيح AI شهرياً", "15GB تخزين", "دعم فني"]
 
 
 def _to_plan_response(plan: dict) -> dict:
-    name = (plan.get("name") or "").lower()
-    max_students = plan.get("max_students") or _get_limit(name, 2, 6, 15)
-    ai_requests = plan.get("max_ai_requests") or plan.get("ai_requests_per_month") or _get_limit(name, 5, 30, 100)
-    storage = plan.get("storage_limit_gb") or _get_limit_gb(name, 2, 6, 10)
-    # Normalize to -1 if unlimited
-    if max_students == -1:
-        max_students = -1
     return {
         "id": str(plan.get("id", "")),
         "name": plan.get("name", ""),
-        "price_egp": plan.get("price_egp", 0),
-        "max_students": max_students,
-        "ai_requests_per_month": ai_requests,
-        "storage_limit_gb": storage,
+        "description": plan.get("description", ""),
+        "price_monthly": plan.get("price_monthly", 0) or plan.get("price_egp", 0),
+        "price_yearly": plan.get("price_yearly", 0),
+        "max_students": plan.get("max_students", 100),
+        "max_assistants": plan.get("max_assistants", 0),
+        "ai_requests_per_day": plan.get("ai_requests_per_day", 5),
+        "max_ai_exams_per_month": plan.get("max_ai_exams_per_month", 5),
+        "max_ai_grading_per_month": plan.get("max_ai_grading_per_month", 100),
+        "storage_limit_gb": plan.get("storage_limit_gb", 2),
         "features": _get_features(plan),
         "is_active": plan.get("is_active", True),
+        "sort_order": plan.get("sort_order", 0),
     }
 
 
@@ -115,7 +120,7 @@ async def activate_trial(
             else:
                 raise HTTPException(status_code=400, detail="لديك اشتراك نشط بالفعل")
 
-        expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
 
         await teacher_subscription_service.create(
             teacher_id=current_user["id"],
@@ -125,7 +130,7 @@ async def activate_trial(
             is_trial=True,
         )
 
-        return {"success": True, "days_remaining": 30, "expires_at": expires_at}
+        return {"success": True, "days_remaining": 7, "expires_at": expires_at}
     except HTTPException:
         raise
     except Exception as exc:

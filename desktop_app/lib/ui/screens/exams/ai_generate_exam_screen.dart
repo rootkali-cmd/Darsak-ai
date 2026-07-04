@@ -301,6 +301,7 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
                     prefixIcon: const Icon(Icons.title, size: 20),
                   ),
                   textDirection: TextDirection.rtl,
+                  textCapitalization: TextCapitalization.characters,
                 ),
                 const SizedBox(height: 16),
                 Container(

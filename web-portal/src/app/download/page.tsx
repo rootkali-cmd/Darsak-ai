@@ -7,10 +7,10 @@ const apps = [
   {
     t: 'تطبيق المعلمين',
     d: 'إدارة الطلاب، الامتحانات، الكورسات، الحضور، الفواتير، والتقارير الذكية',
-    v: 'v2.5.1',
-    s: '36 MB',
-    f: 'teacher-v2.5.1.apk',
-    n: 'DarsakAI-Teacher-v2.5.1.apk',
+    v: 'v2.5.3',
+    s: '38 MB',
+    f: 'teacher-v2.5.3.apk',
+    n: 'DarsakAI-Teacher-v2.5.3.apk',
     color: 'white',
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -21,11 +21,11 @@ const apps = [
   },
   {
     t: 'تطبيق الطلاب',
-    d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي',
-    v: 'v1.7.4',
-    s: '36 MB',
-    f: 'student-v1.7.4.apk',
-    n: 'DarsakAI-Student-v1.7.4.apk',
+    d: 'متابعة الدرجات، الحضور، الاختبارات، الكورسات، ومدرس AI ذكي، وفصل ذكي بالذكاء الاصطناعي',
+    v: 'v1.8.0',
+    s: '37 MB',
+    f: 'student-v1.8.0.apk',
+    n: 'DarsakAI-Student-v1.8.0.apk',
     color: 'white',
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

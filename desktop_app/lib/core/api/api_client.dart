@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
 import '../services/debug_tracker.dart';
+import '../security/ssl_pinning.dart';
 
 final class ApiClient {
   late final Dio dio;
@@ -78,6 +79,9 @@ final class ApiClient {
         handler.next(error);
       },
     ));
+
+    SSLPinning.apply(dio);
+    SSLPinning.apply(_refreshDio);
   }
 
   static bool _isRetryable(DioException error) {
@@ -174,13 +178,10 @@ final class ApiClient {
         return await dio.fetch(error.requestOptions);
       }
     } on DioException catch (e) {
-      // Any refresh failure means the session is dead — clear everything
       await _clearTokens();
-      onUnauthorized?.call();
     } catch (e) {
       AppLogger.instance.error('token_refresh_failed', error: e);
       await _clearTokens();
-      onUnauthorized?.call();
     } finally {
       _isRefreshing = false;
       _refreshCompleter?.complete();

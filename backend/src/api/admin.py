@@ -100,8 +100,20 @@ async def admin_login(request: Request):
 
     if not settings.ADMIN_PASSWORD:
         raise HTTPException(status_code=500, detail="Admin password not configured")
-    if email != settings.ADMIN_EMAIL or password != settings.ADMIN_PASSWORD:
+    if email != settings.ADMIN_EMAIL:
         # Track failed attempt
+        count = await rate_limiter.increment(f"admin_login_fail:{client_ip}", ADMIN_LOGIN_WINDOW_SECONDS)
+        if count >= ADMIN_LOGIN_MAX_ATTEMPTS:
+            await rate_limiter.set_ban(f"admin_login:{client_ip}", ADMIN_LOGIN_BAN_SECONDS)
+            logger.warning("Admin login banned IP %s for %ds after %d failures", client_ip, ADMIN_LOGIN_BAN_SECONDS, count)
+        raise HTTPException(401, "Invalid credentials")
+
+    # Verify password against stored bcrypt hash
+    from src.core.security.supabase_repo import get_supabase
+    client = await get_supabase()
+    hash_resp = await client.table("admin_config").select("value").eq("key", "admin_password_hash").limit(1).execute()
+    stored_hash = (hash_resp.data[0]["value"]) if (hash_resp.data and len(hash_resp.data) > 0) else None
+    if not stored_hash or not verify_password(password, stored_hash):
         count = await rate_limiter.increment(f"admin_login_fail:{client_ip}", ADMIN_LOGIN_WINDOW_SECONDS)
         if count >= ADMIN_LOGIN_MAX_ATTEMPTS:
             await rate_limiter.set_ban(f"admin_login:{client_ip}", ADMIN_LOGIN_BAN_SECONDS)

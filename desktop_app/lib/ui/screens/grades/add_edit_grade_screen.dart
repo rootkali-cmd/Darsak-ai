@@ -276,6 +276,7 @@ class _AddEditGradeScreenState extends State<AddEditGradeScreen> {
                             prefixIcon: Icon(Icons.notes, size: 20),
                           ),
                           maxLines: 2,
+                          textCapitalization: TextCapitalization.characters,
                         ),
                         const SizedBox(height: 28),
                         SizedBox(

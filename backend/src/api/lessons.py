@@ -1,10 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
+from pydantic import BaseModel
 from src.utils.dependencies import get_current_teacher, get_current_student
 from src.schemas.lesson import LessonCreate, LessonUpdate, LessonResponse
 from src.services import lesson_service, group_service, user_service
+from src.core.security.supabase_repo import SupabaseRepository
 
 import logging
 logger = logging.getLogger("darsak.lessons")
+
+class VideoProgressUpdate(BaseModel):
+    position_seconds: float = 0.0
+    duration_seconds: float | None = None
 
 router = APIRouter(prefix="/lessons", tags=["Lessons"])
 
@@ -268,6 +274,17 @@ async def get_stream_url(
         if lesson.get("group_id") and str(lesson.get("group_id")) != str(group_id):
             raise HTTPException(status_code=403, detail="Access denied")
 
+        course_id = lesson.get("course_id")
+        if course_id:
+            from src.core.security.supabase_repo import SupabaseRepository
+            enrollments_repo = SupabaseRepository("student_course_enrollments")
+            enrollment = await enrollments_repo.select_one({
+                "student_id": current_student["id"],
+                "course_id": str(course_id),
+            })
+            if not enrollment:
+                raise HTTPException(status_code=403, detail="يجب شراء الكورس أولاً")
+
         file_id = lesson.get("tg_file_id")
         video_url = lesson.get("video_url")
 
@@ -291,6 +308,51 @@ async def get_stream_url(
     except Exception as exc:
         logger.error("Get stream URL failed for lesson %s: %s", lesson_id, exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed: {str(exc)}")
+
+
+@router.get("/{lesson_id}/progress")
+async def get_lesson_progress(
+    lesson_id: str,
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        repo = SupabaseRepository("video_progress")
+        record = await repo.select_one({
+            "student_id": current_student["id"],
+            "lesson_id": lesson_id,
+        })
+        if not record:
+            return {"position_seconds": 0.0, "duration_seconds": 0.0, "updated_at": None}
+        return {
+            "position_seconds": float(record.get("position_seconds", 0)),
+            "duration_seconds": float(record.get("duration_seconds", 0)),
+            "updated_at": str(record.get("updated_at")) if record.get("updated_at") else None,
+        }
+    except Exception as exc:
+        logger.error("Get lesson progress failed for lesson %s: %s", lesson_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+@router.post("/{lesson_id}/progress")
+async def save_lesson_progress(
+    lesson_id: str,
+    payload: VideoProgressUpdate,
+    current_student: dict = Depends(get_current_student),
+):
+    try:
+        repo = SupabaseRepository("video_progress")
+        update_data = {
+            "student_id": current_student["id"],
+            "lesson_id": lesson_id,
+            "position_seconds": payload.position_seconds,
+        }
+        if payload.duration_seconds is not None:
+            update_data["duration_seconds"] = payload.duration_seconds
+        await repo.upsert(update_data, on_conflict="student_id,lesson_id")
+        return {"ok": True}
+    except Exception as exc:
+        logger.error("Save lesson progress failed for lesson %s: %s", lesson_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="internal error")
 
 
 @router.post("/setup-channel")

@@ -34,7 +34,7 @@ final class ApiService {
 
   // ─── Students ───
   Future<List<dynamic>> getStudents({String? search}) =>
-      _client.getList('/students/', queryParameters: {'search': search});
+      _client.getList('/students/', queryParameters: {'search': search, 'limit': 500});
 
   Future<Map<String, dynamic>> getStudent(String id) => _client.get('/students/$id');
 
@@ -93,7 +93,7 @@ final class ApiService {
 
   // ─── Grades ───
   Future<List<dynamic>> getGrades({String? studentId}) =>
-      _client.getList('/grades/', queryParameters: {'student_id': studentId});
+      _client.getList('/grades/', queryParameters: {'student_id': studentId, 'limit': 500});
 
   Future<Map<String, dynamic>> createGrade(Map<String, dynamic> data) =>
       _client.post('/grades/', data: data);
@@ -134,7 +134,7 @@ final class ApiService {
       _client.get('/qr/generate/$teacherId');
 
   // ─── Exams ───
-  Future<List<dynamic>> getExams() => _client.getList('/exams');
+  Future<List<dynamic>> getExams() => _client.getList('/exams', queryParameters: {'limit': 200});
 
   Future<Map<String, dynamic>> createExam(String title, int durationMinutes,
           {String? description, int? totalQuestions, int? essayQuestions}) =>
@@ -297,4 +297,77 @@ final class ApiService {
 
   Future<List<dynamic>> getList(String path, {Map<String, dynamic>? queryParameters}) =>
       _client.getList(path, queryParameters: queryParameters);
+
+  // ── Wallet ──
+  Future<Map<String, dynamic>> getWallet() => _client.get('/wallet');
+  Future<Map<String, dynamic>> requestPayout(double amount, String method, String phone) =>
+      _client.post('/wallet/payout-request', data: {'amount': amount, 'payout_method': method, 'payout_phone': phone});
+  Future<Map<String, dynamic>> getPayoutRequests({int limit = 50, int offset = 0}) =>
+      _client.get('/wallet/payout-requests', queryParameters: {'limit': limit, 'offset': offset});
+  Future<Map<String, dynamic>> getWalletTransactions({int limit = 50, int offset = 0}) =>
+      _client.get('/wallet/transactions', queryParameters: {'limit': limit, 'offset': offset});
+
+  // ── Admission ──
+  Future<Map<String, dynamic>> getPendingAdmissions({int limit = 50, int offset = 0}) =>
+      _client.get('/admission/pending', queryParameters: {'limit': limit, 'offset': offset});
+  Future<Map<String, dynamic>> approveAdmission(String admissionId) =>
+      _client.post('/admission/$admissionId/approve');
+  Future<Map<String, dynamic>> rejectAdmission(String admissionId, {String? reason}) =>
+      _client.post('/admission/$admissionId/reject', data: {'reason': reason ?? ''});
+
+  // ── Courses ──
+  Future<Map<String, dynamic>> getCourses() => _client.get('/courses');
+  Future<Map<String, dynamic>> createCourse(Map<String, dynamic> data) => _client.post('/courses', data: data);
+  Future<Map<String, dynamic>> getCourse(String id) => _client.get('/courses/$id');
+  Future<Map<String, dynamic>> updateCourse(String id, Map<String, dynamic> data) => _client.put('/courses/$id', data: data);
+  Future<void> deleteCourse(String id) => _client.delete('/courses/$id/delete');
+  Future<Map<String, dynamic>> updateCoursePricing(String id, Map<String, dynamic> data) => _client.put('/courses/$id/pricing', data: data);
+
+  // Chapters
+  Future<Map<String, dynamic>> createChapter(String courseId, Map<String, dynamic> data) => _client.post('/courses/$courseId/chapters', data: data);
+  Future<Map<String, dynamic>> getChapters(String courseId) => _client.get('/courses/$courseId/chapters');
+  Future<void> deleteChapter(String chapterId) => _client.delete('/courses/chapters/$chapterId/delete');
+
+  // Lessons
+  Future<Map<String, dynamic>> createLesson(String chapterId, Map<String, dynamic> data) => _client.post('/courses/chapters/$chapterId/lessons', data: data);
+  Future<Map<String, dynamic>> getLessons(String chapterId) => _client.get('/courses/chapters/$chapterId/lessons');
+  Future<Map<String, dynamic>> getLesson(String lessonId) => _client.get('/courses/lessons/$lessonId');
+  Future<Map<String, dynamic>> updateLesson(String lessonId, Map<String, dynamic> data) => _client.put('/courses/lessons/$lessonId', data: data);
+  Future<void> deleteLesson(String lessonId) => _client.delete('/courses/lessons/$lessonId/delete');
+
+  // Course Cover Image Upload
+  Future<Map<String, dynamic>> uploadCourseCover(String courseId, String filePath) async {
+    final formData = FormData.fromMap({'file': await MultipartFile.fromFile(filePath)});
+    return _client.uploadFile('/courses/$courseId/cover', formData);
+  }
+
+  // Lesson Video Upload
+  Future<Map<String, dynamic>> uploadLessonVideo(String lessonId, String filePath) async {
+    final formData = FormData.fromMap({'file': await MultipartFile.fromFile(filePath)});
+    return _client.uploadFile('/courses/lessons/$lessonId/video', formData);
+  }
+
+  // Lesson File Upload
+  Future<Map<String, dynamic>> uploadLessonFile(String lessonId, String filePath) async {
+    final formData = FormData.fromMap({'file': await MultipartFile.fromFile(filePath)});
+    return _client.uploadFile('/courses/lessons/$lessonId/files', formData);
+  }
+
+  // Lesson File Delete
+  Future<void> deleteLessonFile(String lessonId, String fileId) =>
+      _client.delete('/courses/lessons/$lessonId/files/$fileId');
+
+  Future<Map<String, dynamic>?> getPaymentConfig() async {
+    try {
+      final res = await _client.dio.get('/payments/config');
+      return res.data is Map ? res.data : null;
+    } catch (_) {
+      try {
+        final res = await _client.dio.get('/students/me/payment-config');
+        return res.data is Map ? res.data : null;
+      } catch (_) {
+        return null;
+      }
+    }
+  }
 }

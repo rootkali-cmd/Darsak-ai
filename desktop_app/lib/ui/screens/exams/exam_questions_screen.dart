@@ -465,6 +465,7 @@ class _ExamQuestionsScreenState extends State<ExamQuestionsScreen> with TickerPr
                     ),
                     maxLines: 3,
                     textDirection: TextDirection.rtl,
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 16),
                   if (questionType == 'multiple_choice')
@@ -505,6 +506,7 @@ class _ExamQuestionsScreenState extends State<ExamQuestionsScreen> with TickerPr
                           Expanded(
                             child: TextField(
                               controller: optionCtrls[i],
+                              textCapitalization: TextCapitalization.characters,
                               decoration: InputDecoration(
                                 labelText: 'الخيار ${labels[i]}',
                                 suffixIcon: correctAnswer == i

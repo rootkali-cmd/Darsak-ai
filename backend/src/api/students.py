@@ -13,7 +13,7 @@ from src.schemas.grade import AIAnalysisRequest, AIAnalysisResponse
 from src.core.security.auth import create_access_token, create_refresh_token, verify_password, hash_password, decode_token
 from src.core.security.sanitizer import sanitize_text, sanitize_student_code, sanitize_pin, sanitize_teacher_code
 from src.services import student_service, grade_service, ai_analyzer, audit_service, pdf_generator, user_service, teacher_subscription_service, subscription_plan_service
-from src.core.subscription_guard import enforce_ai_request_limit, increment_ai_usage
+from src.core.subscription_guard import enforce_ai_request_limit, enforce_student_limit, increment_ai_usage
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -117,6 +117,51 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+async def _check_is_paid(student_id: str) -> bool:
+    try:
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        from src.services import invoice_service
+        invoices = await invoice_service.list(
+            {"student_id": student_id, "status": "paid"},
+            limit=1,
+        )
+        return any(
+            i for i in invoices
+            if i.get("payment_date") and i["payment_date"] >= month_start
+        )
+    except Exception:
+        return False
+
+
+async def _batch_enrich_students(students: list[dict]) -> list[dict]:
+    """Batch version: avoids N+1 queries by fetching paid status for all students at once."""
+    if not students:
+        return students
+    student_ids = [str(s.get("id", "")) for s in students if s.get("id")]
+    paid_ids: set[str] = set()
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        resp = await client.table("invoices").select("student_id").eq("status", "paid").in_("student_id", student_ids).execute()
+        if resp.data:
+            paid_ids = {r["student_id"] for r in resp.data}
+    except Exception:
+        pass
+    for s in students:
+        s["has_pin"] = s.get("pin_hash") is not None
+        s["is_paid"] = str(s.get("id", "")) in paid_ids
+        s.pop("pin_hash", None)
+    return students
+
+
+async def _enrich_student(s: dict) -> dict:
+    s["has_pin"] = s.get("pin_hash") is not None
+    s["is_paid"] = await _check_is_paid(str(s.get("id", "")))
+    s.pop("pin_hash", None)
+    return s
+
 def _serialize_student(s: dict) -> dict:
     return {
         "id": str(s.get("id", "")),
@@ -125,7 +170,8 @@ def _serialize_student(s: dict) -> dict:
         "code": s.get("code", ""),
         "parent_phone": s.get("parent_phone"),
         "group_id": str(s.get("group_id")) if s.get("group_id") else None,
-        "has_pin": s.get("pin_hash") is not None,
+        "has_pin": s.get("has_pin") if "has_pin" in s else s.get("pin_hash") is not None,
+        "is_paid": s.get("is_paid", False),
         "is_active": s.get("is_active", True),
         "created_at": str(s.get("created_at", "")),
         "updated_at": str(s.get("updated_at", "")),
@@ -138,19 +184,7 @@ async def create_student(
     request: Request,
     current_user: dict = Depends(get_current_teacher),
 ):
-    # Check student limit
-    sub = await teacher_subscription_service.get_active_subscription(current_user["id"])
-    if sub:
-        plan = await subscription_plan_service.get_by_id(sub.get("plan_id", ""))
-        if plan:
-            limit = await subscription_plan_service.get_plan_student_limit(plan.get("name", ""))
-            if limit > 0:
-                count = await student_service.count(current_user["id"])
-                if count >= limit:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"وصلت للحد الأقصى للطلاب في باقتك ({limit} طالب). قم بالترقية لإضافة المزيد."
-                    )
+    await enforce_student_limit(current_user["id"])
 
     student = await student_service.create(
         teacher_id=current_user["id"],
@@ -179,6 +213,8 @@ async def list_students(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     search: str | None = None,
+    registration_type: str | None = None,
+    include_inactive: bool = Query(True),
     current_user: dict = Depends(get_current_teacher),
 ):
     students = await student_service.list_by_teacher(
@@ -186,12 +222,12 @@ async def list_students(
         search=search,
         limit=limit,
         offset=skip,
+        include_inactive=include_inactive,
     )
-    result = []
-    for s in students:
-        s["has_pin"] = s.get("pin_hash") is not None
-        result.append(StudentResponse(**s))
-    return result
+    if registration_type and registration_type in ("center", "online"):
+        students = [s for s in students if s.get("registration_type", "center") == registration_type]
+    students = await _batch_enrich_students(students)
+    return [StudentResponse(**s) for s in students]
 
 
 @router.get("/count")
@@ -209,7 +245,7 @@ async def get_student(
         student = await student_service.get_by_id(student_id)
         if not student or student["teacher_id"] != current_user["id"]:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
-        student["has_pin"] = student.get("pin_hash") is not None
+        student = await _enrich_student(student)
         return StudentResponse(**student)
     except HTTPException:
         raise

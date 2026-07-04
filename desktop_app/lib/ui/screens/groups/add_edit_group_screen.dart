@@ -216,6 +216,7 @@ class _AddEditGroupScreenState extends State<AddEditGroupScreen> {
                               ? 'الاسم مطلوب'
                               : null,
                           textInputAction: TextInputAction.next,
+                          textCapitalization: TextCapitalization.characters,
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(

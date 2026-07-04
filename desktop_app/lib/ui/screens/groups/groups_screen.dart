@@ -192,6 +192,7 @@ class _GroupsScreenState extends State<GroupsScreen> with TickerProviderStateMix
                       labelText: 'اسم المجموعة',
                       hintText: 'مثال: مجموعة الصباح',
                     ),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -200,6 +201,7 @@ class _GroupsScreenState extends State<GroupsScreen> with TickerProviderStateMix
                       labelText: 'المادة',
                       hintText: 'مثال: رياضيات',
                     ),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -222,6 +224,7 @@ class _GroupsScreenState extends State<GroupsScreen> with TickerProviderStateMix
                       labelText: 'وقت المحاضرة',
                       hintText: 'مثال: 10:00 - 11:30',
                     ),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                 ],
               ),

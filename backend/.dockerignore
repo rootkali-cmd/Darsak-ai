@@ -21,3 +21,5 @@ README.md
 .vscode
 .idea
 *.egg-info
+barcode-scanner-demo/
+downloads/*.apk

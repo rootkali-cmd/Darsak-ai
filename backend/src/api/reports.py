@@ -28,7 +28,7 @@ async def get_student_reports(
         client = await get_supabase()
 
         # Fetch students for this teacher
-        students_res = (
+        students_res = await (
             client.table("students")
             .select("id, full_name, code")
             .eq("teacher_id", teacher_id)
@@ -40,25 +40,40 @@ async def get_student_reports(
 
         student_ids = [s["id"] for s in students]
 
-        # Fetch student_exams with exam info
-        se_res = (
+        # Fetch student_exams (without join - join may not be configured)
+        se_res = await (
             client.table("student_exams")
-            .select("id, student_id, exam_id, total_score, max_score, status, submitted_at, exam:exams(title)")
+            .select("id, student_id, exam_id, total_score, max_score, status, submitted_at")
             .in_("student_id", student_ids)
             .in_("status", ["graded", "submitted"])
             .execute()
         )
         student_exams = se_res.data or []
 
+        # Fetch exam titles separately (more reliable than join)
+        exam_ids = list({se.get("exam_id") for se in student_exams if se.get("exam_id")})
+        exam_map = {}
+        if exam_ids:
+            exams_res = await (
+                client.table("exams")
+                .select("id, title")
+                .in_("id", exam_ids)
+                .execute()
+            )
+            exam_map = {e["id"]: e for e in (exams_res.data or [])}
+
         # Apply filters
         filtered = []
         for se in student_exams:
-            exam = se.get("exam")
+            exam_id = se.get("exam_id")
+            exam = exam_map.get(exam_id)
             if not exam:
                 continue
 
             submitted = se.get("submitted_at")
-            if date_from and submitted:
+            if not submitted:
+                continue  # skip exams with no submission date
+            if date_from:
                 if isinstance(submitted, str):
                     submitted_dt = datetime.fromisoformat(submitted.replace("Z", "+00:00"))
                 else:
@@ -67,7 +82,7 @@ async def get_student_reports(
                 if submitted_dt.replace(tzinfo=None) < from_dt:
                     continue
 
-            if date_to and submitted:
+            if date_to:
                 if isinstance(submitted, str):
                     submitted_dt = datetime.fromisoformat(submitted.replace("Z", "+00:00"))
                 else:
@@ -164,7 +179,7 @@ async def get_analytics_summary(
 
         client = await get_supabase()
 
-        students_res = (
+        students_res = await (
             client.table("students")
             .select("id, full_name")
             .eq("teacher_id", teacher_id)
@@ -175,7 +190,7 @@ async def get_analytics_summary(
 
         if students:
             try:
-                se_res = (
+                se_res = await (
                     client.table("student_exams")
                     .select("id, student_id, total_score, max_score, status")
                     .in_("student_id", [s["id"] for s in students])

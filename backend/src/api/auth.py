@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from src.utils.dependencies import get_current_user
+from pydantic import BaseModel
 from src.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, TokenRefresh, UserUpdate, OnboardingUpdate
 from src.core.security.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from src.core.security.sanitizer import sanitize_text, sanitize_email
@@ -82,19 +83,23 @@ def get_client_ip(request: Request) -> str:
 
 def _get_plan_storage_limit_gb(plan_name: str):
     name_lower = plan_name.lower()
-    if "enterprise" in name_lower:
-        return "غير محدود"
-    if "pro" in name_lower:
-        return 6
-    return 2
+    if "golden" in name_lower or "ذهبي" in name_lower:
+        return 2000
+    if "premium" in name_lower or "متكاملة" in name_lower:
+        return 200
+    if "pro" in name_lower or "احترافية" in name_lower:
+        return 60
+    return 15
 
 def _get_plan_ai_limit_display(plan_name: str):
     name_lower = plan_name.lower()
-    if "enterprise" in name_lower:
-        return "غير محدود"
-    if "pro" in name_lower:
-        return 50
-    return 10
+    if "golden" in name_lower or "ذهبي" in name_lower:
+        return 25000
+    if "premium" in name_lower or "متكاملة" in name_lower:
+        return 2000
+    if "pro" in name_lower or "احترافية" in name_lower:
+        return 500
+    return 100
 
 def _user_response(user: dict) -> dict:
     return {
@@ -422,3 +427,16 @@ async def save_onboarding(
 
     updated = await user_service.get_by_id(current_user["id"])
     return _user_response(updated)
+
+
+class FcmTokenUpdate(BaseModel):
+    fcm_token: str
+
+
+@router.post("/me/fcm-token")
+async def update_fcm_token(
+    body: FcmTokenUpdate,
+    current_user: dict = Depends(get_current_user),
+):
+    await user_service.update(current_user["id"], {"fcm_token": body.fcm_token})
+    return {"ok": True}

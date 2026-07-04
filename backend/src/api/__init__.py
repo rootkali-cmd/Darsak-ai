@@ -23,13 +23,22 @@ from src.api.subjects import router as subjects_router
 from src.api.payments import router as payments_router
 from src.api.reports import router as reports_router
 from src.api.assistants import router as assistants_router
+from src.api.teacher_contacts import router as teacher_contacts_router
+from src.api.app_status import router as app_status_router
+from src.api.fcm import router as fcm_router
+from src.api.error_reporter import router as error_reporter_router
+from src.api.ai_classroom import router as ai_classroom_router
 
 __all__ = [
     "admin_router",
+    "app_status_router",
     "audit_router",
     "dashboard_router",
+    "fcm_router",
     "quiz_router",
     "subjects_router",
     "payments_router",
     "reports_router",
+    "teacher_contacts_router",
+    "ai_classroom_router",
 ]

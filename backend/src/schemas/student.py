@@ -38,7 +38,9 @@ class StudentResponse(BaseModel):
     grade_level: str | None = None
     group_id: str | None = None
     teacher_id: UUID
+    registration_type: str = "center"
     has_pin: bool = False
+    is_paid: bool = False
     created_at: datetime
     updated_at: datetime
 

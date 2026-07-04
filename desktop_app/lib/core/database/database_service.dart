@@ -680,7 +680,7 @@ final class DatabaseService {
         e['title']?.toString() ?? '',
         e['description']?.toString(),
         e['duration_minutes'] ?? 30,
-        (e['published'] == true || e['published'] == 1) ? 1 : 0,
+        (e['published'] == true || e['published'] == 1 || e['status']?.toString() == 'published') ? 1 : 0,
         e['created_at']?.toString() ?? DateTime.now().toIso8601String(),
       ]);
     }

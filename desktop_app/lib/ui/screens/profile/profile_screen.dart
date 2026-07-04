@@ -346,6 +346,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: 'الاسم الكامل'),
               autofocus: true,
+              textCapitalization: TextCapitalization.characters,
             ),
             const SizedBox(height: 14),
             TextField(

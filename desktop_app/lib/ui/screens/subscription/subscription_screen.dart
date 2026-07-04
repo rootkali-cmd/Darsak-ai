@@ -36,6 +36,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String? _selectedPlanName;
   String? _selectedPlanPrice;
   String _paymentMethod = 'vodafone'; // 'vodafone' or 'instapay'
+  bool _isYearly = false;
+  int _premiumStudentCount = 1000;
   String? _selectedReceiptFileName;
   final _instaPayIdController = TextEditingController();
 
@@ -44,13 +46,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       'iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6uAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5QYVBiw9+HX3HgAAAAd0SU1FB+UGFQYsPfh1+x4AAAAZdEVYdENvbW1lbnQABGludGVybmFsIENvcHlyaWdodC5QSwcIAAAAAAAAAABQSwMEFAAICAgA+XV6VgAAAAAAAAAAAAAAAAMAAAAaW50ZXJuYWwgc3JjL21haW4ucHkAdGVzdC5weS5iYWNrZW5kLnJvdXRlcjphcGkuZ2V0KCcvJylQYWNrYWdlcyB0ZXN0LnB5LmJhY2tlbmQucm91dGVyOmFwaS5nZXQoJy8nKXJlc3BvbnNlID0geydzdGF0dXMnOiAnb2snLCAnbWVzc2FnZSc6ICdEYXJzYWtBSSBCYWNrZW5kIHJ1bm5pbmcnfW1haW4ucHkuYmFja2VuZC5yb3V0ZXJzOmFwaS5nZXQoJy8nKVJlc3BvbnNlID0geydzdGF0dXMnOiAnb2snLCAnbWVzc2FnZSc6ICdEYXJzYWtBSSBCYWNrZW5kIHJ1bm5pbmcnfXN0YXR1cyA9IHJlc3BvbnNlLnN0YXR1c19jb2RlXG5hc3NlcnQgc3RhdHVzID09IDIwMFxucHJpbnQoJ0JhY2tlbmQgcGluZyBPSyBzdGF0dXM9Jywg';
 
   static const String _supportWhatsApp = '01031524947';
-  static const String _vodafoneCashNumber = '01031524947';
+  String _vodafoneCashNumber = '01031524947';
+  String _instapayUsername = 'ahmed-mahmoud-1@instapay';
 
   @override
   void initState() {
     super.initState();
     _loadData();
-    // Refresh counter every minute so remaining days update in real time
     _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted && _subscription != null) {
         setState(() {});
@@ -80,6 +82,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       final sub = await api.getMySubscription().timeout(const Duration(seconds: 25));
       if (sub != null) await _subscriptionService.cacheSubscription(sub);
       final plans = await api.getPlans().timeout(const Duration(seconds: 25));
+      // Fetch payment config from API
+      try {
+        final config = await api.getPaymentConfig().timeout(const Duration(seconds: 10));
+        if (config != null && mounted) {
+          setState(() {
+            if (config['vodafone_cash_number'] != null) _vodafoneCashNumber = config['vodafone_cash_number'];
+            if (config['instapay_username'] != null) _instapayUsername = config['instapay_username'];
+          });
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _subscription = sub ?? cached;
@@ -314,8 +326,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const QrCodeWidget(
-                              data: 'ahmed-mahmoud-1@instapay',
+                            QrCodeWidget(
+                              data: _instapayUsername,
                               size: 180,
                             ),
                             const SizedBox(height: 12),
@@ -331,8 +343,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              'ahmed-mahmoud-1@instapay',
+                            Text(
+                              _instapayUsername,
                               style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -342,6 +354,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _instaPayIdController,
+                      textCapitalization: TextCapitalization.characters,
                       decoration: const InputDecoration(
                         labelText: 'معرف إنستا باي الخاص بك *',
                         hintText: 'username@instapay',
@@ -675,6 +688,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       hintText: 'XXXX-XXXX-XXXX-XXXX',
                     ),
                     textAlign: TextAlign.center,
+                    textCapitalization: TextCapitalization.characters,
                     style: const TextStyle(fontSize: 18, letterSpacing: 2),
                   ),
                 ),
@@ -701,14 +715,73 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     required Color textMuted, required Color surfaceColor, required Color borderColor,
   }) {
     // Use default plans if API plans are empty or incomplete
-    final plansToShow = _plans.isNotEmpty && _plans.every((p) => p['price'] != null && p['price'].toString().isNotEmpty) 
+    final plansToShow = _plans.isNotEmpty && _plans.any((p) => (p['price_egp'] ?? p['price']) != null) 
         ? _plans 
         : _defaultPlans;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('الباقات المتاحة', style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        Row(
+          children: [
+            Text('الباقات المتاحة', style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            // Billing toggle
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.darkSurface2,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: borderColor),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _isYearly = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: !_isYearly ? AppTheme.accent : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text('شهري', style: TextStyle(
+                        color: !_isYearly ? Colors.white : textMuted,
+                        fontWeight: FontWeight.w600, fontSize: 13,
+                      )),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _isYearly = true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _isYearly ? AppTheme.accent : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('سنوي', style: TextStyle(
+                            color: _isYearly ? Colors.white : textMuted,
+                            fontWeight: FontWeight.w600, fontSize: 13,
+                          )),
+                          if (_isYearly) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(color: AppTheme.success, borderRadius: BorderRadius.circular(4)),
+                              child: const Text('وفّر 2 شهر', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         if (plansToShow.isEmpty)
           Center(child: Padding(padding: const EdgeInsets.all(40), child: Text('لا توجد باقات متاحة', style: TextStyle(color: textMuted))))
@@ -727,11 +800,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     required Color textMuted, required Color surfaceColor, required Color borderColor,
   }) {
     final name = plan['name']?.toString() ?? 'باقة';
-    final price = plan['price']?.toString() ?? '--';
+    final monthlyPrice = int.tryParse((plan['price_egp'] ?? plan['price'])?.toString() ?? '0') ?? 0;
+    final yearlyPrice = int.tryParse(plan['price_yearly']?.toString() ?? '0') ?? 0;
+    final isPremium = name == 'Premium';
+    // Premium dynamic pricing based on slider
+    int effectiveMonthly = monthlyPrice;
+    int effectiveYearly = yearlyPrice;
+    if (isPremium) {
+      const premiumTiers = [
+        {'students': 1000, 'monthly': 1400, 'yearly': 13500},
+        {'students': 2500, 'monthly': 2500, 'yearly': 24000},
+        {'students': 5000, 'monthly': 4200, 'yearly': 42000},
+      ];
+      final tier = premiumTiers.firstWhere(
+        (t) => t['students'] == _premiumStudentCount,
+        orElse: () => premiumTiers[0],
+      );
+      effectiveMonthly = tier['monthly']!;
+      effectiveYearly = tier['yearly']!;
+    }
+    final displayPrice = _isYearly && effectiveYearly > 0 ? effectiveYearly.toString() : effectiveMonthly.toString();
+    final priceSuffix = _isYearly && effectiveYearly > 0 ? 'ج.م / سنة' : 'ج.م / شهر';
     final features = plan['features'] ?? [];
     final isPopular = plan['popular'] == true;
     final studentLimit = plan['student_limit']?.toString() ?? '--';
-    final duration = plan['duration']?.toString() ?? '--';
 
     return Card(
       child: Container(
@@ -760,7 +852,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text('$price ج.م / $duration', style: TextStyle(color: AppTheme.accent, fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('$displayPrice $priceSuffix', style: TextStyle(color: AppTheme.accent, fontSize: 22, fontWeight: FontWeight.bold)),
+                  if (_isYearly && yearlyPrice > 0) ...[
+                    const SizedBox(height: 4),
+                    Text('$monthlyPrice ج.م/شهر', style: TextStyle(color: textMuted, fontSize: 12, decoration: TextDecoration.lineThrough)),
+                  ],
                   const SizedBox(height: 16),
                   if (features is List)
                     ...features.map((f) => Padding(
@@ -786,16 +882,36 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 children: [
                   Text('الحد الأقصى', style: TextStyle(color: textMuted, fontSize: 12)),
                   const SizedBox(height: 4),
-                  Text(studentLimit == '-1' || studentLimit == '-1' ? '∞ طالب' : '$studentLimit طالب', style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('$studentLimit طالب', style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                  if (isPremium) ...[
+                    const SizedBox(height: 12),
+                    Text('عدد الطلاب: $_premiumStudentCount', style: TextStyle(color: AppTheme.accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Slider(
+                      value: _premiumStudentCount.toDouble(),
+                      min: 1000,
+                      max: 5000,
+                      divisions: 2,
+                      label: '$_premiumStudentCount طالب',
+                      onChanged: (v) => setState(() => _premiumStudentCount = v.round()),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Text('1,000', style: TextStyle(fontSize: 10)),
+                        Text('2,500', style: TextStyle(fontSize: 10)),
+                        Text('5,000', style: TextStyle(fontSize: 10)),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Text('المدة', style: TextStyle(color: textMuted, fontSize: 12)),
                   const SizedBox(height: 4),
-                  Text(duration, style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(_isYearly ? 'سنوي' : 'شهري', style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => _showPaymentDialog(name, name, price),
+                      onPressed: () => _showPaymentDialog(name, name, displayPrice),
                       child: const Text('اشتراك'),
                     ),
                   ),
@@ -812,27 +928,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return [
       {
         'name': 'Basic',
-        'price': '250',
+        'price': '350',
+        'price_yearly': '3000',
         'duration': 'شهر',
         'student_limit': '100',
         'popular': false,
-        'features': ['100 طالب', '10 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير بسيطة', 'دعم فني'],
+        'features': ['100 طالب', '5 اختبارات AI شهرياً', '100 تصحيح AI شهرياً', '15GB تخزين', 'حضور وغياب QR', 'درجات الطلاب', 'تقارير بسيطة', 'دعم فني'],
       },
       {
         'name': 'Pro',
-        'price': '600',
+        'price': '750',
+        'price_yearly': '7200',
         'duration': 'شهر',
         'student_limit': '400',
         'popular': true,
-        'features': ['400 طالب', '50 اختبار شهرياً', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'دعم فني'],
+        'features': ['400 طالب', '15 اختبار AI شهرياً', '500 تصحيح AI شهرياً', '60GB تخزين', 'كورسات مشتركة', '2 مساعدين', 'تقارير AI', 'دعم فني سريع'],
       },
       {
         'name': 'Premium',
-        'price': '1100',
+        'price': '1400',
+        'price_yearly': '13500',
         'duration': 'شهر',
-        'student_limit': '-1',
+        'student_limit': '1000',
         'popular': false,
-        'features': ['طلاب غير محدود', 'اختبارات غير محدودة', 'حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'طلاب غير محدود', 'دعم فني أولوية'],
+        'features': ['1000 طالب', '20 اختبار AI شهرياً', '2000 تصحيح AI شهرياً', '200GB تخزين', '5 مساعدين', 'تحضير اختبارات AI', 'دعم VIP'],
       },
     ];
   }

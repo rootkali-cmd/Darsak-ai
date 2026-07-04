@@ -448,6 +448,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
                     prefixIcon: Icon(Icons.description_outlined, size: 20),
                   ),
                   textDirection: TextDirection.rtl,
+                  textCapitalization: TextCapitalization.characters,
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -457,6 +458,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> with TickerProviderStat
                     prefixIcon: Icon(Icons.calendar_today, size: 20),
                     hintText: 'YYYY-MM-DD',
                   ),
+                  textCapitalization: TextCapitalization.characters,
                 ),
               ],
             ),

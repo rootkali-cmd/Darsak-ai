@@ -59,13 +59,15 @@ class StudentService:
 
         pin_hash = hash_password(kwargs.pop("pin")) if kwargs.get("pin") else None
 
-        return await self.repo.insert({
+        insert_data = {
             "teacher_id": teacher_id,
             "code": code,
             "full_name": full_name,
             "pin_hash": pin_hash,
+            "is_active": True,
             **{k: v for k, v in kwargs.items() if v is not None},
-        })
+        }
+        return await self.repo.insert(insert_data)
 
     async def get_by_id(self, student_id: str) -> dict | None:
         return await self.repo.select_one({"id": student_id})
@@ -73,7 +75,7 @@ class StudentService:
     async def get_by_code(self, code: str) -> dict | None:
         return await self.repo.select_one_ilike({"code": code})
 
-    async def list_by_teacher(self, teacher_id: str, search: str | None = None, limit: int = 500, offset: int = 0, include_inactive: bool = False) -> list[dict]:
+    async def list_by_teacher(self, teacher_id: str, search: str | None = None, limit: int = 500, offset: int = 0, include_inactive: bool = True) -> list[dict]:
         filters = {"teacher_id": teacher_id}
         if not include_inactive:
             filters["is_active"] = True

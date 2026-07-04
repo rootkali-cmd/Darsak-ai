@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from pydantic import BaseModel
 from .schemas import CourseCreate, CourseUpdate, CoursePricingUpdate, ChapterCreate, LessonCreate, ContentLockUpdate, SharedLectureCreate
 from .service import course_service
 from ..storage.r2_service import r2_service
@@ -18,6 +19,25 @@ courses_repo = SupabaseRepository("courses")
 enrollments_repo = SupabaseRepository("student_course_enrollments")
 
 
+async def _generate_cover_url(cover_key: str | None) -> str | None:
+    if not cover_key:
+        return None
+    if cover_key.startswith("sb:"):
+        from src.core.security.supabase_repo import get_supabase
+        try:
+            client = await get_supabase()
+            path = cover_key[3:]
+            return client.storage.from_("darsak-media").get_public_url(path)
+        except Exception:
+            return None
+    if r2_service.enabled:
+        try:
+            return await r2_service.generate_signed_url(cover_key, expires_minutes=60)
+        except Exception:
+            return None
+    return None
+
+
 async def _enrich_course(item: dict, student_registration_type: str = None) -> dict:
     """Add pricing + cover_image_url to a course dict."""
     pricing_repo = SupabaseRepository("course_pricing")
@@ -25,13 +45,7 @@ async def _enrich_course(item: dict, student_registration_type: str = None) -> d
     if pricing:
         item["pricing"] = pricing
     cover_key = item.get("cover_image_r2_key")
-    if cover_key and r2_service.enabled:
-        try:
-            item["cover_image_url"] = await r2_service.generate_signed_url(cover_key, expires_minutes=60)
-        except Exception:
-            item["cover_image_url"] = None
-    else:
-        item["cover_image_url"] = None
+    item["cover_image_url"] = await _generate_cover_url(cover_key)
     if student_registration_type and pricing:
         is_free_flag = pricing.get("is_free_for_center", False)
         platform_price = float(pricing.get("platform_price", 0) or 0)
@@ -87,13 +101,7 @@ async def get_course_for_student(
     platform_price = float(pricing.get("platform_price", 0) or 0)
 
     cover_key = course.get("cover_image_r2_key")
-    if cover_key and r2_service.enabled:
-        try:
-            course["cover_image_url"] = await r2_service.generate_signed_url(cover_key, expires_minutes=60)
-        except Exception:
-            course["cover_image_url"] = None
-    else:
-        course["cover_image_url"] = None
+    course["cover_image_url"] = await _generate_cover_url(cover_key)
 
     for chapter in course.get("chapters", []):
         for lesson in chapter.get("lessons", []):
@@ -325,13 +333,7 @@ async def list_courses(current_user: dict = Depends(get_current_teacher)):
     items = await course_service.list_courses(current_user["id"])
     for item in items:
         cover_key = item.get("cover_image_r2_key")
-        if cover_key and r2_service.enabled:
-            try:
-                item["cover_image_url"] = await r2_service.generate_signed_url(cover_key, expires_minutes=60)
-            except Exception:
-                item["cover_image_url"] = None
-        else:
-            item["cover_image_url"] = None
+        item["cover_image_url"] = await _generate_cover_url(cover_key)
         # Attach pricing
         pricing = await course_service.pricing_repo.select_one({"course_id": item["id"]})
         item["pricing"] = pricing
@@ -355,9 +357,11 @@ async def create_course(
     try:
         course = await course_service.create_course(current_user["id"], body.model_dump())
         return {"ok": True, "data": course}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Course creation failed for teacher %s: %s", current_user["id"], e)
-        raise HTTPException(status_code=500, detail="فشل إنشاء الكورس. يرجى المحاولة مرة أخرى.")
+        logger.error("Course creation failed for teacher %s: %s (%s)", current_user["id"], type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"فشل إنشاء الكورس: {str(e)}")
 
 
 @router.get("/lessons/{lesson_id}")
@@ -597,9 +601,6 @@ async def upload_course_cover(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_teacher),
 ):
-    if not r2_service.enabled:
-        raise HTTPException(status_code=503, detail="R2 storage not configured")
-
     course = await course_service.get_course(course_id)
     if not course or str(course.get("teacher_id")) != current_user["id"]:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -614,11 +615,8 @@ async def upload_course_cover(
 
     result = await course_service.upload_course_cover(course_id, content, mime_type)
     cover_url = None
-    if result.get("r2_key") and r2_service.enabled:
-        try:
-            cover_url = await r2_service.generate_signed_url(result["r2_key"], expires_minutes=60)
-        except Exception:
-            pass
+    if result.get("r2_key"):
+        cover_url = await _generate_cover_url(result["r2_key"])
     return {"ok": True, "data": result, "cover_image_url": cover_url}
 
 
@@ -700,3 +698,202 @@ async def list_chapters(
         raise HTTPException(status_code=404, detail="Course not found")
     items = await course_service.list_chapters(course_id)
     return {"items": items}
+
+
+# ─── Course Lesson Exam Questions ──────────────────────────────────────
+
+def _question_response(q: dict) -> dict:
+    return {
+        "id": str(q.get("id", "")),
+        "exam_id": str(q.get("exam_id", "")),
+        "type": str(q.get("type", "")),
+        "question_text": str(q.get("question_text", "")),
+        "options": q.get("options"),
+        "correct_answer": q.get("correct_answer"),
+        "points": q.get("points", 0),
+        "order_index": q.get("order_index", 0),
+        "page_number": q.get("page_number", 0),
+        "created_at": str(q.get("created_at", "")),
+    }
+
+
+async def _ensure_exam_id(lesson: dict, teacher_id: str) -> str:
+    exam_id = lesson.get("exam_id")
+    if exam_id:
+        return exam_id
+    from src.services.supabase_services import ExamService
+    exam_svc = ExamService()
+    exam = await exam_svc.create(
+        teacher_id=teacher_id,
+        title=lesson.get("title", "اختبار"),
+        duration_minutes=30,
+        description=f"اختبار كورس: {lesson.get('title', '')}",
+    )
+    exam_id = str(exam["id"])
+    await course_service.lessons_repo.update({"id": lesson["id"]}, {"exam_id": exam_id})
+    return exam_id
+
+
+@router.get("/lessons/{lesson_id}/exam-questions")
+async def get_lesson_exam_questions(
+    lesson_id: str,
+    current_user: dict = Depends(get_current_teacher),
+):
+    lesson = await course_service.get_lesson(lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if str(lesson.get("teacher_id")) != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        exam_id = await _ensure_exam_id(lesson, current_user["id"])
+        from src.services.supabase_services import ExamService
+        exam_svc = ExamService()
+        questions = await exam_svc.get_questions(exam_id)
+        return {"exam_id": exam_id, "questions": [_question_response(q) for q in questions]}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to get exam questions for lesson %s: %s", lesson_id, exc)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+class LessonQuestionCreate(BaseModel):
+    type: str = "mc"
+    question_text: str = ""
+    options: list | None = None
+    correct_answer: str | None = None
+    points: int = 1
+    order_index: int = 0
+    page_number: int = 1
+
+
+@router.post("/lessons/{lesson_id}/exam-questions", status_code=status.HTTP_201_CREATED)
+async def add_lesson_exam_question(
+    lesson_id: str,
+    data: LessonQuestionCreate,
+    current_user: dict = Depends(get_current_teacher),
+):
+    lesson = await course_service.get_lesson(lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if str(lesson.get("teacher_id")) != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        exam_id = await _ensure_exam_id(lesson, current_user["id"])
+        from src.services.supabase_services import ExamService
+        exam_svc = ExamService()
+        q = await exam_svc.add_question(
+            exam_id=exam_id,
+            question_type=data.type,
+            question_text=data.question_text,
+            options=data.options,
+            correct_answer=data.correct_answer,
+            points=data.points,
+            order_index=data.order_index,
+            page_number=data.page_number,
+        )
+        return _question_response(q)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to add question to lesson %s exam: %s", lesson_id, exc)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+@router.put("/lessons/{lesson_id}/exam-questions/{question_id}")
+async def update_lesson_exam_question(
+    lesson_id: str,
+    question_id: str,
+    data: LessonQuestionCreate,
+    current_user: dict = Depends(get_current_teacher),
+):
+    lesson = await course_service.get_lesson(lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if str(lesson.get("teacher_id")) != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        exam_id = await _ensure_exam_id(lesson, current_user["id"])
+        from src.services.supabase_services import ExamService
+        exam_svc = ExamService()
+        updated = await exam_svc.update_question(question_id, data.model_dump())
+        return _question_response(updated)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to update question %s: %s", question_id, exc)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+@router.delete("/lessons/{lesson_id}/exam-questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_lesson_exam_question(
+    lesson_id: str,
+    question_id: str,
+    current_user: dict = Depends(get_current_teacher),
+):
+    lesson = await course_service.get_lesson(lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if str(lesson.get("teacher_id")) != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        exam_id = await _ensure_exam_id(lesson, current_user["id"])
+        from src.services.supabase_services import ExamService
+        exam_svc = ExamService()
+        await exam_svc.delete_question(question_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to delete question %s: %s", question_id, exc)
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+# ─── AI Generate Questions for Course Lesson Exam ──────────────────────
+
+class LessonExamAIRequest(BaseModel):
+    subject: str = ""
+    question_count: int = 10
+    pdf_base64: str | None = None
+
+
+@router.post("/lessons/{lesson_id}/exam-questions/generate-ai")
+async def generate_lesson_exam_questions(
+    lesson_id: str,
+    data: LessonExamAIRequest,
+    current_user: dict = Depends(get_current_teacher),
+):
+    lesson = await course_service.get_lesson(lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if str(lesson.get("teacher_id")) != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    try:
+        exam_id = await _ensure_exam_id(lesson, current_user["id"])
+        from src.services.supabase_services import ExamService
+        from src.services.exam_ai import ExamAIService
+        exam_svc = ExamService()
+        exam_ai = ExamAIService()
+
+        if data.pdf_base64:
+            import base64
+            contents = base64.b64decode(data.pdf_base64)
+            result = await exam_ai.generate_questions_from_pdf(contents, data.subject, question_count=data.question_count)
+        else:
+            result = await exam_ai.generate_questions_from_text(
+                lesson.get("description", "") or lesson.get("title", ""),
+                data.subject,
+                question_count=data.question_count,
+            )
+
+        questions_data = result.get("questions", [])
+        if questions_data:
+            await exam_svc.bulk_add_questions(exam_id, questions_data)
+
+        questions = await exam_svc.get_questions(exam_id)
+        return {"ok": True, "exam_id": exam_id, "questions": [_question_response(q) for q in questions]}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to generate AI questions for lesson %s: %s", lesson_id, exc)
+        raise HTTPException(status_code=500, detail="internal error")

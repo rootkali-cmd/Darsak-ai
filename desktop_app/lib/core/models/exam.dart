@@ -31,7 +31,7 @@ class ExamModel {
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString(),
       durationMinutes: json['duration_minutes'] ?? 30,
-      published: json['published'] ?? false,
+      published: json['published'] ?? (json['status']?.toString() == 'published'),
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       totalQuestions: json['total_questions'] ?? 0,
       essayQuestions: json['essay_questions'] ?? 0,

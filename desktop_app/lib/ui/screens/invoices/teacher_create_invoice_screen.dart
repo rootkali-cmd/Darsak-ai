@@ -231,6 +231,7 @@ class _TeacherCreateInvoiceScreenState extends State<TeacherCreateInvoiceScreen>
       children: [
         TextField(
           controller: _searchController,
+          textCapitalization: TextCapitalization.characters,
           decoration: InputDecoration(
             hintText: 'ابحث بالاسم أو الكود...',
             hintStyle: TextStyle(color: textSecondary, fontSize: 14),

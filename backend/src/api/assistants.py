@@ -9,6 +9,7 @@ from src.schemas.assistant import (
 )
 from src.services import assistant_service, user_service
 from src.core.security.auth import hash_password, verify_password
+from src.core.subscription_guard import enforce_assistant_limit
 
 router = APIRouter(prefix="/assistants", tags=["Assistants"])
 
@@ -18,6 +19,7 @@ async def create_assistant(
     body: AssistantCreate,
     current_user: dict = Depends(get_current_teacher),
 ):
+    await enforce_assistant_limit(current_user["id"])
     data = body.model_dump(exclude_unset=True)
     data["payment_status"] = data.get("payment_status", "unpaid")
     return await assistant_service.create(

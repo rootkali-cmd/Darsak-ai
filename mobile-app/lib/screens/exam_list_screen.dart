@@ -455,7 +455,7 @@ class _ExamListScreenState extends State<ExamListScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Text('$score / $maxScore', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
+                      Text('$score من $maxScore', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
                       Text(
                         '(${pct.toStringAsFixed(1)}%)',

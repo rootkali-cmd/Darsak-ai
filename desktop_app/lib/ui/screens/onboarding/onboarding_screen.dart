@@ -221,6 +221,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                             prefixIcon: Icon(Icons.person_outline, size: 20),
                           ),
                           textInputAction: TextInputAction.done,
+                          textCapitalization: TextCapitalization.characters,
                         ),
                         const SizedBox(height: 28),
                         Row(

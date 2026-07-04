@@ -347,6 +347,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                           ),
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
                           textInputAction: TextInputAction.next,
+                          textCapitalization: TextCapitalization.characters,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -357,6 +358,7 @@ class _AddEditStudentScreenState extends State<AddEditStudentScreen> {
                             prefixIcon: const Icon(Icons.qr_code, size: 20),
                           ),
                           textInputAction: TextInputAction.next,
+                          textCapitalization: TextCapitalization.characters,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(

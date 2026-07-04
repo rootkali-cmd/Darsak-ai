@@ -146,6 +146,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                                 prefixIcon: const Icon(Icons.search, size: 20),
                               ),
                               onChanged: (v) => setState(() => _search = v),
+                              textCapitalization: TextCapitalization.characters,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -303,6 +304,7 @@ class _StudentsScreenState extends State<StudentsScreen> with TickerProviderStat
                       labelText: 'الاسم الكامل *',
                       hintText: 'الاسم الثلاثي',
                     ),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   TextField(

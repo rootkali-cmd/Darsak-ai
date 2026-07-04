@@ -111,6 +111,7 @@ class _TeacherContactsScreenState extends State<TeacherContactsScreen> {
                     decoration: InputDecoration(
                       hintText: selectedPlatform == 'phone' ? '01031524947' : '@username أو الرابط',
                     ),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -118,6 +119,7 @@ class _TeacherContactsScreenState extends State<TeacherContactsScreen> {
                     decoration: const InputDecoration(
                       hintText: 'الاسم المعروض (اختياري)',
                     ),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                 ],
               ),
@@ -265,7 +267,7 @@ class _TeacherContactsScreenState extends State<TeacherContactsScreen> {
     return Column(
       children: _contacts.map((contact) {
         final platform = contact['platform'] ?? '';
-        final info = _platforms[platform] ?? {'label': platform, 'icon': Icons.link, 'color': AppTheme.textMuted};
+        final info = _platforms[platform] ?? {'label': platform, 'icon': Icons.link, 'color': AppTheme.darkTextMuted};
         final color = info['color'] as Color;
 
         return Card(

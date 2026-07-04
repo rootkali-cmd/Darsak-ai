@@ -417,6 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             controller: controller,
             decoration: const InputDecoration(labelText: 'الاسم الكامل'),
             autofocus: true,
+            textCapitalization: TextCapitalization.characters,
           ),
         ),
         actions: [

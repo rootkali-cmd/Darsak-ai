@@ -107,7 +107,7 @@ class CircuitBreakerOpenError(Exception):
 supabase_breaker = CircuitBreaker(
     name="supabase",
     failure_threshold=5,
-    recovery_timeout=30.0,
+    recovery_timeout=15.0,
     expected_exception=(Exception,),
 )
 

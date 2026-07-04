@@ -561,6 +561,7 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                     controller: titleCtl,
                     decoration: const InputDecoration(labelText: 'عنوان الامتحان *'),
                     textDirection: TextDirection.rtl,
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -568,6 +569,7 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                     decoration: const InputDecoration(labelText: 'وصف (اختياري)'),
                     maxLines: 3,
                     textDirection: TextDirection.rtl,
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -707,6 +709,7 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                   controller: titleCtl,
                   decoration: const InputDecoration(labelText: 'عنوان الامتحان *'),
                   textDirection: TextDirection.rtl,
+                  textCapitalization: TextCapitalization.characters,
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -714,6 +717,7 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                   decoration: const InputDecoration(labelText: 'وصف (اختياري)'),
                   maxLines: 3,
                   textDirection: TextDirection.rtl,
+                  textCapitalization: TextCapitalization.characters,
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -805,12 +809,14 @@ class _ExamListScreenState extends State<ExamListScreen> with TickerProviderStat
                   controller: titleCtl,
                   decoration: const InputDecoration(labelText: 'عنوان الامتحان *'),
                   textDirection: TextDirection.rtl,
+                  textCapitalization: TextCapitalization.characters,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: subjectCtl,
                   decoration: const InputDecoration(labelText: 'المادة (اختياري)'),
                   textDirection: TextDirection.rtl,
+                  textCapitalization: TextCapitalization.characters,
                 ),
                 const SizedBox(height: 12),
                 TextField(

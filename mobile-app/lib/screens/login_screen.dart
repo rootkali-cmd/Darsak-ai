@@ -168,6 +168,7 @@ class _LoginScreenState extends State<LoginScreen>
                         controller: _codeController,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.center,
+                        textCapitalization: TextCapitalization.characters,
                         style: TextStyle(
                           color: AppColors.textPrimary(context),
                           fontSize: 18,

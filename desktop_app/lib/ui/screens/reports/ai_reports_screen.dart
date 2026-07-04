@@ -42,11 +42,14 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
       _error = null;
     });
     try {
-      final api = context.read<DataProvider>().api;
-      final client = context.read<AuthProvider>().client;
-      _reportsApi ??= ReportsApiService(client);
-      final me = await api.getMe();
-      final teacherId = me['id'] ?? me['data']?['id'] ?? '';
+      final auth = context.read<AuthProvider>();
+      final teacherId = auth.user?.id ?? '';
+      if (teacherId.isEmpty) {
+        if (!mounted) return;
+        setState(() { _error = 'لم يتم العثور على حساب المدرس'; _isLoading = false; });
+        return;
+      }
+      _reportsApi ??= ReportsApiService(auth.client);
 
       final dateFromStr = _dateFrom != null ? intl.DateFormat('yyyy-MM-dd').format(_dateFrom!) : null;
       final dateToStr = _dateTo != null ? intl.DateFormat('yyyy-MM-dd').format(_dateTo!) : null;
@@ -66,8 +69,17 @@ class _AiReportsScreenState extends State<AiReportsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final msg = e.toString();
       setState(() {
-        _error = 'حدث خطأ أثناء تحميل البيانات';
+        _error = msg.contains('401') || msg.contains('403')
+            ? 'ليس لديك صلاحية لعرض التقارير'
+            : msg.contains('500')
+                ? 'خطأ في الخادم، حاول مرة أخرى'
+                : msg.contains('timeout')
+                    ? 'انتهت مهلة الاتصال'
+                    : msg.contains('Connection refused') || msg.contains('SocketException')
+                        ? 'لا يمكن الاتصال بالخادم'
+                        : 'حدث خطأ أثناء تحميل البيانات';
         _isLoading = false;
       });
     }

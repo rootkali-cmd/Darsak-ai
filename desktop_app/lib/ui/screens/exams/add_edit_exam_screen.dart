@@ -166,6 +166,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                       decoration: const InputDecoration(labelText: 'نص السؤال *', alignLabelWithHint: true),
                       maxLines: 3,
                       textDirection: TextDirection.rtl,
+                      textCapitalization: TextCapitalization.characters,
                     ),
                     const SizedBox(height: 12),
                     if (questionType == 'multiple_choice') ...[
@@ -207,6 +208,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                               Expanded(
                                 child: TextField(
                                   controller: ctrls[i],
+                                  textCapitalization: TextCapitalization.characters,
                                   decoration: InputDecoration(
                                     labelText: 'الخيار ${labels[i]}${i < 2 ? ' *' : ''}',
                                     suffixIcon: correctAnswer == i
@@ -393,6 +395,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                             decoration: const InputDecoration(labelText: 'العنوان *', prefixIcon: Icon(Icons.title, size: 20)),
                             validator: (v) => (v == null || v.trim().isEmpty) ? 'العنوان مطلوب' : null,
                             textInputAction: TextInputAction.next,
+                            textCapitalization: TextCapitalization.characters,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
@@ -401,6 +404,7 @@ class _AddEditExamScreenState extends State<AddEditExamScreen> {
                             decoration: const InputDecoration(labelText: 'الوصف', prefixIcon: Icon(Icons.description, size: 20)),
                             maxLines: 3,
                             textInputAction: TextInputAction.next,
+                            textCapitalization: TextCapitalization.characters,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(

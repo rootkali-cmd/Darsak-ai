@@ -15,18 +15,11 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
   List<Map<String, dynamic>> _assistants = [];
   bool _loading = true;
   bool _authenticated = false;
-  final _passwordController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkAccess());
-  }
-
-  @override
-  void dispose() {
-    _passwordController.dispose();
-    super.dispose();
   }
 
   Future<void> _checkAccess() async {
@@ -40,6 +33,7 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
     final surfaceColor = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
     final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final passwordController = TextEditingController();
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -48,7 +42,7 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderColor)),
         title: Text('أدخل كلمة مرور المساعدين', textAlign: TextAlign.center, style: TextStyle(color: textPrimary)),
         content: TextField(
-          controller: _passwordController,
+          controller: passwordController,
           obscureText: true,
           textAlign: TextAlign.center,
           decoration: InputDecoration(
@@ -59,33 +53,35 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              if (passwordController.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
             child: const Text('دخول'),
           ),
         ],
       ),
     );
     if (result == true) {
-      await _verifyPassword();
+      await _verifyPassword(passwordController.text.trim());
     } else {
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _verifyPassword() async {
+  Future<void> _verifyPassword(String password) async {
     try {
       final auth = context.read<AuthProvider>();
       final dio = auth.client.dio;
-      await dio.post('/assistants/verify-password', data: {'password': _passwordController.text.trim()});
+      await dio.post('/assistants/verify-password', data: {'password': password});
       _authenticated = true;
-      _passwordController.clear();
       await _loadAssistants();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('كلمة المرور غير صحيحة: $e'), backgroundColor: AppTheme.danger),
+          SnackBar(content: Text('كلمة المرور غير صحيحة'), backgroundColor: AppTheme.danger),
         );
-        Navigator.of(context).pop();
+        await _showPasswordDialog();
       }
     }
   }
@@ -126,9 +122,9 @@ class _AssistantsScreenState extends State<AssistantsScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameController, decoration: InputDecoration(labelText: 'الاسم', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+              TextField(controller: nameController, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: 'الاسم', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
               const SizedBox(height: 12),
-              TextField(controller: subjectController, decoration: InputDecoration(labelText: 'المادة', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
+              TextField(controller: subjectController, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: 'المادة', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
               const SizedBox(height: 12),
               TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'الهاتف', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
             ],

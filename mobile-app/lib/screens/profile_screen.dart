@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../providers/theme_provider.dart';
@@ -16,6 +17,26 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  List<dynamic> _supportLinks = [];
+  bool _loadingLinks = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSupportLinks());
+  }
+
+  Future<void> _loadSupportLinks() async {
+    final teacherId = context.read<AuthProvider>().student?.teacherId;
+    if (teacherId == null || teacherId.isEmpty) return;
+    setState(() => _loadingLinks = true);
+    try {
+      final links = await ApiService().getTeacherSupportLinks(teacherId);
+      if (mounted) setState(() => _supportLinks = links);
+    } catch (_) {}
+    if (mounted) setState(() => _loadingLinks = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -89,11 +110,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: 'متوسط الدرجات',
                   value: '${data.averageGrade.toStringAsFixed(1)}%',
                 ),
-                Divider(color: AppColors.border(context), height: 16),
-                _InfoRow(
-                  label: 'نسبة الحضور',
-                  value: '${data.attendanceRate.toStringAsFixed(0)}%',
-                ),
+                if (!student.isOnlineStudent) ...[
+                  Divider(color: AppColors.border(context), height: 16),
+                  _InfoRow(
+                    label: 'نسبة الحضور',
+                    value: '${data.attendanceRate.toStringAsFixed(0)}%',
+                  ),
+                ],
                 Divider(color: AppColors.border(context), height: 16),
                 _InfoRow(label: 'عدد الدرجات', value: '${data.grades.length}'),
               ],
@@ -140,6 +163,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // Theme toggle
             _buildThemeToggle(),
+            const SizedBox(height: 12),
+
+            // Support Links
+            if (_loadingLinks)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated(context),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border(context)),
+                ),
+                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else if (_supportLinks.isNotEmpty) ...[
+              _buildSupportLinksSection(),
+              const SizedBox(height: 12),
+            ],
           ],
         ),
       ),
@@ -218,6 +259,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSupportLinksSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.support_agent, color: AppTheme.accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'التواصل مع المدرس',
+                style: TextStyle(
+                  color: AppColors.textPrimary(context),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _supportLinks.map((link) {
+              final platform = (link['platform'] ?? '').toString().toLowerCase();
+              final url = (link['url'] ?? '').toString();
+              final label = (link['label'] ?? link['platform'] ?? '').toString();
+              final icon = _getPlatformIcon(platform);
+              final color = _getPlatformColor(platform);
+              return SizedBox(
+                height: 40,
+                child: ElevatedButton.icon(
+                  onPressed: () => _openSupportLink(url),
+                  icon: Icon(icon, color: Colors.white, size: 18),
+                  label: Text(
+                    label,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getPlatformIcon(String platform) {
+    switch (platform) {
+      case 'whatsapp':
+        return Icons.chat;
+      case 'telegram':
+        return Icons.telegram;
+      case 'instagram':
+        return Icons.camera_alt;
+      case 'facebook':
+        return Icons.facebook;
+      case 'youtube':
+        return Icons.play_circle_fill;
+      case 'tiktok':
+        return Icons.music_note;
+      default:
+        return Icons.link;
+    }
+  }
+
+  Color _getPlatformColor(String platform) {
+    switch (platform) {
+      case 'whatsapp':
+        return const Color(0xFF25D366);
+      case 'telegram':
+        return const Color(0xFF26A5E4);
+      case 'instagram':
+        return const Color(0xFFE4405F);
+      case 'facebook':
+        return const Color(0xFF1877F2);
+      case 'youtube':
+        return const Color(0xFFFF0000);
+      case 'tiktok':
+        return const Color(0xFF000000);
+      default:
+        return AppTheme.accent;
+    }
+  }
+
+  Future<void> _openSupportLink(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لا يمكن فتح الرابط'),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+    }
   }
 
   void _showPinChangeDialog(BuildContext context) {

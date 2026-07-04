@@ -151,6 +151,7 @@ final class _GradesScreenState extends State<GradesScreen> {
                         focusNode: focusNode,
                         decoration: const InputDecoration(labelText: 'البحث عن طالب', hintText: 'اسم الطالب أو الكود'),
                         onSubmitted: (_) => onFieldSubmitted(),
+                        textCapitalization: TextCapitalization.characters,
                       );
                     },
                   ),
@@ -158,11 +159,13 @@ final class _GradesScreenState extends State<GradesScreen> {
                   TextField(
                     controller: examController,
                     decoration: const InputDecoration(labelText: 'اسم الامتحان *'),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: subjectController,
                     decoration: const InputDecoration(labelText: 'المادة'),
+                    textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -195,6 +198,7 @@ final class _GradesScreenState extends State<GradesScreen> {
                     controller: notesController,
                     decoration: const InputDecoration(labelText: 'ملاحظات'),
                     maxLines: 2,
+                    textCapitalization: TextCapitalization.characters,
                   ),
                 ],
               ),
@@ -325,6 +329,7 @@ final class _GradesScreenState extends State<GradesScreen> {
                                   prefixIcon: Icon(Icons.search, size: 20),
                                 ),
                                 onChanged: (v) => setState(() => _search = v),
+                                textCapitalization: TextCapitalization.characters,
                               ),
                             ),
                             const SizedBox(width: 16),

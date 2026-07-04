@@ -471,6 +471,9 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> with TickerProvid
     } catch (e) {
       if (!context.mounted) return;
       setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('فشل التحليل الذكي'), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+      );
     }
   }
 

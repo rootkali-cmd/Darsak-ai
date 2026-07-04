@@ -1,6 +1,7 @@
 # DarsakAI - Project Handoff Document
 
-> **Last updated:** 2026-06-28
+> **Last updated:** 2026-07-04
+> **Session:** Phase 18 — AI Classroom Integration
 > **Purpose:** Complete context for continuing development on a new system.
 
 ---
@@ -16,6 +17,7 @@ DarsakAI is an educational platform for Egyptian schools with 5 components:
 | Teacher Mobile App | `teacher_mobile_v2/` | Flutter/Dart | Teacher-facing Android app |
 | Web Portal | `web-portal/` | Next.js | Admin/teacher web dashboard |
 | AI Agents | `DarsakAI-Agents/` | Python | Multi-agent system |
+| OpenMAIC | `openmaic/` | Next.js/TypeScript | AI classroom (multi-agent) |
 | Desktop App | `desktop_app/` | Flutter/Dart | Windows teacher desktop |
 
 ---
@@ -176,6 +178,42 @@ DarsakAI is an educational platform for Egyptian schools with 5 components:
 - Student APK (35.6MB) ✅
 - Backend deployed: Fly.io v195 ✅
 
+### Session 2026-07-04 ✅
+
+**AI Classroom Integration (Phase 18):**
+- `openmaic/` — Added full OpenMAIC source (THU-MAIC/OpenMAIC v0.2.2) as part of repo
+- OpenMAIC Dockerfile fixed: added `scripts/` copy, removed `public/vendor` (generated at build)
+- OpenMAIC deployed to Fly.io as `darsak-ai-classroom.fly.dev`: Next.js multi-agent classroom platform
+- Fly secrets set: `OPENROUTER_API_KEY`, `DEFAULT_MODEL=deepseek/deepseek-v4-flash`, `OPENROUTER_MODELS`
+- OpenMAIC LLM integration has a bug: `@ai-sdk/openai` fetch wrapper crashes with OpenRouter (JSON parse error) — bypassed with backend proxy
+
+**Backend AI Chat Proxy:**
+- New file `src/api/ai_classroom.py`:
+  - `POST /chat/{token}/message` — calls OpenRouter directly via httpx (bypasses broken SDK)
+  - `GET /chat/{token}` — returns full Arabic HTML WebView page for chat UI
+  - Per-minute billing: 0.42 EGP/min, min wallet 10 EGP
+  - Auto-end lesson when balance < 10 EGP for >1 minute
+- `main.py` — Phase 18 migration added: `ALTER TABLE ai_lesson_sessions ADD COLUMN chat_token VARCHAR(64)` + index
+- Fixed migration indentation bug (EXTRA_SQL was outside try block) → now executes on startup
+- Backend deployed: Fly.io v204 ✅
+
+**Student App v1.8.0:**
+- Version bumped from `1.7.4+16` → `1.8.0+1`
+- `startAiLesson()` accepts nullable `classroomUrl`
+- `AiLessonPlayerScreen` uses `classroom_url` from start endpoint
+- `_checkBalance()` added to lesson list screen
+- New files: `lib/screens/ai_classroom/` (lesson list, player, summary)
+
+**APKs Built & Uploaded:**
+- Student APK v1.8.0 (36.6MB) — downloaded from `api/downloads/student-v1.8.0.apk`
+- Teacher APK v2.5.3 (38.2MB) — downloaded from `api/downloads/teacher-v2.5.3.apk`
+- Old student v1.7.4 APK kept for backward compatibility
+
+**Git:**
+- Commit `59ceee7` — `v1.8.0: AI Classroom integration`
+- OpenMAIC source added as regular directory (not submodule) — `.git/` removed
+- Pushed to `origin/main`
+
 ---
 
 ## 6. Key Files to Know
@@ -231,6 +269,16 @@ DarsakAI is an educational platform for Egyptian schools with 5 components:
 | `lib/providers/auth_provider.dart` | Auth with subscription race fix |
 | `lib/screens/home_screen.dart` | Dashboard with merged stats |
 | `lib/screens/exam_take_screen.dart` | Exam taking UI |
+| `lib/screens/ai_classroom/` | AI Classroom screens (lesson list, player, summary) |
+
+### OpenMAIC (AI Classroom)
+| File | What it does |
+|------|-------------|
+| `app/api/chat/route.ts` | Chat endpoint (broken — `@ai-sdk/openai` JSON parse error) |
+| `app/api/generate-classroom/route.ts` | Multi-agent classroom generation |
+| `app/layout.tsx` | Root layout |
+| `app/page.tsx` | Landing page |
+| `Dockerfile` | Fly.io container build |
 
 ---
 

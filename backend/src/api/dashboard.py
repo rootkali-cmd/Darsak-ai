@@ -1,4 +1,5 @@
 import logging
+from datetime import date as date_type
 from fastapi import APIRouter, Depends
 from src.utils.dependencies import get_current_teacher
 from src.services import student_service, group_service, attendance_service, invoice_service
@@ -24,7 +25,8 @@ async def dashboard_stats(current_user: dict = Depends(get_current_teacher)):
         groups_count = 0
 
     try:
-        attendance_stats = await attendance_service.get_stats(teacher_id)
+        today_str = date_type.today().isoformat()
+        attendance_stats = await attendance_service.get_stats(teacher_id, today_str)
         today_attendance = attendance_stats.get("present", 0) if attendance_stats else 0
     except Exception as e:
         logger.warning("Failed to get today attendance for %s: %s", teacher_id, e)

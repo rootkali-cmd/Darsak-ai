@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/local_db.dart';
+import '../services/fcm_service.dart';
 import '../models/student.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
@@ -34,7 +35,7 @@ class AuthProvider extends ChangeNotifier {
   bool get subscriptionLoaded => _subscriptionData != null;
   bool get isSubscriptionActive {
     if (_subscriptionData == null) return false;
-    final isActive = _subscriptionData!['is_active'] ?? false;
+    final isActive = _subscriptionData!['has_active_subscription'] ?? false;
     if (isActive != true) return false;
     final expiresAt = _subscriptionData!['expires_at'] as String?;
     if (expiresAt != null) {
@@ -123,6 +124,7 @@ class AuthProvider extends ChangeNotifier {
 
     _status = AuthStatus.authenticated;
     notifyListeners();
+    _registerFcmToken();
   }
 
   Future<bool> login(String code, String pin, {String? teacherCode}) async {
@@ -166,6 +168,7 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.authenticated;
       notifyListeners();
       refreshSubscription();
+      _registerFcmToken();
       return true;
     } catch (e) {
       String message = _mapLoginError(e);
@@ -225,6 +228,21 @@ class AuthProvider extends ChangeNotifier {
     }
 
     return 'حدث خطأ غير متوقع. حاول مرة أخرى.';
+  }
+
+  Future<void> _registerFcmToken() async {
+    try {
+      final token = await FcmService.getToken();
+      if (token != null) {
+        await _api.dio.post('/students/me/fcm-token', data: {'fcm_token': token});
+      }
+      // Listen for token refreshes and re-register
+      FcmService.onTokenRefresh((newToken) async {
+        try {
+          await _api.dio.post('/students/me/fcm-token', data: {'fcm_token': newToken});
+        } catch (_) {}
+      });
+    } catch (_) {}
   }
 
   Future<void> logout() async {

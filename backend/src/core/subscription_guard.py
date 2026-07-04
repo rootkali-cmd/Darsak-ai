@@ -43,7 +43,7 @@ async def check_subscription_limit(teacher_id: str, feature: str) -> bool:
     if not result:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="No active subscription. Please activate a subscription code.",
+            detail="لا يوجد اشتراك نشط — يجب تفعيل اشتراك أولاً",
         )
 
     plan = result["plan"]
@@ -51,7 +51,7 @@ async def check_subscription_limit(teacher_id: str, feature: str) -> bool:
     if feature not in features:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Your plan does not include '{feature}'. Upgrade to access this feature.",
+            detail=f"باقتك لا تشمل '{feature}' — قم بالترقية للوصول",
         )
     return True
 
@@ -65,10 +65,13 @@ async def get_remaining_limit(teacher_id: str, feature: str) -> dict:
     features = plan.get("features_json", []) or []
 
     if feature == "student_management":
-        plan_name = plan.get("name", "")
-        limit = await subscription_plan_service.get_plan_student_limit(plan_name)
-        if limit <= 0:
-            return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
+        sub = result["subscription"]
+        custom_limit = sub.get("custom_max_students", 0)
+        if custom_limit and custom_limit > 0:
+            limit = custom_limit
+        else:
+            plan_name = plan.get("name", "")
+            limit = await subscription_plan_service.get_plan_student_limit(plan_name)
         current = await student_service.count(teacher_id)
         remaining = limit - current
         return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
@@ -76,16 +79,14 @@ async def get_remaining_limit(teacher_id: str, feature: str) -> dict:
     if feature == "ai_analysis":
         plan_name = plan.get("name", "")
         limit = await subscription_plan_service.get_plan_ai_limit(plan_name)
-        if limit <= 0:
-            return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
         current = await subscription_plan_service.get_teacher_ai_usage_this_month(teacher_id)
         remaining = limit - current
         return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
 
     if feature == "max_grades":
         limit = plan.get("max_grades")
-        if limit is None or limit == -1:
-            return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
+        if limit is None:
+            limit = 999999
         grades = await grade_service.repo.select({"teacher_id": teacher_id}, limit=10000)
         current = len(grades)
         remaining = limit - current
@@ -93,10 +94,43 @@ async def get_remaining_limit(teacher_id: str, feature: str) -> dict:
 
     if feature == "max_invoices":
         limit = plan.get("max_invoices")
-        if limit is None or limit == -1:
-            return {"allowed": True, "current_usage": 0, "limit": None, "remaining": None}
+        if limit is None:
+            limit = 999999
         invoices = await invoice_service.repo.select({"teacher_id": teacher_id}, limit=10000)
         current = len(invoices)
+        remaining = limit - current
+        return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
+
+    if feature == "max_assistants":
+        limit = plan.get("max_assistants", 0)
+        if limit <= 0:
+            return {"allowed": False, "current_usage": 0, "limit": 0, "remaining": 0}
+        try:
+            from src.services import assistant_service
+            assistants = await assistant_service.repo.select({"teacher_id": teacher_id, "is_active": True}, limit=1000)
+            current = len(assistants)
+        except Exception:
+            current = 0
+        remaining = limit - current
+        return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
+
+    if feature == "max_ai_exams":
+        limit = plan.get("max_ai_exams_per_month", 5)
+        try:
+            from src.services import supabase_services
+            current = await supabase_services.subscription_plan_service.get_teacher_ai_exam_usage_this_month(teacher_id)
+        except Exception:
+            current = 0
+        remaining = limit - current
+        return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
+
+    if feature == "max_ai_grading":
+        limit = plan.get("max_ai_grading_per_month", 100)
+        try:
+            from src.services import supabase_services
+            current = await supabase_services.subscription_plan_service.get_teacher_ai_grading_usage_this_month(teacher_id)
+        except Exception:
+            current = 0
         remaining = limit - current
         return {"allowed": remaining > 0, "current_usage": current, "limit": limit, "remaining": remaining}
 
@@ -109,7 +143,7 @@ async def enforce_student_limit(teacher_id: str) -> bool:
     if not result["allowed"]:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Student limit reached ({result['current_usage']}/{result['limit']}). Upgrade your plan to add more students.",
+            detail=f"وصلت للحد الأقصى من الطلاب ({result['current_usage']}/{result['limit']}) — قم بالترقية لإضافة المزيد",
         )
     return True
 
@@ -119,7 +153,7 @@ async def enforce_ai_request_limit(teacher_id: str) -> bool:
     if not result["allowed"]:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"AI request limit reached ({result['current_usage']}/{result['limit']}). Upgrade your plan.",
+            detail=f"وصلت للحد الأقصى من طلبات AI ({result['current_usage']}/{result['limit']}) — قم بالترقية",
         )
     return True
 
@@ -133,7 +167,7 @@ async def require_active_subscription(teacher_id: str) -> dict:
     if not result:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="No active subscription. Please activate a subscription code.",
+            detail="لا يوجد اشتراك نشط — يجب تفعيل اشتراك أولاً",
         )
     return result
 
@@ -143,7 +177,7 @@ async def enforce_grade_limit(teacher_id: str) -> bool:
     if not result["allowed"]:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Grade limit reached ({result['current_usage']}/{result['limit']}). Upgrade your plan.",
+            detail=f"وصلت للحد الأقصى من الدرجات ({result['current_usage']}/{result['limit']}) — قم بالترقية",
         )
     return True
 
@@ -153,6 +187,36 @@ async def enforce_invoice_limit(teacher_id: str) -> bool:
     if not result["allowed"]:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Invoice limit reached ({result['current_usage']}/{result['limit']}). Upgrade your plan.",
+            detail=f"وصلت للحد الأقصى من الفواتير ({result['current_usage']}/{result['limit']}) — قم بالترقية",
+        )
+    return True
+
+
+async def enforce_assistant_limit(teacher_id: str) -> bool:
+    result = await get_remaining_limit(teacher_id, "max_assistants")
+    if not result["allowed"]:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"وصلت للحد الأقصى من المساعدين ({result['current_usage']}/{result['limit']}) — قم بالترقية",
+        )
+    return True
+
+
+async def enforce_ai_exam_limit(teacher_id: str) -> bool:
+    result = await get_remaining_limit(teacher_id, "max_ai_exams")
+    if not result["allowed"]:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"وصلت للحد الأقصى من توليد الاختبارات ({result['current_usage']}/{result['limit']}) هذا الشهر — قم بالترقية",
+        )
+    return True
+
+
+async def enforce_ai_grading_limit(teacher_id: str) -> bool:
+    result = await get_remaining_limit(teacher_id, "max_ai_grading")
+    if not result["allowed"]:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"وصلت للحد الأقصى من تصحيح AI ({result['current_usage']}/{result['limit']}) هذا الشهر — قم بالترقية",
         )
     return True

@@ -14,6 +14,7 @@ from src.schemas.invoice import (
     InvoiceWithLesson,
 )
 from src.core.security.supabase_repo import SupabaseRepository
+from src.core.subscription_guard import enforce_invoice_limit
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
@@ -106,6 +107,7 @@ async def teacher_create_invoice(
     data: InvoiceCreateRequest,
     current_teacher: dict = Depends(get_current_teacher),
 ):
+    await enforce_invoice_limit(current_teacher["id"])
     try:
         student = await student_repo.select_one({"id": str(data.student_id)})
         if not student:

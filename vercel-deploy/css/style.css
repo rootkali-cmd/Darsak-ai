@@ -28,12 +28,12 @@ header .container{display:flex;align-items:center;justify-content:space-between;
 nav{display:flex;gap:32px}
 nav a{color:var(--text-muted);font-size:14px;transition:color .3s}
 nav a:hover{color:#fff}
-.hero{min-height:100vh;display:flex;align-items:center;position:relative;overflow:hidden;padding-top:64px}
+.hero{min-height:100vh;display:flex;align-items:center;position:relative;overflow:hidden;padding-top:64px;background:#000}
 .hero-bg{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(139,92,246,.08),transparent)}
 .hero-blob{position:absolute;width:500px;height:500px;border-radius:50%;background:rgba(139,92,246,.06);filter:blur(80px)}
 .hero-blob-1{top:10%;left:-10%}
 .hero-blob-2{bottom:10%;right:-10%}
-.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;position:relative;z-index:1}
+.hero-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:60px;align-items:center;position:relative;z-index:1}
 .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.15);border-radius:50px;padding:6px 16px;font-size:13px;color:var(--primary-light);margin-bottom:24px}
 .badge-dot{width:8px;height:8px;background:var(--primary);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -43,6 +43,10 @@ nav a:hover{color:#fff}
 .hero-stats{display:flex;gap:40px}
 .hero-stats span{font-size:28px;font-weight:700;display:block}
 .hero-stats small{color:var(--text-muted);font-size:14px}
+.spline-wrapper{width:100%;height:500px;position:relative;overflow:hidden;border-radius:24px;background:#050510}
+spline-viewer{display:block;width:100%;height:100%}
+@media(max-width:768px){.spline-wrapper{height:350px}}
+@media(max-width:768px){.spline-wrapper{height:350px}}
 .mockup{max-width:320px;margin:0 auto}
 .mockup-frame{background:linear-gradient(to bottom,var(--bg-card),var(--bg));border:2px solid #222;border-radius:40px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.6)}
 .mockup-header{height:24px;background:#0a0a0a;display:flex;align-items:center;justify-content:center;gap:6px}

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'core/api_service.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
 import 'core/local_db.dart';
@@ -12,24 +13,27 @@ import 'services/structured_logger.dart';
 import 'providers/auth_provider.dart';
 import 'providers/data_provider.dart';
 import 'providers/theme_provider.dart';
-import 'services/update_service.dart';
 import 'services/notification_service.dart';
-import 'screens/teacher_connect_screen.dart';
+import 'services/fcm_service.dart';
+import 'screens/login/student_type_screen.dart';
 import 'screens/home_screen.dart';
-import 'widgets/update_dialog.dart';
+import 'screens/maintenance_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  // Initialize FCM before runApp (must be awaited for background handler)
+  await FcmService.init();
+
   runApp(const DarsakMobileApp());
 
-  // Initialize services in background AFTER app is shown
+  // Initialize remaining services in background
   _initBackground();
 }
 
 Future<void> _initBackground() async {
-  // Run all initializations in parallel
+  // Run all initializations in parallel (FCM already initialized in main)
   await Future.wait([
     LocalDB.init(),
     AnalyticsService.instance.init(),
@@ -55,7 +59,6 @@ class DarsakMobileApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeNotifier()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => DataProvider()),
-        ChangeNotifierProvider(create: (_) => AndroidUpdateService()),
       ],
       child: Consumer<ThemeNotifier>(
         builder: (context, themeNotifier, _) {
@@ -85,39 +88,78 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
+  bool _checkingMaintenance = true;
+  bool _underMaintenance = false;
+  String _maintenanceMessage = '';
+
   @override
   void initState() {
     super.initState();
+    FcmService.onMaintenanceRestored = () {
+      if (mounted) _checkAppStatus();
+    };
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().tryAutoLogin();
+      _checkAppStatus();
     });
   }
 
-  void _checkUpdate() {
-    final update = context.read<AndroidUpdateService>();
-    update.checkForUpdate().then((_) {
-      if (!mounted || !update.hasUpdate || update.updateInfo == null) return;
-      AndroidUpdateDialog.show(context, update.updateInfo!).then((shouldOpen) {
-        if (shouldOpen == true && update.updateInfo?.downloadUrl != null) {
-          final uri = Uri.parse(update.updateInfo!.downloadUrl!);
-          canLaunchUrl(uri).then((can) {
-            if (can) launchUrl(uri, mode: LaunchMode.externalApplication);
-          });
-        }
-      });
-    });
+  Future<void> _checkAppStatus() async {
+    try {
+      final status = await ApiService().getAppStatus();
+      if (!mounted) return;
+      final underMaintenance = status['under_maintenance'] == true;
+      if (underMaintenance) {
+        setState(() {
+          _underMaintenance = true;
+          _maintenanceMessage = status['maintenance_message']?.toString() ?? 'التطبيق تحت الصيانة حالياً. يرجى المحاولة لاحقاً.';
+          _checkingMaintenance = false;
+        });
+        return;
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _checkingMaintenance = false);
+    context.read<AuthProvider>().tryAutoLogin();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_underMaintenance) {
+      return MaintenanceScreen(message: _maintenanceMessage);
+    }
+
     final auth = context.watch<AuthProvider>();
 
     if (auth.status == AuthStatus.authenticated) {
       return const HomeScreen();
     }
 
-    // Show TeacherConnect immediately for all other states
-    // (uninitialized, unauthenticated, loading)
-    return const TeacherConnectScreen();
+    if (auth.status == AuthStatus.uninitialized || _checkingMaintenance) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppTheme.accent, AppTheme.accent.withValues(alpha: 0.8)],
+            ),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.school, size: 64, color: Colors.white),
+                SizedBox(height: 24),
+                Text('دَرسَك AI', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                SizedBox(height: 24),
+                CircularProgressIndicator(color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const StudentTypeScreen();
   }
 }

@@ -14,6 +14,8 @@ from src.schemas.exam import (
     StudentExamSubmit, StudentExamResponse, ExamResultResponse,
 )
 from src.services import exam_service, student_exam_service, exam_ai_service
+from src.core.subscription_guard import enforce_ai_exam_limit, enforce_ai_grading_limit
+from src.core.security.supabase_repo import SupabaseRepository
 
 router = APIRouter(prefix="/exams", tags=["Exams"])
 
@@ -27,6 +29,7 @@ def _to_exam_response(exam: dict) -> dict:
         "duration_minutes": exam.get("duration_minutes"),
         "total_points": exam.get("total_points", 0),
         "status": exam.get("status"),
+        "published": exam.get("status") == "published",
         "source_type": exam.get("source_type"),
         "deadline_at": exam.get("deadline_at"),
         "show_results_at": exam.get("show_results_at"),
@@ -52,12 +55,14 @@ def _to_question_response(q: dict) -> dict:
 
 def _to_student_exam_response(se: dict) -> dict:
     exam = se.get("exam")
+    student_name = se.get("student_name") or se.get("full_name", "")
+    student_code = se.get("student_code") or se.get("code", "")
     return {
         "id": str(se.get("id", "")),
         "exam_id": str(se.get("exam_id", "")),
         "student_id": str(se.get("student_id", "")),
-        "student_name": se.get("student_name", ""),
-        "student_code": se.get("student_code", ""),
+        "student_name": student_name,
+        "student_code": student_code,
         "started_at": str(se.get("started_at", "")),
         "submitted_at": str(se.get("submitted_at", "")),
         "duration_seconds": se.get("duration_seconds"),
@@ -126,6 +131,8 @@ async def ai_generate_exam(
     current_user: dict = Depends(get_current_teacher),
 ):
     try:
+        await enforce_ai_exam_limit(current_user["id"])
+
         if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
             raise HTTPException(status_code=400, detail=f"نوع الملف غير مدعوم: {file.content_type}")
 
@@ -162,6 +169,21 @@ async def ai_generate_exam(
             await exam_service.bulk_add_questions(exam["id"], questions_data)
 
         questions = await exam_service.get_questions(exam["id"])
+
+        # Track AI exam generation for usage limits
+        try:
+            from src.services.supabase_services import SupabaseRepository
+            audit_repo = SupabaseRepository("audit_logs")
+            await audit_repo.insert({
+                "actor_type": "teacher",
+                "actor_id": current_user["id"],
+                "action": "ai_exam_generate",
+                "resource_type": "exam",
+                "resource_id": exam["id"],
+            })
+        except Exception as audit_err:
+            logger.warning("Failed to write audit log for AI exam: %s", audit_err)
+
         return {
             "exam": _to_exam_response(exam),
             "questions": [_to_question_response(q) for q in questions],
@@ -357,8 +379,11 @@ async def get_my_exam_result(
         total_mc = 0
         if se.get("status") == "graded":
             answers = await student_exam_service.get_answers(student_exam_id)
+            questions = await SupabaseRepository("questions").select({"exam_id": se["exam_id"]}, limit=200)
+            questions_map = {q["id"]: q for q in questions}
             for a in answers:
-                if a.get("type") == "multiple_choice" or True:
+                q = questions_map.get(a.get("question_id"), {})
+                if q.get("type") == "multiple_choice":
                     total_mc += 1
                     if a.get("is_correct"):
                         correct_count += 1
@@ -463,6 +488,12 @@ async def publish_exam(
                         title="📝 اختبار جديد متاح",
                         body=f"اختبار '{exam.get('title', '')}' متاح الآن!",
                         type="info",
+                    )
+                    from src.services.push_service import send_push_to_user
+                    await send_push_to_user(
+                        "student", student_id,
+                        "📝 اختبار جديد متاح",
+                        f"اختبار '{exam.get('title', '')}' متاح الآن!",
                     )
         except Exception as notif_err:
             logger.warning("Exam publish notifications skipped: %s", notif_err)
@@ -735,6 +766,8 @@ async def analyze_student_exam(
     current_user: dict = Depends(get_current_teacher),
 ):
     try:
+        await enforce_ai_grading_limit(current_user["id"])
+
         se = await student_exam_service.get_by_id(student_exam_id)
         if not se:
             raise HTTPException(status_code=404, detail="Student exam not found")
@@ -776,6 +809,21 @@ async def analyze_student_exam(
         )
 
         await student_exam_service.save_ai_analysis(student_exam_id, analysis)
+
+        # Track AI grading for usage limits
+        try:
+            from src.services.supabase_services import SupabaseRepository
+            audit_repo = SupabaseRepository("audit_logs")
+            await audit_repo.insert({
+                "actor_type": "teacher",
+                "actor_id": current_user["id"],
+                "action": "ai_grading",
+                "resource_type": "student_exam",
+                "resource_id": student_exam_id,
+            })
+        except Exception as audit_err:
+            logger.warning("Failed to write audit log for AI grading: %s", audit_err)
+
         return analysis
     except HTTPException:
         raise

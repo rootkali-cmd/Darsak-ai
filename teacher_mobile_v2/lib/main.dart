@@ -9,11 +9,16 @@ import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
 
 import 'services/notification_service.dart' as notif;
+import 'services/fcm_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Initialize FCM before runApp (must be top-level, awaited)
+  await FcmService.init();
   notif.NotificationService().initialize();
+
   runApp(const DarsakApp());
 }
 

@@ -1,5 +1,5 @@
 from datetime import date, datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
 from src.utils.dependencies import get_current_student
@@ -26,7 +26,7 @@ async def get_my_notifications(
     current_student: dict = Depends(get_current_student),
 ):
     from src.services import notification_service
-    return await notification_service.get_unread(current_student["id"])
+    return await notification_service.get_unread(current_student.get("teacher_id") or current_student["id"])
 
 
 @router.post("/notifications/{notification_id}/read")
@@ -35,7 +35,16 @@ async def mark_notification_read(
     current_student: dict = Depends(get_current_student),
 ):
     from src.services import notification_service
+    n = await notification_service.get_by_id(notification_id)
+    if not n:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    if n.get("teacher_id") != current_student.get("teacher_id"):
+        raise HTTPException(status_code=403, detail="Access denied")
     return await notification_service.mark_read(notification_id)
+
+
+class FcmTokenUpdate(BaseModel):
+    fcm_token: str
 
 
 class StudentPinUpdate(BaseModel):
@@ -51,9 +60,19 @@ def get_client_ip(request: Request) -> str:
 async def get_my_profile(
     current_student: dict = Depends(get_current_student),
 ):
+    from src.api.students import _enrich_student
     data = dict(current_student)
-    data["has_pin"] = data.get("pin_hash") is not None
+    data = await _enrich_student(data)
     return StudentResponse(**data)
+
+
+@router.post("/fcm-token")
+async def update_fcm_token(
+    body: FcmTokenUpdate,
+    current_student: dict = Depends(get_current_student),
+):
+    await student_service.update(current_student["id"], {"fcm_token": body.fcm_token})
+    return {"ok": True}
 
 
 @router.get("/grades", response_model=list[GradeResponse])
@@ -106,7 +125,7 @@ async def get_my_invoices(
     filters = {"student_id": current_student["id"]}
     invoices = await invoice_service.list(filters, limit=limit)
     if paid is not None:
-        invoices = [i for i in invoices if i.get("paid") == paid]
+        invoices = [i for i in invoices if (i.get("status") == "paid") == paid]
     return [InvoiceResponse(**i) for i in invoices]
 
 
@@ -222,16 +241,16 @@ async def _save_conversation(student_id: str, conversation_id: str | None, user_
         now = datetime.now(timezone.utc).isoformat()
 
         if conversation_id:
-            resp = client.table("ai_conversations").select("messages").eq("id", conversation_id).execute()
+            resp = await client.table("ai_conversations").select("messages").eq("id", conversation_id).execute()
             if resp.data:
                 msgs = resp.data[0].get("messages", [])
                 msgs.append({"role": "user", "content": user_msg, "ts": now})
                 msgs.append({"role": "assistant", "content": ai_answer, "ts": now})
-                client.table("ai_conversations").update({"messages": msgs, "updated_at": now}).eq("id", conversation_id).execute()
+                await client.table("ai_conversations").update({"messages": msgs, "updated_at": now}).eq("id", conversation_id).execute()
                 return conversation_id
 
         msgs = [{"role": "user", "content": user_msg, "ts": now}, {"role": "assistant", "content": ai_answer, "ts": now}]
-        new_resp = client.table("ai_conversations").insert({"student_id": student_id, "messages": msgs}).execute()
+        new_resp = await client.table("ai_conversations").insert({"student_id": student_id, "messages": msgs}).execute()
         if new_resp.data:
             return new_resp.data[0]["id"]
     except Exception as e:
@@ -449,3 +468,152 @@ async def get_my_teacher_subscription(
             "days_remaining": 0,
             "is_trial": False,
         }
+
+
+# ─── Student Wallet ─────────────────────────────────────────────────
+
+
+@router.get("/wallet")
+async def get_my_wallet(current_student: dict = Depends(get_current_student)):
+    from src.modules.finance.service import finance_service
+    wallet = await finance_service.get_or_create_wallet(current_student["id"])
+    return {
+        "balance": float(wallet.get("balance", 0)),
+        "total_deposited": float(wallet.get("total_deposited", 0)),
+        "total_spent": float(wallet.get("total_spent", 0)),
+    }
+
+
+@router.get("/transactions")
+async def get_my_transactions(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_student: dict = Depends(get_current_student),
+):
+    from src.modules.finance.service import finance_service
+    items = await finance_service.get_transactions(current_student["id"], limit=limit, offset=offset)
+    return {"items": items}
+
+
+class DepositRequest(BaseModel):
+    amount: float
+    sender_phone: str
+    method: str = "vodafone_cash"
+
+
+@router.post("/deposit-request")
+async def request_deposit(
+    body: DepositRequest,
+    current_student: dict = Depends(get_current_student),
+):
+    from src.modules.finance.service import finance_service
+    if body.amount < 5:
+        raise HTTPException(status_code=400, detail="الحد الأدنى للإيداع هو 5 جنيه")
+    if body.amount > 5000:
+        raise HTTPException(status_code=400, detail="الحد الأقصى للإيداع هو 5000 جنيه")
+    deposit = await finance_service.request_deposit(current_student["id"], body.amount)
+    
+    # Store sender_phone and method
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        await client.table("student_deposit_requests").update(
+            {"method": body.method, "sender_phone": body.sender_phone}
+        ).eq("id", deposit["id"]).execute()
+    except Exception:
+        pass
+    
+    # Send Telegram notification to admin
+    try:
+        from src.api.webhook import notify_student_deposit
+        student_name = current_student.get("full_name", "طالب")
+        await notify_student_deposit(
+            student_name,
+            float(deposit.get("amount", body.amount)),
+            float(deposit.get("tax_amount", 0)),
+            float(deposit.get("total_amount", body.amount)),
+            str(deposit.get("id", "")),
+            sender_phone=body.sender_phone,
+            method=body.method,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger("darsak").warning("Failed to send deposit notification: %s", e)
+    
+    return {"ok": True, "data": deposit}
+
+
+@router.post("/deposit-request-with-screenshot")
+async def request_deposit_with_screenshot(
+    amount: float = Form(...),
+    sender_phone: str = Form(...),
+    method: str = Form(default="vodafone_cash"),
+    screenshot: UploadFile = File(...),
+    current_student: dict = Depends(get_current_student),
+):
+    if amount < 5:
+        raise HTTPException(status_code=400, detail="الحد الأدنى للإيداع هو 5 جنيه")
+    if amount > 5000:
+        raise HTTPException(status_code=400, detail="الحد الأقصى للإيداع هو 5000 جنيه")
+    import base64
+    from src.modules.finance.service import finance_service
+    
+    deposit = await finance_service.request_deposit(current_student["id"], amount)
+    
+    # Upload screenshot (required)
+    screenshot_b64 = None
+    if screenshot and screenshot.filename:
+        content = await screenshot.read()
+        screenshot_b64 = base64.b64encode(content).decode()
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        await client.table("student_deposit_requests").update(
+            {"screenshot": screenshot_b64, "method": method, "sender_phone": sender_phone}
+        ).eq("id", deposit["id"]).execute()
+    
+    # Send Telegram notification to admin
+    try:
+        from src.api.webhook import notify_student_deposit
+        student_name = current_student.get("full_name", "طالب")
+        await notify_student_deposit(
+            student_name,
+            float(deposit.get("amount", amount)),
+            float(deposit.get("tax_amount", 0)),
+            float(deposit.get("total_amount", amount)),
+            str(deposit.get("id", "")),
+            sender_phone=sender_phone,
+            method=method,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger("darsak").warning("Failed to send deposit notification: %s", e)
+    
+    return {"ok": True, "data": deposit}
+
+
+@router.get("/payment-config")
+async def get_payment_config_student():
+    """Students see payment info to send money."""
+    phone = "01031524947"
+    instapay_username = ""
+    instapay_qr_link = ""
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        result = await client.table("instapay_config").select("barcode_url, username, vodafone_cash_number").eq("is_active", True).limit(1).execute()
+        rows = result.data if hasattr(result, "data") else []
+        if rows:
+            row = rows[0]
+            if row.get("vodafone_cash_number"):
+                phone = row["vodafone_cash_number"]
+            if row.get("username"):
+                instapay_username = row["username"]
+            if row.get("barcode_url"):
+                instapay_qr_link = row["barcode_url"]
+    except Exception:
+        pass
+    return {
+        "vodafone_cash_number": phone,
+        "instapay_username": instapay_username,
+        "instapay_qr_link": instapay_qr_link,
+    }

@@ -1,6 +1,7 @@
 import logging
 import uuid
 from io import BytesIO
+from fastapi import HTTPException
 from src.core.security.supabase_repo import SupabaseRepository
 from src.modules.storage.r2_service import r2_service
 
@@ -27,21 +28,29 @@ class CourseService:
         self.media_repo = SupabaseRepository("teacher_media")
 
     async def create_course(self, teacher_id: str, data: dict) -> dict:
-        course = await self.courses_repo.insert({
-            "teacher_id": teacher_id,
-            "title": data["title"],
-            "description": data.get("description"),
-            "subject": data.get("subject"),
-            "level": data.get("level"),
-        })
-        await self.pricing_repo.insert({
-            "course_id": course["id"],
-            "teacher_id": teacher_id,
-            "center_price": 0.00,
-            "platform_price": 0.00,
-            "is_free_for_center": True,
-            "currency": "EGP",
-        })
+        try:
+            course = await self.courses_repo.insert({
+                "teacher_id": teacher_id,
+                "title": data["title"],
+                "description": data.get("description"),
+                "subject": data.get("subject"),
+                "level": data.get("level"),
+            })
+        except Exception as e:
+            logger.error("DB insert failed for course (teacher=%s): %s (%s)", teacher_id, type(e).__name__, e)
+            raise HTTPException(status_code=500, detail=f"فشل حفظ الكورس في قاعدة البيانات: {str(e)}")
+        try:
+            await self.pricing_repo.insert({
+                "course_id": course["id"],
+                "teacher_id": teacher_id,
+                "center_price": 0.00,
+                "platform_price": 0.00,
+                "is_free_for_center": True,
+                "currency": "EGP",
+            })
+        except Exception as e:
+            logger.error("Course pricing insert failed for course %s: %s (%s)", course["id"], type(e).__name__, e)
+            raise HTTPException(status_code=500, detail=f"تم إنشاء الكورس ولكن فشل حفظ التسعير — حاول تعديل التسعير لاحقاً")
         logger.info("Course created: %s by teacher %s", course["id"], teacher_id)
         return dict(course)
 
@@ -145,7 +154,7 @@ class CourseService:
         return await self.chapters_repo.delete({"id": chapter_id})
 
     async def create_lesson(self, chapter_id: str, course_id: str, teacher_id: str, data: dict) -> dict:
-        lesson = await self.lessons_repo.insert({
+        lesson_data = {
             "chapter_id": chapter_id,
             "course_id": course_id,
             "teacher_id": teacher_id,
@@ -155,7 +164,33 @@ class CourseService:
             "has_exam": data.get("has_exam", False),
             "has_homework": data.get("has_homework", False),
             "sort_order": data.get("sort_order", 0),
-        })
+        }
+
+        exam_id = None
+        if data.get("has_exam"):
+            try:
+                from src.services.supabase_services import ExamService
+                exam_svc = ExamService()
+                exam = await exam_svc.create(
+                    teacher_id=teacher_id,
+                    title=data["title"],
+                    duration_minutes=30,
+                    description=f"اختبار كورس: {data['title']}",
+                )
+                exam_id = str(exam["id"])
+                lesson_data["exam_id"] = exam_id
+            except Exception as e:
+                logger.warning("Failed to auto-create exam for lesson: %s", e)
+
+        lesson = await self.lessons_repo.insert(lesson_data)
+
+        if exam_id:
+            try:
+                await self.lessons_repo.update({"id": lesson["id"]}, {"exam_id": exam_id})
+                lesson["exam_id"] = exam_id
+            except Exception:
+                pass
+
         return dict(lesson)
 
     async def list_lessons(self, chapter_id: str) -> list[dict]:
@@ -292,13 +327,30 @@ class CourseService:
         safe_name = f"cover_{uuid.uuid4().hex}.{ext}"
         teacher_id = str(course["teacher_id"])
 
-        r2_key = await r2_service.upload(teacher_id, "image", safe_name, file_content, mime_type=mime_type)
-
-        await self.courses_repo.update({"id": course_id}, {
-            "cover_image_r2_key": r2_key,
-        })
-
-        return {"r2_key": r2_key, "course_id": course_id}
+        if r2_service.enabled:
+            r2_key = await r2_service.upload(teacher_id, "image", safe_name, file_content, mime_type=mime_type)
+            await self.courses_repo.update({"id": course_id}, {
+                "cover_image_r2_key": r2_key,
+            })
+            return {"r2_key": r2_key, "course_id": course_id, "provider": "r2"}
+        else:
+            # Fallback to Supabase Storage
+            from src.core.security.supabase_repo import get_supabase
+            client = await get_supabase()
+            sb_path = f"courses/{safe_name}"
+            try:
+                client.storage.from_("darsak-media").upload(
+                    sb_path, BytesIO(file_content),
+                    {"content-type": mime_type}
+                )
+            except Exception as se:
+                logger.error("Supabase storage upload failed: %s", se)
+                raise HTTPException(status_code=500, detail=f"فشل رفع الصورة إلى التخزين: {str(se)}")
+            sb_key = f"sb:{sb_path}"
+            await self.courses_repo.update({"id": course_id}, {
+                "cover_image_r2_key": sb_key,
+            })
+            return {"r2_key": sb_key, "course_id": course_id, "provider": "supabase"}
 
 
 course_service = CourseService()

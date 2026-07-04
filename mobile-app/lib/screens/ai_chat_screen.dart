@@ -330,9 +330,10 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
       textDirection: TextDirection.rtl,
       text: TextSpan(
         children: segments,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           height: 1.6,
+          color: AppColors.textPrimary(context),
         ),
       ),
     );
@@ -563,6 +564,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
                 textInputAction: TextInputAction.newline,
                 maxLines: null,
                 keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.characters,
                 style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
                 decoration: InputDecoration(
                   hintText: _ai.remaining > 0 ? 'اسأل أي سؤال...' : '',

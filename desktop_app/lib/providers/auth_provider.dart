@@ -70,7 +70,7 @@ final class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       AppLogger.instance.info('login_success', data: {'email': email});
       notifyListeners();
-      refreshSubscription();
+      await refreshSubscription();
       return true;
     } catch (e) {
       await _clearTokens();
@@ -112,7 +112,7 @@ final class AuthProvider extends ChangeNotifier {
       _levels = (userData['levels'] as List?)?.cast<String>() ?? [];
       await _cacheUser(_user!);
       notifyListeners();
-      refreshSubscription();
+      await refreshSubscription();
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 401) {
         await logout();

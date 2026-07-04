@@ -1,17 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../core/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/glass_theme.dart';
-import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/payments_api_service.dart';
 import '../../services/native_file_picker.dart';
-import 'package:provider/provider.dart';
+import 'dart:io';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
-
   @override
   State<SubscriptionPlansScreen> createState() => _SubscriptionPlansScreenState();
 }
@@ -21,37 +17,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   String? _error;
   List<Map<String, dynamic>> _plans = [];
   Map<String, dynamic>? _subscription;
-  Map<String, dynamic>? _paymentConfig;
-  Map<String, dynamic>? _instaPayConfig;
   bool _isYearly = false;
-  int _selectedStudentCount = 700;
+  int _premiumStudents = 1000;
 
-  static const _defaultPlans = [
-    {
-      'id': 'basic',
-      'name': 'الباقة الأساسية',
-      'price_egp': 250,
-      'max_students': 100,
-      'color': '#06B6D4',
-      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير بسيطة', 'دعم فني'],
-    },
-    {
-      'id': 'pro',
-      'name': 'الباقة الاحترافية',
-      'price_egp': 600,
-      'max_students': 400,
-      'color': '#6366F1',
-      'popular': true,
-      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'دعم فني'],
-    },
-    {
-      'id': 'premium',
-      'name': 'الباقة المتكاملة',
-      'price_egp': 1100,
-      'max_students': -1,
-      'color': '#10B981',
-      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'طلاب غير محدود', 'دعم فني أولوية'],
-    },
+  static const _premiumTiers = [
+    {'students': 1000, 'monthly': 1250, 'yearly': 11500, 'assistants': 5, 'storage': '200GB', 'grading': '2,000'},
+    {'students': 2500, 'monthly': 2500, 'yearly': 24000, 'assistants': 10, 'storage': '500GB', 'grading': '5,000'},
+    {'students': 5000, 'monthly': 4200, 'yearly': 42000, 'assistants': 15, 'storage': '1TB', 'grading': '10,000'},
   ];
 
   @override
@@ -61,28 +33,14 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
     try {
-      final paymentsApi = PaymentsApiService();
       final api = ApiService();
-
       try {
         final meResp = await api.dio.get('/auth/me');
         final me = meResp.data is Map ? meResp.data as Map<String, dynamic> : <String, dynamic>{};
         _subscription = me['subscription'] is Map ? Map<String, dynamic>.from(me['subscription']) : null;
       } catch (_) {}
-
-      try {
-        _paymentConfig = await paymentsApi.getPaymentConfig();
-      } catch (_) {}
-
-      try {
-        _instaPayConfig = await paymentsApi.getInstaPayConfig();
-      } catch (_) {}
-
       try {
         final plansResp = await api.dio.get('/subscriptions/plans');
         if (plansResp.data is List) {
@@ -95,70 +53,63 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  List<Map<String, dynamic>> get _plansToShow {
-    if (_plans.isNotEmpty && _plans.every((p) => p['price_egp'] != null || p['price'] != null)) {
-      return _plans;
+  Map<String, dynamic>? get _currentPlan => _subscription?['plan'] is Map ? Map<String, dynamic>.from(_subscription!['plan']) : null;
+  String get _currentPlanName => _currentPlan?['name'] ?? '';
+
+  Map<String, dynamic>? _findPlan(String planId) {
+    try {
+      return _plans.firstWhere((p) => (p['id'] ?? '').toString().toLowerCase() == planId.toLowerCase());
+    } catch (_) {
+      return null;
     }
-    return _defaultPlans;
+  }
+  int get _daysRemaining {
+    final exp = _subscription?['expires_at'];
+    if (exp == null) return 0;
+    try {
+      final d = DateTime.parse(exp.toString());
+      return d.difference(DateTime.now()).inDays;
+    } catch (_) { return 0; }
   }
 
-  int _calculatePremiumPrice() {
-    final base = 1100;
-    final extra = ((_selectedStudentCount - 700) / 50).floor() * 175;
-    return base + extra;
-  }
+  int get _premiumPrice => _isYearly
+      ? (_premiumTiers.firstWhere((t) => t['students'] == _premiumStudents, orElse: () => _premiumTiers[0])['yearly'] as int)
+      : (_premiumTiers.firstWhere((t) => t['students'] == _premiumStudents, orElse: () => _premiumTiers[0])['monthly'] as int);
 
-  int _getPlanPrice(Map<String, dynamic> plan) {
-    final id = plan['id']?.toString() ?? '';
-    if (id == 'premium') {
-      final monthly = _calculatePremiumPrice();
-      return _isYearly ? monthly * 10 : monthly;
-    }
-    final base = (plan['price_egp'] ?? plan['price'] ?? 0) as int;
-    return _isYearly ? base * 10 : base;
-  }
-
-  String _getPriceSuffix() => _isYearly ? 'ج.م/سنه' : 'ج.م/شهر';
+  Map<String, dynamic> get _currentPremiumTier => _premiumTiers.firstWhere((t) => t['students'] == _premiumStudents, orElse: () => _premiumTiers[0]);
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF5F5F5),
       appBar: GlassTheme.glassAppBar('الباقات والاشتراكات'),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: GlassTheme.indigo))
           : _error != null
-              ? Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
-                    const SizedBox(height: 12),
-                    Text(_error!, style: TextStyle(color: GlassTheme.textSecondary(context))),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _loadData,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('إعادة المحاولة'),
-                    ),
-                  ]),
-                )
+              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 12),
+                  Text(_error!, style: TextStyle(color: GlassTheme.textPrimary(context))),
+                  const SizedBox(height: 16),
+                  ElevatedButton(onPressed: _loadData, child: const Text('إعادة المحاولة')),
+                ]))
               : RefreshIndicator(
                   onRefresh: _loadData,
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      _buildCurrentStatus(),
-                      const SizedBox(height: 20),
                       _buildBillingToggle(),
                       const SizedBox(height: 16),
-                      Text('اختر باقتك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-                      const SizedBox(height: 4),
-                      Text('جميع الباقات تشمل الدعم الفني والتحديثات المجانية', style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
-                      const SizedBox(height: 16),
-                      ..._plansToShow.asMap().entries.map((e) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _buildPlanCard(e.value, e.key),
-                          )),
+                      if (_currentPlanName.isNotEmpty) ...[
+                        _buildCurrentSubscription(),
+                        const SizedBox(height: 20),
+                      ],
+                      _buildPlanCardDynamic(_findPlan('basic'), color: const Color(0xFF06B6D4)),
+                      const SizedBox(height: 12),
+                      _buildPlanCardDynamic(_findPlan('pro'), color: GlassTheme.indigo, popular: true),
+                      const SizedBox(height: 12),
+                      _buildPremiumCard(),
+                      const SizedBox(height: 12),
+                      _buildGoldenCard(),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -170,350 +121,357 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: GlassTheme.cardBg(context),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: GlassTheme.cardBorder(context)),
+        color: GlassTheme.textSecondary(context).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _isYearly = false),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                gradient: !_isYearly ? const LinearGradient(colors: [AppTheme.accent, Color(0xFF8B5CF6)]) : null,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                if (!_isYearly) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                if (!_isYearly) const SizedBox(width: 6),
-                Text('شهري', style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold,
-                  color: !_isYearly ? Colors.white : GlassTheme.textSecondary(context),
-                )),
-              ]),
-            ),
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _isYearly = true),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                gradient: _isYearly ? const LinearGradient(colors: [AppTheme.accent, Color(0xFF8B5CF6)]) : null,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                if (_isYearly) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                if (_isYearly) const SizedBox(width: 6),
-                Text('سنوي', style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold,
-                  color: _isYearly ? Colors.white : GlassTheme.textSecondary(context),
-                )),
-                if (_isYearly) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.success,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text('وفّر شهرين', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-                  ),
-                ],
-              ]),
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _buildCurrentStatus() {
-    if (_subscription == null) return const SizedBox.shrink();
-    final isActive = _subscription!['is_active'] == true && _subscription!['is_expired'] != true;
-    final daysLeft = _subscription!['days_remaining'] ?? 0;
-    final planName = _subscription!['plan_name']?.toString() ?? '';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: GlassTheme.cardBg(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isActive ? AppTheme.success.withValues(alpha: 0.3) : AppTheme.danger.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppTheme.accent, AppTheme.accent.withValues(alpha: 0.7)],
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.card_membership, color: Colors.white, size: 24),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('اشتراكك الحالي', style: TextStyle(fontSize: 11, color: GlassTheme.textSecondary(context))),
-            const SizedBox(height: 2),
-            Text(planName.isNotEmpty ? planName : 'لا يوجد اشتراك', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-          ]),
-        ),
-        if (isActive)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        Expanded(child: GestureDetector(
+          onTap: () => setState(() => _isYearly = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.success.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: !_isYearly ? GlassTheme.indigo : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('$daysLeft يوم', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.success)),
+            child: Center(child: Text('شهري', style: GoogleFonts.cairo(
+              color: !_isYearly ? Colors.white : GlassTheme.textSecondary(context),
+              fontWeight: FontWeight.w700,
+            ))),
           ),
+        )),
+        Expanded(child: GestureDetector(
+          onTap: () => setState(() => _isYearly = true),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: _isYearly ? GlassTheme.indigo : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text('سنوي', style: GoogleFonts.cairo(
+                color: _isYearly ? Colors.white : GlassTheme.textSecondary(context),
+                fontWeight: FontWeight.w700,
+              )),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
+                child: const Text('وفّر شهرين', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+            ])),
+          ),
+        )),
       ]),
     );
   }
 
-  Widget _buildPlanCard(Map<String, dynamic> plan, int index) {
-    final name = plan['name'] ?? '';
-    final price = _getPlanPrice(plan);
-    final features = plan['features'] is List ? plan['features'] as List : <dynamic>[];
-    final isPopular = plan['popular'] == true;
-    final planId = plan['id']?.toString() ?? '';
-    final isPremium = planId == 'premium';
+  Widget _buildCurrentSubscription() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: GlassTheme.glassCard(context),
+      child: Row(children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+          child: const Icon(Icons.check_circle, color: Colors.green, size: 24),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('الباقة الحالية: $_currentPlanName', style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 14)),
+          const SizedBox(height: 2),
+          Text(_daysRemaining > 0 ? 'متبقي $_daysRemaining يوم' : 'منتهية', style: GoogleFonts.cairo(
+            fontSize: 12, color: _daysRemaining > 0 ? Colors.green : Colors.red,
+          )),
+        ])),
+      ]),
+    );
+  }
 
-    final planColors = [
-      [const Color(0xFF6366F1), const Color(0xFF818CF8)],
-      [const Color(0xFF8B5CF6), const Color(0xFFA78BFA)],
-      [const Color(0xFF10B981), const Color(0xFF34D399)],
-    ];
-    final gradientColors = planColors[index.clamp(0, 2)];
+  Widget _buildPlanCardDynamic(Map<String, dynamic>? plan, {required Color color, bool popular = false}) {
+    final planId = plan?['id']?.toString().toLowerCase() ?? '';
+    final name = plan?['name_ar']?.toString() ?? plan?['name']?.toString() ?? '';
+    final monthly = (plan?['price_monthly'] ?? 0).toInt();
+    final yearly = (plan?['price_yearly'] ?? 0).toInt();
+    final students = plan?['max_students'] ?? 0;
+    final assistants = plan?['max_assistants'] ?? 0;
+    final aiRequests = plan?['max_ai_requests'] ?? 0;
+    final storage = plan?['storage_limit_gb'] ?? 0;
+
+    List<String> features = [];
+    final fj = plan?['features_json'];
+    if (fj is List) features = fj.map((f) => f.toString()).toList();
+
+    final nameEn = plan?['name']?.toString() ?? '';
+    final effectiveYearly = yearly > 0 ? yearly : monthly * 10;
+    final price = _isYearly ? effectiveYearly : monthly;
+    final isCurrent = nameEn.isNotEmpty && _currentPlanName.toLowerCase().contains(nameEn.toLowerCase());
+
+    final extras = <String, String>{
+      if (assistants > 0) 'مساعدين': '$assistants',
+      if (aiRequests > 0) 'امتحانات AI/شهر': '$aiRequests',
+      if (storage > 0) 'تخزين': storage >= 1024 ? '${(storage / 1024).toStringAsFixed(1)}TB' : '${storage}GB',
+    };
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: GlassTheme.cardBg(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isPopular ? AppTheme.accent.withValues(alpha: 0.5) : GlassTheme.cardBorder(context),
-          width: isPopular ? 2 : 1,
+        color: GlassTheme.textPrimary(context).withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: popular ? color : GlassTheme.textSecondary(context).withValues(alpha: 0.2), width: popular ? 2 : 1),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (popular) Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(15))),
+          child: const Center(child: Text('الأكثر شعبية', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
         ),
-        boxShadow: isPopular
-            ? [BoxShadow(color: AppTheme.accent.withValues(alpha: 0.12), blurRadius: 24, spreadRadius: 0)]
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isPopular)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: gradientColors),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+        Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name, style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 18, color: color)),
+          if (students > 0) ...[
+            const SizedBox(height: 4),
+            Text('$students طالب كحد أقصى', style: GoogleFonts.cairo(fontSize: 12, color: GlassTheme.textSecondary(context))),
+          ],
+          const SizedBox(height: 12),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            if (_isYearly && monthly > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4, left: 8),
+                child: Text('${monthly * 12}', style: GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 18, color: Colors.red.shade300, decoration: TextDecoration.lineThrough)),
               ),
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.star_rounded, color: Colors.white, size: 18),
-                SizedBox(width: 6),
-                Text('الأكثر شعبية', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+            Text('$price', style: GoogleFonts.cairo(fontWeight: FontWeight.w900, fontSize: 28, color: GlassTheme.textPrimary(context))),
+            const SizedBox(width: 4),
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('ج.م/${_isYearly ? 'سنة' : 'شهر'}', style: GoogleFonts.cairo(fontSize: 12, color: GlassTheme.textSecondary(context)))),
+          ]),
+          if (_isYearly && monthly > 0 && effectiveYearly > 0) ...[
+            const SizedBox(height: 4),
+            Text('وفر ${(monthly * 12) - effectiveYearly} ج.م سنوياً', style: GoogleFonts.cairo(fontSize: 11, color: Colors.green)),
+          ],
+          if (extras.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ...extras.entries.map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                Icon(Icons.check_circle, color: color, size: 16),
+                const SizedBox(width: 8),
+                Text('${e.key}: ${e.value}', style: GoogleFonts.cairo(fontSize: 12, color: GlassTheme.textPrimary(context))),
               ]),
+            )),
+          ],
+          if (features.isNotEmpty) ...[
+            const Divider(height: 20),
+            ...features.take(4).map((f) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                Icon(Icons.check, color: Colors.green, size: 14),
+                const SizedBox(width: 8),
+                Expanded(child: Text(f, style: GoogleFonts.cairo(fontSize: 12, color: GlassTheme.textPrimary(context)))),
+              ]),
+            )),
+            if (features.length > 4) TextButton(
+              onPressed: () {},
+              child: Text('+${features.length - 4} ميزة إضافية', style: GoogleFonts.cairo(fontSize: 12, color: color)),
             ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name.toString(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-              const SizedBox(height: 8),
-              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text('$price', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-                const SizedBox(width: 4),
-                Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(_getPriceSuffix(), style: TextStyle(fontSize: 14, color: GlassTheme.textSecondary(context)))),
-              ]),
-              if (isPremium) ...[
-                const SizedBox(height: 12),
-                _buildStudentSlider(),
-              ],
-              const SizedBox(height: 16),
-              ...features.map((f) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(children: [
-                      Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: gradientColors[0].withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(Icons.check, size: 14, color: gradientColors[0]),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(f.toString(), style: TextStyle(fontSize: 14, color: GlassTheme.textPrimary(context)))),
-                    ]),
-                  )),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: gradientColors),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => _showPaymentBottomSheet(plan),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.credit_card_rounded, size: 20, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text('اشترك الآن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-        ],
-      ),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: isCurrent ? null : () => _showPaymentBottomSheet(planId.isNotEmpty ? planId : name, price),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(isCurrent ? 'الباقة الحالية' : 'اشترك الآن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          )),
+        ])),
+      ]),
     );
   }
 
-  Widget _buildStudentSlider() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text('عدد الطلاب', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: GlassTheme.textSecondary(context))),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppTheme.success.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text('$_selectedStudentCount طالب', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.success)),
-        ),
-      ]),
-      const SizedBox(height: 4),
-      SliderTheme(
-        data: SliderThemeData(
-          activeTrackColor: AppTheme.success,
-          inactiveTrackColor: AppTheme.success.withValues(alpha: 0.15),
-          thumbColor: AppTheme.success,
-          overlayColor: AppTheme.success.withValues(alpha: 0.1),
-          trackHeight: 4,
-          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-        ),
-        child: Slider(
-          value: _selectedStudentCount.toDouble(),
-          min: 700,
-          max: 5000,
-          divisions: 86,
-          onChanged: (v) => setState(() => _selectedStudentCount = v.round()),
-        ),
+  Widget _buildPremiumCard() {
+    final tier = _currentPremiumTier;
+    final price = _premiumPrice;
+    final sliderIndex = _premiumTiers.indexWhere((t) => t['students'] == _premiumStudents);
+    final premiumPlan = _findPlan('premium');
+    final premiumName = premiumPlan?['name_ar']?.toString() ?? premiumPlan?['name']?.toString() ?? 'المميزة (Premium)';
+    final isCurrent = premiumPlan != null
+        ? _currentPlanName.toLowerCase().contains((premiumPlan['name'] ?? '').toString().toLowerCase())
+        : _currentPlanName.toLowerCase().contains('premium');
+    final apiStorage = premiumPlan?['storage_limit_gb'];
+    final storageDisplay = apiStorage != null
+        ? (apiStorage >= 1024 ? '${(apiStorage / 1024).toStringAsFixed(1)}TB' : '${apiStorage}GB')
+        : tier['storage'];
+    final apiAssistants = premiumPlan?['max_assistants'] ?? tier['assistants'];
+    final apiGrading = premiumPlan?['max_ai_grading']?.toString() ?? tier['grading']?.toString() ?? '2,000';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [GlassTheme.indigo, GlassTheme.indigo.withValues(alpha: 0.8)]),
+        borderRadius: BorderRadius.circular(16),
       ),
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text('700', style: TextStyle(fontSize: 11, color: GlassTheme.textMuted(context))),
-        Text('5000', style: TextStyle(fontSize: 11, color: GlassTheme.textMuted(context))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.diamond, color: Colors.amber, size: 24),
+            const SizedBox(width: 8),
+            Text(premiumName, style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white)),
+          ]),
+          const SizedBox(height: 4),
+          Text('نظام السعر المرن — اختر عدد الطلاب', style: GoogleFonts.cairo(fontSize: 12, color: Colors.white70)),
+          const SizedBox(height: 16),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('$price', style: GoogleFonts.cairo(fontWeight: FontWeight.w900, fontSize: 28, color: Colors.white)),
+            const SizedBox(width: 4),
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('ج.م/${_isYearly ? 'سنة' : 'شهر'}', style: GoogleFonts.cairo(fontSize: 12, color: Colors.white70))),
+          ]),
+          const SizedBox(height: 16),
+          Text('عدد الطلاب: $_premiumStudents', style: GoogleFonts.cairo(fontWeight: FontWeight.w700, color: Colors.white)),
+          Slider(
+            value: sliderIndex.toDouble(),
+            min: 0,
+            max: (_premiumTiers.length - 1).toDouble(),
+            divisions: _premiumTiers.length - 1,
+            activeColor: Colors.amber,
+            inactiveColor: Colors.white24,
+            onChanged: (v) {
+              setState(() => _premiumStudents = _premiumTiers[v.round()]['students'] as int);
+            },
+          ),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: _premiumTiers.map((t) =>
+            Text('${t['students']}', style: GoogleFonts.cairo(fontSize: 10, color: Colors.white70))
+          ).toList()),
+          const SizedBox(height: 16),
+          _buildPremiumFeature('المساعدين', '$apiAssistants'),
+          _buildPremiumFeature('امتحانات AI/شهر', '20'),
+          _buildPremiumFeature('تصحيح AI/شهر', '$apiGrading ورقة'),
+          _buildPremiumFeature('التخزين', '$storageDisplay'),
+          _buildPremiumFeature('الدعم الفني', 'VIP'),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: isCurrent ? null : () => _showPaymentBottomSheet('Premium', price),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(isCurrent ? 'الباقة الحالية' : 'اشترك الآن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          )),
+        ])),
       ]),
-    ]);
+    );
   }
 
-  void _showPaymentBottomSheet(Map<String, dynamic> plan) {
-    final planName = plan['name'] ?? '';
-    final planPrice = _getPlanPrice(plan);
-    final planId = plan['id']?.toString() ?? '';
+  Widget _buildPremiumFeature(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(children: [
+        const Icon(Icons.check_circle, color: Colors.amber, size: 16),
+        const SizedBox(width: 8),
+        Text('$label: ', style: GoogleFonts.cairo(fontSize: 13, color: Colors.white70)),
+        Text(value, style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+      ]),
+    );
+  }
 
+  Widget _buildGoldenCard() {
+    final goldenPlan = _findPlan('golden');
+    final isCurrent = goldenPlan != null
+        ? _currentPlanName.toLowerCase().contains((goldenPlan['name'] ?? '').toString().toLowerCase())
+        : _currentPlanName.toLowerCase().contains('golden');
+    final goldenName = goldenPlan?['name_ar']?.toString() ?? goldenPlan?['name']?.toString() ?? 'الباقة الذهبية (Golden)';
+    final gMonthly = (goldenPlan?['price_monthly'] ?? (goldenPlan?['price_egp'] ?? 20000)).toInt();
+    final gYearly = (goldenPlan?['price_yearly'] ?? gMonthly * 10).toInt();
+    final price = _isYearly ? gYearly : gMonthly;
+    final gStudents = goldenPlan?['max_students'] ?? 40000;
+    final gAssistants = goldenPlan?['max_assistants'] ?? 25;
+    final gStorage = goldenPlan?['storage_limit_gb'];
+    final storageDisplay = gStorage != null
+        ? (gStorage >= 1024 ? '${(gStorage / 1024).toStringAsFixed(1)}TB' : '${gStorage}GB')
+        : '2TB';
+    final gGrading = goldenPlan?['max_ai_grading']?.toString() ?? '25,000';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFFB8860B), Color(0xFFDAA520)]),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.workspace_premium, color: Colors.white, size: 24),
+            const SizedBox(width: 8),
+            Text(goldenName, style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white)),
+          ]),
+          const SizedBox(height: 4),
+          Text('للسنترات الكبيرة — الدفع عبر إنستاباي فقط', style: GoogleFonts.cairo(fontSize: 12, color: Colors.white70)),
+          const SizedBox(height: 16),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            if (_isYearly && gMonthly > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4, left: 8),
+                child: Text('${gMonthly * 12}', style: GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 18, color: Colors.white70, decoration: TextDecoration.lineThrough)),
+              ),
+            Text('$price', style: GoogleFonts.cairo(fontWeight: FontWeight.w900, fontSize: 28, color: Colors.white)),
+            const SizedBox(width: 4),
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('ج.م/${_isYearly ? 'سنة' : 'شهر'}', style: GoogleFonts.cairo(fontSize: 12, color: Colors.white70))),
+          ]),
+          if (_isYearly && gMonthly > 0 && gYearly > 0) ...[
+            const SizedBox(height: 4),
+            Text('وفر ${(gMonthly * 12) - gYearly} ج.م سنوياً', style: GoogleFonts.cairo(fontSize: 11, color: Colors.white)),
+          ],
+          const SizedBox(height: 16),
+          _buildGoldenFeature('الطلاب', '$gStudents'),
+          _buildGoldenFeature('المساعدين', '$gAssistants'),
+          _buildGoldenFeature('امتحانات AI/شهر', '20'),
+          _buildGoldenFeature('تصحيح AI/شهر', '$gGrading ورقة'),
+          _buildGoldenFeature('التخزين', storageDisplay),
+          _buildGoldenFeature('الدعم الفني', 'VIP مخصص'),
+          _buildGoldenFeature('طريقة الدفع', 'إنستاباي فقط'),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: isCurrent ? null : () => _showPaymentBottomSheet('Golden', price),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFFB8860B),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(isCurrent ? 'الباقة الحالية' : 'اشترك الآن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          )),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _buildGoldenFeature(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(children: [
+        const Icon(Icons.check_circle, color: Colors.white, size: 16),
+        const SizedBox(width: 8),
+        Text('$label: ', style: GoogleFonts.cairo(fontSize: 13, color: Colors.white70)),
+        Text(value, style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+      ]),
+    );
+  }
+
+  void _showPaymentBottomSheet(String planName, int amount) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _PaymentBottomSheet(
         planName: planName,
-        planPrice: planPrice,
-        planId: planId,
-        paymentConfig: _paymentConfig,
-        instaPayConfig: _instaPayConfig,
-        onSubmit: (method, file, phoneNumber, instapayId) => _submitPayment(planId, planPrice.toDouble(), method, file, phoneNumber, instapayId),
-      ),
-    );
-  }
-
-  Future<void> _submitPayment(String planId, double amount, String method, File? screenshot, String? phoneNumber, String? instapayId) async {
-    try {
-      final auth = context.read<AuthProvider>();
-      final teacherId = auth.user?['id']?.toString() ?? '';
-
-      await PaymentsApiService().submitPaymentRequest(
-        teacherId: teacherId,
-        planId: planId,
-        paymentMethod: method,
         amount: amount,
-        screenshotFile: screenshot,
-        phoneNumber: phoneNumber,
-        instapayId: instapayId,
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      _showSuccessDialog();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل الإرسال: $e'), backgroundColor: AppTheme.danger),
-      );
-    }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.success.withValues(alpha: 0.08),
-                border: Border.all(color: AppTheme.success.withValues(alpha: 0.25)),
-              ),
-              child: const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 40),
-            ),
-            const SizedBox(height: 20),
-            const Text('تم إرسال طلب الدفع', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(
-              ' سيتم تفعيل اشتراكك بعد المراجعة.\nيمكنك التواصل معنا عبر الواتساب لأي استفسار.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context), height: 1.6),
-            ),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('حسناً', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
+        billingPeriod: _isYearly ? 'yearly' : 'monthly',
+        maxStudents: planName == 'Premium' ? _premiumStudents : null,
       ),
     );
   }
@@ -521,421 +479,152 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
 class _PaymentBottomSheet extends StatefulWidget {
   final String planName;
-  final num planPrice;
-  final String planId;
-  final Map<String, dynamic>? paymentConfig;
-  final Map<String, dynamic>? instaPayConfig;
-  final Future<void> Function(String method, File? file, String? phoneNumber, String? instapayId) onSubmit;
-
-  const _PaymentBottomSheet({
-    required this.planName,
-    required this.planPrice,
-    required this.planId,
-    this.paymentConfig,
-    this.instaPayConfig,
-    required this.onSubmit,
-  });
+  final int amount;
+  final String billingPeriod;
+  final int? maxStudents;
+  const _PaymentBottomSheet({required this.planName, required this.amount, required this.billingPeriod, this.maxStudents});
 
   @override
   State<_PaymentBottomSheet> createState() => _PaymentBottomSheetState();
 }
 
 class _PaymentBottomSheetState extends State<_PaymentBottomSheet> {
-  int _selectedMethod = 0;
-  File? _screenshot;
+  String _method = 'vodafone_cash';
+  final _phoneCtrl = TextEditingController();
+  String? _screenshotPath;
   bool _submitting = false;
-  final _phoneController = TextEditingController();
-  final _instapayIdController = TextEditingController();
 
-  String get _vodafoneNumber => widget.paymentConfig?['vodafone_number']?.toString() ?? '01031524947';
-  String? get _barcodeUrl => widget.instaPayConfig?['barcode_url']?.toString();
-  String? get _instaPayUsername => widget.instaPayConfig?['username']?.toString();
+  bool get _isGolden => widget.planName == 'Golden';
 
   @override
-  void dispose() {
-    _phoneController.dispose();
-    _instapayIdController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    if (_isGolden) _method = 'instapay';
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      height: MediaQuery.of(context).size.height * 0.75,
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: GlassTheme.background(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [AppTheme.accent, AppTheme.accent.withValues(alpha: 0.7)]),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.payment_rounded, color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('اختر طريقة الدفع', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text('${widget.planName} - ${widget.planPrice} ج.م', style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context))),
-                  ]),
-                ),
-              ]),
+      child: Column(children: [
+        Container(margin: const EdgeInsets.symmetric(vertical: 12), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2))),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('اشتراك ${widget.planName}', style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 18)),
+          const SizedBox(height: 4),
+          Text('${widget.amount} ج.م', style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 24, color: GlassTheme.indigo)),
+        ])),
+        const SizedBox(height: 16),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('طريقة الدفع', style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          if (_isGolden)
+            _methodTile('instapay', 'إنستاباي (مدى فقط)', Icons.account_balance)
+          else
+            Row(children: [
+              _methodTile('vodafone_cash', 'فودافون كاش', Icons.phone_android),
+              const SizedBox(width: 8),
+              _methodTile('instapay', 'إنستاباي', Icons.account_balance),
             ]),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(children: [
-                _buildMethodTile(
-                  index: 0,
-                  icon: Icons.phone_android_rounded,
-                  title: 'فودافون كاش',
-                  subtitle: 'الدفع عبر فودافون كاش',
-                  color: const Color(0xFFE60023),
-                ),
-                const SizedBox(height: 10),
-                _buildMethodTile(
-                  index: 1,
-                  icon: Icons.qr_code_rounded,
-                  title: 'انستاباي',
-                  subtitle: 'الدفع عبر انستاباي',
-                  color: const Color(0xFF00C853),
-                ),
-                const SizedBox(height: 16),
-                if (_selectedMethod == 0) _buildVodafoneSection(),
-                if (_selectedMethod == 1) _buildInstaPaySection(),
+          const SizedBox(height: 16),
+          TextField(controller: _phoneCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(
+            labelText: 'رقم الهاتف', prefixIcon: const Icon(Icons.phone),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          )),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () async {
+              final file = await NativeFilePicker.pickImage();
+              if (file != null) setState(() => _screenshotPath = file.path);
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _screenshotPath != null ? Colors.green.shade50 : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _screenshotPath != null ? Colors.green.shade300 : Colors.grey.shade300),
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(_screenshotPath != null ? Icons.check_circle : Icons.camera_alt, color: _screenshotPath != null ? Colors.green : Colors.grey),
+                const SizedBox(width: 8),
+                Text(_screenshotPath != null ? 'تم اختيار الصورة ✓' : 'رفع صورة الإثبات', style: TextStyle(color: _screenshotPath != null ? Colors.green : Colors.grey)),
               ]),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppTheme.accent, Color(0xFF8B5CF6)]),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: _submitting ? null : _handleSubmit,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      child: _submitting
-                          ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
-                          : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Icon(Icons.send_rounded, size: 20, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text('تأكيد الدفع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                            ]),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+        ])),
+        const Spacer(),
+        Padding(padding: const EdgeInsets.all(20), child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _submitting ? null : _submit,
+            style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            child: _submitting ? const CircularProgressIndicator(color: Colors.white) : Text('إرسال طلب الدفع', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
           ),
-        ],
-      ),
+        )),
+      ]),
     );
   }
 
-  Widget _buildMethodTile({required int index, required IconData icon, required String title, required String subtitle, required Color color}) {
-    final isSelected = _selectedMethod == index;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _selectedMethod = index;
-        _screenshot = null;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+  Widget _methodTile(String value, String label, IconData icon) {
+    final selected = _method == value;
+    return Expanded(child: GestureDetector(
+      onTap: () => setState(() => _method = value),
+      child: Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.08) : GlassTheme.cardBg(context),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? color.withValues(alpha: 0.4) : GlassTheme.cardBorder(context),
-            width: isSelected ? 2 : 1,
-          ),
+          color: selected ? GlassTheme.indigo.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: selected ? GlassTheme.indigo : Colors.grey.shade300),
         ),
-        child: Row(children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-              const SizedBox(height: 2),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
-            ]),
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isSelected ? color : Colors.transparent,
-              border: Border.all(color: isSelected ? color : GlassTheme.textSecondary(context), width: 2),
-            ),
-            child: isSelected ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
-          ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 18, color: selected ? GlassTheme.indigo : Colors.grey),
+          const SizedBox(width: 6),
+          Text(label, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? GlassTheme.indigo : Colors.grey)),
         ]),
       ),
-    );
+    ));
   }
 
-  Widget _buildVodafoneSection() {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE60023).withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE60023).withValues(alpha: 0.15)),
-          ),
-          child: Column(children: [
-            Text('حول المبلغ إلى رقم فودافون كاش', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: _vodafoneNumber));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم نسخ الرقم'), duration: Duration(seconds: 1)),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE60023).withValues(alpha: 0.2)),
-                ),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.copy_rounded, size: 20, color: Color(0xFFE60023)),
-                  const SizedBox(width: 10),
-                  Text(_vodafoneNumber, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2, color: Color(0xFFE60023))),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text('المبلغ: ${widget.planPrice} ج.م', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFE60023))),
-          ]),
-        ),
-        const SizedBox(height: 16),
-        Text('رقم الهاتف', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context))),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          decoration: GlassTheme.glassInput(context, 'أدخل رقم الهاتف', Icons.phone_rounded),
-        ),
-        const SizedBox(height: 16),
-        Text('صورة الإيصال', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context))),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _pickScreenshot,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: double.infinity,
-            height: 120,
-            decoration: BoxDecoration(
-              color: _screenshot != null ? AppTheme.success.withValues(alpha: 0.04) : GlassTheme.cardBg(context),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _screenshot != null ? AppTheme.success.withValues(alpha: 0.3) : GlassTheme.cardBorder(context),
-              ),
-            ),
-            child: _screenshot != null
-                ? Stack(children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.file(_screenshot!, width: double.infinity, height: 120, fit: BoxFit.cover),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _screenshot = null),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
-                          child: const Icon(Icons.close, size: 16, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ])
-                : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.camera_alt_rounded, size: 36, color: GlassTheme.textMuted(context)),
-                    const SizedBox(height: 8),
-                    Text('اضغط لرفع صورة الإيصال', style: TextStyle(fontSize: 13, color: GlassTheme.textMuted(context))),
-                  ]),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _buildInstaPaySection() {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (_instaPayUsername != null && _instaPayUsername!.isNotEmpty) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF00C853).withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF00C853).withValues(alpha: 0.15)),
-            ),
-            child: Column(children: [
-              Text('اسم المستخدم', style: TextStyle(fontSize: 12, color: GlassTheme.textSecondary(context))),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: _instaPayUsername!));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم نسخ اسم المستخدم'), duration: Duration(seconds: 1)),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF00C853).withValues(alpha: 0.2)),
-                  ),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF00C853)),
-                    const SizedBox(width: 8),
-                    Text(_instaPayUsername!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00C853))),
-                  ]),
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 12),
-        ],
-        Text('معرف انستاباي', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context))),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _instapayIdController,
-          decoration: GlassTheme.glassInput(context, 'ahmed-mahmoud-1@instapay', Icons.alternate_email),
-        ),
-        const SizedBox(height: 12),
-        Text('رقم الهاتف', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context))),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          decoration: GlassTheme.glassInput(context, 'أدخل رقم الهاتف', Icons.phone_rounded),
-        ),
-        const SizedBox(height: 12),
-        if (_barcodeUrl != null && _barcodeUrl!.isNotEmpty) ...[
-          Text('امسح الباركود للدفع', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context))),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: GlassTheme.cardBorder(context)),
-            ),
-            child: Image.network(
-              _barcodeUrl!,
-              height: 200,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.qr_code_rounded, size: 64, color: GlassTheme.textMuted(context)),
-                const SizedBox(height: 8),
-                Text('تعذر تحميل الباركود', style: TextStyle(fontSize: 13, color: GlassTheme.textMuted(context))),
-              ]),
-            ),
-          ),
-        ] else ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: GlassTheme.cardBg(context),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: GlassTheme.cardBorder(context)),
-            ),
-            child: Column(children: [
-              Icon(Icons.qr_code_rounded, size: 64, color: GlassTheme.textMuted(context)),
-              const SizedBox(height: 12),
-              Text('جاري تحميل الباركود...', style: TextStyle(fontSize: 14, color: GlassTheme.textSecondary(context))),
-            ]),
-          ),
-        ],
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF00C853).withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF00C853).withValues(alpha: 0.12)),
-          ),
-          child: Text('المبلغ: ${widget.planPrice} ج.م', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF00C853))),
-        ),
-      ]),
-    );
-  }
-
-  Future<void> _pickScreenshot() async {
-    final path = await NativeFilePicker.pickImage();
-    if (path != null) {
-      setState(() => _screenshot = File(path));
-    }
-  }
-
-  Future<void> _handleSubmit() async {
-    if (_selectedMethod == 0 && _screenshot == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('أرفق صورة الإيصال'), backgroundColor: AppTheme.warning),
-      );
-      return;
-    }
+  Future<void> _submit() async {
+    if (_phoneCtrl.text.isEmpty) return;
     setState(() => _submitting = true);
-    await widget.onSubmit(
-      _selectedMethod == 0 ? 'vodafone_cash' : 'instapay',
-      _screenshot,
-      _phoneController.text.isNotEmpty ? _phoneController.text : null,
-      _selectedMethod == 1 && _instapayIdController.text.isNotEmpty ? _instapayIdController.text : null,
-    );
+    try {
+      final api = ApiService();
+      if (_screenshotPath != null) {
+        final file = File(_screenshotPath!);
+        final bytes = await file.readAsBytes();
+        final fileName = _screenshotPath!.split('/').last;
+        final formData = FormData.fromMap({
+          'plan_name': widget.planName,
+          'amount': widget.amount,
+          'phone_number': _phoneCtrl.text,
+          'payment_method': _method,
+          'billing_period': widget.billingPeriod,
+          if (widget.maxStudents != null) 'max_students': widget.maxStudents,
+          'screenshot': MultipartFile.fromBytes(bytes, filename: fileName),
+        });
+        await api.dio.post('/payments/request', data: formData);
+      } else {
+        await api.dio.post('/payments/request', data: {
+          'plan_name': widget.planName,
+          'amount': widget.amount,
+          'phone_number': _phoneCtrl.text,
+          'payment_method': _method,
+          'billing_period': widget.billingPeriod,
+          if (widget.maxStudents != null) 'max_students': widget.maxStudents,
+        });
+      }
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال طلب الدفع — في انتظار المراجعة'), backgroundColor: Colors.green));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل: $e'), backgroundColor: Colors.red));
+    }
     if (mounted) setState(() => _submitting = false);
   }
 }

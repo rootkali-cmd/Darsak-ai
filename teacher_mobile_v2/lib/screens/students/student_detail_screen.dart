@@ -20,6 +20,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
   List<dynamic> _grades = [];
   bool _loadingAttendance = true;
   bool _loadingGrades = true;
+  String _groupName = '';
 
   @override
   void initState() {
@@ -27,6 +28,22 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
     _tabCtrl = TabController(length: 3, vsync: this);
     _loadAttendance();
     _loadGrades();
+    _loadGroupName();
+  }
+
+  Future<void> _loadGroupName() async {
+    final groupId = widget.student['group_id']?.toString();
+    if (groupId == null || groupId.isEmpty) return;
+    try {
+      final resp = await ApiService().dio.get('/groups');
+      final items = resp.data is Map && resp.data['items'] is List ? resp.data['items'] as List : [];
+      for (final g in items) {
+        if (g['id']?.toString() == groupId) {
+          if (mounted) setState(() => _groupName = g['name']?.toString() ?? '');
+          return;
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -210,7 +227,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
         ),
         const SizedBox(height: 12),
         _InfoRow(label: 'هاتف ولي الأمر', value: s['parent_phone'] ?? '—'),
-        _InfoRow(label: 'المجموعة', value: s['group']?['name'] ?? s['group_id']?.toString() ?? '—'),
+        _InfoRow(label: 'المجموعة', value: _groupName.isNotEmpty ? _groupName : (widget.student['group_id']?.toString() ?? '—')),
         _InfoRow(label: 'الرمز السري', value: s['pin']?.toString() ?? '—'),
         const SizedBox(height: 24),
         // Delete button

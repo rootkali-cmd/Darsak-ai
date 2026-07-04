@@ -9,16 +9,19 @@ import '../../widgets/stat_card.dart';
 import '../../widgets/quick_action.dart';
 import '../../widgets/glass_notification_overlay.dart';
 import '../students/students_screen.dart';
+import '../admission/admission_queue_screen.dart';
 import '../groups/groups_screen.dart';
 import '../attendance/attendance_screen.dart';
 import '../grades/grades_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../exams/exam_list_screen.dart';
+import '../subscription/subscription_screen.dart';
 import '../settings/settings_screen.dart';
 import '../reports/ai_reports_screen.dart';
 import '../profile/profile_screen.dart';
 import '../contacts/teacher_contacts_screen.dart';
 import '../assistants/assistants_screen.dart';
+import '../courses/course_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -52,8 +55,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   void initState() {
     super.initState();
     _goToStudents = () => setState(() => _selectedIndex = 1);
-    _goToAttendance = () => setState(() => _selectedIndex = 3);
-    _goToGrades = () => setState(() => _selectedIndex = 4);
+    _goToAttendance = () => setState(() => _selectedIndex = 4);
+    _goToGrades = () => setState(() => _selectedIndex = 5);
 
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -80,8 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     if (_dashboardLoading) return;
     setState(() { _dashboardLoading = true; _dashboardError = null; });
     try {
-      final api = context.read<AuthProvider>().client;
-      final apiService = ApiService(api);
+      final apiService = context.read<DataProvider>().api;
       final stats = await apiService.get('/dashboard/stats');
       setState(() { _dashboardStats = stats; _dashboardLoading = false; });
     } catch (e) {
@@ -185,16 +187,19 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     switch (_selectedIndex) {
       case 0: return 'لوحة التحكم';
       case 1: return 'الطلاب';
-      case 2: return 'المجموعات';
-      case 3: return 'الحضور';
-      case 4: return 'الدرجات';
-      case 5: return 'الفواتير';
-      case 6: return 'الامتحانات';
-      case 7: return 'الإعدادات';
-      case 8: return 'التقارير';
-      case 9: return 'المساعدين';
-      case 10: return 'الملف الشخصي';
-      case 11: return 'جهات الاتصال';
+      case 2: return 'طلبات التسجيل';
+      case 3: return 'المجموعات';
+      case 4: return 'الحضور';
+      case 5: return 'الدرجات';
+      case 6: return 'الفواتير';
+      case 7: return 'الباقات';
+      case 8: return 'الكورسات';
+      case 9: return 'الامتحانات';
+      case 10: return 'الإعدادات';
+      case 11: return 'التقارير';
+      case 12: return 'المساعدين';
+      case 13: return 'الملف الشخصي';
+      case 14: return 'جهات الاتصال';
       default: return 'لوحة التحكم';
     }
   }
@@ -206,28 +211,34 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       case 1:
         return const StudentsScreen(key: ValueKey('students'));
       case 2:
-        return const GroupsScreen(key: ValueKey('groups'));
+        return const AdmissionQueueScreen(key: ValueKey('admission'));
       case 3:
-        return const AttendanceScreen(key: ValueKey('attendance'));
+        return const GroupsScreen(key: ValueKey('groups'));
       case 4:
-        return const GradesScreen(key: ValueKey('grades'));
+        return const AttendanceScreen(key: ValueKey('attendance'));
       case 5:
-        return const InvoicesScreen(key: ValueKey('invoices'));
+        return const GradesScreen(key: ValueKey('grades'));
       case 6:
-        return const ExamListScreen(key: ValueKey('exams'));
+        return const InvoicesScreen(key: ValueKey('invoices'));
       case 7:
+        return const SubscriptionScreen(key: ValueKey('subscription'));
+      case 8:
+        return const CourseListScreen(key: ValueKey('courses'));
+      case 9:
+        return const ExamListScreen(key: ValueKey('exams'));
+      case 10:
         return SettingsScreen(
           key: const ValueKey('settings'),
           toggleTheme: widget.toggleTheme,
           themeMode: widget.themeMode,
         );
-      case 8:
-        return const AiReportsScreen(key: ValueKey('reports'));
-      case 9:
-        return const AssistantsScreen(key: ValueKey('assistants'));
-      case 10:
-        return const ProfileScreen(key: ValueKey('profile'));
       case 11:
+        return const AiReportsScreen(key: ValueKey('reports'));
+      case 12:
+        return const AssistantsScreen(key: ValueKey('assistants'));
+      case 13:
+        return const ProfileScreen(key: ValueKey('profile'));
+      case 14:
         return const TeacherContactsScreen(key: ValueKey('contacts'));
       default:
         return _buildHome(key: const ValueKey('home'));
@@ -263,7 +274,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final totalRevenue = _dashboardStats?['total_revenue'] ?? '-';
     final totalStudents = _dashboardStats?['total_students'] ?? students.length;
     final totalGroups = _dashboardStats?['total_groups'] ?? data.groups.length;
-    final planName = auth.subscriptionData?['plan']?.toString();
+    final planName = auth.subscriptionData?['plan_name']?.toString();
     final planLabel = _planLabel(planName);
     final planColor = _planColor(planName);
 
@@ -440,20 +451,20 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     title: 'إنشاء فاتورة',
                     icon: Icons.receipt,
                     color: AppTheme.accentLight,
-                    onTap: () => setState(() => _selectedIndex = 5),
-                  ),
-                  QuickAction(
-                    title: 'التقارير',
-                    icon: Icons.analytics,
-                    color: AppTheme.accentDark,
-                    onTap: () => setState(() => _selectedIndex = 8),
-                  ),
-                  QuickAction(
-                    title: 'الامتحانات',
-                    icon: Icons.quiz,
-                    color: AppTheme.danger,
-                    onTap: () => setState(() => _selectedIndex = 6),
-                  ),
+                      onTap: () => setState(() => _selectedIndex = 6),
+                    ),
+                    QuickAction(
+                      title: 'التقارير',
+                      icon: Icons.analytics,
+                      color: AppTheme.accentDark,
+                      onTap: () => setState(() => _selectedIndex = 11),
+                    ),
+                    QuickAction(
+                      title: 'الامتحانات',
+                      icon: Icons.quiz,
+                      color: AppTheme.danger,
+                      onTap: () => setState(() => _selectedIndex = 9),
+                    ),
                 ],
               ),
             ],

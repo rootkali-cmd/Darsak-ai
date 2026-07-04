@@ -28,6 +28,7 @@ async def create_payment_request(
     phone_number: str = Form(""),
     instapay_id: str = Form(""),
     billing_period: str = Form("monthly"),
+    max_students: int = Form(0),
     screenshot: UploadFile = File(...),
     current_user: dict = Depends(get_current_teacher),
 ):
@@ -64,6 +65,7 @@ async def create_payment_request(
             phone_number=phone_number or "",
             amount=amount,
             billing_period=billing_period,
+            max_students=max_students,
         )
 
         request_id = req["id"]
@@ -134,12 +136,16 @@ async def payment_callback(body: CallbackQuery, admin: dict = Depends(get_curren
             if not plan:
                 raise HTTPException(status_code=404, detail="Plan not found")
 
-            expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+            billing = payment.get("billing_period", "monthly")
+            days = 365 if billing == "yearly" else 30
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+            max_students_override = payment.get("max_students", 0)
             await teacher_subscription_service.create(
                 teacher_id=payment["teacher_id"],
                 plan_id=payment["plan_id"],
                 code_id=request_id,
                 expires_at=expires_at,
+                max_students_override=max_students_override if max_students_override > 0 else None,
             )
             await payment_request_service.approve(request_id)
             await notification_service.create(
@@ -178,11 +184,26 @@ def _mask_phone(phone: str) -> str:
 @router.get("/config")
 async def get_payment_config(current_user: dict = Depends(get_current_teacher)):
     phone = "01031524947"
+    instapay_username = ""
+    try:
+        from src.core.security.supabase_repo import get_supabase
+        client = await get_supabase()
+        result = client.table("instapay_config").select("vodafone_cash_number, username").eq("is_active", True).limit(1).execute()
+        rows = result.data if hasattr(result, "data") else []
+        if rows:
+            row = rows[0]
+            if row.get("vodafone_cash_number"):
+                phone = row["vodafone_cash_number"]
+            if row.get("username"):
+                instapay_username = row["username"]
+    except Exception:
+        pass
     masked = _mask_phone(phone)
     return {
         "vodafone_cash_number": masked,
+        "vodafone_cash_full": phone,
         "whatsapp_link": f"https://wa.me/{phone}",
-        "instapay_username": "ahmed-mahmoud-1@instapay",
+        "instapay_username": instapay_username,
     }
 
 
