@@ -78,7 +78,6 @@ from src.core.config import get_settings
 from src.core.logging import setup_logging
 from src.core.security.supabase_repo import get_supabase
 from src.infrastructure.rate_limiter import rate_limiter
-from src.core.security.rate_limit_middleware import RateLimitMiddleware
 from src.infrastructure.audit_events import audit as audit_publisher
 from src.infrastructure.cache import user_cache, student_cache, cache
 from src.services import sync_buffer, start_scheduler, stop_scheduler, audit_service
@@ -1193,8 +1192,6 @@ app.add_middleware(
 )
 
 logger.info("CORS configured for origins: %s", _cors_origins)
-
-app.add_middleware(RateLimitMiddleware)
 
 # ── Middleware ──
 
