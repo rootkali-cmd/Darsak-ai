@@ -876,6 +876,24 @@ async def _run_schema_migrations():
         END $$;""",
         """ALTER TABLE student_transactions ADD CONSTRAINT student_transactions_transaction_type_check
             CHECK (transaction_type IN ('deposit', 'purchase', 'refund', 'lesson_consumption'));""",
+        # ─── Phase 15: Fix is_active NULL values — backfill + NOT NULL ─────
+        """DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM students WHERE is_active IS NULL) THEN
+                UPDATE students SET is_active = TRUE WHERE is_active IS NULL;
+            END IF;
+        END $$;""",
+        """DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name='students' AND column_name='is_active' AND is_nullable='YES'
+            ) THEN
+                ALTER TABLE students ALTER COLUMN is_active SET NOT NULL;
+            END IF;
+        END $$;""",
+        # ─── Phase 17b: course_lessons exam_id column ────────────────────
+        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS exam_id UUID REFERENCES exams(id) ON DELETE SET NULL;",
     ]
 
     try:
@@ -1017,26 +1035,7 @@ async def _ensure_plans():
             {"name": "Pro", "price_egp": 750.00, "price_monthly": 750.00, "price_yearly": 7800.00, "max_students": 400, "max_assistants": 2, "ai_requests_per_day": 10, "max_ai_exams_per_month": 15, "max_ai_grading_per_month": 500, "storage_limit_gb": 60, "sort_order": 2, "features_json": ["كل ميزات Basic", "كورسات مشتركة", "15 اختبار AI شهرياً", "500 تصحيح AI شهرياً", "60GB تخزين", "2 مساعدين", "تقارير AI", "دعم فني سريع"]},
             {"name": "Premium", "price_egp": 1400.00, "price_monthly": 1250.00, "price_yearly": 13500.00, "max_students": 1000, "max_assistants": 5, "ai_requests_per_day": 20, "max_ai_exams_per_month": 20, "max_ai_grading_per_month": 2000, "storage_limit_gb": 200, "sort_order": 3, "features_json": ["كل ميزات Pro", "تحضير اختبارات AI", "20 اختبار AI شهرياً", "2000 تصحيح AI شهرياً", "200GB تخزين", "5 مساعدين", "دعم VIP"]},
             {"name": "Golden", "price_egp": 20000.00, "price_monthly": 20000.00, "price_yearly": 80000.00, "max_students": 40000, "max_assistants": 25, "ai_requests_per_day": 20, "max_ai_exams_per_month": 20, "max_ai_grading_per_month": 25000, "storage_limit_gb": 2000, "sort_order": 4, "features_json": ["كل ميزات Premium", "40,000 طالب", "25 مساعد", "25,000 تصحيح AI شهرياً", "2TB تخزين", "دعم VIP مخصص", "الدفع عبر إنستاباي فقط"]},
-        # ─── Phase 15: Fix is_active NULL values — backfill + NOT NULL ─────
-        """DO $$
-        BEGIN
-            IF EXISTS (SELECT 1 FROM students WHERE is_active IS NULL) THEN
-                UPDATE students SET is_active = TRUE WHERE is_active IS NULL;
-            END IF;
-        END $$;""",
-        """DO $$
-        BEGIN
-            IF EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name='students' AND column_name='is_active' AND is_nullable='YES'
-            ) THEN
-                ALTER TABLE students ALTER COLUMN is_active SET NOT NULL;
-            END IF;
-        END $$;""",
-
-        # ─── Phase 17: course_lessons exam_id column ─────────────────────
-        "ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS exam_id UUID REFERENCES exams(id) ON DELETE SET NULL;",
-    ]
+        ]
 
         existing = await client.table("subscription_plans").select("name,id").execute()
         existing_names = {p["name"] for p in (existing.data or [])}
