@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
 import '../core/constants.dart';
 import 'analytics_service.dart';
 import 'structured_logger.dart';
@@ -98,7 +95,7 @@ class AndroidUpdateService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _dio.get('/versions/android_student');
+      final response = await _dio.get('/versions/android');
       if (response.statusCode != 200) {
         _status = AndroidUpdateStatus.idle;
         notifyListeners();
@@ -138,39 +135,6 @@ class AndroidUpdateService extends ChangeNotifier {
     final uri = Uri.parse(_updateInfo!.downloadUrl!);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  Future<String?> downloadAndInstall({
-    required String version,
-    required void Function(double progress) onProgress,
-  }) async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final filePath = '${dir.path}/DarsakAI-Student-v$version.apk';
-      final file = File(filePath);
-
-      final downloadUrl = _updateInfo?.downloadUrl ?? 'https://darsak-backend.fly.dev/api/downloads/student-v$version.apk';
-
-      final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(minutes: 5),
-        receiveTimeout: const Duration(minutes: 10),
-      ));
-      await dio.download(
-        downloadUrl,
-        filePath,
-        onReceiveProgress: (received, total) {
-          if (total > 0) onProgress(received / total);
-        },
-      );
-
-      if (await file.exists()) {
-        final result = await OpenFilex.open(filePath, type: 'application/vnd.android.package-archive');
-        if (result.type == ResultType.done) return filePath;
-      }
-      return null;
-    } catch (e) {
-      rethrow;
     }
   }
 

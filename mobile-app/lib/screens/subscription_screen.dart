@@ -254,7 +254,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             controller: _codeController,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.center,
-            textCapitalization: TextCapitalization.characters,
             style: TextStyle(
               color: AppColors.textPrimary(context),
               fontSize: 18,
@@ -302,7 +301,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               icon: _activatingTrial
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.card_giftcard, size: 18),
-              label: Text(_activatingTrial ? 'جاري التفعيل...' : 'بدء الفترة التجريبية المجانية (7 أيام)'),
+              label: Text(_activatingTrial ? 'جاري التفعيل...' : 'بدء الفترة التجريبية المجانية (30 يوم)'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.success,
                 side: const BorderSide(color: AppTheme.success),
@@ -392,7 +391,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: _buildPlanCard(
                 name: planName,
                 price: '$price ج.م/شهر',
-                students: '$maxStudents طالب',
+                students: maxStudents == -1 ? 'غير محدود' : '$maxStudents طالب',
                 features: features,
                 isPopular: isPopular,
                 color: color,
@@ -408,8 +407,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   int _planColor(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('premium') || lower.contains('متكاملة')) return 0xFF10B981;
-    if (lower.contains('golden') || lower.contains('ذهبي')) return 0xFFDAA520;
+    if (lower.contains('unlimited') || lower.contains('غير محدود')) return 0xFFff003c;
     if (lower.contains('pro') || lower.contains('advanced') || lower.contains('متقدمة')) return 0xFFccff00;
     return 0xFF00f3ff;
   }

@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
 import '../core/glass_theme.dart';
 import '../providers/auth_provider.dart';
+import '../services/update_service.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'students/students_screen.dart';
 import 'attendance/attendance_screen.dart';
+import 'grades/grades_screen.dart';
 import 'groups/groups_screen.dart';
 import 'more/more_screen.dart';
 import 'subscriptions/subscription_screen.dart';
@@ -25,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'الرئيسية',
     'الطلاب',
     'الحضور',
+    'الدرجات',
     'المجموعات',
     'المزيد',
   ];
@@ -33,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Icons.dashboard_rounded,
     Icons.people_rounded,
     Icons.today_rounded,
+    Icons.grade_rounded,
     Icons.group_rounded,
     Icons.more_horiz_rounded,
   ];
@@ -41,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     false, // الرئيسية
     true,  // الطلاب
     true,  // الحضور
+    true,  // الدرجات
     true,  // المجموعات
     false, // المزيد
   ];
@@ -49,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DashboardScreen(),
     StudentsScreen(),
     AttendanceScreen(),
+    GradesScreen(),
     GroupsScreen(),
     MoreScreen(),
   ];
@@ -56,6 +62,81 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    Future.delayed(const Duration(seconds: 3), _checkForUpdates);
+  }
+
+  Future<void> _checkForUpdates() async {
+    if (!mounted) return;
+    try {
+      final update = await UpdateService().checkForUpdate();
+      if (!mounted) return;
+      if (update != null) {
+        _showUpdateDialog(update);
+      }
+    } catch (_) {}
+  }
+
+  void _showUpdateDialog(Map<String, dynamic> update) {
+    double progress = 0;
+    bool downloading = false;
+    String? error;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(error != null ? 'خطأ' : (downloading ? 'جاري التحميل...' : 'تحديث متاح')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (error != null)
+                Text(error!, style: const TextStyle(color: AppTheme.danger))
+              else if (downloading)
+                Column(children: [
+                  LinearProgressIndicator(value: progress > 0 ? progress : null),
+                  const SizedBox(height: 8),
+                  Text('${(progress * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 14)),
+                ])
+              else
+                Text('الإصدار ${update['latest_version']} متاح الآن.\nهل تريد التحديث الآن؟', textAlign: TextAlign.center),
+            ],
+          ),
+          actions: downloading
+              ? [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                ]
+              : [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      UpdateService().setRemindLater();
+                    },
+                    child: const Text('لاحقاً'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      setDialogState(() => downloading = true);
+                      try {
+                        await UpdateService().downloadAndInstall(
+                          version: update['latest_version'] ?? '0.0.0',
+                          onProgress: (p) => setDialogState(() => progress = p),
+                        );
+                        Navigator.pop(ctx);
+                      } catch (e) {
+                        setDialogState(() {
+                          downloading = false;
+                          error = 'فشل التحميل. جرب مرة أخرى من الموقع';
+                        });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
+                    child: const Text('تحديث الآن'),
+                  ),
+                ],
+        ),
+      ),
+    );
   }
 
   void _dismissBanner() {

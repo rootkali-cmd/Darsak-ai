@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
-import '../services/fcm_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -40,31 +39,12 @@ class AuthProvider extends ChangeNotifier {
     
     if (_token != null && _token!.isNotEmpty) {
       final jwt = _parseJwt(_token!);
-      if (jwt != null && jwt['id'] != null) {
-        // Always set user from JWT, even if expired — let Dio interceptor handle refresh
+      if (jwt != null && jwt['expired'] != true && jwt['id'] != null) {
         _user = {'id': jwt['id'], 'full_name': jwt['full_name'] ?? ''};
         _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? true;
       } else {
-        // Token is malformed — try refresh before giving up
-        final refreshToken = prefs.getString('refresh_token');
-        if (refreshToken != null && refreshToken.isNotEmpty) {
-          final refreshed = await _api.tryRefreshToken();
-          if (refreshed) {
-            _token = prefs.getString(_tokenKey);
-            final newJwt = _parseJwt(_token!);
-            if (newJwt != null && newJwt['id'] != null) {
-              _user = {'id': newJwt['id'], 'full_name': newJwt['full_name'] ?? ''};
-              _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? true;
-            }
-          } else {
-            await prefs.remove(_tokenKey);
-            await prefs.remove('refresh_token');
-            _token = null;
-          }
-        } else {
-          await prefs.remove(_tokenKey);
-          _token = null;
-        }
+        await prefs.remove(_tokenKey);
+        _token = null;
       }
     }
 
@@ -84,7 +64,6 @@ class AuthProvider extends ChangeNotifier {
 
     _isInitialized = true;
     notifyListeners();
-    if (isAuthenticated) _registerFcmToken();
   }
 
   static Map<String, dynamic>? _parseJwt(String token) {
@@ -145,7 +124,6 @@ class AuthProvider extends ChangeNotifier {
       }
       _isLoading = false; notifyListeners();
       if (_subscription == null) refreshSubscription();
-      _registerFcmToken();
       return true;
     } on DioException catch (e) { _error = _getDioError(e); _isLoading = false; notifyListeners(); return false; }
     catch (e) { _error = 'حدث خطأ غير متوقع: $e'; _isLoading = false; notifyListeners(); return false; }
@@ -172,20 +150,6 @@ class AuthProvider extends ChangeNotifier {
         // Token expired and refresh failed - logout
         await logout();
       }
-    } catch (_) {}
-  }
-
-  Future<void> _registerFcmToken() async {
-    try {
-      final token = await FcmService.getToken();
-      if (token != null && token.isNotEmpty) {
-        await _api.dio.post('/auth/me/fcm-token', data: {'fcm_token': token});
-      }
-      FcmService.onTokenRefresh((newToken) async {
-        try {
-          await _api.dio.post('/auth/me/fcm-token', data: {'fcm_token': newToken});
-        } catch (_) {}
-      });
     } catch (_) {}
   }
 

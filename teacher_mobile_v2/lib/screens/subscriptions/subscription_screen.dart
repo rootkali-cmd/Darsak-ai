@@ -45,39 +45,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     {
       'id': 'basic',
       'name': 'الباقة الأساسية',
-      'price_monthly': 350,
+      'price_egp': 250,
       'max_students': 100,
       'max_ai_requests': 5,
       'color': '#06B6D4',
-      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير بسيطة', '5 اختبارات AI شهرياً', '100 تصحيح AI شهرياً', '15GB تخزين', 'دعم فني'],
+      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير بسيطة', 'دعم فني'],
     },
     {
       'id': 'pro',
       'name': 'الباقة الاحترافية',
-      'price_monthly': 750,
+      'price_egp': 600,
       'max_students': 400,
-      'max_ai_requests': 10,
+      'max_ai_requests': 30,
       'popular': true,
       'color': '#6366F1',
-      'features': ['كل ميزات Basic', 'كورسات مشتركة', '15 اختبار AI شهرياً', '500 تصحيح AI شهرياً', '60GB تخزين', '2 مساعدين', 'تقارير AI', 'دعم فني سريع'],
+      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'دعم فني'],
     },
     {
       'id': 'premium',
       'name': 'الباقة المتكاملة',
-      'price_monthly': 1250,
-      'max_students': 1000,
-      'max_ai_requests': 20,
+      'price_egp': 1100,
+      'max_students': -1,
+      'max_ai_requests': -1,
       'color': '#10B981',
-      'features': ['كل ميزات Pro', 'تحضير اختبارات AI', '20 اختبار AI شهرياً', '2000 تصحيح AI شهرياً', '200GB تخزين', '5 مساعدين', 'دعم VIP'],
-    },
-    {
-      'id': 'golden',
-      'name': 'الباقة الذهبية',
-      'price_monthly': 20000,
-      'max_students': 40000,
-      'max_ai_requests': 100,
-      'color': '#F59E0B',
-      'features': ['كل ميزات Premium', '40,000 طالب', '25 مساعد', '25,000 تصحيح AI شهرياً', '2TB تخزين', 'دعم VIP مخصص', 'الدفع عبر إنستاباي فقط'],
+      'features': ['حضور وغياب', 'درجات الطلاب', 'تقارير AI', 'دروس مشتركة', 'تحضير اختبارات بالـ AI', 'طلاب غير محدود', 'دعم فني أولوية'],
     },
   ];
 
@@ -173,13 +164,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   int _getYearlyPrice(int monthlyPrice) => monthlyPrice * 10;
 
   int _calculatePremiumPrice() {
-    final base = 1250;
+    final base = 1100;
     final extra = ((_selectedStudentCount - 700) / 50).floor() * 175;
     return base + extra;
   }
 
   List<Map<String, dynamic>> get _plansToShow {
-    if (_plans.isNotEmpty && _plans.every((p) => p['price_monthly'] != null || p['price_yearly'] != null)) {
+    if (_plans.isNotEmpty && _plans.every((p) => p['price_egp'] != null || p['price'] != null)) {
       return _plans.map<Map<String, dynamic>>((p) => Map<String, dynamic>.from(p)).toList();
     }
     return _defaultPlans;
@@ -272,7 +263,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           Text('تفعيل مجاني', style: TextStyle(fontSize: 18)),
         ]),
         content: const Text(
-          'ستحصل على 7 أيام مجاناً. بعد انتهاء الفترة يمكنك الاشتراك في أي باقة.',
+          'ستحصل على 30 يوم مجاناً. بعد انتهاء الفترة يمكنك الاشتراك في أي باقة.',
           style: TextStyle(fontSize: 14, height: 1.5),
         ),
         actions: [
@@ -299,7 +290,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         builder: (_) => _PaymentPage(
           plan: plan,
           isYearly: _isYearly,
-          selectedStudentCount: _selectedStudentCount,
           onPaymentSubmitted: () {
             _showPaymentSuccessDialog();
           },
@@ -573,7 +563,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             _InfoTile(label: 'الأيام المتبقية', value: '$_daysLeft يوم', valueColor: _daysLeft < 3 ? AppTheme.danger : AppTheme.success),
           _InfoTile(
             label: 'الطلاب',
-            value: '$_studentCount / ${_subscription!['max_students']}',
+            value: (_subscription!['max_students'] == -1 || _subscription!['max_students'] == 0)
+                ? '$_studentCount / ∞'
+                : '$_studentCount / ${_subscription!['max_students']}',
           ),
         ] else ...[
           const SizedBox(height: 8),
@@ -705,10 +697,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final name = plan['name'] ?? '';
     final planId = plan['id']?.toString() ?? '';
     final isPremium = planId == 'premium';
-    final basePrice = (plan['price_monthly'] ?? plan['price_egp'] ?? 0).toInt();
-    final yearlyFromDb = (plan['price_yearly'] ?? 0).toInt();
+    final basePrice = (plan['price_egp'] ?? plan['price'] ?? 0).toInt();
     final monthlyPrice = isPremium ? _calculatePremiumPrice() : basePrice;
-    final displayPrice = _isYearly ? (yearlyFromDb > 0 ? yearlyFromDb : _getYearlyPrice(monthlyPrice)) : monthlyPrice;
+    final displayPrice = _isYearly ? _getYearlyPrice(monthlyPrice) : monthlyPrice;
     final features = plan['features'] is List ? plan['features'] as List : <dynamic>[];
     final maxStudents = plan['max_students'];
     final isPopular = plan['popular'] == true;
@@ -750,7 +741,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.local_offer_rounded, color: Colors.white, size: 14),
                   SizedBox(width: 4),
-                  Text('7 أيام مجاناً', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                  Text('30 يوم مجاناً', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                 ]),
               ),
             Text(name.toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
@@ -790,7 +781,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 Icon(Icons.people, size: 16, color: GlassTheme.textSecondary(context)),
                 const SizedBox(width: 6),
                 Text(
-                  'حتى $maxStudents طالب',
+                  (maxStudents == 0 || maxStudents == -1) ? 'طلاب غير محدود' : 'حتى $maxStudents طالب',
                   style: TextStyle(fontSize: 13, color: GlassTheme.textSecondary(context)),
                 ),
               ]),
@@ -800,26 +791,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               _buildStudentSlider(),
             ],
             const SizedBox(height: 12),
-            ...features.map((f) {
-              final isInstapayOnly = f.toString().contains('انستاباي');
-              final isGolden = planId == 'golden';
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(children: [
-                  Icon(
-                    isGolden && isInstapayOnly ? Icons.warning_amber_rounded : Icons.check,
-                    size: 16,
-                    color: isGolden && isInstapayOnly ? AppTheme.danger : gradientColors[0],
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(f.toString(), style: TextStyle(
-                    fontSize: 13,
-                    color: isGolden && isInstapayOnly ? AppTheme.danger : null,
-                    fontWeight: isGolden && isInstapayOnly ? FontWeight.w600 : null,
-                  ))),
-                ]),
-              );
-            }),
+            ...features.map((f) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(children: [
+                    Icon(Icons.check, size: 16, color: gradientColors[0]),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(f.toString(), style: const TextStyle(fontSize: 13))),
+                  ]),
+                )),
             const SizedBox(height: 16),
             if (trialEligible)
               SizedBox(
@@ -894,10 +873,9 @@ class _InfoTile extends StatelessWidget {
 class _PaymentPage extends StatefulWidget {
   final Map<String, dynamic> plan;
   final bool isYearly;
-  final int selectedStudentCount;
   final VoidCallback onPaymentSubmitted;
 
-  const _PaymentPage({required this.plan, required this.isYearly, required this.selectedStudentCount, required this.onPaymentSubmitted});
+  const _PaymentPage({required this.plan, required this.isYearly, required this.onPaymentSubmitted});
 
   @override
   State<_PaymentPage> createState() => _PaymentPageState();
@@ -915,12 +893,8 @@ class _PaymentPageState extends State<_PaymentPage> {
   static const _instapayLink = 'https://ipn.eg/C/Q/ahmed-mahmoud-1/instapay?ISIGN=23052602MEUCIQCpAONEixVTFyg4QY/wVSEMtSOXnHI09UXtf+1a6Cc4ZgIgYMGRcl+a0pjrmoz0d8tAVakB3aAZfkxP3zk7BXO+DUU=';
 
   int get _price {
-    final monthly = (widget.plan['price_monthly'] ?? widget.plan['price_egp'] ?? 0).toInt();
-    final yearlyFromDb = (widget.plan['price_yearly'] ?? 0).toInt();
-    if (widget.isYearly) {
-      return yearlyFromDb > 0 ? yearlyFromDb : monthly * 10;
-    }
-    return monthly;
+    final monthly = (widget.plan['price_egp'] ?? widget.plan['price'] ?? 0).toInt();
+    return widget.isYearly ? monthly * 10 : monthly;
   }
 
   String get _planName => widget.plan['name'] ?? '';
@@ -956,7 +930,6 @@ class _PaymentPageState extends State<_PaymentPage> {
         'phone_number': _phoneCtrl.text.trim(),
         'instapay_id': _instapayIdCtrl.text.trim(),
         'billing_period': widget.isYearly ? 'yearly' : 'monthly',
-        if (widget.selectedStudentCount > 0) 'max_students': widget.selectedStudentCount,
         'screenshot': await MultipartFile.fromFile(_screenshot!.path, filename: 'screenshot.${_screenshot!.path.split(".").last}'),
       });
       await ApiService().dio.post('/payments/request', data: formData);
@@ -1008,15 +981,11 @@ class _PaymentPageState extends State<_PaymentPage> {
           // Payment Method Selection
           const Text('اختر طريقة الدفع', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          if (widget.plan['id'] == 'golden') ...[
-            _buildMethodCard('instapay', 'انستاباي فقط', Icons.qr_code_rounded, const Color(0xFF00C853)),
-          ] else ...[
-            _buildMethodCard('vodafone_cash', 'فودافون كاش', Icons.phone_android, const Color(0xFFE60023)),
-            const SizedBox(height: 8),
-            _buildMethodCard('instapay', 'انستاباي', Icons.qr_code_rounded, const Color(0xFF00C853)),
-            const SizedBox(height: 8),
-            _buildMethodCard('cash', 'نقدي', Icons.payments_outlined, AppTheme.accent),
-          ],
+          _buildMethodCard('vodafone_cash', 'فودافون كاش', Icons.phone_android, const Color(0xFFE60023)),
+          const SizedBox(height: 8),
+          _buildMethodCard('instapay', 'انستاباي', Icons.qr_code_rounded, const Color(0xFF00C853)),
+          const SizedBox(height: 8),
+          _buildMethodCard('cash', 'نقدي', Icons.payments_outlined, AppTheme.accent),
           const SizedBox(height: 24),
 
           // Payment Details

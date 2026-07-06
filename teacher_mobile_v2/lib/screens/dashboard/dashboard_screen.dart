@@ -10,7 +10,6 @@ import '../../core/error_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../attendance/attendance_screen.dart';
 import '../students/add_edit_student_screen.dart';
-import '../debug_screen.dart';
 import '../invoices/teacher_create_invoice_screen.dart';
 
 class DashboardScreen extends StatefulWidget {

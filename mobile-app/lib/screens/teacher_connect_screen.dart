@@ -143,7 +143,7 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                     Container(
                       width: 80, height: 80,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
+                        gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 40),
@@ -154,7 +154,7 @@ class _TeacherConnectScreenState extends State<TeacherConnectScreen>
                     Text('امسح باركود المعلم أو أدخل الكود يدوياً', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14)),
                     const SizedBox(height: 40),
                     TextFormField(
-                      controller: _codeController, textDirection: TextDirection.ltr, textAlign: TextAlign.center, textCapitalization: TextCapitalization.characters,
+                      controller: _codeController, textDirection: TextDirection.ltr, textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, letterSpacing: 2),
                       decoration: InputDecoration(
                         labelText: 'كود المعلم', hintText: 'TCH-XXXXXX',
@@ -231,8 +231,6 @@ class _QrScannerScreenState extends State<QrScannerScreen>
   String _errorMsg = '';
   bool _found = false;
   DateTime _lastProcessed = DateTime.now();
-  int _frameSkipCounter = 0;
-  int _sensorRotation = 0;
 
   @override
   void initState() {
@@ -275,24 +273,15 @@ class _QrScannerScreenState extends State<QrScannerScreen>
         orElse: () => _cameras.first,
       );
 
-      _sensorRotation = cam.sensorOrientation;
-
       _camera = CameraController(
         cam,
         ResolutionPreset.medium,
-        imageFormatGroup: ImageFormatGroup.nv21,
+        imageFormatGroup: ImageFormatGroup.yuv420,
         enableAudio: false,
       );
 
       await _camera!.initialize();
       if (!mounted) return;
-
-      try {
-        await _camera!.setFocusMode(FocusMode.auto);
-        await _camera!.setExposureMode(ExposureMode.auto);
-        await _camera!.setFocusPoint(const Offset(0.5, 0.5));
-        await _camera!.setExposurePoint(const Offset(0.5, 0.5));
-      } catch (_) {}
 
       await _camera!.startImageStream(_processFrame);
       if (mounted) setState(() => _cameraReady = true);
@@ -304,11 +293,8 @@ class _QrScannerScreenState extends State<QrScannerScreen>
   Future<void> _processFrame(CameraImage image) async {
     if (_isProcessing || _found) return;
 
-    _frameSkipCounter++;
-    if (_frameSkipCounter % 2 != 0) return;
-
     final now = DateTime.now();
-    if (now.difference(_lastProcessed).inMilliseconds < 50) return;
+    if (now.difference(_lastProcessed).inMilliseconds < 200) return;
     _lastProcessed = now;
 
     _isProcessing = true;
@@ -352,26 +338,11 @@ class _QrScannerScreenState extends State<QrScannerScreen>
     if (format == null) return null;
 
     final plane = image.planes.first;
-    InputImageRotation rotation;
-    switch (_sensorRotation) {
-      case 90:
-        rotation = InputImageRotation.rotation90deg;
-        break;
-      case 180:
-        rotation = InputImageRotation.rotation180deg;
-        break;
-      case 270:
-        rotation = InputImageRotation.rotation270deg;
-        break;
-      default:
-        rotation = InputImageRotation.rotation0deg;
-    }
-
     return InputImage.fromBytes(
       bytes: plane.bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation,
+        rotation: InputImageRotation.rotation0deg,
         format: format,
         bytesPerRow: plane.bytesPerRow,
       ),

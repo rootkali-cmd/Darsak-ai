@@ -32,12 +32,7 @@ class NotificationService {
 
     await _plugin.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        final payload = details.payload;
-        if (payload != null && payload.isNotEmpty) {
-          // Handle notification tap — payload contains exam_id or route
-        }
-      },
+      onDidReceiveNotificationResponse: (details) {},
     );
 
     // Create notification channel for Android

@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_theme.dart';
 import '../../core/glass_theme.dart';
-import '../../core/error_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../services/api_service.dart';
 import '../../services/update_service.dart';
 import '../subscriptions/subscription_screen.dart';
 
@@ -22,8 +19,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   String _version = '1.0.0';
-  Map<String, dynamic>? _storageUsage;
-  bool _loadingStorage = true;
 
   @override
   void initState() {
@@ -38,12 +33,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _version = info.version;
     } catch (_) {}
 
-    try {
-      final resp = await ApiService().dio.get('/storage/usage');
-      if (resp.data is Map) _storageUsage = Map<String, dynamic>.from(resp.data);
-    } catch (_) {}
-    _loadingStorage = false;
-
     if (mounted) {
       setState(() {
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
@@ -55,71 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_enabled', value);
     setState(() => _notificationsEnabled = value);
-  }
-
-  Future<void> _requestStorageExpansion() async {
-    final method = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('توسيع التخزين', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: GlassTheme.indigo.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(children: [
-                Icon(Icons.add_circle, color: GlassTheme.indigo, size: 20),
-                const SizedBox(width: 8),
-                const Text('+10 GB مساحة إضافية', style: TextStyle(fontWeight: FontWeight.w600)),
-              ]),
-            ),
-            const SizedBox(height: 12),
-            const Text('السعر:', style: TextStyle(fontWeight: FontWeight.w600)),
-            const Text('50 ج.م فقط', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
-            const SizedBox(height: 16),
-            const Text('اختر طريقة الدفع:', style: TextStyle(fontWeight: FontWeight.w600)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('إلغاء')),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'instapay'),
-            icon: const Icon(Icons.account_balance_wallet, size: 18),
-            label: const Text('إنستاباي'),
-            style: ElevatedButton.styleFrom(backgroundColor: GlassTheme.indigo),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'vodafone'),
-            icon: const Icon(Icons.phone_android, size: 18),
-            label: const Text('فودافون كاش'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-          ),
-        ],
-      ),
-    );
-    if (method == null) return;
-
-    try {
-      final resp = await ApiService().dio.post('/storage/expand', data: {'payment_method': method});
-      if (!mounted) return;
-      final msg = resp.data is Map ? (resp.data['message'] ?? 'تم إرسال طلب التوسيع — في انتظار تأكيد الدفع') : 'تم الإرسال';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg.toString()), backgroundColor: AppTheme.success));
-    } on DioException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(getDioErrorMessage(e)),
-        backgroundColor: AppTheme.danger,
-      ));
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل الإرسال'), backgroundColor: AppTheme.danger));
-    }
   }
 
   Future<void> _checkForUpdate() async {
@@ -455,53 +379,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeader('التخزين'),
-          Container(
-            decoration: GlassTheme.glassCard(context),
-            child: _loadingStorage
-                ? const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
-                : _storageUsage == null
-                    ? Padding(padding: const EdgeInsets.all(16), child: Text('تعذر تحميل بيانات التخزين', style: TextStyle(color: GlassTheme.textSecondary(context))))
-                    : Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Text('الاستخدام', style: TextStyle(fontWeight: FontWeight.w600, color: GlassTheme.textPrimary(context))),
-                            Text('${_storageUsage!['used_gb']} / ${_storageUsage!['limit_gb']} GB',
-                                style: TextStyle(fontWeight: FontWeight.bold, color: GlassTheme.textPrimary(context))),
-                          ]),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: (_storageUsage!['percentage'] ?? 0) / 100,
-                              backgroundColor: GlassTheme.cardBorder(context),
-                              color: (_storageUsage!['percentage'] ?? 0) > 90
-                                  ? AppTheme.danger
-                                  : (_storageUsage!['percentage'] ?? 0) > 70
-                                      ? AppTheme.warning
-                                      : GlassTheme.indigo,
-                              minHeight: 6,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _requestStorageExpansion,
-                              icon: const Icon(Icons.add_circle_outline, size: 18),
-                              label: const Text('توسيع التخزين (+10GB = 50 ج.م)'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: GlassTheme.indigo,
-                                side: BorderSide(color: GlassTheme.indigo),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ),
           ),
           const SizedBox(height: 24),
           _buildSectionHeader('حول التطبيق'),

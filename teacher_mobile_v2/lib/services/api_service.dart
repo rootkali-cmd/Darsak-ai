@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,9 +10,6 @@ class ApiService {
   static const _baseUrl = 'https://darsak-backend.fly.dev/api';
   static const _tokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
-  
-  bool _isRefreshing = false;
-  Completer<void>? _refreshCompleter;
 
   ApiService._internal() {
     _dio = _createDio();
@@ -26,8 +22,8 @@ class ApiService {
     final dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(minutes: 5),
-      sendTimeout: const Duration(minutes: 10),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
 
@@ -41,58 +37,26 @@ class ApiService {
         handler.next(options);
       },
       onError: (error, handler) async {
-        if (error.response?.statusCode == 401 && error.requestOptions.path != '/auth/refresh') {
-          // Concurrency lock — only one refresh at a time
-          Completer<void>? waiter;
-          if (!_isRefreshing) {
-            _isRefreshing = true;
-            _refreshCompleter = Completer<void>();
-          } else {
-            waiter = _refreshCompleter;
-          }
-          
-          if (waiter != null) {
-            await waiter.future;
-            // Refresh already done by another request — retry with new token
+        if (error.response?.statusCode == 401) {
+          final refreshed = await _tryRefreshToken();
+          if (refreshed && error.requestOptions.path != '/auth/refresh') {
+            // Retry the original request with new token
             final prefs = await SharedPreferences.getInstance();
             final newToken = prefs.getString(_tokenKey);
             if (newToken != null) {
               error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+              // Add retry count header to prevent infinite loop
               final retryCount = (error.requestOptions.extra['_retry'] ?? 0) as int;
               if (retryCount < 2) {
                 error.requestOptions.extra['_retry'] = retryCount + 1;
-                final clone = await _dio.fetch(error.requestOptions);
+                final clone = await dio.fetch(error.requestOptions);
                 handler.resolve(clone);
                 return;
               }
             }
-            handler.next(error);
-            return;
           }
-          
-          try {
-            final refreshed = await tryRefreshToken();
-            if (refreshed) {
-              final prefs = await SharedPreferences.getInstance();
-              final newToken = prefs.getString(_tokenKey);
-              if (newToken != null) {
-                error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
-                final retryCount = (error.requestOptions.extra['_retry'] ?? 0) as int;
-                if (retryCount < 2) {
-                  error.requestOptions.extra['_retry'] = retryCount + 1;
-                  final clone = await _dio.fetch(error.requestOptions);
-                  handler.resolve(clone);
-                  return;
-                }
-              }
-            }
-            // Refresh failed
-            await _clearAuth();
-          } finally {
-            _isRefreshing = false;
-            _refreshCompleter?.complete();
-            _refreshCompleter = null;
-          }
+          // Refresh failed - logout
+          await _clearAuth();
         }
         handler.next(error);
       },
@@ -101,7 +65,7 @@ class ApiService {
     return dio;
   }
 
-  Future<bool> tryRefreshToken() async {
+  Future<bool> _tryRefreshToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString(_refreshTokenKey);
@@ -178,13 +142,12 @@ class ApiService {
   }
 
   // Students CRUD
-  Future<Map<String, dynamic>> getStudents({int? page, int? limit, String? search, bool includeInactive = true}) async {
+  Future<Map<String, dynamic>> getStudents({int? page, int? limit, String? search}) async {
     final query = <String, dynamic>{};
     if (page != null) query['page'] = page;
     if (limit != null) query['limit'] = limit;
     if (search != null && search.isNotEmpty) query['search'] = search;
-    query['include_inactive'] = includeInactive;
-    final res = await _dio.get('/students/', queryParameters: query);
+    final res = await _dio.get('/students', queryParameters: query);
     return _parseResponse(res);
   }
 
@@ -396,222 +359,5 @@ class ApiService {
   Future<Map<String, dynamic>> deleteLesson(String id) async {
     final res = await _dio.delete('/lessons/$id');
     return _parseResponse(res);
-  }
-
-  // Wallet
-  Future<Map<String, dynamic>> getWallet() async {
-    final res = await _dio.get('/wallet');
-    return _parseResponse(res);
-  }
-  Future<Map<String, dynamic>> requestPayout(double amount, String method, String phone) async {
-    final res = await _dio.post('/wallet/payout-request', data: {'amount': amount, 'payout_method': method, 'payout_phone': phone});
-    return _parseResponse(res);
-  }
-  Future<Map<String, dynamic>> getPayoutRequests({int limit = 50}) async {
-    final res = await _dio.get('/wallet/payout-requests', queryParameters: {'limit': limit});
-    return _parseResponse(res);
-  }
-  Future<Map<String, dynamic>> getWalletTransactions({int limit = 50}) async {
-    final res = await _dio.get('/wallet/transactions', queryParameters: {'limit': limit});
-    return _parseResponse(res);
-  }
-  Future<Map<String, dynamic>> getFinanceOverview() async {
-    final res = await _dio.get('/finance/overview');
-    return _parseResponse(res);
-  }
-
-  // Lesson Lock
-  Future<void> setLessonLock(String lessonId, Map<String, dynamic>? data) async {
-    if (data == null) {
-      await _dio.put('/courses/lessons/$lessonId/lock', data: {'lock_type': null});
-    } else {
-      await _dio.put('/courses/lessons/$lessonId/lock', data: data);
-    }
-  }
-
-  // ── Course Management ──
-  Future<void> reportError(String screen, String error, {Map<String, dynamic>? extra}) async {
-    try {
-      String teacherId = 'unknown';
-      String teacherName = 'unknown';
-      try {
-        final me = await getMe();
-        teacherId = me['id']?.toString() ?? 'unknown';
-        teacherName = me['name']?.toString() ?? me['email']?.toString() ?? 'unknown';
-      } catch (_) {}
-      final fallbackDio = Dio(BaseOptions(
-        baseUrl: _baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-        headers: {'Content-Type': 'application/json'},
-      ));
-      await fallbackDio.post('/report-error', data: {
-        'screen': screen,
-        'error': error,
-        'teacher_id': teacherId,
-        'teacher_name': teacherName,
-        'extra': extra ?? {},
-      });
-    } catch (_) {}
-  }
-
-  Future<List<dynamic>> getCourses() async {
-    final res = await _dio.get('/courses');
-    if (res.data is Map && res.data['items'] is List) return res.data['items'] as List;
-    return [];
-  }
-
-  Future<Map<String, dynamic>> getCourse(String courseId) async {
-    final res = await _dio.get('/courses/$courseId');
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<Map<String, dynamic>> createCourse(Map<String, dynamic> data) async {
-    final res = await _dio.post('/courses', data: data);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<Map<String, dynamic>> updateCourse(String courseId, Map<String, dynamic> data) async {
-    final res = await _dio.put('/courses/$courseId', data: data);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<void> deleteCourse(String courseId) async {
-    await _dio.delete('/courses/$courseId/delete');
-  }
-
-  Future<Map<String, dynamic>> updateCoursePricing(String courseId, Map<String, dynamic> data) async {
-    final res = await _dio.put('/courses/$courseId/pricing', data: data);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<Map<String, dynamic>> uploadCourseCover(String courseId, String filePath, {void Function(int sent, int total)? onProgress}) async {
-    final file = await MultipartFile.fromFile(filePath, filename: 'cover.jpg');
-    final form = FormData.fromMap({'file': file});
-    final res = await _dio.post('/courses/$courseId/cover', data: form, onSendProgress: onProgress);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  // ── Chapter Management ──
-  Future<List<dynamic>> getChapters(String courseId) async {
-    final res = await _dio.get('/courses/$courseId/chapters');
-    if (res.data is Map && res.data['items'] is List) return res.data['items'] as List;
-    return [];
-  }
-
-  Future<Map<String, dynamic>> createChapter(String courseId, Map<String, dynamic> data) async {
-    final res = await _dio.post('/courses/$courseId/chapters', data: data);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<void> deleteChapter(String chapterId) async {
-    await _dio.delete('/courses/chapters/$chapterId/delete');
-  }
-
-  // ── Course Lesson Management ──
-  Future<List<dynamic>> getCourseLessons(String chapterId) async {
-    final res = await _dio.get('/courses/chapters/$chapterId/lessons');
-    if (res.data is Map && res.data['items'] is List) return res.data['items'] as List;
-    return [];
-  }
-
-  Future<Map<String, dynamic>> getCourseLesson(String lessonId) async {
-    final res = await _dio.get('/courses/lessons/$lessonId');
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<Map<String, dynamic>> createCourseLesson(String chapterId, Map<String, dynamic> data) async {
-    final res = await _dio.post('/courses/chapters/$chapterId/lessons', data: data);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<Map<String, dynamic>> updateCourseLesson(String lessonId, Map<String, dynamic> data) async {
-    final res = await _dio.put('/courses/lessons/$lessonId', data: data);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<void> deleteCourseLesson(String lessonId) async {
-    await _dio.delete('/courses/lessons/$lessonId/delete');
-  }
-
-  Future<Map<String, dynamic>> uploadLessonVideo(String lessonId, String filePath, {void Function(int sent, int total)? onProgress}) async {
-    final file = await MultipartFile.fromFile(filePath, filename: 'video.mp4');
-    final form = FormData.fromMap({'file': file});
-    final res = await _dio.post('/courses/lessons/$lessonId/video', data: form, onSendProgress: onProgress);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<Map<String, dynamic>> uploadLessonFile(String lessonId, String filePath, String fileName, {void Function(int sent, int total)? onProgress}) async {
-    final file = await MultipartFile.fromFile(filePath, filename: fileName);
-    final form = FormData.fromMap({'file': file});
-    final res = await _dio.post('/courses/lessons/$lessonId/file', data: form, onSendProgress: onProgress);
-    if (res.data is Map && res.data['data'] is Map) return Map<String, dynamic>.from(res.data['data']);
-    return {};
-  }
-
-  Future<List<dynamic>> getLessonFiles(String lessonId) async {
-    final res = await _dio.get('/courses/lessons/$lessonId/files');
-    if (res.data is Map && res.data['items'] is List) return res.data['items'] as List;
-    return [];
-  }
-
-  Future<void> deleteCourseFile(String fileId) async {
-    await _dio.delete('/courses/files/$fileId/delete');
-  }
-
-  // ── Course Lesson Exam Questions ──
-  Future<List<dynamic>> getLessonExamQuestions(String lessonId) async {
-    final res = await _dio.get('/courses/lessons/$lessonId/exam-questions');
-    if (res.data is Map && res.data['questions'] is List) return res.data['questions'] as List;
-    return [];
-  }
-
-  Future<Map<String, dynamic>> addLessonExamQuestion(String lessonId, Map<String, dynamic> data) async {
-    final res = await _dio.post('/courses/lessons/$lessonId/exam-questions', data: data);
-    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : {};
-  }
-
-  Future<Map<String, dynamic>> updateLessonExamQuestion(String lessonId, String questionId, Map<String, dynamic> data) async {
-    final res = await _dio.put('/courses/lessons/$lessonId/exam-questions/$questionId', data: data);
-    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : {};
-  }
-
-  Future<void> deleteLessonExamQuestion(String lessonId, String questionId) async {
-    await _dio.delete('/courses/lessons/$lessonId/exam-questions/$questionId');
-  }
-
-  Future<List<dynamic>> generateLessonExamQuestionsAI(String lessonId, {String subject = '', int questionCount = 10, String? pdfBase64}) async {
-    final res = await _dio.post('/courses/lessons/$lessonId/exam-questions/generate-ai', data: {
-      'subject': subject,
-      'question_count': questionCount,
-      if (pdfBase64 != null) 'pdf_base64': pdfBase64,
-    });
-    if (res.data is Map && res.data['questions'] is List) return res.data['questions'] as List;
-    return [];
-  }
-
-  // ── Admission Queue ──
-  Future<Map<String, dynamic>> getPendingAdmissions() async {
-    final res = await _dio.get('/admission/pending');
-    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : {'items': []};
-  }
-
-  Future<Map<String, dynamic>> approveAdmission(String id) async {
-    final res = await _dio.post('/admission/$id/approve');
-    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : {};
-  }
-
-  Future<void> rejectAdmission(String id, {String? reason}) async {
-    await _dio.post('/admission/$id/reject', data: {'reason': reason});
   }
 }

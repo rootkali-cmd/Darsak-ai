@@ -1,7 +1,7 @@
 ﻿name: darsak_mobile
 description: "DarsakAI Mobile - Student App"
 publish_to: 'none'
-version: 1.8.0+17
+version: 1.7.4+16
 
 environment:
   sdk: ^3.12.0

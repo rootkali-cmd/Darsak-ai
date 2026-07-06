@@ -171,7 +171,7 @@ class _GradesScreenState extends State<GradesScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${g.score.toStringAsFixed(0)} من ${g.maxScore.toStringAsFixed(0)}',
+                '${g.score.toStringAsFixed(0)} / ${g.maxScore.toStringAsFixed(0)}',
                 style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11),
               ),
             ],

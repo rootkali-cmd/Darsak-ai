@@ -29,10 +29,8 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   bool _submitting = false;
   bool _submitted = false;
   bool _gracePeriod = false;
-  bool _disposing = false;
   final Map<String, String> _answers = {};
   String? _currentSelection;
-  final TextEditingController _essayController = TextEditingController();
 
   @override
   void initState() {
@@ -43,9 +41,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
 
   @override
   void dispose() {
-    _disposing = true;
     _timer?.cancel();
-    _essayController.dispose();
     if (!_submitted && !_submitting && _questions.isNotEmpty) {
       _autoSubmit();
     }
@@ -143,7 +139,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   Future<void> _autoSubmit() async {
     if (_submitted) return;
     _saveCurrentAnswer();
-    await _submitExam(silent: true);
+    await _submitExam();
   }
 
   void _saveCurrentAnswer() {
@@ -163,7 +159,6 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
         _currentIndex++;
         final qId = _questions[_currentIndex]['id'] ?? '';
         _currentSelection = _answers[qId];
-        _essayController.text = _currentSelection ?? '';
       });
     }
   }
@@ -175,17 +170,14 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
         _currentIndex--;
         final qId = _questions[_currentIndex]['id'] ?? '';
         _currentSelection = _answers[qId];
-        _essayController.text = _currentSelection ?? '';
       });
     }
   }
 
-  Future<void> _submitExam({bool silent = false}) async {
+  Future<void> _submitExam() async {
     if (_submitted || _submitting) return;
     _saveCurrentAnswer();
-    if (!silent && mounted) {
-      setState(() => _submitting = true);
-    }
+    setState(() => _submitting = true);
     _timer?.cancel();
     try {
       final answers = _questions.map((q) => {
@@ -417,11 +409,9 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                 border: Border.all(color: AppColors.border(context)),
               ),
               child: TextField(
-                key: ValueKey('essay_${_questions[_currentIndex]['id'] ?? ''}'),
-                controller: _essayController,
+                controller: TextEditingController(text: _currentSelection ?? ''),
                 maxLines: 8,
                 textDirection: TextDirection.rtl,
-                textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
                   hintText: 'اكتب إجابتك هنا...',
                   hintTextDirection: TextDirection.rtl,

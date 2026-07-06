@@ -10,9 +10,7 @@ import '../subscriptions/subscription_screen.dart';
 import '../exams/exams_screen.dart';
 import '../reports/ai_reports_screen.dart';
 import '../invoices/teacher_invoices_screen.dart';
-import '../courses/courses_screen.dart';
-import '../wallet/wallet_screen.dart';
-import '../admission/admission_queue_screen.dart';
+import '../contacts/teacher_contacts_screen.dart';
 import 'developer_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -60,21 +58,16 @@ class _MoreScreenState extends State<MoreScreen> {
           ),
           _MoreOption(
             icon: Icons.video_library,
-            label: 'الكورسات',
-            color: const Color(0xFF6366F1),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CoursesScreen())),
-          ),
-          _MoreOption(
-            icon: Icons.account_balance_wallet,
-            label: 'المحفظة',
-            color: const Color(0xFF10B981),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
-          ),
-          _MoreOption(
-            icon: Icons.how_to_reg,
-            label: 'طلبات اونلاين',
-            color: const Color(0xFFF59E0B),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdmissionQueueScreen())),
+            label: 'الدروس',
+            color: const Color(0xFF94A3B8),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('قريباً إن شاء الله'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
           ),
           _MoreOption(
             icon: Icons.card_membership,
@@ -99,6 +92,12 @@ class _MoreScreenState extends State<MoreScreen> {
             label: 'الفواتير',
             color: AppTheme.warning,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherInvoicesScreen())),
+          ),
+          _MoreOption(
+            icon: Icons.contact_mail,
+            label: 'جهات اتصال',
+            color: GlassTheme.cyan,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherContactsScreen())),
           ),
           _MoreOption(
             icon: Icons.qr_code,

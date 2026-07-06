@@ -8,7 +8,6 @@ class StudentModel {
   final String? gradeLevel;
   final String? groupId;
   final String? teacherId;
-  final String? registrationType;
   final DateTime createdAt;
 
   StudentModel({
@@ -21,11 +20,8 @@ class StudentModel {
     this.gradeLevel,
     this.groupId,
     this.teacherId,
-    this.registrationType,
     required this.createdAt,
   });
-
-  bool get isOnlineStudent => registrationType == 'online';
 
   factory StudentModel.fromJson(Map<String, dynamic> json) {
     return StudentModel(
@@ -38,7 +34,6 @@ class StudentModel {
       gradeLevel: json['grade_level'],
       groupId: json['group_id']?.toString(),
       teacherId: json['teacher_id']?.toString(),
-      registrationType: json['registration_type'],
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
     );
   }

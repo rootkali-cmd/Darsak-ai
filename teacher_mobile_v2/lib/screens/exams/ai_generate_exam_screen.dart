@@ -182,16 +182,9 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scaffoldBg = isDark ? GlassTheme.bgDark : const Color(0xFFF5F5F5);
+    final scaffoldBg = isDark ? GlassTheme.bgDark : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF1A1A2E);
     final textSecondary = isDark ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF555570);
-    final cardBg = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white;
-    final cardBorder = isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFE2E8F0);
-    final dimText = isDark ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF94A3B8);
-    final dimText2 = isDark ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF64748B);
-    final hintIconColor = isDark ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF94A3B8);
-    final dropdownBg = isDark ? const Color(0xFF1A1A2E) : Colors.white;
-    final dropdownText = isDark ? Colors.white : const Color(0xFF1A1A2E);
     return SubscriptionRequiredWidget(
       child: Scaffold(
         backgroundColor: scaffoldBg,
@@ -212,10 +205,10 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
               child: Container(
                 height: 180,
                 decoration: BoxDecoration(
-                  color: _selectedFile != null ? GlassTheme.indigo.withValues(alpha: 0.1) : cardBg,
+                  color: _selectedFile != null ? GlassTheme.indigo.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: _selectedFile != null ? GlassTheme.indigo : cardBorder,
+                    color: _selectedFile != null ? GlassTheme.indigo : Colors.white.withValues(alpha: 0.15),
                     width: 2,
                   ),
                 ),
@@ -226,40 +219,40 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
                           Icon(_selectedFileName?.endsWith('.pdf') == true ? Icons.picture_as_pdf : Icons.image,
                               size: 48, color: GlassTheme.indigo),
                           const SizedBox(height: 12),
-                          Text(_selectedFileName ?? 'ملف محدد', style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                          Text(_selectedFileName ?? 'ملف محدد', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 4),
-                          Text('اضغط لتغيير الملف', style: TextStyle(color: dimText2, fontSize: 12)),
+                          Text('اضغط لتغيير الملف', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
                         ],
                       )
                     : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.upload_file, size: 48, color: dimText),
+                          Icon(Icons.upload_file, size: 48, color: Colors.white.withValues(alpha: 0.3)),
                           const SizedBox(height: 12),
-                          Text('ارفع ملف PDF أو صورة', style: TextStyle(color: textSecondary, fontSize: 15)),
+                          Text('ارفع ملف PDF أو صورة', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15)),
                           const SizedBox(height: 4),
-                          Text('PDF أو JPG أو PNG — حد أقصى 20MB', style: TextStyle(color: dimText, fontSize: 12)),
+                          Text('PDF أو JPG أو PNG — حد أقصى 20MB', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12)),
                         ],
                       ),
               ),
             ),
             const SizedBox(height: 24),
-            _buildField(_titleCtrl, 'عنوان الاختبار *', Icons.title, isDark: isDark, textPrimary: textPrimary, textSecondary: textSecondary),
+            _buildField(_titleCtrl, 'عنوان الاختبار *', Icons.title),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color: cardBg,
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: cardBorder),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedSubject,
                   isExpanded: true,
-                  dropdownColor: dropdownBg,
-                  icon: Icon(Icons.keyboard_arrow_down, color: hintIconColor),
-                  style: TextStyle(color: dropdownText, fontSize: 15),
+                  dropdownColor: const Color(0xFF1A1A2E),
+                  icon: Icon(Icons.keyboard_arrow_down, color: Colors.white.withValues(alpha: 0.5)),
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
                   items: _subjects.map((s) => DropdownMenuItem(
                     value: s,
                     child: Text(s.isEmpty ? 'المادة (اختياري)' : s),
@@ -271,9 +264,9 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildField(_durationCtrl, 'المدة (دقيقة)', Icons.timer, isNumber: true, isDark: isDark, textPrimary: textPrimary, textSecondary: textSecondary)),
+                Expanded(child: _buildField(_durationCtrl, 'المدة (دقيقة)', Icons.timer, isNumber: true)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildField(_countCtrl, 'عدد الأسئلة', Icons.format_list_numbered, isNumber: true, isDark: isDark, textPrimary: textPrimary, textSecondary: textSecondary)),
+                Expanded(child: _buildField(_countCtrl, 'عدد الأسئلة', Icons.format_list_numbered, isNumber: true)),
               ],
             ),
             const SizedBox(height: 8),
@@ -290,7 +283,7 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
                   Expanded(
                     child: Text(
                       'سيقوم الذكاء الاصطناعي بقراءة المحتوى وتوليد أسئلة اختبار متعددة ومقالية',
-                      style: TextStyle(color: textSecondary, fontSize: 12),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                     ),
                   ),
                 ],
@@ -339,24 +332,20 @@ class _AiGenerateExamScreenState extends State<AiGenerateExamScreen> {
   );
   }
 
-  Widget _buildField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false, required bool isDark, required Color textPrimary, required Color textSecondary}) {
-    final borderColor = isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFE2E8F0);
-    final fillColor = isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC);
-    final iconColor = isDark ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF94A3B8);
-    final labelColor = isDark ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF64748B);
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false}) {
     return TextField(
       controller: ctrl,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      style: TextStyle(color: textPrimary, fontSize: 15),
+      style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: labelColor),
-        prefixIcon: Icon(icon, color: iconColor, size: 20),
+        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+        prefixIcon: Icon(icon, color: Colors.white.withValues(alpha: 0.3), size: 20),
         filled: true,
-        fillColor: fillColor,
+        fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: borderColor)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: borderColor)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: GlassTheme.indigo)),
       ),
     );
