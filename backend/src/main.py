@@ -853,7 +853,7 @@ async def _run_schema_migrations():
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
             teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
-            classroom_url TEXT NOT NULL,
+            classroom_url TEXT DEFAULT '',
             title VARCHAR(255) DEFAULT 'درس AI',
             rate_per_minute DECIMAL(6,2) DEFAULT 0.42,
             min_balance DECIMAL(10,2) DEFAULT 10.00,
@@ -863,7 +863,7 @@ async def _run_schema_migrations():
             cost DECIMAL(10,2) DEFAULT 0,
             balance_before DECIMAL(12,2),
             balance_after DECIMAL(12,2),
-            status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'force_ended')),
+            status VARCHAR(20) DEFAULT 'active',
             heartbeat_at TIMESTAMPTZ DEFAULT NOW(),
             warning_sent_at TIMESTAMPTZ,
             created_at TIMESTAMPTZ DEFAULT NOW()
@@ -946,6 +946,50 @@ async def _run_schema_migrations():
                     created += 1
                 else:
                     skipped += 1
+            except Exception:
+                skipped += 1
+
+        # ─── Phase 19: OpenMAIC integration columns ─────────────────────
+        for sql in [
+            "ALTER TABLE ai_lesson_sessions ADD COLUMN IF NOT EXISTS openmaic_job_id VARCHAR(64);",
+            "ALTER TABLE ai_lesson_sessions ADD COLUMN IF NOT EXISTS classroom_id VARCHAR(64);",
+            "ALTER TABLE ai_lesson_sessions ADD COLUMN IF NOT EXISTS scenes_count INTEGER DEFAULT 0;",
+            "ALTER TABLE ai_lesson_sessions ADD COLUMN IF NOT EXISTS error_message TEXT;",
+            "CREATE INDEX IF NOT EXISTS idx_ai_sessions_job_id ON ai_lesson_sessions(openmaic_job_id) WHERE openmaic_job_id IS NOT NULL;",
+        ]:
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as http:
+                    resp = await http.post(
+                        f"{url}/rest/v1/rpc/exec_sql",
+                        json={"query": sql},
+                        headers={"apikey": key, "Authorization": f"Bearer {key}"},
+                    )
+                    if resp.status_code == 200:
+                        created += 1
+                    else:
+                        skipped += 1
+            except Exception:
+                skipped += 1
+
+        # ─── Phase 20: Deposit request reference + rejection fields ────
+        for sql in [
+            "ALTER TABLE student_deposit_requests ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100);",
+            "ALTER TABLE student_deposit_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;",
+            "ALTER TABLE student_deposit_requests ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;",
+            "ALTER TABLE ai_lesson_sessions ALTER COLUMN classroom_url DROP NOT NULL;",
+            "ALTER TABLE ai_lesson_sessions DROP CONSTRAINT IF EXISTS ai_lesson_sessions_status_check;",
+        ]:
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as http:
+                    resp = await http.post(
+                        f"{url}/rest/v1/rpc/exec_sql",
+                        json={"query": sql},
+                        headers={"apikey": key, "Authorization": f"Bearer {key}"},
+                    )
+                    if resp.status_code == 200:
+                        created += 1
+                    else:
+                        skipped += 1
             except Exception:
                 skipped += 1
 
@@ -1194,6 +1238,14 @@ app.add_middleware(
 logger.info("CORS configured for origins: %s", _cors_origins)
 
 # ── Middleware ──
+
+@app.middleware("http")
+async def strip_trailing_slash_middleware(request: Request, call_next):
+    """Strip trailing slash from path to fix old app versions that send /students/ etc."""
+    path = request.scope["path"]
+    if path != "/" and path.endswith("/"):
+        request.scope["path"] = path.rstrip("/")
+    return await call_next(request)
 
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):

@@ -58,7 +58,18 @@ class FinanceService:
                 "status": "pending",
             }
             result = await client.table("student_deposit_requests").insert(deposit).execute()
-            return result.data[0] if result.data else deposit
+            dep = result.data[0] if result.data else deposit
+            # Record pending transaction
+            try:
+                await client.table("student_transactions").insert({
+                    "student_id": student_id,
+                    "amount": total_amount,
+                    "type": "deposit",
+                    "note": f"طلب إيداع ({amount:.0f} ج.م) - قيد المراجعة",
+                }).execute()
+            except Exception:
+                pass
+            return dep
         except Exception as e:
             logger.error("request_deposit failed: %s", e)
             raise
@@ -72,6 +83,68 @@ class FinanceService:
 
     async def get_teacher_transactions(self, teacher_id: str, limit: int = 50):
         return []
+
+    async def process_deposit_approve(self, dep_id: str) -> dict:
+        try:
+            client = await self._get_client()
+            result = await client.table("student_deposit_requests").select("*").eq("id", dep_id).execute()
+            if not result.data:
+                raise ValueError("Deposit request not found")
+            dep = result.data[0]
+            if dep.get("status") != "pending":
+                raise ValueError(f"Deposit is already {dep.get('status')}")
+            student_id = dep["student_id"]
+            amount = float(dep.get("amount", 0))
+            total_amount = float(dep.get("total_amount", amount))
+            # Update deposit status
+            from datetime import datetime, timezone
+            await client.table("student_deposit_requests").update({
+                "status": "approved",
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", dep_id).execute()
+            # Update wallet
+            wallet_result = await client.table("student_wallets").select("*").eq("student_id", student_id).execute()
+            if wallet_result.data:
+                w = wallet_result.data[0]
+                new_balance = float(w.get("balance", 0)) + total_amount
+                new_deposited = float(w.get("total_deposited", 0)) + total_amount
+                await client.table("student_wallets").update({
+                    "balance": new_balance,
+                    "total_deposited": new_deposited,
+                }).eq("student_id", student_id).execute()
+            else:
+                new_balance = total_amount
+                await client.table("student_wallets").insert({
+                    "student_id": student_id,
+                    "balance": total_amount,
+                    "total_deposited": total_amount,
+                    "total_spent": 0,
+                }).execute()
+            # Record transaction
+            await client.table("student_transactions").insert({
+                "student_id": student_id,
+                "amount": total_amount,
+                "type": "deposit",
+                "note": f"إيداع مقبول (طلب #{dep_id[:8]})",
+            }).execute()
+            return {"new_balance": new_balance, "deposit_id": dep_id}
+        except Exception as e:
+            logger.error("process_deposit_approve failed: %s", e)
+            raise
+
+    async def process_deposit_reject(self, dep_id: str, reason: str = "") -> dict:
+        try:
+            client = await self._get_client()
+            from datetime import datetime, timezone
+            await client.table("student_deposit_requests").update({
+                "status": "rejected",
+                "rejection_reason": reason,
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", dep_id).execute()
+            return {"deposit_id": dep_id, "status": "rejected"}
+        except Exception as e:
+            logger.error("process_deposit_reject failed: %s", e)
+            raise
 
 
 finance_service = FinanceService()

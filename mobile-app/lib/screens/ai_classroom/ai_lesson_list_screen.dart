@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/api_service.dart';
+import 'ai_generate_screen.dart';
 import 'ai_lesson_player_screen.dart';
 
 class AiLessonListScreen extends StatefulWidget {
@@ -12,10 +13,10 @@ class AiLessonListScreen extends StatefulWidget {
 
 class _AiLessonListScreenState extends State<AiLessonListScreen> {
   final _api = ApiService();
-  List<Map<String, dynamic>> _lessons = [];
   bool _loading = true;
-  double _rate = 0.42;
-  double _minBalance = 10.0;
+  List<Map<String, dynamic>> _sessions = [];
+  double _balance = 0;
+  double _ratePerMinute = 0.42;
 
   @override
   void initState() {
@@ -23,21 +24,76 @@ class _AiLessonListScreenState extends State<AiLessonListScreen> {
     _load();
   }
 
+  String? _loadError;
+
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _loadError = null; });
     try {
-      final config = await _api.getAiClassroomConfig();
-      _rate = (config['rate_per_minute'] as num?)?.toDouble() ?? 0.42;
-      _minBalance = (config['min_balance'] as num?)?.toDouble() ?? 10.0;
-      final sessions = await _api.getAiLessonSessions();
-      _lessons = (sessions['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    } catch (_) {}
+      final results = await Future.wait([
+        _api.getClassrooms(),
+        _api.getWallet(),
+      ]);
+      final classrooms = results[0];
+      final wallet = results[1];
+      _sessions = (classrooms['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      _balance = (wallet['balance'] as num?)?.toDouble() ?? 0;
+      _ratePerMinute = 0.42;
+    } catch (e) {
+      if (mounted) setState(() => _loadError = 'فشل تحميل البيانات. تحقق من الإنترنت');
+    }
     if (mounted) setState(() => _loading = false);
+  }
+
+  void _startNewLesson() async {
+    if (_balance < 10) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('رصيد غير كافٍ. الحد الأدنى 10 ج.م، رصيدك ${_balance.toStringAsFixed(2)} ج.م'),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+      return;
+    }
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const AiGenerateScreen()),
+    );
+    if (result == true) _load();
+  }
+
+  void _resumeSession(Map<String, dynamic> session) {
+    final title = session['title'] as String? ?? 'درس AI';
+    final status = session['status'] as String? ?? '';
+    final classroomUrl = session['classroom_url'] as String? ?? '';
+
+    if (status != 'active') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('هذا الدرس منتهي'), backgroundColor: AppTheme.warning),
+      );
+      return;
+    }
+
+    if (classroomUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('رابط الفصل غير متاح. حاول إنشاء فصل جديد'), backgroundColor: AppTheme.danger),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AiClassroomWebViewScreen(
+          url: classroomUrl,
+          title: title,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('الفصل الذكي'),
@@ -45,139 +101,250 @@ class _AiLessonListScreenState extends State<AiLessonListScreen> {
         elevation: 0,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.accent))
+          : _loadError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.cloud_off, size: 48, color: Colors.white24),
+                        const SizedBox(height: 12),
+                        Text(_loadError!, style: const TextStyle(color: Colors.white54, fontSize: 14), textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _load,
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('إعادة المحاولة'),
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent, foregroundColor: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : RefreshIndicator(
               onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildInfoCard(theme),
-                  const SizedBox(height: 16),
-                  _buildDemoCard(theme),
-                  const SizedBox(height: 24),
-                  Text('الجلسات السابقة', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  if (_lessons.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Text('لا توجد جلسات سابقة', style: TextStyle(color: theme.hintColor)),
+              color: AppTheme.accent,
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _buildBalanceCard()),
+                  SliverToBoxAdapter(child: _buildNewLessonButton()),
+                  if (_sessions.isEmpty)
+                    SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.school_outlined, size: 64, color: Colors.white.withValues(alpha: 0.15)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'لا توجد حصص بعد',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 14),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'ابدأ فصلاً ذكياً جديداً',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   else
-                    ..._lessons.map((s) => _buildSessionCard(theme, s)),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildSessionCard(_sessions[index]),
+                          childCount: _sessions.length,
+                        ),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildInfoCard(ThemeData theme) {
+  Widget _buildBalanceCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [AppTheme.accent, AppTheme.accent.withAlpha(180)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6C5CE7), Color(0xFFa29bfe)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text('التعليم بالذكاء الاصطناعي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text('السعر: $_rate ج.م / دقيقة', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13)),
-          Text('الحد الأدنى للرصيد: $_minBalance ج.م', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13)),
-          const SizedBox(height: 8),
-          Text('يتم خصم التكلفة بعد انتهاء الجلسة على أساس الدقائق الفعلية المستخدمة',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF6C5CE7).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
         ],
       ),
-    );
-  }
-
-  Widget _buildDemoCard(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(Icons.school, color: AppTheme.accent, size: 24),
-              const SizedBox(width: 8),
-              Text('درس تجريبي', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.textTheme.titleMedium?.color)),
-            ],
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+            child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 24),
           ),
-          const SizedBox(height: 8),
-          Text('جرب الفصل الذكي الآن', style: TextStyle(color: theme.hintColor, fontSize: 13)),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _startDemo,
-              icon: const Icon(Icons.play_arrow, size: 18),
-              label: const Text('بدء الدرس'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('الرصيد المتاح', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 2),
+                Text(
+                  '${_balance.toStringAsFixed(2)} ج.م',
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text('التكلفة', style: TextStyle(color: Colors.white54, fontSize: 11)),
+              Text(
+                '${_ratePerMinute.toStringAsFixed(2)} ج.م/د',
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSessionCard(ThemeData theme, Map<String, dynamic> s) {
-    final cost = (s['cost'] as num?)?.toDouble() ?? 0;
-    final duration = s['duration_formatted'] as String? ?? '00:00:00';
-    final title = s['title'] as String? ?? 'درس AI';
-    final status = s['status'] as String? ?? '';
-    final isActive = status == 'active';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Icon(isActive ? Icons.play_circle : Icons.check_circle, color: isActive ? Colors.green : theme.hintColor),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('المدة: $duration  •  التكلفة: $cost ج.م'),
-        trailing: Text(status == 'ended' ? 'منتهي' : 'نشط', style: TextStyle(fontSize: 12, color: isActive ? Colors.green : theme.hintColor)),
+  Widget _buildNewLessonButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton.icon(
+          onPressed: _startNewLesson,
+          icon: const Icon(Icons.add, size: 20),
+          label: const Text('فصل ذكي جديد', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.accent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
+          ),
+        ),
       ),
     );
   }
 
-  void _startDemo() async {
-    final ok = await _checkBalance();
-    if (ok && mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const AiLessonPlayerScreen()));
-    }
-  }
+  Widget _buildSessionCard(Map<String, dynamic> session) {
+    final title = session['title'] as String? ?? 'درس AI';
+    final status = session['status'] as String? ?? '';
+    final cost = (session['cost'] as num?)?.toDouble() ?? 0;
+    final startedAt = session['started_at'] as String? ?? '';
+    final isActive = status == 'active';
 
-  Future<bool> _checkBalance() async {
-    try {
-      final wallet = await _api.getWallet();
-      final bal = (wallet['balance'] as num?)?.toDouble() ?? 0;
-      if (bal < _minBalance) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('رصيد غير كاف. الحد الأدنى $_minBalance ج.م')));
-        }
-        return false;
-      }
-      return true;
-    } catch (_) {
-      return true;
+    String dateStr = '';
+    if (startedAt.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(startedAt);
+        dateStr = '${dt.day}/${dt.month}/${dt.year}';
+      } catch (_) {}
     }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: const Color(0xFF0A0A0A),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: isActive ? () => _resumeSession(session) : null,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isActive
+                    ? AppTheme.accent.withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppTheme.accent.withValues(alpha: 0.15)
+                        : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isActive ? Icons.play_arrow_rounded : Icons.check_circle_outline,
+                    color: isActive ? AppTheme.accent : Colors.white38,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isActive ? Colors.white : Colors.white54,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (dateStr.isNotEmpty) ...[
+                            Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.35))),
+                            const SizedBox(width: 8),
+                          ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? AppTheme.success.withValues(alpha: 0.15)
+                                  : Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              isActive ? 'نشط' : 'منتهي',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isActive ? AppTheme.success : Colors.white38,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (cost > 0)
+                  Text(
+                    '${cost.toStringAsFixed(2)} ج.م',
+                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.35)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

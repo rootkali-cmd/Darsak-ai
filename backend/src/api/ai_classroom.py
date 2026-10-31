@@ -1,5 +1,9 @@
 import logging
 import secrets
+import base64
+import json
+import hmac
+import hashlib
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import HTMLResponse
@@ -19,6 +23,22 @@ MIN_BALANCE = 10.00
 session_repo = SupabaseRepository("ai_lesson_sessions")
 wallet_repo = SupabaseRepository("student_wallets")
 tx_repo = SupabaseRepository("student_transactions")
+
+OPENMAIC_BASE = "https://darsak-ai-classroom.fly.dev"
+
+
+def _generate_student_token(student: dict, access_code: str) -> str:
+    """Generate HMAC-signed token for OpenMAIC student auth."""
+    payload = {
+        "student_id": student.get("id", ""),
+        "name": student.get("full_name", student.get("name", "")),
+        "code": student.get("code", ""),
+        "balance": student.get("balance", 0),
+        "teacher_id": student.get("teacher_id", ""),
+    }
+    payload_b64 = base64.urlsafe_b64encode(json.dumps(payload, ensure_ascii=False).encode()).decode().rstrip("=")
+    signature = hmac.new(access_code.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
+    return f"{payload_b64}.{signature}"
 
 
 class StartLessonRequest(BaseModel):
@@ -63,8 +83,12 @@ async def start_lesson(
     now = datetime.now(timezone.utc).isoformat()
     classroom_url = body.classroom_url
     chat_token = secrets.token_urlsafe(16)
+
+    settings = get_settings()
+    student_token = _generate_student_token({**student, "balance": balance}, settings.ACCESS_CODE or "darsak-openmaic-secret")
+
     if not classroom_url:
-        classroom_url = f"https://darsak-backend.fly.dev/api/students/me/ai-classroom/chat/{chat_token}"
+        classroom_url = f"{OPENMAIC_BASE}/classroom/new?student_token={student_token}"
 
     session = await session_repo.insert({
         "student_id": student_id,
@@ -215,7 +239,7 @@ async def list_sessions(
 ):
     items = await session_repo.select(
         {"student_id": student["id"]},
-        limit=limit, offset=offset, order_by="created_at",
+        limit=limit, offset=offset, order="created_at",
     )
     return {
         "items": [
@@ -245,6 +269,184 @@ async def get_config():
         "min_balance": MIN_BALANCE,
         "currency": "EGP",
     }
+
+
+# ─── OpenMAIC Integration ──────────────────────────────────────────
+
+
+class GenerateClassroomRequest(BaseModel):
+    topic: str = Field(..., min_length=3, max_length=500, description="موضوع الدرس")
+
+
+@router.post("/generate")
+async def generate_classroom(
+    body: GenerateClassroomRequest,
+    student: dict = Depends(get_current_student),
+):
+    student_id = student["id"]
+    wallet = await _get_wallet(student_id)
+    balance = float(wallet.get("balance", 0))
+
+    if balance < MIN_BALANCE:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=402,
+            content={"detail": f"رصيد غير كاف. الحد الأدنى {MIN_BALANCE:.2f} ج.م، رصيدك {balance:.2f} ج.م"},
+        )
+
+    import httpx
+    settings = get_settings()
+    internal_key = settings.ACCESS_CODE or "darsak-openmaic-secret"
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{OPENMAIC_BASE}/api/generate-classroom",
+                json={
+                    "requirement": body.topic,
+                    "enableWebSearch": False,
+                    "enableImageGeneration": False,
+                    "enableVideoGeneration": False,
+                    "enableTTS": False,
+                },
+                headers={"X-Internal-Key": internal_key},
+            )
+            if resp.status_code not in (200, 201, 202):
+                logger.error("OpenMAIC generate error: %s %s", resp.status_code, resp.text[:200])
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=502, content={"detail": "فشل الاتصال بمنصة الفصل الذكي"})
+            data = resp.json()
+    except Exception as e:
+        logger.error("OpenMAIC generate exception: %s", e)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=502, content={"detail": "فشل الاتصال بمنصة الفصل الذكي"})
+
+    job_id = data.get("jobId", "")
+    if not job_id:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=502, content={"detail": "لم يتم إنشاء مهمة التوليد"})
+
+    now = datetime.now(timezone.utc).isoformat()
+    session = await session_repo.insert({
+        "student_id": student_id,
+        "teacher_id": student.get("teacher_id"),
+        "title": body.topic,
+        "status": "active",
+        "classroom_url": "",
+        "openmaic_job_id": job_id,
+        "started_at": now,
+        "heartbeat_at": now,
+        "balance_before": balance,
+        "rate_per_minute": RATE_PER_MINUTE,
+        "min_balance": MIN_BALANCE,
+    })
+
+    return {
+        "session_id": session.get("id"),
+        "job_id": job_id,
+        "status": "active",
+        "poll_interval_ms": data.get("pollIntervalMs", 5000),
+    }
+
+
+@router.get("/generate/{job_id}")
+async def poll_generation(
+    job_id: str,
+    student: dict = Depends(get_current_student),
+):
+    import httpx
+    settings = get_settings()
+    internal_key = settings.ACCESS_CODE or "darsak-openmaic-secret"
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(
+                f"{OPENMAIC_BASE}/api/generate-classroom/{job_id}",
+                headers={"X-Internal-Key": internal_key},
+            )
+            if resp.status_code != 200:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=502, content={"detail": "فشل الاستعلام عن حالة التوليد"})
+            data = resp.json()
+    except Exception as e:
+        logger.error("OpenMAIC poll error: %s", e)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=502, content={"detail": "فشل الاتصال بمنصة الفصل الذكي"})
+
+    status = data.get("status", "running")
+    progress = data.get("progress", 0)
+    step = data.get("step", "")
+    message = data.get("message", "")
+
+    session = await session_repo.select_one({"openmaic_job_id": job_id, "student_id": student["id"]})
+    if not session:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=404, content={"detail": "الجلسة غير موجودة"})
+
+    update_data = {"heartbeat_at": datetime.now(timezone.utc).isoformat()}
+
+    if status == "succeeded":
+        result = data.get("result", {})
+        classroom_id = result.get("classroomId", "")
+        classroom_url = result.get("url", "")
+        scenes_count = result.get("scenesCount", 0)
+
+        if classroom_url and "darsak-ai-classroom.fly.dev" not in classroom_url:
+            classroom_url = f"{OPENMAIC_BASE}/classroom/{classroom_id}"
+
+        wallet = await _get_wallet(student["id"])
+        student_token = _generate_student_token(
+            {**student, "balance": float(wallet.get("balance", 0))},
+            settings.ACCESS_CODE or "darsak-openmaic-secret",
+        )
+        if "?" in classroom_url:
+            classroom_url += f"&student_token={student_token}"
+        else:
+            classroom_url += f"?student_token={student_token}"
+
+        update_data["classroom_url"] = classroom_url
+        update_data["classroom_id"] = classroom_id
+        update_data["scenes_count"] = scenes_count
+
+    elif status == "failed":
+        update_data["error_message"] = data.get("error", "فشل توليد الدرس")
+
+    try:
+        await session_repo.update({"id": session["id"]}, update_data)
+    except Exception as e:
+        logger.error("poll_generation update failed: %s", e)
+
+    return {
+        "session_id": session["id"],
+        "status": status,
+        "progress": progress,
+        "step": step,
+        "message": message,
+        "classroom_url": update_data.get("classroom_url", ""),
+        "scenes_count": update_data.get("scenes_count", 0),
+    }
+
+
+@router.get("/classrooms")
+async def list_classrooms(
+    student: dict = Depends(get_current_student),
+):
+    items = await session_repo.select(
+        {"student_id": student["id"]},
+        limit=50, order="created_at",
+    )
+    results = []
+    for s in (items or []):
+        results.append({
+            "id": s.get("id"),
+            "title": s.get("title", "درس AI"),
+            "status": s.get("status", ""),
+            "classroom_url": s.get("classroom_url", ""),
+            "scenes_count": s.get("scenes_count", 0),
+            "started_at": s.get("started_at", ""),
+            "ended_at": s.get("ended_at", ""),
+            "duration_seconds": s.get("duration_seconds", 0),
+            "cost": float(s.get("cost", 0) or 0),
+        })
+    return {"items": results, "total": len(results)}
 
 
 def _fmt_duration(seconds: int) -> str:
@@ -451,3 +653,4 @@ async def chat_message(
         return JSONResponse(status_code=502, content={"detail": "فشل الاتصال بخدمة الذكاء الاصطناعي"})
 
     return ChatMessageResponse(answer=answer)
+

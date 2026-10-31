@@ -25,6 +25,7 @@ import {
   Presentation,
 } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
+import { useStudent } from '@/lib/hooks/use-student';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { createLogger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,7 @@ const initialFormState: FormState = {
 function HomePage() {
   const { t } = useI18n();
   const { theme, setTheme } = useTheme();
+  const { student } = useStudent();
   const router = useRouter();
   const showVocationalTestUi = shouldShowVocationalTestUi();
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -389,10 +391,23 @@ function HomePage() {
       {/* ═══ Top-right pill (unchanged) ═══ */}
       <div
         ref={toolbarRef}
-        className="fixed top-4 right-4 z-50 flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md px-2 py-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/50 shadow-sm"
+        className="fixed top-2 right-2 md:top-4 md:right-4 z-50 flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md px-2 py-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/50 shadow-sm"
       >
         {/* Language Selector */}
         <LanguageSwitcher onOpen={() => setThemeOpen(false)} />
+
+        {/* Student Badge */}
+        {student && (
+          <>
+            <div className="w-[1px] h-4 bg-gray-200 dark:bg-gray-700" />
+            <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-primary font-medium">
+              <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold">
+                {student.name?.charAt(0) || 'ط'}
+              </span>
+              <span className="hidden sm:inline max-w-[80px] truncate">{student.name}</span>
+            </div>
+          </>
+        )}
 
         <div className="w-[1px] h-4 bg-gray-200 dark:bg-gray-700" />
 
@@ -900,7 +915,7 @@ function HomePage() {
 
       {/* Footer — flows with content, at the very end */}
       <div className="mt-auto pt-12 pb-4 text-center text-xs text-muted-foreground/40">
-        OpenMAIC Open Source Project
+        Darsak AI — Powered by OpenMAIC
       </div>
     </div>
   );
@@ -1038,7 +1053,7 @@ function GreetingBar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className="absolute left-4 top-3.5 z-50 w-64"
+            className="absolute left-2 md:left-4 top-3.5 z-50 w-64"
           >
             <div className="rounded-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] shadow-[0_1px_8px_-2px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_8px_-2px_rgba(0,0,0,0.3)] px-2.5 py-2">
               {/* ── Row: avatar + name ── */}

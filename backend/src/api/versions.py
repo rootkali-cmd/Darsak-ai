@@ -61,50 +61,44 @@ CHANNELS: dict[str, dict[str, dict]] = {
             "release_date": "2026-05-26",
         },
         "android": {
-            "version": "2.5.3",
-            "build": 48,
+            "version": "2.5.1",
+            "build": 51,
             "mandatory": False,
             "min_supported_version": "2.0.0",
             "rollout": 100,
             "sha256": None,
             "changelog": [
-                "إصلاح إضافة أسئلة الاختبار يدوياً",
-                "توليد أسئلة بالذكاء الاصطناعي مع رفع ملف PDF",
-                "إصلاح مشكلة عدم ربط الاختبار بالدرس",
-                "تحسين واجهة إدارة أسئلة الكورسات",
+                "تحسينات عامة وأداء أفضل",
+                "إصلاح الأخطاء",
             ],
             "changelog_en": [
-                "Fixed manual exam question add",
-                "AI question generation with PDF upload",
-                "Fixed exam not linking to lesson",
-                "Improved course exam questions UI",
+                "General improvements and better performance",
+                "Bug fixes",
             ],
-            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/app-release.apk",
+            "download_url": "https://darsak-backend.fly.dev/api/downloads/darsak-teacher-v2.5.1.apk",
             "size_mb": 38,
-            "release_date": "2026-07-03",
+            "release_date": "2026-07-15",
         },
         "android_student": {
-            "version": "1.8.0",
-            "build": 1,
+            "version": "1.8.1",
+            "build": 3,
             "mandatory": False,
             "min_supported_version": "1.5.0",
             "rollout": 100,
             "sha256": None,
             "changelog": [
-                "إضافة الفصل الذكي — دروس مباشرة بالذكاء الاصطناعي",
-                "دردشة مع AI عبر WebView",
+                "إصلاح الفصل الذكي — رسائل خطأ واضحة",
+                "فتح الدروس في الكورسات مع مشغل فيديو",
                 "تحسين الأداء والاستقرار",
-                "إصلاح مشاكل التثبيت",
             ],
             "changelog_en": [
-                "Added AI Classroom — live AI-powered lessons",
-                "Chat with AI via WebView",
+                "Fixed AI Classroom — clear error messages",
+                "Open lessons in courses with video player",
                 "Performance and stability improvements",
-                "Fixed installation issues",
             ],
-            "download_url": "https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/app-release.apk",
-            "size_mb": 71,
-            "release_date": "2026-07-04",
+            "download_url": "https://darsak-backend.fly.dev/api/downloads/darsak-student-v1.8.1.apk",
+            "size_mb": 37,
+            "release_date": "2026-07-15",
         },
         "accounts": {
             "version": "1.0.0",
@@ -347,7 +341,8 @@ async def download_latest(
 
 @router.get("/downloads/{filename}")
 async def download_file(filename: str):
-    downloads_dir = os.path.join(os.path.dirname(__file__), "..", "..", "downloads")
+    downloads_dir = os.path.join(os.path.dirname(__file__), "..", "..", "app_downloads")
+    os.makedirs(downloads_dir, exist_ok=True)
     file_path = os.path.normpath(os.path.join(downloads_dir, filename))
     if not file_path.startswith(os.path.normpath(downloads_dir)):
         raise HTTPException(status_code=403, detail="Access denied")

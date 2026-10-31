@@ -2,11 +2,21 @@
 node_modules
 .pnpm-store
 
-# build output
+# build output (rebuilt inside Docker)
 .next
 out
 build
 dist
+
+# vendor (rebuilt in deps stage)
+public/vendor
+
+# dev tools not needed for build
+.claude
+coverage
+logs
+data
+docs
 
 # git
 .git
@@ -24,6 +34,8 @@ server-providers*.yml
 # misc
 assets
 *.md
+!lib/prompts/templates/**/*.md
+!lib/prompts/snippets/*.md
 *.pdf
 *.pem
 .DS_Store

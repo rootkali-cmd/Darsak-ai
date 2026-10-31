@@ -352,11 +352,13 @@ class ApiService {
     required double amount,
     required String senderPhone,
     required String method,
+    String referenceNumber = '',
   }) async {
     final res = await _dio.post('/students/me/deposit-request', data: {
       'amount': amount,
       'sender_phone': senderPhone,
       'method': method,
+      'reference_number': referenceNumber,
     });
     return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
   }
@@ -428,6 +430,34 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAiClassroomConfig() async {
     final res = await _dio.get('/students/me/ai-classroom/config');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> generateClassroom(String topic) async {
+    final res = await _dio.post('/students/me/ai-classroom/generate', data: {'topic': topic});
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> pollClassroomGeneration(String jobId) async {
+    final res = await _dio.get('/students/me/ai-classroom/generate/$jobId');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getClassrooms() async {
+    final res = await _dio.get('/students/me/ai-classroom/classrooms');
+    return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> sendChatMessage({
+    required String chatToken,
+    required String sessionId,
+    required String message,
+  }) async {
+    final res = await _dio.post(
+      '/students/me/ai-classroom/chat/$chatToken/message',
+      data: {'message': message},
+      options: Options(headers: {'X-Chat-Token': sessionId}),
+    );
     return res.data is Map<String, dynamic> ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
   }
 }

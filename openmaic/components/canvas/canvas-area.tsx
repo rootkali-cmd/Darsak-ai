@@ -87,7 +87,7 @@ export function CanvasArea({
       {/* Slide area — takes remaining space */}
       <div
         className={cn(
-          'flex-1 min-h-0 relative overflow-hidden flex items-center justify-center p-2 transition-colors duration-500',
+          'flex-1 min-h-0 relative overflow-hidden flex items-center justify-center p-1 sm:p-2 transition-colors duration-500',
           currentScene?.type === 'interactive'
             ? 'bg-blue-50/30 dark:bg-blue-900/10'
             : 'bg-gray-50/30 dark:bg-gray-900/30',
@@ -95,7 +95,7 @@ export function CanvasArea({
       >
         <div
           className={cn(
-            'aspect-[16/9] h-full max-h-full max-w-full bg-white dark:bg-gray-800 shadow-2xl rounded-lg overflow-hidden relative transition-all duration-700',
+            'aspect-[4/3] sm:aspect-[16/9] h-full max-h-full max-w-full bg-white dark:bg-gray-800 shadow-2xl rounded-lg sm:rounded-lg overflow-hidden relative transition-all duration-700',
             showControls && !isLiveSession && currentScene?.type === 'slide' && 'cursor-pointer',
             currentScene?.type === 'interactive'
               ? 'shadow-blue-200/50 dark:shadow-blue-900/50 ring-1 ring-blue-900/5 dark:ring-blue-500/10'
@@ -194,7 +194,7 @@ export function CanvasArea({
 
           {/* Scene Number Badge */}
           {currentScene && (
-            <div className="absolute top-4 right-4 text-gray-200 dark:text-gray-700 font-black text-4xl opacity-50 pointer-events-none select-none mix-blend-multiply dark:mix-blend-screen">
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-200 dark:text-gray-700 font-black text-2xl sm:text-4xl opacity-50 pointer-events-none select-none mix-blend-multiply dark:mix-blend-screen">
               {(currentSceneIndex + 1).toString().padStart(2, '0')}
             </div>
           )}
@@ -230,10 +230,10 @@ export function CanvasArea({
                         ease: 'easeInOut',
                       },
                     }}
-                    className="w-20 h-20 rounded-full bg-white/95 dark:bg-gray-800/95 flex items-center justify-center shadow-[0_4px_30px_rgba(147,51,234,0.15),inset_0_0_0_1px_rgba(233,213,255,0.5)] dark:shadow-[0_4px_30px_rgba(147,51,234,0.3),inset_0_0_0_1px_rgba(126,34,206,0.3)]"
+                    className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-white/95 dark:bg-gray-800/95 flex items-center justify-center shadow-[0_4px_30px_rgba(147,51,234,0.15),inset_0_0_0_1px_rgba(233,213,255,0.5)] dark:shadow-[0_4px_30px_rgba(147,51,234,0.3),inset_0_0_0_1px_rgba(126,34,206,0.3)]"
                     style={{ willChange: 'transform' }}
                   >
-                    <Play className="w-7 h-7 text-purple-600 dark:text-purple-400 fill-purple-600/90 dark:fill-purple-400/90 ml-0.5" />
+                    <Play className="w-5 h-5 sm:w-7 sm:h-7 text-purple-600 dark:text-purple-400 fill-purple-600/90 dark:fill-purple-400/90 ml-0.5" />
                   </motion.div>
                 </motion.div>
               </motion.div>
@@ -246,7 +246,7 @@ export function CanvasArea({
       {!hideToolbar && (
         <CanvasToolbar
           className={cn(
-            'shrink-0 h-9 px-2',
+            'shrink-0 h-auto sm:h-9 min-h-8 px-1.5 sm:px-2',
             'bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl',
             'border-t border-gray-200/40 dark:border-gray-700/40',
           )}

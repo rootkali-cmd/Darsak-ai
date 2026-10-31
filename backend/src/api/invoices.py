@@ -372,6 +372,13 @@ class _TeacherInvoiceUpdate(_BaseModel):
     payment_method: _Optional[str] = None
 
 
+@router.get("")
+async def list_invoices(
+    current_user: dict = Depends(get_current_teacher),
+):
+    return await _get_teacher_invoices(current_user, status_filter=None)
+
+
 @router.post("", status_code=201)
 async def teacher_create_invoice_generic(
     data: _TeacherInvoiceCreate,

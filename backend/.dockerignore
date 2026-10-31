@@ -22,4 +22,3 @@ README.md
 .idea
 *.egg-info
 barcode-scanner-demo/
-downloads/*.apk

@@ -30,15 +30,31 @@ SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", settings.SUPABASE_SER
 TG_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 SB_HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
 _user_states: dict[int, str] = {}
+_admin_chat_id_cache: str | None = None
 
 
 # ─── Telegram API helpers ──────────────────────────────────────────────
 
 
+async def _get_admin_chat_id_from_db() -> str:
+    """Read admin chat ID from admin_config table (cached in memory)."""
+    global _admin_chat_id_cache
+    if _admin_chat_id_cache is not None:
+        return _admin_chat_id_cache
+    rows = await sb_query("admin_config", {"key": "telegram_admin_chat_id"}, limit=1)
+    if rows:
+        _admin_chat_id_cache = rows[0].get("value", "")
+    return _admin_chat_id_cache or ""
+
+
 def is_authorized(chat_id: int) -> bool:
     if not TELEGRAM_CHAT_ID:
         return True
-    return str(chat_id) == str(TELEGRAM_CHAT_ID)
+    if str(chat_id) == str(TELEGRAM_CHAT_ID):
+        return True
+    if _admin_chat_id_cache and str(chat_id) == str(_admin_chat_id_cache):
+        return True
+    return False
 
 
 async def tg_send(chat_id: int, text: str, keyboard=None, parse_mode="Markdown"):
@@ -188,6 +204,8 @@ def main_menu():
 
 
 async def handle_start(chat_id: int, username: str = None):
+    await _get_admin_chat_id_from_db()
+
     if is_authorized(chat_id):
         await tg_send(
             chat_id,
@@ -477,7 +495,9 @@ async def handle_message(chat_id: int, text: str):
 
 
 async def handle_callback(chat_id: int, message_id: int, data: str):
+    await _get_admin_chat_id_from_db()
     if not is_authorized(chat_id):
+        await tg_answer(chat_id, "❌ غير مصرح لك باستخدام هذا الزر.")
         return
 
     # ── Generate code ──
@@ -1263,7 +1283,7 @@ async def notify_payout_request(teacher_name, amount, commission_rate, commissio
     return True
 
 
-async def notify_student_deposit(student_name, amount, tax_amount, total_amount, deposit_id, sender_phone="", method="vodafone_cash"):
+async def notify_student_deposit(student_name, amount, tax_amount, total_amount, deposit_id, sender_phone="", method="vodafone_cash", screenshot_b64=None):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
     try:
@@ -1284,6 +1304,22 @@ async def notify_student_deposit(student_name, amount, tax_amount, total_amount,
         {"text": "✅ تأكيد", "callback_data": f"deposit_approve:{deposit_id}"},
         {"text": "❌ رفض", "callback_data": f"deposit_reject:{deposit_id}"},
     ]]
+    if screenshot_b64:
+        try:
+            import base64 as b64
+            import json as _json
+            photo_bytes = b64.b64decode(screenshot_b64)
+            payload = {"chat_id": chat_id, "caption": text, "parse_mode": "Markdown",
+                       "reply_markup": _json.dumps({"inline_keyboard": kb})}
+            async with httpx.AsyncClient(timeout=30) as c:
+                await c.post(
+                    f"{TG_API}/sendPhoto",
+                    data=payload,
+                    files={"photo": ("screenshot.jpg", photo_bytes, "image/jpeg")},
+                )
+            return
+        except Exception as e:
+            logger.error("tg_send_photo failed, falling back to text: %s", e)
     await tg_send(chat_id, text, keyboard=kb)
 
 
@@ -1318,6 +1354,21 @@ async def telegram_webhook(request: Request):
                     await handle_deep_link(chat_id, args[1])
                 else:
                     await handle_start(chat_id, username)
+            elif is_cmd and text.startswith("/register"):
+                global _admin_chat_id_cache
+                await _get_admin_chat_id_from_db()
+                if _admin_chat_id_cache:
+                    await tg_send(chat_id, "❌ هناك مسجل بالفعل كـ admin.")
+                else:
+                    _admin_chat_id_cache = str(chat_id)
+                    await set_admin_config("telegram_admin_chat_id", str(chat_id))
+                    await tg_send(
+                        chat_id,
+                        f"✅ *تم التسجيل كـ admin!*\n\n"
+                        f"Chat ID: `{chat_id}`\n\n"
+                        "يمكنك الآن استخدام البوت. اضغط /start",
+                        parse_mode="Markdown",
+                    )
             else:
                 await handle_message(chat_id, text)
 
@@ -1357,8 +1408,11 @@ async def setup_telegram_webhook(admin: dict = Depends(get_current_admin)):
 
 @router.get("/telegram-status")
 async def telegram_status(admin: dict = Depends(get_current_admin)):
+    db_chat_id = await _get_admin_chat_id_from_db()
     return {
         "token_configured": bool(TELEGRAM_BOT_TOKEN),
         "chat_id_configured": bool(TELEGRAM_CHAT_ID),
+        "env_chat_id": TELEGRAM_CHAT_ID or None,
+        "db_chat_id": db_chat_id or None,
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
     }

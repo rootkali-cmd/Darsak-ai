@@ -3,17 +3,36 @@ import '../../core/theme.dart';
 
 class AiLessonSummaryScreen extends StatelessWidget {
   final Map<String, dynamic> data;
+  final List<Map<String, String>>? messages;
+  final Duration? duration;
+  final double? cost;
+  final String? topic;
 
-  const AiLessonSummaryScreen({super.key, required this.data});
+  const AiLessonSummaryScreen({
+    super.key,
+    required this.data,
+    this.messages,
+    this.duration,
+    this.cost,
+    this.topic,
+  });
+
+  const AiLessonSummaryScreen.withDetails({
+    super.key,
+    this.messages,
+    this.duration,
+    this.cost,
+    this.topic,
+  }) : data = const {};
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final duration = data['duration_formatted'] as String? ?? '00:00:00';
-    final cost = (data['cost'] as num?)?.toDouble() ?? 0;
+    final durationStr = data['duration_formatted'] as String? ?? (duration != null ? '${duration!.inMinutes}:${(duration!.inSeconds % 60).toString().padLeft(2, '0')}' : '00:00');
+    final costVal = (data['cost'] as num?)?.toDouble() ?? cost ?? 0;
     final balanceBefore = (data['balance_before'] as num?)?.toDouble() ?? 0;
     final balanceAfter = (data['balance_after'] as num?)?.toDouble() ?? 0;
-    final title = data['title'] as String? ?? 'درس AI';
+    final title = data['title'] as String? ?? topic ?? 'درس AI';
 
     return Scaffold(
       appBar: AppBar(
@@ -48,9 +67,9 @@ class AiLessonSummaryScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _row('المدة', duration, Icons.timer_outlined),
+                  _row('المدة', durationStr, Icons.timer_outlined),
                   const Divider(height: 24),
-                  _row('التكلفة', '$cost ج.م', Icons.monetization_on_outlined),
+                  _row('التكلفة', '$costVal ج.م', Icons.monetization_on_outlined),
                   const Divider(height: 24),
                   _row('رصيدك قبل', '$balanceBefore ج.م', Icons.account_balance_wallet_outlined),
                   const Divider(height: 24),

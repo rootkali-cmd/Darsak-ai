@@ -110,7 +110,7 @@ export function SceneSidebar({
         width: displayWidth,
         transition: isDraggingRef.current ? 'none' : 'width 0.3s ease',
       }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 shadow-[2px_0_24px_rgba(0,0,0,0.02)] flex flex-col shrink-0 z-20 relative overflow-visible"
+      className="md:relative absolute inset-0 md:inset-auto z-40 md:z-20 bg-white/80 dark:bg-slate-900/80 md:backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 shadow-[2px_0_24px_rgba(0,0,0,0.02)] md:shadow-[2px_0_24px_rgba(0,0,0,0.02)] flex flex-col md:shrink-0 shrink overflow-visible"
     >
       {/* Drag handle */}
       {!collapsed && (
@@ -122,7 +122,9 @@ export function SceneSidebar({
         </div>
       )}
 
-      <div className={cn('flex flex-col w-full h-full overflow-hidden', collapsed && 'hidden')}>
+      <div className={cn('flex flex-col w-full h-full overflow-hidden md:block', collapsed && 'hidden', !collapsed && 'md:block')}>
+        {/* Mobile panel wrapper — full height, shadow, background */}
+        <div className="md:hidden absolute inset-0 shadow-2xl bg-background">
         {/* Logo Header */}
         <div className="h-10 flex items-center justify-between shrink-0 relative mt-3 mb-1 px-3">
           <button
@@ -553,6 +555,7 @@ export function SceneSidebar({
 
         {/* Spacer to push toggle button area */}
         <div className="mt-auto" />
+        </div>{/* end mobile panel wrapper */}
       </div>
     </div>
   );

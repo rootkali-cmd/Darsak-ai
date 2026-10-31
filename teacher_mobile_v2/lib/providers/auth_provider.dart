@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
+  final _secureStorage = const FlutterSecureStorage();
   static const _tokenKey = 'access_token';
   static const _onboardingKey = 'onboarding_completed';
 
@@ -28,10 +30,9 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider() { _init(); }
 
   Future<void> _init() async {
+    _token = await _secureStorage.read(key: _tokenKey);
     final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString(_tokenKey);
     
-    // Load cached subscription immediately
     final cachedSub = prefs.getString('subscription_cache');
     if (cachedSub != null) {
       try { _subscription = jsonDecode(cachedSub); } catch (_) {}
@@ -43,12 +44,11 @@ class AuthProvider extends ChangeNotifier {
         _user = {'id': jwt['id'], 'full_name': jwt['full_name'] ?? ''};
         _user!['onboarding_completed'] = prefs.getBool(_onboardingKey) ?? true;
       } else {
-        await prefs.remove(_tokenKey);
+        await _secureStorage.delete(key: _tokenKey);
         _token = null;
       }
     }
 
-    // Validate subscription before first notify
     if (_token != null && _subscription == null) {
       try {
         final meResp = await _api.dio.get('/auth/me',
@@ -85,7 +85,6 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> login(String email, String password) async {
     _isLoading = true; _error = null; notifyListeners();
     try {
-      _error = 'جاري الاتصال بالخادم...'; notifyListeners();
       Map<String, dynamic>? data; DioException? lastErr;
       for (int i = 0; i < 3; i++) {
         try { data = await _api.login(email, password); break; }
@@ -99,11 +98,12 @@ class AuthProvider extends ChangeNotifier {
       if (data == null) { _error = _getDioError(lastErr!); _isLoading = false; notifyListeners(); return false; }
       final newToken = data['access_token'] as String?;
       if (newToken == null || newToken.isEmpty) { _error = 'بيانات الدخول غير صحيحة'; _isLoading = false; notifyListeners(); return false; }
-      final prefs = await SharedPreferences.getInstance(); await prefs.setString(_tokenKey, newToken);
+      await _secureStorage.write(key: _tokenKey, value: newToken);
       _token = newToken;
       final jwt = _parseJwt(_token!);
       _user = jwt != null ? {'id': jwt['id'], 'full_name': jwt['full_name'] ?? ''} : {'id': '', 'full_name': email};
       final onboardingCompleted = data['onboarding_completed'] ?? data['user']?['onboarding_completed'] ?? jwt?['onboarding_completed'];
+      final prefs = await SharedPreferences.getInstance();
       if (onboardingCompleted != null) {
         _user!['onboarding_completed'] = onboardingCompleted == true || onboardingCompleted == 'true';
         await prefs.setBool(_onboardingKey, _user!['onboarding_completed']!);
@@ -126,7 +126,7 @@ class AuthProvider extends ChangeNotifier {
       if (_subscription == null) refreshSubscription();
       return true;
     } on DioException catch (e) { _error = _getDioError(e); _isLoading = false; notifyListeners(); return false; }
-    catch (e) { _error = 'حدث خطأ غير متوقع: $e'; _isLoading = false; notifyListeners(); return false; }
+    catch (e) { _error = 'حدث خطأ غير متوقع، حاول مرة أخرى'; _isLoading = false; notifyListeners(); return false; }
   }
 
   Future<void> refreshSubscription() async {
@@ -166,8 +166,8 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _token = null; _user = null; _subscription = null;
     try {
+      await _secureStorage.delete(key: _tokenKey);
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
       await prefs.remove('subscription_cache');
       await prefs.remove('refresh_token');
     } catch (_) {}

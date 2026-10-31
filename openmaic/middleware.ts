@@ -13,14 +13,14 @@ function bufToHex(buf: ArrayBuffer): string {
 }
 
 /** Verify an HMAC-signed token using Web Crypto API (Edge-compatible) */
-async function verifyToken(token: string, accessCode: string): Promise<boolean> {
+async function verifyToken(token: string, secret: string): Promise<boolean> {
   const dotIndex = token.indexOf('.');
   if (dotIndex === -1) return false;
 
-  const timestamp = token.substring(0, dotIndex);
+  const payload = token.substring(0, dotIndex);
   const signature = token.substring(dotIndex + 1);
 
-  const keyData = encode(accessCode);
+  const keyData = encode(secret);
   const key = await crypto.subtle.importKey(
     'raw',
     keyData.buffer as ArrayBuffer,
@@ -29,10 +29,9 @@ async function verifyToken(token: string, accessCode: string): Promise<boolean> 
     ['sign'],
   );
 
-  const data = encode(timestamp);
+  const data = encode(payload);
   const expected = bufToHex(await crypto.subtle.sign('HMAC', key, data.buffer as ArrayBuffer));
 
-  // Constant-length comparison (not truly constant-time in JS, but sufficient here)
   if (signature.length !== expected.length) return false;
   let mismatch = 0;
   for (let i = 0; i < signature.length; i++) {
@@ -41,22 +40,93 @@ async function verifyToken(token: string, accessCode: string): Promise<boolean> 
   return mismatch === 0;
 }
 
+/** Decode base64url to string */
+function base64UrlDecode(str: string): string {
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) base64 += '=';
+  return decodeURIComponent(
+    Array.from(atob(base64))
+      .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+      .join(''),
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const accessCode = process.env.ACCESS_CODE;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Internal API key for trusted backend-to-OpenMAIC calls
+  const internalKey = request.headers.get('x-internal-key');
+  if (internalKey && accessCode && internalKey === accessCode) {
+    return NextResponse.next();
+  }
+
+  // Whitelist: access-code endpoints, health check, student endpoint
+  if (
+    pathname.startsWith('/api/access-code/') ||
+    pathname === '/api/health' ||
+    pathname === '/api/student/me'
+  ) {
+    return NextResponse.next();
+  }
+
+  // ── Student token from backend (DarsakAI Flutter app) ──
+  const studentToken = searchParams.get('student_token');
+  if (studentToken && accessCode) {
+    const parts = studentToken.split('.');
+    if (parts.length === 2) {
+      const [payloadB64, signature] = parts;
+      const keyData = encode(accessCode);
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyData.buffer as ArrayBuffer,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign'],
+      );
+      const data = encode(payloadB64);
+      const expected = bufToHex(
+        await crypto.subtle.sign('HMAC', key, data.buffer as ArrayBuffer),
+      );
+      if (signature === expected) {
+        try {
+          const studentData = JSON.parse(base64UrlDecode(payloadB64));
+          // Set student data cookie (30 days) and auth cookie (7 days)
+          const response = NextResponse.redirect(
+            new URL(pathname, request.url),
+          );
+          response.cookies.set('openmaic_student', JSON.stringify(studentData), {
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            secure: true,
+            maxAge: 60 * 60 * 24 * 30,
+          });
+          response.cookies.set('openmaic_access', studentToken, {
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            secure: true,
+            maxAge: 60 * 60 * 24 * 7,
+          });
+          return response;
+        } catch {
+          // Invalid payload, fall through
+        }
+      }
+    }
+  }
+
+  // Check if already authenticated (access-code cookie or student cookie)
+  const accessCookie = request.cookies.get('openmaic_access');
+  if (accessCookie?.value) {
+    if (!accessCode || (await verifyToken(accessCookie.value, accessCode))) {
+      return NextResponse.next();
+    }
+  }
+
+  // No ACCESS_CODE set → allow everything
   if (!accessCode) {
-    return NextResponse.next();
-  }
-
-  const { pathname } = request.nextUrl;
-
-  // Whitelist: access-code endpoints, health check
-  if (pathname.startsWith('/api/access-code/') || pathname === '/api/health') {
-    return NextResponse.next();
-  }
-
-  // Check cookie — validate HMAC signature, not just existence
-  const cookie = request.cookies.get('openmaic_access');
-  if (cookie?.value && (await verifyToken(cookie.value, accessCode))) {
     return NextResponse.next();
   }
 
@@ -68,7 +138,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Page requests → let through, frontend shows modal
+  // Page requests → let through, frontend shows AccessCodeGuard modal
   return NextResponse.next();
 }
 

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "deepseek/deepseek-v4-flash"
     OPENROUTER_VISION_MODEL: str = "google/gemini-2.0-flash-001"
 
+    # OpenMAIC access code (shared secret for student auth tokens)
+    ACCESS_CODE: str = "darsak-openmaic-secret"
+
     # Plan student limits
     PLAN_BASIC_MAX_STUDENTS: int = 100
     PLAN_PRO_MAX_STUDENTS: int = 400

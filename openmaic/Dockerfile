@@ -14,6 +14,7 @@ RUN apk add --no-cache python3 build-base g++ cairo-dev pango-dev jpeg-dev gifli
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/ ./packages/
+COPY scripts/ ./scripts/
 
 RUN pnpm install --frozen-lockfile
 
@@ -22,6 +23,7 @@ FROM base AS builder
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/public/vendor ./public/vendor
 COPY . .
 
 RUN pnpm build
@@ -43,6 +45,13 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy prompt templates needed at runtime
+COPY --from=builder --chown=nextjs:nodejs /app/lib/prompts/templates/ ./lib/prompts/templates/
+COPY --from=builder --chown=nextjs:nodejs /app/lib/prompts/snippets/ ./lib/prompts/snippets/
+
+# Copy data directory for job/store persistence
+RUN mkdir -p data/classrooms data/classroom-jobs && chown -R nextjs:nodejs data
 
 USER nextjs
 

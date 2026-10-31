@@ -81,3 +81,10 @@ web-portal/public/DarsakAI-Student.aab
 
 testsprite_tests/tmp/config.json
 DarsakAi/
+
+# local test artifacts (do not publish)
+backend/test_*.json
+backend/test_*_token.txt
+test_report.html
+test_report.json
+nul

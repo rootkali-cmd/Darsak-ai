@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
 
@@ -31,6 +32,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   bool _gracePeriod = false;
   final Map<String, String> _answers = {};
   String? _currentSelection;
+  final TextEditingController _essayController = TextEditingController();
 
   @override
   void initState() {
@@ -42,6 +44,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _essayController.dispose();
     if (!_submitted && !_submitting && _questions.isNotEmpty) {
       _autoSubmit();
     }
@@ -59,8 +62,8 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
       _startTimer();
     } catch (e) {
       if (!mounted) return;
-      final isDeadlineError = e.toString().contains('الامتحان انتهى') ||
-          (e is dynamic && e.toString().contains('403'));
+      final isDeadlineError = (e is DioException && e.response?.statusCode == 403) ||
+          e.toString().contains('الامتحان انتهى');
       setState(() => _isLoading = false);
       if (isDeadlineError && mounted) {
         _showDeadlineExpiredDialog();
@@ -159,6 +162,10 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
         _currentIndex++;
         final qId = _questions[_currentIndex]['id'] ?? '';
         _currentSelection = _answers[qId];
+        final q = _questions[_currentIndex] as Map<String, dynamic>;
+        if (q['type'] != 'multiple_choice') {
+          _essayController.text = _currentSelection ?? '';
+        }
       });
     }
   }
@@ -170,6 +177,10 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
         _currentIndex--;
         final qId = _questions[_currentIndex]['id'] ?? '';
         _currentSelection = _answers[qId];
+        final q = _questions[_currentIndex] as Map<String, dynamic>;
+        if (q['type'] != 'multiple_choice') {
+          _essayController.text = _currentSelection ?? '';
+        }
       });
     }
   }
@@ -197,13 +208,13 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      final isDeadlineError = e.toString().contains('الامتحان انتهى') ||
-          (e is dynamic && e.toString().contains('403'));
+      final isDeadlineError = (e is DioException && e.response?.statusCode == 403) ||
+          e.toString().contains('الامتحان انتهى');
       if (isDeadlineError && mounted) {
         _showDeadlineExpiredDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل التسليم: $e'), backgroundColor: AppTheme.danger),
+          const SnackBar(content: Text('فشل تسليم الاختبار، حاول مرة أخرى'), backgroundColor: AppTheme.danger),
         );
       }
     }
@@ -409,7 +420,7 @@ class _ExamTakeScreenState extends State<ExamTakeScreen> {
                 border: Border.all(color: AppColors.border(context)),
               ),
               child: TextField(
-                controller: TextEditingController(text: _currentSelection ?? ''),
+                controller: _essayController,
                 maxLines: 8,
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(

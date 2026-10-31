@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:camera/camera.dart';
-import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../../providers/attendance_provider.dart';
 import '../../utils/sound_effects.dart';
@@ -17,124 +15,43 @@ class BarcodeScannerScreen extends StatefulWidget {
 }
 
 class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
-  CameraController? _cameraController;
-  BarcodeScanner? _barcodeScanner;
-  bool _isProcessing = false;
-  bool _cameraReady = false;
-  String _errorMsg = '';
+  final MobileScannerController _scannerController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
+    torchEnabled: false,
+    formats: [BarcodeFormat.code128],
+  );
+
   bool _scanned = false;
   bool _flashOn = false;
+  bool _cameraReady = false;
+  String _errorMsg = '';
   final List<Map<String, String>> _scannedStudents = [];
-  int _skipFrames = 0;
-  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    _initScanner();
+    _cameraReady = true;
   }
 
   @override
   void dispose() {
-    _disposed = true;
-    _cameraController?.dispose();
-    _barcodeScanner?.close();
+    _scannerController.dispose();
     super.dispose();
   }
 
-  void _initScanner() async {
-    try {
-      _barcodeScanner = BarcodeScanner(
-        formats: [
-          BarcodeFormat.code128,
-          BarcodeFormat.code39,
-          BarcodeFormat.code93,
-          BarcodeFormat.ean13,
-          BarcodeFormat.ean8,
-          BarcodeFormat.codabar,
-        ],
-      );
+  void _onDetect(BarcodeCapture capture) {
+    if (_scanned) return;
 
-      final cameras = await availableCameras();
-      final backCamera = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
-      );
-
-      _cameraController = CameraController(
-        backCamera,
-        ResolutionPreset.medium,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.nv21,
-      );
-
-      await _cameraController!.initialize();
-
-      if (_disposed) return;
-
-      await _cameraController!.setFlashMode(FlashMode.off);
-      await _cameraController!.startImageStream(_processImage);
-
-      if (mounted) setState(() => _cameraReady = true);
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMsg = 'تعذر تشغيل الكاميرا: ${e.toString().replaceAll('Exception: ', '')}';
-          _cameraReady = false;
-        });
+    for (final barcode in capture.barcodes) {
+      final raw = barcode.rawValue;
+      if (raw != null && raw.isNotEmpty) {
+        HapticFeedback.mediumImpact();
+        _scanned = true;
+        _processScan(raw);
+        return;
       }
     }
-  }
-
-  Future<void> _processImage(CameraImage image) async {
-    if (_isProcessing || _scanned || _barcodeScanner == null || _cameraController == null) return;
-
-    _skipFrames++;
-    if (_skipFrames % 3 != 0) return;
-    _skipFrames = 0;
-
-    _isProcessing = true;
-
-    try {
-      final camera = _cameraController!.description;
-      final imageRotation = InputImageRotationValue.fromRawValue(
-        camera.sensorOrientation,
-      ) ?? InputImageRotation.rotation0deg;
-
-      final inputImage = InputImage.fromBytes(
-        bytes: _concatenatePlanes(image.planes),
-        metadata: InputImageMetadata(
-          size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: imageRotation,
-          format: InputImageFormat.nv21,
-          bytesPerRow: image.planes[0].bytesPerRow,
-        ),
-      );
-
-      final barcodes = await _barcodeScanner!.processImage(inputImage);
-
-      if (_disposed) return;
-
-      for (final barcode in barcodes) {
-        final raw = barcode.rawValue;
-        if (raw != null && raw.isNotEmpty) {
-          HapticFeedback.mediumImpact();
-          _scanned = true;
-          _processScan(raw);
-          return;
-        }
-      }
-    } catch (_) {}
-
-    _isProcessing = false;
-  }
-
-  Uint8List _concatenatePlanes(List<Plane> planes) {
-    final allBytes = WriteBuffer();
-    for (final plane in planes) {
-      allBytes.putUint8List(plane.bytes);
-    }
-    return allBytes.done().buffer.asUint8List();
   }
 
   Future<void> _processScan(String code) async {
@@ -182,7 +99,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   void _resetScanner() {
-    _isProcessing = false;
     Timer(const Duration(milliseconds: 1200), () {
       if (mounted) {
         setState(() => _scanned = false);
@@ -255,6 +171,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scanWindow = Rect.fromCenter(
+      center: MediaQuery.of(context).size.center(Offset.zero),
+      width: 300,
+      height: 180,
+    );
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -274,26 +196,34 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             tooltip: 'إدخال يدوي',
             onPressed: _showManualCodeDialog,
           ),
-          if (_cameraReady)
-            IconButton(
-              icon: Icon(_flashOn ? Icons.flash_off : Icons.flash_on,
-                  color: Colors.white),
-              tooltip: _flashOn ? 'إطفاء الفلاش' : 'تشغيل الفلاش',
-              onPressed: () async {
-                _flashOn = !_flashOn;
-                await _cameraController?.setFlashMode(
-                    _flashOn ? FlashMode.torch : FlashMode.off);
-                setState(() {});
-              },
-            ),
+          IconButton(
+            icon: Icon(_flashOn ? Icons.flash_off : Icons.flash_on,
+                color: Colors.white),
+            tooltip: _flashOn ? 'إطفاء الفلاش' : 'تشغيل الفلاش',
+            onPressed: () async {
+              _flashOn = !_flashOn;
+              await _scannerController.toggleTorch();
+              setState(() {});
+            },
+          ),
         ],
       ),
       body: Stack(
         children: [
-          if (_cameraReady && _cameraController != null)
-            Positioned.fill(
-              child: CameraPreview(_cameraController!),
-            ),
+          MobileScanner(
+            controller: _scannerController,
+            scanWindow: scanWindow,
+            onDetect: _onDetect,
+            errorBuilder: (context, error, child) {
+              if (mounted) {
+                setState(() {
+                  _errorMsg = 'تعذر تشغيل الكاميرا: ${error.errorCode.name}';
+                  _cameraReady = false;
+                });
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           if (_cameraReady)
             Positioned.fill(
               child: CustomPaint(
@@ -335,9 +265,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                           _errorMsg = '';
                           _cameraReady = false;
                         });
-                        _cameraController?.dispose();
-                        _barcodeScanner?.close();
-                        _initScanner();
+                        _scannerController.start();
                       },
                       style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.accent),

@@ -279,6 +279,43 @@ body[data-maic-editor='true'] .editable-element-text li,
   scrollbar-width: none;
 }
 
+/* Mobile bottom sheet overlay */
+@utility mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background-color: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
+}
+
+@utility mobile-sheet {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 50;
+  max-height: 85vh;
+  border-radius: 1rem 1rem 0 0;
+  background-color: var(--background);
+  box-shadow: 0 -4px 32px rgb(0 0 0 / 0.15);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Touch-friendly minimum tap targets (Apple HIG) */
+@layer base {
+  button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+  }
+}
+
+/* Prevent text selection on interactive elements for mobile */
+@utility touch-none {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Shimmer sweep for skeleton loading */
 @keyframes shimmer {
   0% {

@@ -9,10 +9,10 @@ router = APIRouter(tags=["App Status"])
 
 _config_repo = SupabaseRepository("admin_config")
 
-LATEST_VERSION_STUDENT = "1.8.0"
-LATEST_VERSION_TEACHER = "2.5.3"
-UPDATE_URL_STUDENT = "https://github.com/rootkali-cmd/Darsak-ai/releases/download/student-v1.8.0/app-release.apk"
-UPDATE_URL_TEACHER = "https://github.com/rootkali-cmd/Darsak-ai/releases/download/v1.0.0/app-release.apk"
+LATEST_VERSION_STUDENT = "1.8.1"
+LATEST_VERSION_TEACHER = "2.5.1"
+UPDATE_URL_STUDENT = "https://darsak-backend.fly.dev/api/downloads/darsak-student-v1.8.1.apk"
+UPDATE_URL_TEACHER = "https://darsak-backend.fly.dev/api/downloads/darsak-teacher-v2.5.1.apk"
 
 
 def _get_release_notes(platform: str) -> list[str]:

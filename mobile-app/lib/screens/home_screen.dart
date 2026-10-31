@@ -10,6 +10,9 @@ import 'grades_screen.dart';
 import 'attendance_screen.dart';
 import 'profile_screen.dart';
 import 'ai_chat_screen.dart';
+import 'ai_classroom/ai_lesson_list_screen.dart';
+import 'courses/student_courses_screen.dart';
+import 'wallet/student_wallet_screen.dart';
 import 'exam_list_screen.dart';
 import 'student_qr_screen.dart';
 import 'invoices/invoices_screen.dart';
@@ -25,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   List<dynamic> _notifications = [];
   int _unreadCount = 0;
+  Map<String, dynamic>? _walletData;
 
   @override
   void initState() {
@@ -34,10 +38,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _checkSubscription();
     });
     _fetchNotifications();
+    _fetchWallet();
   }
 
   void _checkSubscription() {
     final auth = context.read<AuthProvider>();
+    if (auth.student?.isOnlineStudent ?? false) return;
     if (auth.subscriptionLoaded && !auth.isSubscriptionActive) {
       showDialog(
         context: context,
@@ -88,17 +94,27 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
+  void _fetchWallet() async {
+    try {
+      final w = await ApiService().getWallet();
+      if (mounted) setState(() => _walletData = w);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final data = context.watch<DataProvider>();
     final student = auth.student;
+    final isOnline = student?.isOnlineStudent ?? false;
+    final childCount = isOnline ? 4 : 5;
+    final safeIndex = _currentIndex.clamp(0, childCount - 1);
 
     return Scaffold(
       drawer: _buildDrawer(context, auth),
       body: SafeArea(
         child: IndexedStack(
-          index: _currentIndex,
+          index: safeIndex,
           children: [
             RefreshIndicator(
               onRefresh: () => data.loadAll(),
@@ -113,9 +129,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (data.isLoading && data.grades.isEmpty)
                       const ShimmerList(count: 3)
                     else ...[
-                      _buildStatsRow(data),
-                      const SizedBox(height: 24),
-                      _buildTodayStatus(data),
+                      _buildStatsRow(data, auth),
+                      if (_walletData != null) ...[
+                        const SizedBox(height: 16),
+                        _buildWalletBalanceCard(),
+                      ],
+                      if (!isOnline) ...[
+                        const SizedBox(height: 24),
+                        _buildTodayStatus(data),
+                      ],
                       const SizedBox(height: 24),
                       _buildRecentGrades(data),
                       const SizedBox(height: 24),
@@ -126,12 +148,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const GradesScreen(),
-            const AttendanceScreen(),
+            if (!isOnline) const AttendanceScreen(),
+            const AiLessonListScreen(),
             const ProfileScreen(),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(isOnline: isOnline),
     );
   }
 
@@ -305,21 +328,25 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatsRow(DataProvider data) {
+  Widget _buildStatsRow(DataProvider data, AuthProvider auth) {
+    final student = auth.student;
+    final isOnline = student?.isOnlineStudent ?? false;
     return Column(
       children: [
         Row(
           children: [
-            Expanded(
-              child: StatCard(
-                label: 'الحضور',
-                value: '${data.attendanceRate.toStringAsFixed(0)}%',
-                icon: Icons.check_circle,
-                color: AppTheme.success,
-                valueFontSize: 22,
+            if (!isOnline) ...[
+              Expanded(
+                child: StatCard(
+                  label: 'الحضور',
+                  value: '${data.attendanceRate.toStringAsFixed(0)}%',
+                  icon: Icons.check_circle,
+                  color: AppTheme.success,
+                  valueFontSize: 22,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
+            ],
             Expanded(
               child: StatCard(
                 label: 'المعدل',
@@ -341,16 +368,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.assignment_late,
                 color: data.lowGradesCount == 0 ? AppTheme.success : AppTheme.warning,
                 valueFontSize: 22,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: StatCard(
-                label: 'الشهر الحالي',
-                value: data.isPaidThisMonth ? 'مدفوع' : 'غير مدفوع',
-                icon: Icons.payment,
-                color: data.isPaidThisMonth ? AppTheme.success : AppTheme.danger,
-                valueFontSize: 16,
               ),
             ),
           ],
@@ -417,6 +434,38 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildWalletBalanceCard() {
+    final balance = (_walletData?['balance'] ?? 0).toDouble();
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentWalletScreen())),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [AppTheme.accent, AppTheme.accent.withValues(alpha: 0.7)]),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('رصيد المحفظة', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 2),
+              Text('${balance.toStringAsFixed(0)} ج.م', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            ],
+          )),
+          Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.6), size: 16),
+        ]),
+      ),
     );
   }
 
@@ -562,19 +611,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: (g['percentage'] as double) >= 75
+                        color: ((g['percentage'] as num?)?.toDouble() ?? 0) >= 75
                             ? AppTheme.success.withValues(alpha: 0.1)
-                            : (g['percentage'] as double) >= 50
+                            : ((g['percentage'] as num?)?.toDouble() ?? 0) >= 50
                                 ? AppTheme.warning.withValues(alpha: 0.1)
                                 : AppTheme.danger.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        '${(g['score'] as double).toStringAsFixed(0)}/${(g['max_score'] as double).toStringAsFixed(0)}',
+                        '${((g['score'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}/${((g['max_score'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
                         style: TextStyle(
-                          color: (g['percentage'] as double) >= 75
+                          color: ((g['percentage'] as num?)?.toDouble() ?? 0) >= 75
                               ? AppTheme.success
-                              : (g['percentage'] as double) >= 50
+                              : ((g['percentage'] as num?)?.toDouble() ?? 0) >= 50
                                   ? AppTheme.warning
                                   : AppTheme.danger,
                           fontWeight: FontWeight.bold,
@@ -590,19 +639,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildQuickSections() {
+    final student = context.read<AuthProvider>().student;
+    final isOnline = student?.isOnlineStudent ?? false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('الأقسام', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        _buildSectionCard(
-          icon: Icons.qr_code,
-          iconColor: AppTheme.accent,
-          title: 'كود الحضور',
-          subtitle: 'اعرض كود QR الخاص بتسجيل الحضور',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentQrScreen())),
-        ),
-        const SizedBox(height: 10),
+        if (!isOnline) ...[
+          _buildSectionCard(
+            icon: Icons.qr_code,
+            iconColor: AppTheme.accent,
+            title: 'كود الحضور',
+            subtitle: 'اعرض كود QR الخاص بتسجيل الحضور',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentQrScreen())),
+          ),
+          const SizedBox(height: 10),
+        ],
         _buildSectionCard(
           icon: Icons.quiz_outlined,
           iconColor: AppTheme.success,
@@ -625,6 +678,38 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('جديد', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 10, fontWeight: FontWeight.bold)),
           ),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiChatScreen())),
+        ),
+        const SizedBox(height: 10),
+        _buildSectionCard(
+          icon: Icons.school,
+          iconColor: const Color(0xFF6C5CE7),
+          title: 'الفصل الذكي',
+          subtitle: 'درس تفاعلي بالذكاء الاصطناعي',
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text('AI', style: TextStyle(color: Color(0xFF6C5CE7), fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiLessonListScreen())),
+        ),
+        const SizedBox(height: 10),
+        _buildSectionCard(
+          icon: Icons.menu_book,
+          iconColor: AppTheme.accent,
+          title: 'الكورسات',
+          subtitle: 'تصفح الكورسات المتاحة',
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentCoursesScreen())),
+        ),
+        const SizedBox(height: 10),
+        _buildSectionCard(
+          icon: Icons.account_balance_wallet,
+          iconColor: AppTheme.success,
+          title: 'المحفظة',
+          subtitle: 'إدارة رصيدك وإيداع الأموال',
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentWalletScreen())),
         ),
       ],
     );
@@ -682,6 +767,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDrawer(BuildContext context, AuthProvider auth) {
+    final isOnline = auth.student?.isOnlineStudent ?? false;
     return Drawer(
       backgroundColor: AppColors.background(context),
       child: ListView(
@@ -720,22 +806,24 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'الرئيسية',
             onTap: () => Navigator.pop(context),
           ),
-          _DrawerItem(
-            icon: Icons.qr_code,
-            label: 'كود الحضور (QR)',
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
+          if (!isOnline) ...[
+            _DrawerItem(
+              icon: Icons.qr_code,
+              label: 'كود الحضور (QR)',
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('QR', style: TextStyle(color: AppTheme.accent, fontSize: 10)),
               ),
-              child: const Text('QR', style: TextStyle(color: AppTheme.accent, fontSize: 10)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentQrScreen()));
+              },
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentQrScreen()));
-            },
-          ),
+          ],
           _DrawerItem(
             icon: Icons.assignment,
             label: 'الدرجات',
@@ -744,14 +832,16 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const GradesScreen()));
             },
           ),
-          _DrawerItem(
-            icon: Icons.calendar_month,
-            label: 'الحضور',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen()));
-            },
-          ),
+          if (!isOnline) ...[
+            _DrawerItem(
+              icon: Icons.calendar_month,
+              label: 'الحضور',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen()));
+              },
+            ),
+          ],
           _DrawerItem(
             icon: Icons.quiz_outlined,
             label: 'الاختبارات',
@@ -761,11 +851,27 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           _DrawerItem(
+            icon: Icons.menu_book,
+            label: 'الكورسات',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentCoursesScreen()));
+            },
+          ),
+          _DrawerItem(
             icon: Icons.receipt_long,
             label: 'الفواتير',
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const InvoicesScreen()));
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.account_balance_wallet,
+            label: 'المحفظة',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentWalletScreen()));
             },
           ),
           _DrawerItem(
@@ -827,7 +933,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav({required bool isOnline}) {
+    final items = <BottomNavigationBarItem>[
+      const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
+      const BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'الدرجات'),
+      if (!isOnline) const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'الحضور'),
+      const BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'الفصل الذكي'),
+      const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'الملف'),
+    ];
+    final safeIndex = _currentIndex.clamp(0, items.length - 1);
     return Container(
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border(context))),
@@ -836,17 +950,13 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: AppColors.background(context),
         selectedItemColor: AppTheme.accent,
         unselectedItemColor: AppColors.textSecondary(context),
-        currentIndex: _currentIndex,
+        currentIndex: safeIndex,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() => _currentIndex = index);
+          if (index == 0 || index == (isOnline ? 2 : 3)) _fetchWallet();
         },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'الدرجات'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'الحضور'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'الملف'),
-        ],
+        items: items,
       ),
     );
   }

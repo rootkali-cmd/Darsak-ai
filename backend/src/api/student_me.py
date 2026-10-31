@@ -535,11 +535,12 @@ async def request_deposit(
             str(deposit.get("id", "")),
             sender_phone=body.sender_phone,
             method=body.method,
+            screenshot_b64=None,
         )
     except Exception as e:
         import logging
         logging.getLogger("darsak").warning("Failed to send deposit notification: %s", e)
-    
+
     return {"ok": True, "data": deposit}
 
 
@@ -583,6 +584,7 @@ async def request_deposit_with_screenshot(
             str(deposit.get("id", "")),
             sender_phone=sender_phone,
             method=method,
+            screenshot_b64=screenshot_b64,
         )
     except Exception as e:
         import logging

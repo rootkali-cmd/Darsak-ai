@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -10,6 +10,7 @@ class ApiService {
   static const _baseUrl = 'https://darsak-backend.fly.dev/api';
   static const _tokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
+  final _secureStorage = const FlutterSecureStorage();
 
   ApiService._internal() {
     _dio = _createDio();
@@ -29,8 +30,7 @@ class ApiService {
 
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString(_tokenKey);
+        final token = await _secureStorage.read(key: _tokenKey);
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -40,12 +40,9 @@ class ApiService {
         if (error.response?.statusCode == 401) {
           final refreshed = await _tryRefreshToken();
           if (refreshed && error.requestOptions.path != '/auth/refresh') {
-            // Retry the original request with new token
-            final prefs = await SharedPreferences.getInstance();
-            final newToken = prefs.getString(_tokenKey);
+            final newToken = await _secureStorage.read(key: _tokenKey);
             if (newToken != null) {
               error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
-              // Add retry count header to prevent infinite loop
               final retryCount = (error.requestOptions.extra['_retry'] ?? 0) as int;
               if (retryCount < 2) {
                 error.requestOptions.extra['_retry'] = retryCount + 1;
@@ -55,7 +52,6 @@ class ApiService {
               }
             }
           }
-          // Refresh failed - logout
           await _clearAuth();
         }
         handler.next(error);
@@ -67,8 +63,7 @@ class ApiService {
 
   Future<bool> _tryRefreshToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final refreshToken = prefs.getString(_refreshTokenKey);
+      final refreshToken = await _secureStorage.read(key: _refreshTokenKey);
       if (refreshToken == null) return false;
 
       final refreshDio = Dio(BaseOptions(
@@ -78,30 +73,33 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
       ));
 
-      final resp = await refreshDio.post('/auth/refresh', data: {
-        'refresh_token': refreshToken,
-      });
+      try {
+        final resp = await refreshDio.post('/auth/refresh', data: {
+          'refresh_token': refreshToken,
+        });
 
-      final newAccess = resp.data['access_token'] as String?;
-      final newRefresh = resp.data['refresh_token'] as String?;
+        final newAccess = resp.data['access_token'] as String?;
+        final newRefresh = resp.data['refresh_token'] as String?;
 
-      if (newAccess != null) {
-        await prefs.setString(_tokenKey, newAccess);
-        if (newRefresh != null) {
-          await prefs.setString(_refreshTokenKey, newRefresh);
+        if (newAccess != null) {
+          await _secureStorage.write(key: _tokenKey, value: newAccess);
+          if (newRefresh != null) {
+            await _secureStorage.write(key: _refreshTokenKey, value: newRefresh);
+          }
+          return true;
         }
-        return true;
+        return false;
+      } finally {
+        refreshDio.close();
       }
-      return false;
     } catch (_) {
       return false;
     }
   }
 
   Future<void> _clearAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_refreshTokenKey);
+    await _secureStorage.delete(key: _tokenKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
   }
 
   Dio get dio => _dio;
@@ -119,12 +117,11 @@ class ApiService {
     final res = await _dio.post('/auth/login', data: {'email': email, 'password': password});
     final data = await _parseResponse(res);
     if (data['access_token'] != null) {
-      final prefs = await SharedPreferences.getInstance();
       final accessToken = data['access_token'].toString();
-      await prefs.setString(_tokenKey, accessToken);
+      await _secureStorage.write(key: _tokenKey, value: accessToken);
       if (data['refresh_token'] != null) {
         final refreshToken = data['refresh_token'].toString();
-        await prefs.setString(_refreshTokenKey, refreshToken);
+        await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
       }
     }
     return data;

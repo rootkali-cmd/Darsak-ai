@@ -93,6 +93,16 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
     const setChatAreaWidth = useSettingsStore((s) => s.setChatAreaWidth);
     const chatAreaCollapsed = useSettingsStore((s) => s.chatAreaCollapsed);
     const setChatAreaCollapsed = useSettingsStore((s) => s.setChatAreaCollapsed);
+
+    // Mobile detection — screens below md breakpoint (768px)
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+      const mq = window.matchMedia('(max-width: 767px)');
+      setIsMobile(mq.matches);
+      const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    }, []);
     const setTTSMuted = useSettingsStore((s) => s.setTTSMuted);
     const setTTSVolume = useSettingsStore((s) => s.setTTSVolume);
 
@@ -1012,8 +1022,8 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
     // non-'edit' here since the parent Stage unmounts this component
     // when entering Pro mode.
     const sceneViewerHeight = (() => {
-      const headerHeight = isPresenting ? 0 : 80;
-      const roundtableHeight = mode === 'playback' && !isPresenting ? 192 : 0;
+      const headerHeight = isPresenting ? 0 : (isMobile ? 0 : 80);
+      const roundtableHeight = mode === 'playback' && !isPresenting ? (isMobile ? 100 : 192) : 0;
       return `calc(100% - ${headerHeight + roundtableHeight}px)`;
     })();
 
@@ -1025,13 +1035,15 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
           isPresenting && !controlsVisible && 'cursor-none',
         )}
       >
-        <SceneSidebar
-          collapsed={sidebarCollapsed}
-          onCollapseChange={setSidebarCollapsed}
-          onSceneSelect={gatedSceneSwitch}
-          onRetryOutline={onRetryOutline}
-          isCourseComplete={isCourseComplete}
-        />
+        {!isMobile && (
+          <SceneSidebar
+            collapsed={sidebarCollapsed}
+            onCollapseChange={setSidebarCollapsed}
+            onSceneSelect={gatedSceneSwitch}
+            onRetryOutline={onRetryOutline}
+            isCourseComplete={isCourseComplete}
+          />
+        )}
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
@@ -1039,7 +1051,7 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
             (passed by the parent Stage) which acquires the cross-tab
             edit lock and then awaits our `teardown()` before flipping
             mode to 'edit'. */}
-          {!isPresenting && (
+          {!isPresenting && !isMobile && (
             <Header
               currentSceneTitle={
                 currentScene?.title ||
@@ -1242,9 +1254,74 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
           )}
         </div>
 
-        {/* Chat Area — playback / autonomous always renders it here; Pro
-          (edit) mode unmounts this whole PlaybackChromeRoot, so the
-          edit branch has no chat. */}
+        {/* Chat Area — desktop: side panel; mobile: bottom sheet */}
+        {isMobile ? (
+          <>
+            {!chatAreaCollapsed && (
+              <>
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 45, background: 'rgba(0,0,0,0.3)' }}
+                  onClick={() => setChatAreaCollapsed(true)}
+                />
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', background: 'var(--background, #fff)', borderRadius: '16px 16px 0 0', overflow: 'hidden' }}
+                >
+                  <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center' }}>
+                    <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
+                  </div>
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <ChatArea
+                      ref={chatAreaRef}
+                      width={0}
+                      onWidthChange={() => {}}
+                      collapsed={false}
+                      onCollapseChange={setChatAreaCollapsed}
+                      activeBubbleId={activeBubbleId}
+                      onActiveBubble={(id) => setActiveBubbleId(id)}
+                      currentSceneId={currentSceneId}
+                      onLiveSpeech={(text, agentId) => {
+                        const epoch = sceneEpochRef.current;
+                        queueMicrotask(() => {
+                          if (sceneEpochRef.current !== epoch) return;
+                          setLiveSpeech(text);
+                          if (agentId) setSpeakingAgentId(agentId);
+                          if (text !== null || agentId) {
+                            setChatIsStreaming(true);
+                            setChatSessionType(chatAreaRef.current?.getActiveSessionType?.() ?? null);
+                            setIsTopicPending(false);
+                          } else if (text === null && agentId === null) {
+                            setChatIsStreaming(false);
+                          }
+                        });
+                      }}
+                      onSpeechProgress={(ratio) => {
+                        const epoch = sceneEpochRef.current;
+                        queueMicrotask(() => {
+                          if (sceneEpochRef.current !== epoch) return;
+                          setSpeechProgress(ratio);
+                        });
+                      }}
+                      onThinking={(state) => {
+                        const epoch = sceneEpochRef.current;
+                        queueMicrotask(() => {
+                          if (sceneEpochRef.current !== epoch) return;
+                          setThinkingState(state);
+                        });
+                      }}
+                      onCueUser={(_fromAgentId, _prompt) => {
+                        setIsCueUser(true);
+                      }}
+                      onLiveSessionError={handleLiveSessionError}
+                      onStopSession={doSessionCleanup}
+                      onSegmentSealed={discussionTTS.handleSegmentSealed}
+                      shouldHoldAfterReveal={discussionTTS.shouldHold}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
         <div className="flex shrink-0">
           <ChatArea
             ref={chatAreaRef}
@@ -1300,6 +1377,52 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
             shouldHoldAfterReveal={discussionTTS.shouldHold}
           />
         </div>
+        )}
+
+        {isMobile && mode === 'playback' && !isPresenting && (
+          <div className="fixed bottom-0 inset-x-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-border/50 px-2 py-2">
+            <div className="flex items-center justify-around">
+              <button onClick={() => { setSidebarCollapsed(!sidebarCollapsed); if (!sidebarCollapsed) setChatAreaCollapsed(true); }}
+                className={`flex flex-col items-center gap-0.5 p-2 rounded-xl min-w-[60px] ${!sidebarCollapsed ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}>
+                <span>📑</span><span className="text-[10px]">الشرائح</span>
+              </button>
+              <button onClick={handlePlayPause}
+                className={`flex flex-col items-center gap-0.5 p-2 rounded-xl min-w-[60px] ${(engineMode === 'playing' || engineMode === 'live') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}>
+                <span>{(engineMode === 'playing' || engineMode === 'live') ? '⏸' : '▶️'}</span><span className="text-[10px]">تشغيل</span>
+              </button>
+              <button onClick={handlePreviousScene}
+                className="flex flex-col items-center gap-0.5 p-2 rounded-xl text-muted-foreground min-w-[60px]">
+                <span>◀️</span><span className="text-[10px]">السابق</span>
+              </button>
+              <button onClick={handleNextScene}
+                className="flex flex-col items-center gap-0.5 p-2 rounded-xl text-muted-foreground min-w-[60px]">
+                <span>▶️</span><span className="text-[10px]">التالي</span>
+              </button>
+              <button onClick={() => { setChatAreaCollapsed(!chatAreaCollapsed); if (!chatAreaCollapsed) setSidebarCollapsed(true); }}
+                className={`flex flex-col items-center gap-0.5 p-2 rounded-xl min-w-[60px] ${!chatAreaCollapsed ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}>
+                <span>💬</span><span className="text-[10px]">المحادثة</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isMobile && !sidebarCollapsed && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 45, background: 'rgba(0,0,0,0.3)' }}
+              onClick={() => setSidebarCollapsed(true)}
+            />
+            <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 50, width: 280, overflowY: 'auto', background: 'var(--background, #fff)', boxShadow: '4px 0 24px rgba(0,0,0,0.1)' }}>
+              <SceneSidebar
+                collapsed={false}
+                onCollapseChange={setSidebarCollapsed}
+                onSceneSelect={(id) => { gatedSceneSwitch(id); setSidebarCollapsed(true); }}
+                onRetryOutline={onRetryOutline}
+                isCourseComplete={isCourseComplete}
+              />
+            </div>
+          </>
+        )}
 
         {/* Scene switch confirmation dialog */}
         <AlertDialog

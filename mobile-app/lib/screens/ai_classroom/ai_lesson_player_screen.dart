@@ -1,311 +1,485 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
-import '../../core/api_service.dart';
-import '../../core/constants.dart';
-import 'ai_lesson_summary_screen.dart';
-import '../wallet/student_wallet_screen.dart';
 
-class AiLessonPlayerScreen extends StatefulWidget {
-  final String? classroomUrl;
-  final String? title;
+class AiClassroomWebViewScreen extends StatefulWidget {
+  final String url;
+  final String title;
+  final bool preload;
 
-  const AiLessonPlayerScreen({super.key, this.classroomUrl, this.title});
+  const AiClassroomWebViewScreen({
+    super.key,
+    required this.url,
+    this.title = 'الفصل الذكي',
+    this.preload = false,
+  });
 
   @override
-  State<AiLessonPlayerScreen> createState() => _AiLessonPlayerScreenState();
+  State<AiClassroomWebViewScreen> createState() => _AiClassroomWebViewScreenState();
 }
 
-class _AiLessonPlayerScreenState extends State<AiLessonPlayerScreen> {
-  final _api = ApiService();
-  WebViewController? _webViewController;
-  Timer? _timer;
-  Timer? _heartbeatTimer;
-  String? _sessionId;
-  double _rate = 0.42;
-  double _balance = 0;
-  int _elapsedSeconds = 0;
-  bool _loading = true;
-  bool _ended = false;
-  bool _warning = false;
-  String _warningMessage = '';
+class _AiClassroomWebViewScreenState extends State<AiClassroomWebViewScreen>
+    with SingleTickerProviderStateMixin {
+  WebViewController? _controller;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
+  bool _canGoBack = false;
+  DateTime? _lastBackPress;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  static const _cacheKey = 'classroom_page_cache';
+  static const _cacheUrlKey = 'classroom_cache_url';
 
   @override
   void initState() {
     super.initState();
-    _startLesson();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
+    _fadeController.forward();
+    _initWebView();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _heartbeatTimer?.cancel();
+    _fadeController.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
-  Future<void> _startLesson() async {
-    try {
-      final config = await _api.getAiClassroomConfig();
-      _rate = (config['rate_per_minute'] as num?)?.toDouble() ?? 0.42;
-      _balance = 0;
-
-      final wallet = await _api.getWallet();
-      _balance = (wallet['balance'] as num?)?.toDouble() ?? 0;
-
-      final result = await _api.startAiLesson(
-        classroomUrl: widget.classroomUrl,
-        title: widget.title ?? 'درس AI',
+  Future<void> _initWebView() async {
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..setUserAgent(
+        'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
       );
-      _sessionId = result['session_id'] as String?;
-      if (_sessionId == null) throw Exception('No session ID');
 
-      final url = result['classroom_url'] as String? ?? widget.classroomUrl;
-      if (url != null) {
-        _webViewController = WebViewController()
-          ..setJavaScriptMode(JavaScriptMode.unrestricted)
-          ..loadRequest(Uri.parse(url));
-      }
-
-      if (mounted) {
-        setState(() => _loading = false);
-        _startTimer();
-        _startHeartbeat();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loading = false);
-        _showError(e.toString());
-      }
+    if (controller.platform is AndroidWebViewController) {
+      final android = controller.platform as AndroidWebViewController;
+      await android.setMediaPlaybackRequiresUserGesture(false);
     }
+
+    _registerBridge(controller);
+    _registerNavigationHandler(controller);
+
+    _controller = controller;
+
+    await controller.loadRequest(Uri.parse(widget.url));
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!_ended && mounted) {
-        setState(() => _elapsedSeconds++);
-      }
-    });
-  }
-
-  void _startHeartbeat() {
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      if (_ended || _sessionId == null) return;
-      try {
-        final hb = await _api.aiLessonHeartbeat(_sessionId!);
+  void _registerNavigationHandler(WebViewController controller) {
+    controller.setNavigationDelegate(NavigationDelegate(
+      onPageStarted: (_) {
+        if (mounted) setState(() { _isLoading = true; _hasError = false; });
+      },
+      onPageFinished: (_) async {
         if (!mounted) return;
-        final bal = (hb['balance'] as num?)?.toDouble() ?? _balance;
-        final warn = hb['warning'] as bool? ?? false;
-        final forceEnd = hb['force_end'] as bool? ?? false;
-        final msg = hb['message'] as String? ?? '';
-        setState(() {
-          _balance = bal;
-          _warning = warn;
-          _warningMessage = msg;
-        });
-        if (forceEnd) {
-          _endLesson();
-        } else if (warn) {
-          Future.delayed(const Duration(minutes: 1), () {
-            if (!_ended && _warning && mounted) _endLesson();
+        final canGoBack = await controller.canGoBack();
+        if (mounted) {
+          setState(() { _isLoading = false; _canGoBack = canGoBack; });
+          _injectMobileOverrides(controller);
+          _cachePage();
+        }
+      },
+      onWebResourceError: (error) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _hasError = true;
+            _errorMessage = _mapError(error);
           });
         }
-      } catch (_) {}
-    });
+      },
+    ));
   }
 
-  Future<void> _endLesson() async {
-    if (_ended || _sessionId == null) return;
-    _ended = true;
-    _timer?.cancel();
-    _heartbeatTimer?.cancel();
-    try {
-      final summary = await _api.endAiLesson(_sessionId!);
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => AiLessonSummaryScreen(data: summary)),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-      }
+  String _mapError(WebResourceError error) {
+    switch (error.errorCode) {
+      case -2: return 'تحقق من اتصال الإنترنت';
+      case -6: return 'الخادم غير متاح';
+      case -8: return 'انتهت مهلة الاتصال';
+      default: return 'حدث خطأ. حاول مرة أخرى';
     }
   }
 
-  void _showError(String msg) {
+  // ═══════════════════════════════════════════════════════════════
+  // JAVASCRIPT BRIDGE — expose native device capabilities to website
+  // ═══════════════════════════════════════════════════════════════
+  void _registerBridge(WebViewController controller) {
+    // ── Toast ──
+    controller.addJavaScriptChannel('DarsakToast', onMessageReceived: (msg) {
+      final data = jsonDecode(msg.message);
+      _showToast(data['message'] ?? '', isError: data['type'] == 'error');
+    });
+
+    // ── Haptic Feedback ──
+    controller.addJavaScriptChannel('DarsakHaptic', onMessageReceived: (msg) {
+      final data = jsonDecode(msg.message);
+      switch (data['type']) {
+        case 'light': HapticFeedback.lightImpact(); break;
+        case 'medium': HapticFeedback.mediumImpact(); break;
+        case 'heavy': HapticFeedback.heavyImpact(); break;
+        case 'selection': HapticFeedback.selectionClick(); break;
+        default: HapticFeedback.lightImpact();
+      }
+    });
+
+    // ── Vibrate ──
+    controller.addJavaScriptChannel('DarsakVibrate', onMessageReceived: (msg) {
+      HapticFeedback.vibrate();
+    });
+
+    // ── Clipboard ──
+    controller.addJavaScriptChannel('DarsakClipboard', onMessageReceived: (msg) async {
+      final data = jsonDecode(msg.message);
+      final action = data['action'] ?? 'read';
+      if (action == 'write') {
+        await Clipboard.setData(ClipboardData(text: data['text'] ?? ''));
+        controller.runJavaScript('window.__bridgeClipboardResult?.("ok")');
+      } else {
+        final clip = await Clipboard.getData('text/plain');
+        controller.runJavaScript(
+          'window.__bridgeClipboardResult?.("${(clip?.text ?? '').replaceAll('"', '\\"')}")',
+        );
+      }
+    });
+
+    // ── Share ──
+    controller.addJavaScriptChannel('DarsakShare', onMessageReceived: (msg) {
+      final data = jsonDecode(msg.message);
+      _showToast('تم نسخ الرابط');
+      Clipboard.setData(ClipboardData(text: data['url'] ?? ''));
+    });
+
+    // ── System UI ──
+    controller.addJavaScriptChannel('DarsakUI', onMessageReceived: (msg) {
+      final data = jsonDecode(msg.message);
+      switch (data['action']) {
+        case 'fullscreen':
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+          break;
+        case 'normal':
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+          break;
+        case 'portrait':
+          SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+          break;
+        case 'landscape':
+          SystemChrome.setPreferredOrientations([
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]);
+          break;
+        case 'exit':
+          Navigator.of(context).pop();
+          break;
+      }
+    });
+
+    // ── Navigation ──
+    controller.addJavaScriptChannel('DarsakNav', onMessageReceived: (msg) async {
+      final data = jsonDecode(msg.message);
+      switch (data['action']) {
+        case 'back':
+          if (await controller.canGoBack()) {
+            await controller.goBack();
+          } else {
+            Navigator.of(context).pop();
+          }
+          break;
+        case 'reload':
+          await controller.reload();
+          break;
+      }
+    });
+
+    // ── Device Info ──
+    controller.addJavaScriptChannel('DarsakDevice', onMessageReceived: (msg) {
+      final data = jsonDecode(msg.message);
+      if (data['action'] == 'info') {
+        final info = {
+          'platform': 'android',
+          'appVersion': '1.0.0',
+          'bridgeVersion': '1.0',
+          'darkMode': MediaQuery.platformBrightnessOf(context) == Brightness.dark,
+        };
+        controller.runJavaScript(
+          'window.__bridgeDeviceResult?.(${jsonEncode(info)})',
+        );
+      }
+    });
+
+    // ── Storage (SharedPreferences) ──
+    controller.addJavaScriptChannel('DarsakStorage', onMessageReceived: (msg) async {
+      final data = jsonDecode(msg.message);
+      final prefs = await SharedPreferences.getInstance();
+      final action = data['action'] ?? 'get';
+      final key = data['key'] ?? '';
+      if (action == 'get') {
+        final value = prefs.getString('bridge_$key') ?? data['default'] ?? '';
+        controller.runJavaScript(
+          'window.__bridgeStorageResult?.("${value.toString().replaceAll('"', '\\"')}")',
+        );
+      } else if (action == 'set') {
+        await prefs.setString('bridge_$key', data['value'] ?? '');
+        controller.runJavaScript('window.__bridgeStorageResult?.("ok")');
+      } else if (action == 'remove') {
+        await prefs.remove('bridge_$key');
+        controller.runJavaScript('window.__bridgeStorageResult?.("ok")');
+      }
+    });
+
+    // ── Close ──
+    controller.addJavaScriptChannel('DarsakClose', onMessageReceived: (_) {
+      Navigator.of(context).pop();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // INJECT MOBILE OVERRIDES — fix website for mobile viewport
+  // ═══════════════════════════════════════════════════════════════
+  void _injectMobileOverrides(WebViewController controller) {
+    controller.runJavaScript('''
+      (function() {
+        // 1. Force viewport
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) { meta = document.createElement('meta'); document.head.appendChild(meta); }
+        meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+
+        // 2. Add safe-area CSS
+        var s = document.createElement('style');
+        s.id = 'darsak-mobile';
+        s.textContent = `
+          :root { --darsak-safe-top: env(safe-area-inset-top, 0px); --darsak-safe-bottom: env(safe-area-inset-bottom, 0px); }
+          body { padding-top: var(--darsak-safe-top) !important; padding-bottom: var(--darsak-safe-bottom) !important; overflow-x: hidden; }
+          input, textarea, select { font-size: 16px !important; }
+          * { -webkit-tap-highlight-color: transparent; }
+          ::selection { background: rgba(114, 46, 209, 0.3); }
+        `;
+        document.head.appendChild(s);
+
+        // 3. Detect bridge availability
+        window.DarsakBridge = {
+          toast: (msg, type) => window.DarsakToast?.postMessage(JSON.stringify({message: msg, type: type || 'info'})),
+          haptic: (type) => window.DarsakHaptic?.postMessage(JSON.stringify({type: type || 'light'})),
+          vibrate: () => window.DarsakVibrate?.postMessage(JSON.stringify({})),
+          clipboard: {
+            read: () => new Promise(r => { window.__bridgeClipboardResult = r; window.DarsakClipboard?.postMessage(JSON.stringify({action:'read'})); }),
+            write: (t) => new Promise(r => { window.__bridgeClipboardResult = r; window.DarsakClipboard?.postMessage(JSON.stringify({action:'write',text:t})); }),
+          },
+          share: (url) => window.DarsakShare?.postMessage(JSON.stringify({url: url})),
+          ui: (action) => window.DarsakUI?.postMessage(JSON.stringify({action: action})),
+          nav: (action) => window.DarsakNav?.postMessage(JSON.stringify({action: action})),
+          device: () => new Promise(r => { window.__bridgeDeviceResult = r; window.DarsakDevice?.postMessage(JSON.stringify({action:'info'})); }),
+          storage: {
+            get: (key, def) => new Promise(r => { window.__bridgeStorageResult = r; window.DarsakStorage?.postMessage(JSON.stringify({action:'get',key:key,default:def})); }),
+            set: (key, val) => new Promise(r => { window.__bridgeStorageResult = r; window.DarsakStorage?.postMessage(JSON.stringify({action:'set',key:key,value:val})); }),
+            remove: (key) => new Promise(r => { window.__bridgeStorageResult = r; window.DarsakStorage?.postMessage(JSON.stringify({action:'remove',key:key})); }),
+          },
+          close: () => window.DarsakClose?.postMessage(JSON.stringify({})),
+        };
+
+        // 4. Mark as native app
+        document.body?.classList.add('darsak-native-app');
+
+        console.log('[DarsakBridge] v1.0 initialized');
+      })();
+    ''');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CACHE — cache page HTML for faster loads
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _cachePage() async {
+    try {
+      final html = await _controller?.runJavaScriptReturningResult(
+        'document.documentElement.outerHTML',
+      );
+      if (html != null && html is String && html.length > 100) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_cacheKey, html);
+        await prefs.setString(_cacheUrlKey, widget.url);
+        await prefs.setString('${_cacheKey}_time', DateTime.now().toIso8601String());
+      }
+    } catch (_) {}
+  }
+
+  void _showToast(String message, {bool isError = false}) {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('خطأ'),
-        content: Text(msg.contains('402') ? 'رصيد غير كاف. اشحن محفظتك أولاً.' : msg),
-        actions: [
-          TextButton(
-            onPressed: () { Navigator.pop(ctx); Navigator.pop(context); },
-            child: const Text('حسناً'),
-          ),
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppTheme.danger : const Color(0xFF1E1E1E),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  String _formatDuration(int secs) {
-    final h = secs ~/ 3600;
-    final m = (secs % 3600) ~/ 60;
-    final s = secs % 60;
-    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  Future<bool> _onWillPop() async {
+    if (_canGoBack && _controller != null) {
+      await _controller!.goBack();
+      final canGoBack = await _controller!.canGoBack();
+      if (mounted) setState(() => _canGoBack = canGoBack);
+      return false;
+    }
+    final now = DateTime.now();
+    if (_lastBackPress != null && now.difference(_lastBackPress!) < const Duration(seconds: 2)) {
+      return true;
+    }
+    _lastBackPress = now;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اضغط مرة أخرى للخروج'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (_loading) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('جاري التحميل...'), centerTitle: true),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-    final cost = (_elapsedSeconds / 60 * _rate);
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
           children: [
-            Column(
-              children: [
-                Expanded(
-                  child: _webViewController == null
-                      ? _buildWebView()
-                      : WebViewWidget(controller: _webViewController!),
-                ),
-                _buildBottomBar(theme, cost),
-              ],
-            ),
-            if (_warning) _buildWarningOverlay(theme),
+            if (_hasError)
+              _buildErrorView()
+            else if (_controller != null)
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: WebViewWidget(controller: _controller!),
+              ),
+            if (_isLoading && !_hasError) _buildLoadingView(),
+            if (!_isLoading && !_hasError) _buildFloatingBackButton(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildWebView() {
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildBottomBar(ThemeData theme, double cost) {
+  Widget _buildLoadingView() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(top: BorderSide(color: theme.dividerColor)),
-      ),
-      child: Row(
-        children: [
-          _infoChip(Icons.timer_outlined, _formatDuration(_elapsedSeconds), null),
-          const SizedBox(width: 8),
-          _infoChip(Icons.monetization_on_outlined, '${cost.toStringAsFixed(2)} ج.م', AppTheme.accent),
-          const SizedBox(width: 8),
-          _infoChip(Icons.account_balance_wallet_outlined, '${_balance.toStringAsFixed(2)} ج.م', null),
-          const Spacer(),
-          _warning
-              ? Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 20)
-              : const SizedBox.shrink(),
-          const SizedBox(width: 4),
-          SizedBox(
-            height: 36,
-            child: ElevatedButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('إنهاء الدرس'),
-                    content: Text('تأكيد إنهاء الدرس؟\nالمدة: ${_formatDuration(_elapsedSeconds)}\nالتكلفة: ${cost.toStringAsFixed(2)} ج.م'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-                      ElevatedButton(
-                        onPressed: () { Navigator.pop(ctx); _endLesson(); },
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                        child: const Text('إنهاء'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.accent, width: 2),
               ),
-              child: const Text('إنهاء', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              child: const Center(
+                child: Text('AI', style: TextStyle(color: AppTheme.accent, fontSize: 22, fontWeight: FontWeight.bold)),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            const Text('جاري تحميل الفصل الذكي...', style: TextStyle(color: Colors.white70, fontSize: 14)),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 200,
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.white12,
+                valueColor: const AlwaysStoppedAnimation(AppTheme.accent),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _infoChip(IconData icon, String text, Color? color) {
+  Widget _buildErrorView() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color ?? Colors.grey),
-          const SizedBox(width: 4),
-          Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWarningOverlay(ThemeData theme) {
-    return Positioned(
-      top: 0, left: 0, right: 0,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.orange.shade700, Colors.orange.shade600],
-            ),
-          ),
-          child: Row(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('رصيد منخفض', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text(_warningMessage, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12)),
-                  ],
+              const Icon(Icons.wifi_off_rounded, size: 56, color: Colors.white24),
+              const SizedBox(height: 16),
+              Text(_errorMessage ?? 'حدث خطأ', style: const TextStyle(fontSize: 15, color: Colors.white70), textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 200,
+                child: ElevatedButton.icon(
+                  onPressed: () { setState(() => _hasError = false); _initWebView(); },
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('إعادة المحاولة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentWalletScreen()));
-                },
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.orange.shade700,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('شحن', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingBackButton() {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 8,
+      left: Directionality.of(context) == TextDirection.rtl ? 8 : null,
+      right: Directionality.of(context) == TextDirection.ltr ? 8 : null,
+      child: GestureDetector(
+        onTap: () async {
+          if (_canGoBack && _controller != null) {
+            await _controller!.goBack();
+            final canGoBack = await _controller!.canGoBack();
+            if (mounted) setState(() => _canGoBack = canGoBack);
+          } else {
+            if (mounted) Navigator.pop(context);
+          }
+        },
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white24),
+          ),
+          child: const Icon(Icons.arrow_back, color: Colors.white70, size: 20),
         ),
       ),
     );

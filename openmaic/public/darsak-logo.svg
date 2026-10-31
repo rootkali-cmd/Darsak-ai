@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 60" fill="none">
+  <rect width="320" height="60" rx="8" fill="transparent"/>
+  <!-- Hexagon icon -->
+  <path d="M30 8L48 18V38L30 48L12 38V18L30 8Z" stroke="#722ed1" stroke-width="2.5" fill="none"/>
+  <path d="M30 14L42 21V35L30 42L18 35V21L30 14Z" fill="#722ed1" opacity="0.15"/>
+  <text x="30" y="33" text-anchor="middle" fill="#722ed1" font-family="Arial,sans-serif" font-size="16" font-weight="bold">AI</text>
+  <!-- Darsak AI text -->
+  <text x="62" y="38" fill="currentColor" font-family="Arial,sans-serif" font-size="28" font-weight="700" letter-spacing="-0.5">
+    <tspan fill="#722ed1">Darsak</tspan> <tspan fill="#111111">AI</tspan>
+  </text>
+</svg>

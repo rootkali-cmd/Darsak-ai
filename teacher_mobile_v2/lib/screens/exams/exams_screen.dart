@@ -55,7 +55,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
         if (mounted) setState(() { _exams = []; _loading = false; });
       }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = 'فشل تحميل الاختبارات: $e'; });
+      if (mounted) setState(() { _loading = false; _error = 'فشل تحميل الاختبارات، تحقق من الاتصال'; });
     }
   }
 
@@ -238,7 +238,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
                                         } catch (err) {
                                           if (mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text('فشل النشر: $err'), backgroundColor: GlassTheme.red),
+                                              const SnackBar(content: Text('فشل نشر الاختبار، حاول مرة أخرى'), backgroundColor: GlassTheme.red),
                                             );
                                           }
                                         } finally {

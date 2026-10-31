@@ -34,7 +34,7 @@ class AuthProvider extends ChangeNotifier {
   bool get subscriptionLoaded => _subscriptionData != null;
   bool get isSubscriptionActive {
     if (_subscriptionData == null) return false;
-    final isActive = _subscriptionData!['is_active'] ?? false;
+    final isActive = _subscriptionData!['has_active_subscription'] ?? _subscriptionData!['is_active'] ?? false;
     if (isActive != true) return false;
     final expiresAt = _subscriptionData!['expires_at'] as String?;
     if (expiresAt != null) {
@@ -103,6 +103,7 @@ class AuthProvider extends ChangeNotifier {
       if (e is DioException && e.response != null) {
         final code = e.response?.statusCode;
         if (code == 401 || code == 403) {
+          // Only wipe if we got a clear auth rejection (not network error)
           await _storage.delete(key: AppConstants.storageKeyToken);
           await _storage.delete(key: AppConstants.storageKeyRefreshToken);
           await _storage.delete(key: AppConstants.storageKeyTeacherCode);
@@ -111,6 +112,7 @@ class AuthProvider extends ChangeNotifier {
           return;
         }
       }
+      // Network error or timeout — use cached profile and proceed
     }
 
     // Load subscription data BEFORE marking authenticated
@@ -121,7 +123,12 @@ class AuthProvider extends ChangeNotifier {
       LocalDB.saveProfile(profileData);
     }
 
-    _status = AuthStatus.authenticated;
+    // If we have a cached profile or got fresh data, mark as authenticated
+    if (_student != null || profileData != null) {
+      _status = AuthStatus.authenticated;
+    } else {
+      _status = AuthStatus.unauthenticated;
+    }
     notifyListeners();
   }
 

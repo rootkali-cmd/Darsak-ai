@@ -8,8 +8,11 @@ class InvoicesApiService {
   final ApiService _api = ApiService();
 
   Future<List<dynamic>> getMyInvoices() async {
-    final response = await _api.dio.get('/invoices/my');
-    return response.data is List ? response.data as List : [];
+    final response = await _api.dio.get('/students/me/invoices');
+    final data = response.data;
+    if (data is List) return data;
+    if (data is Map && data.containsKey('items')) return data['items'] as List? ?? [];
+    return [];
   }
 
   Future<Map<String, dynamic>> createInvoice({
@@ -41,7 +44,7 @@ class InvoicesApiService {
   }
 
   Future<List<dynamic>> getTeacherLessons() async {
-    final response = await _api.dio.get('/lessons/my-teacher');
+    final response = await _api.dio.get('/lessons/me');
     return response.data is List ? response.data as List : [];
   }
 }
